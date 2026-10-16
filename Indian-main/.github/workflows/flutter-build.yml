@@ -1,0 +1,80 @@
+name: Flutter CI
+
+on:
+  push:
+    branches: [ main ]
+    # Backend-only / test-only / notes-only pushes do not change the APK, so they do not build one
+    # (every build stores a new APK in GitHub Actions storage, which is limited to 0.5 GB on the free plan).
+    paths-ignore:
+      - 'backend/**'
+      - 'test/**'
+      - '**.md'
+  pull_request:
+    branches: [ main ]
+    paths-ignore:
+      - 'backend/**'
+      - 'test/**'
+      - '**.md'
+  workflow_dispatch:
+
+# A newer push cancels a build that is still running (no half-finished APKs piling up).
+concurrency:
+  group: flutter-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        channel: 'stable'
+
+    - name: Install dependencies
+      working-directory: ./frontend
+      run: flutter pub get
+
+    - name: Generate native platform folders
+      working-directory: ./frontend
+      run: flutter create . --platforms=android
+
+    - name: Patch AndroidManifest (INTERNET + cleartext)
+      working-directory: ./frontend
+      run: |
+        MANIFEST=android/app/src/main/AndroidManifest.xml
+        sed -i 's#<application#<uses-permission android:name="android.permission.INTERNET"/>\n    <application#' "$MANIFEST"
+        sed -i 's#<application#<application android:usesCleartextTraffic="true"#' "$MANIFEST"
+        cat "$MANIFEST"
+
+    - name: Patch AndroidManifest (Owl Terminal branding + foreground service)
+      working-directory: ./frontend
+      run: |
+        MANIFEST=android/app/src/main/AndroidManifest.xml
+        sed -i 's#android:label="trading_bot"#android:label="Owl Terminal"#' "$MANIFEST"
+        sed -i 's#<application#<uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>\n    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC"/>\n    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>\n    <uses-permission android:name="android.permission.WAKE_LOCK"/>\n    <application#' "$MANIFEST"
+        sed -i 's#</application>#    <service\n        android:name="com.pravera.flutter_foreground_task.service.ForegroundService"\n        android:foregroundServiceType="dataSync"\n        android:exported="false" />\n</application>#' "$MANIFEST"
+        cat "$MANIFEST"
+
+    - name: Generate launcher icon (owl mascot)
+      working-directory: ./frontend
+      run: dart run flutter_launcher_icons
+
+    # Analyze aur Test hata diya hai taaki build direct chale
+    - name: Build APK
+      working-directory: ./frontend
+      run: flutter build apk --release
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: release-apk
+        path: frontend/build/app/outputs/flutter-apk/app-release.apk
+        # Keep the APK for 1 day only (the default is 90 days, which is what filled the 0.5 GB).
+        # Download it the same day. The Cleanup workflow also removes older ones.
+        retention-days: 1
+        compression-level: 0

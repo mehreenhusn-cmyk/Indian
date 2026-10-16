@@ -1,0 +1,11 @@
+fastapi
+starlette
+uvicorn
+h11
+websockets
+python-dotenv
+pydantic>=2.0
+requests
+websocket-client
+certifi
+pillow

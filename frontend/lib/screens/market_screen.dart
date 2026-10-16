@@ -1,0 +1,180 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/app_provider.dart';
+import '../widgets/market_tile.dart';
+import '../widgets/owl_empty_state.dart';
+import '../widgets/owl_skeleton.dart';
+import '../widgets/candle_chart.dart';
+import '../widgets/owl_refresh.dart';
+import '../theme/app_theme.dart';
+
+class MarketScreen extends StatefulWidget {
+  const MarketScreen({super.key});
+
+  @override
+  State<MarketScreen> createState() => _MarketScreenState();
+}
+
+enum _MarketFilter { all, gainers, losers }
+
+class _MarketScreenState extends State<MarketScreen> {
+  _MarketFilter _filter = _MarketFilter.all;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    final t = context.type;
+
+    return Scaffold(
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Header
+            Padding(
+              padding: const EdgeInsets.fromLTRB(AppSpacing.l, AppSpacing.l, AppSpacing.l, 0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('Market Watch', style: t.section.copyWith(fontSize: 22, fontWeight: FontWeight.bold)),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.m, vertical: AppSpacing.xs + 2),
+                    decoration: BoxDecoration(
+                      color: p.accent.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(AppSpacing.radiusPill),
+                    ),
+                    child: Text(
+                      'LIVE',
+                      style: t.metadata.copyWith(color: p.accent, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: AppSpacing.s),
+            // Filter bar (All / Gainers / Losers - client-side filter over the
+            // real movers stream; the backend has no per-timeframe market
+            // endpoint yet, so no timeframe chips are shown here).
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.l),
+              child: Row(
+                children: _MarketFilter.values.map((f) {
+                  final selected = f == _filter;
+                  return Expanded(
+                    child: GestureDetector(
+                      onTap: () {
+                        if (f != _filter) AppHaptics.light();
+                        setState(() => _filter = f);
+                      },
+                      child: AnimatedContainer(
+                        duration: AppMotion.fast,
+                        margin: const EdgeInsets.only(right: AppSpacing.xs + 2),
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        decoration: BoxDecoration(
+                          border: Border(
+                            bottom: BorderSide(color: selected ? p.accent : Colors.transparent, width: 2),
+                          ),
+                        ),
+                        child: Text(
+                          _filterLabel(f),
+                          textAlign: TextAlign.center,
+                          style: t.secondary.copyWith(
+                            color: selected ? p.textPrimary : p.textMuted,
+                            fontWeight: selected ? FontWeight.bold : FontWeight.normal,
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+            // Table header
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.l, vertical: AppSpacing.s),
+              color: p.surfacePrimary,
+              child: Row(
+                children: [
+                  Expanded(flex: 3, child: Text('SYMBOL', style: t.metadata)),
+                  Expanded(flex: 3, child: Text('PRICE', textAlign: TextAlign.right, style: t.metadata)),
+                  Expanded(flex: 2, child: Text('24H CHG', textAlign: TextAlign.right, style: t.metadata)),
+                ],
+              ),
+            ),
+            // List
+            Expanded(
+              child: OWLRefresh(
+                onRefresh: () => context.read<AppProvider>().fetchStatus(),
+                child: Selector<AppProvider, int>(
+                selector: (_, p) => p.moversRev,
+                builder: (context, _rev, child) {
+                  final provider = context.read<AppProvider>();
+                  final all = provider.movers
+                      .whereType<Map>()
+                      .map((e) => e.cast<String, dynamic>())
+                      .toList();
+                  if (all.isEmpty) {
+                    return ListView(
+                      physics: owlPullPhysics,
+                      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.l, vertical: AppSpacing.m),
+                      children: List.generate(
+                        6,
+                        (_) => const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 6),
+                          child: OWLSkeleton(height: 44),
+                        ),
+                      ),
+                    );
+                  }
+                  final filtered = all.where((item) {
+                    final change = (item['change_pct'] is num) ? (item['change_pct'] as num).toDouble() : 0.0;
+                    switch (_filter) {
+                      case _MarketFilter.gainers:
+                        return change >= 0;
+                      case _MarketFilter.losers:
+                        return change < 0;
+                      case _MarketFilter.all:
+                        return true;
+                    }
+                  }).toList();
+                  if (filtered.isEmpty) {
+                    return OWLPullEmpty(child: OWLEmptyState(
+                      icon: Icons.show_chart_rounded,
+                      title: 'No matching symbols',
+                      subtitle: _filter == _MarketFilter.all
+                          ? 'No market data yet - waiting for the watchlist to load.'
+                          : 'No ${_filterLabel(_filter).toLowerCase()} on the current watchlist right now.',
+                    ));
+                  }
+                  return ListView.builder(
+                    physics: owlPullPhysics,
+                    itemCount: filtered.length,
+                    itemBuilder: (context, index) {
+                      final item = filtered[index];
+                      return MarketTile(
+                        item: item,
+                        rank: index + 1,
+                        onTap: () => showCandleChartSheet(context, '${item['symbol'] ?? ''}'),
+                      );
+                    },
+                  );
+                },
+              ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _filterLabel(_MarketFilter f) {
+    switch (f) {
+      case _MarketFilter.all:
+        return 'All';
+      case _MarketFilter.gainers:
+        return 'Gainers';
+      case _MarketFilter.losers:
+        return 'Losers';
+    }
+  }
+}
