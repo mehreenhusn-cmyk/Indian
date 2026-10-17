@@ -47,11 +47,9 @@ void main() async {
     FlutterForegroundTask.initCommunicationPort();
   } catch (_) {}
 
-  final SharedPreferences prefs;
-  try {
-    prefs = await SharedPreferences.getInstance();
-  } catch (e, st) {
-    runApp(_BootError('$e\n$st'));
+  final prefs = await _openPrefs();
+  if (prefs == null) {
+    runApp(const _BootError('SharedPreferences plugin failed twice (see Termux/Android log).'));
     return;
   }
 
@@ -65,6 +63,23 @@ void main() async {
   Timer(const Duration(seconds: 6), () => prefs.setBool(bootKey, false));
 
   runApp(OwlApp(prefs: prefs));
+}
+
+/// Opens the settings store. If the Android plugin is broken in this build (NoSuchMethodError /
+/// MissingPluginException at start-up), fall back to an in-memory store so the app still opens:
+/// everything works, but settings such as the theme are not remembered after a restart.
+Future<SharedPreferences?> _openPrefs() async {
+  try {
+    return await SharedPreferences.getInstance();
+  } catch (e) {
+    debugPrint('SharedPreferences plugin failed, using in-memory settings: $e');
+  }
+  try {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    return await SharedPreferences.getInstance();
+  } catch (_) {
+    return null;
+  }
 }
 
 /// Shown only if the very first start-up step throws (nothing else can draw yet).
