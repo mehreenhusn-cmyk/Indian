@@ -96,6 +96,8 @@ class RateLimited(BrokerError):
 class LiveProvider(DataProvider):
     """Real-broker provider. Subclass and implement connect + the four _fetch_* hooks."""
     is_live = True
+    tick_hook = None          # set by the runtime: called (cheaply) on every pushed price -> wakes the fast SL check
+    last_ttl = None           # seconds get_last_candle() may be reused; None = candle_ttl (WebSocket brokers set it low)
     supports_reprice = False
     name = "broker"
     label = "Broker"
@@ -155,7 +157,7 @@ class LiveProvider(DataProvider):
         return cs[-limit:]
 
     def get_last_candle(self, u):
-        cs = self._cached(("c", u, self.tf, 2), self.candle_ttl,
+        cs = self._cached(("c", u, self.tf, 2), self.candle_ttl if self.last_ttl is None else self.last_ttl,
                           lambda: self._fetch_candles(u, self.tf, 2))
         return cs[-1] if cs else None      # may be the forming candle (live O/H/L/C)
 

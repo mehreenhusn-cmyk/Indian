@@ -7,6 +7,9 @@ import '../providers/app_provider.dart';
 import '../services/india_api.dart';
 import '../theme/app_theme.dart';
 import '../widgets/india_drawer.dart';
+import '../widgets/india_bottom_nav.dart';
+import '../widgets/exit_confirm.dart';
+import '../widgets/live_ticker_bar.dart' show MarketModeSwitch;
 import '../services/market_mode.dart';
 import '../widgets/india_ui.dart';
 import '../widgets/owl_card.dart';
@@ -14,8 +17,9 @@ import 'india_chart_screen.dart';
 import 'india_option_chain_screen.dart';
 import 'india_pnl_report_screen.dart';
 import 'india_settings_sheet.dart';
+import 'india_stats_tab.dart';
 
-/// India options PAPER terminal: Dashboard | Option Chain | Trades | Settings.
+/// India options PAPER terminal: Dash | Chain | Trades | Stats | Settings (bottom bar).
 /// Separate from the crypto bot (own engine, own trades, own settings).
 class IndiaPaperScreen extends StatefulWidget {
   const IndiaPaperScreen({super.key});
@@ -26,7 +30,6 @@ class IndiaPaperScreen extends StatefulWidget {
 
 class _IndiaPaperScreenState extends State<IndiaPaperScreen> {
   static const _unders = ['NIFTY', 'BANKNIFTY', 'FINNIFTY'];
-  static const _tabs = ['Dashboard', 'Chain', 'Trades', 'Settings'];
 
   late final IndiaApi _api;
   Timer? _timer;
@@ -44,11 +47,21 @@ class _IndiaPaperScreenState extends State<IndiaPaperScreen> {
     _refresh();
     _timer = Timer.periodic(const Duration(seconds: 2), (_) => _refresh());
     MarketMode.mode.addListener(_refresh); // coming back to India: refresh at once
+    BackGuard.indiaGoHome = _backToDash;
+  }
+
+  /// Back button: from any page except Dash go to Dash; on Dash the root asks "Exit app?" (exit_confirm.dart).
+  bool _backToDash() {
+    if (!mounted || _tab == 0) return false;
+    AppHaptics.light();
+    setState(() => _tab = 0);
+    return true;
   }
 
   @override
   void dispose() {
     _timer?.cancel();
+    if (BackGuard.indiaGoHome == _backToDash) BackGuard.indiaGoHome = null;
     MarketMode.mode.removeListener(_refresh);
     super.dispose();
   }
@@ -114,9 +127,9 @@ class _IndiaPaperScreenState extends State<IndiaPaperScreen> {
     final finished = st?['finished'] == true;
     final market = '${st?['market'] ?? ''}';
 
-    return MediaQuery(
-      data: MediaQuery.of(context).copyWith(textScaler: const TextScaler.linear(0.88)),
-      child: Scaffold(
+    // No forced text scale any more: the phone's own font-size setting is respected.
+    return Scaffold(
+      bottomNavigationBar: IndiaBottomNav(index: _tab, openTrades: _positions.length, onTap: (i) => setState(() => _tab = i)),
       drawer: IndiaDrawer(
         sourceLabel: '${st?['source_label'] ?? ''}',
         onCrypto: () => MarketMode.set('crypto'),
@@ -133,46 +146,19 @@ class _IndiaPaperScreenState extends State<IndiaPaperScreen> {
                   onPressed: () => Scaffold.of(ctx).openDrawer(),
                 ),
               ),
-              Expanded(
-                child: Text('India Paper', maxLines: 1, overflow: TextOverflow.ellipsis, softWrap: false, style: IT.h(context).copyWith(fontSize: 17)),
-              ),
-              if (market.isNotEmpty) IPill(market == 'OPEN' ? 'OPEN' : 'CLOSED', market == 'OPEN' ? p.profit : p.textSecondary),
-              const SizedBox(width: 5),
-              IPill(running ? 'RUNNING' : (finished ? 'DONE' : 'STOPPED'), running ? p.profit : p.textSecondary),
+              const SizedBox(width: 2),
+              const MarketModeSwitch(),
+              const Spacer(),
+              if (market.isNotEmpty) IPill(market == 'OPEN' ? 'MARKET OPEN' : 'MARKET CLOSED', market == 'OPEN' ? p.profit : p.textSecondary),
             ]),
           ),
+          if (st != null) _statusStrip(p, st, running, finished),
           if (st != null) _ticker(p, t, st),
           if (st != null && '${st['market_note'] ?? ''}'.isNotEmpty)
             Padding(
               padding: const EdgeInsets.fromLTRB(AppSpacing.l, 0, AppSpacing.l, AppSpacing.s),
               child: Align(alignment: Alignment.centerLeft, child: Text('${st['market_note']}', style: IT.small(context).copyWith(color: p.warning))),
             ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(AppSpacing.l, 0, AppSpacing.l, AppSpacing.s),
-            child: Row(
-              children: List.generate(_tabs.length, (i) {
-                final sel = i == _tab;
-                return Expanded(
-                  child: GestureDetector(
-                    onTap: () => setState(() => _tab = i),
-                    child: Container(
-                      margin: EdgeInsets.only(right: i == _tabs.length - 1 ? 0 : 6),
-                      padding: const EdgeInsets.symmetric(vertical: 9),
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: sel ? p.accent.withOpacity(0.15) : Colors.transparent,
-                        borderRadius: BorderRadius.circular(AppSpacing.radiusMedium),
-                        border: Border.all(color: sel ? p.accent : p.border),
-                      ),
-                      child: Text(_tabs[i],
-                          maxLines: 1,
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: sel ? p.accent : p.textSecondary)),
-                    ),
-                  ),
-                );
-              }),
-            ),
-          ),
           if (_error != null)
             Padding(
               padding: const EdgeInsets.all(AppSpacing.m),
@@ -181,7 +167,7 @@ class _IndiaPaperScreenState extends State<IndiaPaperScreen> {
           Expanded(child: _body(p, t)),
         ]),
       ),
-    ));
+    );
   }
 
   Widget _body(AppPalette p, AppText t) {
@@ -200,10 +186,48 @@ class _IndiaPaperScreenState extends State<IndiaPaperScreen> {
       case 2:
         return IndiaTradesTab(api: _api, clockIso: '${st['clock'] ?? ''}');
       case 3:
+        return IndiaStatsTab(api: _api);
+      case 4:
         return IndiaSettingsTab(api: _api, settings: settings, onChanged: _refresh);
       default:
         return _dashboard(p, t, st);
     }
+  }
+
+  // -------------------------------------------------------- status strip ---
+  /// One line that answers "is it working?": bot state, where prices come from, how old the last price is,
+  /// and how stop-losses are being checked (every live tick, or every poll).
+  Widget _statusStrip(AppPalette p, Map<String, dynamic> st, bool running, bool finished) {
+    final connected = st['broker_connected'] == true;
+    final age = st['feed_age_ms'];
+    final slMode = '${(st['sl_check'] as Map?)?['mode'] ?? 'poll'}';
+    final pollSec = nd((st['sl_check'] as Map?)?['poll_sec']);
+    final ageMs = age is num ? age.toInt() : null;
+    final ageColor = ageMs == null ? p.textSecondary : (ageMs < 1500 ? p.profit : (ageMs < 5000 ? p.warning : p.loss));
+    Widget item(String label, String value, Color c) => Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(label, maxLines: 1, style: IT.small(context).copyWith(fontSize: 9.5, letterSpacing: 0.4)),
+            const SizedBox(height: 1),
+            Row(children: [
+              Container(width: 6, height: 6, decoration: BoxDecoration(color: c, shape: BoxShape.circle)),
+              const SizedBox(width: 4),
+              Expanded(child: Text(value, maxLines: 1, overflow: TextOverflow.ellipsis, style: IT.body(context).copyWith(fontSize: 12, fontWeight: FontWeight.w800, color: c))),
+            ]),
+          ]),
+        );
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(AppSpacing.l, 6, AppSpacing.l, AppSpacing.s),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(color: p.surface, borderRadius: BorderRadius.circular(AppSpacing.radiusMedium), border: Border.all(color: p.border)),
+        child: Row(children: [
+          item('BOT', running ? 'RUNNING' : (finished ? 'DONE' : 'STOPPED'), running ? p.profit : p.textSecondary),
+          item('DATA', connected ? 'LIVE' : 'DEMO', connected ? p.profit : p.warning),
+          item('DELAY', connected ? (ageMs == null ? '—' : (ageMs < 1000 ? '$ageMs ms' : '${(ageMs / 1000).toStringAsFixed(1)} s')) : '—', connected ? ageColor : p.textSecondary),
+          item('SL CHECK', slMode == 'tick' ? 'EVERY TICK' : (connected ? 'EVERY ${pollSec.toStringAsFixed(0)}s' : 'DEMO'), slMode == 'tick' ? p.profit : p.textSecondary),
+        ]),
+      ),
+    );
   }
 
   // ------------------------------------------------------------- ticker ---

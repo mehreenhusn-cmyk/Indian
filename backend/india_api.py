@@ -42,6 +42,16 @@ def make_router(require_api_token, data_dir):
     def trades(limit: int = 100, _a=Depends(require_api_token)):
         return {"trades": rt().trades(max(1, min(limit, 500)))}
 
+    @r.get("/stats")
+    def stats(_a=Depends(require_api_token)):
+        """Stats tab: win rate, R:R, expectancy, drawdown, equity curve (india_stats.py)."""
+        return rt().stats()
+
+    @r.get("/doctor")
+    def doctor(_a=Depends(require_api_token)):
+        """Strategy Doctor for India trades (read-only, india_doctor.py)."""
+        return rt().doctor()
+
     @r.post("/start")
     def start(_a=Depends(require_api_token)):
         rt().start()

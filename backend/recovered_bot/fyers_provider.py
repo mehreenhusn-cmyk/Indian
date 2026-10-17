@@ -97,6 +97,7 @@ class FyersProvider(LiveProvider):
     candle_ttl, quote_ttl, today_ttl = 3.0, 3.0, 10.0   # seconds a download is reused (keeps calls/min low)
 
     use_ws = True                       # live prices by WebSocket, REST only as fallback
+    last_ttl = 0.3                      # the newest candle is re-read often: its close is overlaid with the WS price
 
     def __init__(self, tf_min=5, client=None, data_dir=None, feed_factory=None):
         super().__init__(tf_min)
@@ -312,6 +313,12 @@ class FyersProvider(LiveProvider):
 
     def _on_ws_tick(self, sym, ltp):
         """Pushed option prices feed the option chart (candles built from live prices)."""
+        hook = self.tick_hook
+        if hook is not None:
+            try:
+                hook()                       # wake the tick-driven SL check (just sets a flag)
+            except Exception:
+                pass
         if sym in INDEX_SYM.values():
             return
         now = time.time()

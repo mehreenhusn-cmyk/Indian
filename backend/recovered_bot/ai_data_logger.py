@@ -37,6 +37,7 @@ _FEATURE_FIELDS = [
     # Market regime at entry (strategy._regime_context)
     "regime_cross_n", "atr_pct", "sd_width_pct",
     "ema_slope_prev_pct", "ema_slope10_pct", "ema_turn",
+    "adx", "ema_gap_atr", "htf_trend",
 ]
 
 _OUTCOME_FIELDS = [
@@ -59,6 +60,7 @@ _OUTCOME_FIELDS = [
     # the entry-time market-regime tags.
     "tp1_min", "tp2_min", "tp3_min", "tp4_min", "regime_cross_n", "atr_pct", "sd_width_pct",
     "ema_slope_prev_pct", "ema_slope10_pct", "ema_turn",
+    "adx", "ema_gap_atr", "htf_trend",
 ]
 
 # UTC-hour trading sessions, per spec: Asian 00:00-08:00, London 08:00-13:00,
@@ -273,6 +275,7 @@ def log_trade_opened(pos):
             "ema_slope_prev_pct": pos.get("ema_slope_prev_pct"),
             "ema_slope10_pct": pos.get("ema_slope10_pct"),
             "ema_turn": pos.get("ema_turn"),
+            "adx": pos.get("adx"), "ema_gap_atr": pos.get("ema_gap_atr"), "htf_trend": pos.get("htf_trend"),
         }
         _append_row(_features_file, _FEATURE_FIELDS, row)
     except Exception as e:
@@ -313,6 +316,7 @@ def log_trade_closed(pos, reason):
             "ema_slope_prev_pct": pos.get("ema_slope_prev_pct"),
             "ema_slope10_pct": pos.get("ema_slope10_pct"),
             "ema_turn": pos.get("ema_turn"),
+            "adx": pos.get("adx"), "ema_gap_atr": pos.get("ema_gap_atr"), "htf_trend": pos.get("htf_trend"),
         })
         _append_row(_outcomes_file, _OUTCOME_FIELDS, row)
     except Exception as e:

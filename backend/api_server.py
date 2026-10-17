@@ -225,6 +225,11 @@ async def on_startup():
             ai_path_logger.init(os.path.join(DATA_DIR, "ai"))
         except Exception as e:
             print(f"[startup] ai_path_logger init skipped: {e}")
+        try:                               # Strategy Doctor: price after each exit (record only)
+            from recovered_bot import ai_post_exit
+            ai_post_exit.init(os.path.join(DATA_DIR, "ai"))
+        except Exception as e:
+            print(f"[startup] ai_post_exit init skipped: {e}")
         try:                               # the Vision AI: chart picture on every bot signal, own virtual account (own thread)
             from recovered_bot import ai_vision
             ai_vision.init(os.path.join(DATA_DIR, "ai"))
@@ -359,7 +364,7 @@ def _heavy_call(fn, *a):
 
 # Bot vs AI ("coach") is a light, read-only build. It used to queue behind the heavy jobs (miner, A/B board, prewarm),
 # so the screen got an old answer for minutes. It now has its own lane: 4-thread pool, no heavy lock.
-_LIGHT_KEYS = {"coach", "daily_report"}
+_LIGHT_KEYS = {"coach", "daily_report", "doctor"}
 _HEAVY_NOW = {"key": None, "since": 0.0}      # who holds the heavy lock right now (shown by /api/ai/health)
 _TIMING = {}                                   # key -> [last wait s, last run s, finished at]
 
@@ -1254,6 +1259,18 @@ async def ai_insights():
     if settings_store.get("live_trading_enabled", False):
         return {"sample": 0, "min_sample": 1, "low_sample": True, "live_mode": True}   # no paper statistics in LIVE mode
     return await _swr("insights", 20.0, ai_stats.build_insights, 200)
+
+
+@app.get("/api/ai/doctor")
+async def ai_doctor():
+    """Strategy Doctor (strategy_doctor.py): which entries of the strategy lose / win, SD-rule test, loss story,
+    price after exit. Read-only - it never changes the bot. Cached 60 s (reads the trade archive)."""
+    try:
+        from recovered_bot import strategy_doctor
+        return await _swr("doctor", 60.0, strategy_doctor.build, 5000)
+    except Exception as e:
+        return {"ok": False, "sample": 0, "enough": False, "headline": ["Strategy Doctor is not available yet."],
+                "error": f"{type(e).__name__}: {e}"}
 
 
 _BOOK_CACHE = {}      # key -> (time, answer)

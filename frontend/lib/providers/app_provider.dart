@@ -734,6 +734,9 @@ class AppProvider extends ChangeNotifier {
   /// Indicator reading: what MAIN chart / Z-score / TSI said at signal time + wrong-use habits + best/avoid combos (GET /api/ai/reading). Read-only.
   Future<Map<String, dynamic>?> fetchAiReading({String tf = ''}) => _getAiMap('/api/ai/reading', tf);
 
+  /// Strategy Doctor report (GET /api/ai/doctor, see strategy_doctor.py). null on failure.
+  Future<Map<String, dynamic>?> fetchDoctor() => _getAiMap('/api/ai/doctor', '');
+
   /// Phase 3: repeat-SL coins + "enter only when Z and TSI confirm" test (GET /api/ai/wait_study). Read-only.
   Future<Map<String, dynamic>?> fetchAiWaitStudy({String tf = ''}) => _getAiMap('/api/ai/wait_study', tf);
 

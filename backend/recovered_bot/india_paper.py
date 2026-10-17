@@ -7,6 +7,9 @@ Exit rules (mirror the crypto bot, candle-close based):
   * SL fires only when a candle CLOSES beyond it (wick alone never stops you out).
     A gap-open beyond the SL exits at the open.
   * TP ladder TP1..TP4, final target = `target_level` (default 4).
+  * `sl_type` picks what stops a trade: "index" (default - the spot SL above), "premium" (exit when the option
+    premium falls `premium_sl_pct` % below entry) or "both" (whichever comes first). TP / trail logic is unchanged.
+  * Every open trade tracks its best / worst point (MFE / MAE, premium % and index points) for the Strategy Doctor.
   * TP1 touched -> SL moves to entry (`breakeven`); `trail_mode` step1/step2 trail it
     further. SL moves apply from the NEXT candle.
   * INTRADAY squares off at `squareoff`; CARRY keeps overnight but is force-closed
@@ -17,6 +20,7 @@ Fully separate from the crypto paper_trader.
 """
 import json
 import logging
+import time as _time
 from datetime import date, datetime, time
 
 try:
@@ -45,6 +49,8 @@ DEFAULTS = {
     "min_premium": 20.0,      # never buy near-worthless options
     "pin_fallback": True,     # ticked strike unaffordable -> affordable pick (else skip)
     "emergency_pct": 0.0,     # exit if premium falls this fraction below entry (0 = off)
+    "sl_type": "index",       # index | premium | both  (what can stop a trade out)
+    "premium_sl_pct": 30.0,   # premium stop, % below entry premium (used when sl_type is premium / both)
     "max_loss_pct": 0.0,      # skip trade if est. loss at SL > this % of cash (0 = off)
     # Charges - VERIFY against your broker/current exchange circulars.
     "brokerage_flat": 20.0,
@@ -55,6 +61,7 @@ DEFAULTS = {
 }
 TRAIL_MODES = ("off", "step1", "step2")
 PRODUCTS = ("INTRADAY", "CARRY")
+SL_TYPES = ("index", "premium", "both")
 
 
 def _tick(x):
@@ -67,6 +74,7 @@ class IndiaPaperEngine:
         self.s = {**DEFAULTS, **(settings or {})}
         self.cash = float(self.s["capital"])
         self.open, self.closed, self._n = {}, [], 0
+        self._saved_at = 0.0
         self.state_path = state_path
         self.pins = {}        # (underlying, "CE"/"PE") -> spec dict
         self.day_mode = None  # {"mode": "OTM", "depth": 2} or None
@@ -196,7 +204,7 @@ class IndiaPaperEngine:
         return abs(spot - sl_spot) * 0.5 * qty      # rough delta-0.5 estimate
 
     # ----------------------------------------------------------- entries ---
-    def on_signal(self, underlying, action, sl_spot, tp_spot, tps=None):
+    def on_signal(self, underlying, action, sl_spot, tp_spot, tps=None, tags=None):
         u = underlying.upper()
         a = "LONG" if opt.option_type_for(action) == "CE" else "SHORT"
         otype = "CE" if a == "LONG" else "PE"
@@ -237,7 +245,10 @@ class IndiaPaperEngine:
                    sl_initial=float(sl_spot), tp_spot=float(tp_spot), tps=tps,
                    target=max(1, min(int(self.s["target_level"]), len(tps))),
                    tp_hit=0, product=self.s["product"], tag=tag,
-                   buy_fee=fee, opened_at=now)
+                   buy_fee=fee, opened_at=now,
+                   tags=dict(tags or {}),                      # entry context for the Strategy Doctor (record only)
+                   sl_type=str(self.s.get("sl_type", "index")),
+                   mfe_pct=0.0, mae_pct=0.0, mfe_spot=0.0, mae_spot=0.0)
         self.open[pos["id"]] = pos
         self._save()
         return {"ok": True, "trade": pos}
@@ -276,7 +287,7 @@ class IndiaPaperEngine:
 
     def on_tick(self):
         """Call once per closed candle. Returns trades closed this call."""
-        now, done = self.p.now(), []
+        now, done, dirty = self.p.now(), [], False
         self._roll_day(now)
         for pos in list(self.open.values()):
             if pos["opened_at"] == now:
@@ -286,15 +297,31 @@ class IndiaPaperEngine:
             cd = self.p.get_last_candle(u) or {"o": spot, "h": spot, "l": spot, "c": spot}
             sl, tps = pos["sl_spot"], pos["tps"]
             ep = float(self.s["emergency_pct"])
+            sl_type = str(self.s.get("sl_type", "index"))
+            if sl_type not in SL_TYPES:
+                sl_type = "index"
             res = None
-            if ep > 0:
+            try:                                 # best / worst point so far (record only)
                 ltp = self.p.get_option_ltp(pos["contract"]) or 0.0
-                if 0 < ltp <= pos["entry_premium"] * (1 - ep):
-                    res = ("ESL", spot)
+                if ltp > 0 and pos["entry_premium"] > 0:
+                    pct = (ltp / pos["entry_premium"] - 1.0) * 100.0
+                    pos["mfe_pct"] = round(max(pos.get("mfe_pct", 0.0), pct), 2)
+                    pos["mae_pct"] = round(min(pos.get("mae_pct", 0.0), pct), 2)
+                mv = (spot - pos["entry_spot"]) * (1.0 if long_ else -1.0)
+                pos["mfe_spot"] = round(max(pos.get("mfe_spot", 0.0), mv), 2)
+                pos["mae_spot"] = round(min(pos.get("mae_spot", 0.0), mv), 2)
+            except Exception:
+                ltp = 0.0
+            if ep > 0 and 0 < ltp <= pos["entry_premium"] * (1 - ep):
+                res = ("ESL", spot)
+            pp = float(self.s.get("premium_sl_pct", 0.0)) / 100.0
+            if res is None and sl_type in ("premium", "both") and pp > 0 and 0 < ltp <= pos["entry_premium"] * (1 - pp):
+                res = ("PSL", spot)              # premium stop
+            idx_sl = sl_type in ("index", "both")
             lbl = "TSL" if pos["tp_hit"] > 0 else "SL"
-            if res is None and ((long_ and cd["o"] <= sl) or (not long_ and cd["o"] >= sl)):
+            if res is None and idx_sl and ((long_ and cd["o"] <= sl) or (not long_ and cd["o"] >= sl)):
                 res = (lbl + "(GAP)", cd["o"])
-            if res is None and ((long_ and cd["c"] <= sl) or (not long_ and cd["c"] >= sl)):
+            if res is None and idx_sl and ((long_ and cd["c"] <= sl) or (not long_ and cd["c"] >= sl)):
                 res = (lbl, cd["c"])            # candle-close SL
             if res is None:
                 level = 0
@@ -307,6 +334,7 @@ class IndiaPaperEngine:
                 elif level > pos["tp_hit"]:
                     pos["tp_hit"] = level
                     self._shift_sl(pos, level)
+                    dirty = True
             if res is None and now.time() >= self.s["squareoff"]:
                 if pos["product"] == "INTRADAY":
                     res = ("SQUAREOFF", spot)
@@ -314,7 +342,9 @@ class IndiaPaperEngine:
                     res = ("EXPIRY", spot)
             if res:
                 done.append(self._close(pos, res[0], res[1]))
-        if self.open and not done:
+        # on_tick can now run several times a second (tick-driven check), so disk is written only when something
+        # changed (a TP was hit) or every 5 s for the running best / worst numbers
+        if self.open and not done and (dirty or _time.time() - self._saved_at > 5.0):
             self._save()
         return done
 
@@ -400,6 +430,7 @@ class IndiaPaperEngine:
         self._n = max([r["id"] for r in opened + closed] or [0])
 
     def _save(self):
+        self._saved_at = _time.time()
         if not self.state_path:
             return
         try:

@@ -24,7 +24,7 @@ try:
     from . import tradebulls_provider  # noqa: F401  (registers the Tradebulls broker)
     from . import fyers_provider  # noqa: F401  (registers the Fyers broker)
     from . import fyers_client, india_pricing
-    from .india_paper import TRAIL_MODES, PRODUCTS
+    from .india_paper import TRAIL_MODES, PRODUCTS, SL_TYPES
 except ImportError:
     from strategy import ABCDStrategy
     from india_data import ReplayProvider, synthetic_candles, demo_start, IST
@@ -34,7 +34,7 @@ except ImportError:
     import tradebulls_provider  # noqa: F401  (registers the Tradebulls broker)
     import fyers_provider  # noqa: F401  (registers the Fyers broker)
     import fyers_client, india_pricing
-    from india_paper import TRAIL_MODES, PRODUCTS
+    from india_paper import TRAIL_MODES, PRODUCTS, SL_TYPES
 
 log = logging.getLogger("india_runtime")
 
@@ -45,15 +45,16 @@ DEFAULTS = {"underlyings": ["NIFTY", "BANKNIFTY"], "tf": 5, "lots": 1, "itm_dept
             "product": "INTRADAY", "target_level": 4, "breakeven": True,
             "trail_mode": "off", "fit_balance": True, "budget_pct": 0.95,
             "min_premium": 20.0, "pin_fallback": True, "emergency_pct": 0.0,
+            "sl_type": "index", "premium_sl_pct": 30.0,
             "max_loss_pct": 0.0, "capital": 200000.0, "speed_sec": 1.0, "source": "demo", "poll_sec": 5.0,
             "auto_connect_fyers": True, "was_running": False}
 # engine-side settings (applied live); the rest (capital/speed/underlyings) are runtime-side
 ENGINE_KEYS = ("lots", "itm_depth", "product", "target_level", "breakeven", "trail_mode",
                "fit_balance", "budget_pct", "min_premium", "pin_fallback",
-               "emergency_pct", "max_loss_pct")
+               "emergency_pct", "max_loss_pct", "sl_type", "premium_sl_pct")
 NUM = {"lots": (int, 1, 50), "itm_depth": (int, 1, 5), "target_level": (int, 1, 4),
        "speed_sec": (float, 0.1, 60.0), "poll_sec": (float, 2.0, 60.0), "budget_pct": (float, 0.1, 1.0),
-       "min_premium": (float, 0.0, 1000.0), "emergency_pct": (float, 0.0, 0.9),
+       "min_premium": (float, 0.0, 1000.0), "emergency_pct": (float, 0.0, 0.9), "premium_sl_pct": (float, 1.0, 90.0),
        "max_loss_pct": (float, 0.0, 100.0), "capital": (float, 1000.0, 1e9)}
 BOOLS = ("breakeven", "fit_balance", "pin_fallback", "auto_connect_fyers")
 
@@ -89,11 +90,15 @@ class IndiaRuntime:
         self.live = None            # connected LiveProvider with market data (None = demo)
         self.login_ok = None        # provider whose login worked but has no market data yet
         self.broker_error = ""
+        self._fast_evt = threading.Event()   # set by the live price feed on every tick (see _wake_fast)
+        self._fast_n, self._fast_last = 0, 0.0
         self._chain_last = {}       # last good chain per (underlying, expiry): shown when Fyers says 'too many requests'
         self.accounts = {}          # broker name -> last account/balance info (exchange-wise balance)
         if self.settings.get("source") != "demo":
             self.settings["source"] = "demo"   # a broker needs a fresh login after restart
         self._build()
+        self._fast_thread = threading.Thread(target=self._fast_loop, daemon=True, name="india_fast_sl")
+        self._fast_thread.start()
         self._auto_thread = None
         self._start_autoconnect()
 
@@ -116,6 +121,7 @@ class IndiaRuntime:
         if live:
             self.provider = self.live
             self.provider.set_tf(tf)
+            self.provider.tick_hook = self._wake_fast       # live ticks wake the fast stop-loss check
         else:
             seed = random.randint(1, 10 ** 6)
             days = 30                                   # 1-minute base bars, merged to any timeframe
@@ -187,6 +193,43 @@ class IndiaRuntime:
                     self.broker_error = ""
                 speed = float(self.settings["poll_sec" if live else "speed_sec"])
             time.sleep(max(0.02, speed - (time.time() - t0)))
+
+    # ------------------------------------------------ tick-driven SL check ---
+    def _wake_fast(self):
+        """Called from the price-feed thread on every tick: must stay instant (just sets a flag)."""
+        self._fast_evt.set()
+
+    def _fast_loop(self):
+        """Runs the engine's exit check right after live ticks (at most ~2-3 times a second) instead of waiting for
+        the next poll_sec loop. Exit RULES are unchanged (engine.on_tick); only how soon they are looked at.
+        The REST loop keeps running as the backup if the feed goes quiet."""
+        while True:
+            self._fast_evt.wait(2.0)
+            self._fast_evt.clear()
+            try:
+                if not self.running or not getattr(self.provider, "is_live", False) or not self.engine.open:
+                    continue
+                gap = time.time() - self._fast_last
+                if gap < 0.4:
+                    time.sleep(0.4 - gap)
+                self._fast_last = time.time()
+                with self.lock:
+                    if self.running and self.engine.open:
+                        self.engine.on_tick()
+                        self._fast_n += 1
+            except india_broker.RateLimited:
+                pass
+            except Exception:
+                log.exception("fast SL check")
+                time.sleep(1.0)
+
+    def _feed_age_ms(self):
+        try:
+            f = getattr(self.provider, "feed", None)
+            t = float(getattr(f, "last_tick", 0) or getattr(f, "last_tick_at", 0) or 0)
+            return int((time.time() - t) * 1000) if t else None
+        except Exception:
+            return None
 
     # --------------------------------------------------------- broker ---
     def broker_info(self):
@@ -453,6 +496,8 @@ class IndiaRuntime:
                 s["product"] = str(d["product"]).upper()
             if str(d.get("trail_mode", "")).lower() in TRAIL_MODES:
                 s["trail_mode"] = str(d["trail_mode"]).lower()
+            if str(d.get("sl_type", "")).lower() in SL_TYPES:
+                s["sl_type"] = str(d["sl_type"]).lower()
             for k in ENGINE_KEYS:                      # live-applied (capital: next reset)
                 self.engine.s[k] = s[k]
             try:
@@ -537,6 +582,10 @@ class IndiaRuntime:
                 else "DEMO replay of past trading days (synthetic candles) - no broker connected",
                 "broker_connected": self.live is not None, "broker_error": self.broker_error,
                 "feed": (p.feed_mode() if self.live is not None and hasattr(p, "feed_mode") else None),
+                "feed_age_ms": self._feed_age_ms() if self.live is not None else None,
+                "sl_check": {"mode": "tick" if (self.live is not None and self._feed_age_ms() is not None
+                                                 and self._feed_age_ms() < 5000) else "poll",
+                             "fast_checks": self._fast_n, "poll_sec": float(self.settings["poll_sec"])},
                 "trading_mode": "PAPER",
                 "trading_mode_note": "Paper bot: trades use your paper capital, even with 0 broker balance. Real orders are not enabled.",
                 "feed_api": (p.client.limit_info() if self.live is not None and hasattr(getattr(p, "client", None), "limit_info") else None),
@@ -663,6 +712,27 @@ class IndiaRuntime:
             for pos in self.engine.open.values():
                 out.append(_ser({**pos, **self.engine.mark(pos)}))
             return out
+
+    def stats(self):
+        """Numbers for the Stats tab (india_stats.py)."""
+        with self.lock:
+            closed = list(self.engine.closed)
+            capital = float(self.settings["capital"])
+        try:
+            from . import india_stats
+        except ImportError:
+            import india_stats
+        return india_stats.build(closed, capital)
+
+    def doctor(self):
+        """Strategy Doctor report for India trades (india_doctor.py) - read-only."""
+        with self.lock:
+            closed = list(self.engine.closed)
+        try:
+            from . import india_doctor
+        except ImportError:
+            import india_doctor
+        return india_doctor.build(closed)
 
     def trades(self, limit=100):
         with self.lock:

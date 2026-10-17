@@ -35,6 +35,10 @@ class Signal:
     ema_slope_prev_pct: Optional[float] = None   # EMA change over the 3 candles BEFORE the last 3, %
     ema_slope10_pct: Optional[float] = None      # EMA change over the last 10 candles, %
     ema_turn: Optional[str] = None               # "turning up" / "turning down" / "steady up" / "steady down" / "flat"
+    # Strategy Doctor tags (entry_context.py) - metadata only, never used to fire or shape a signal.
+    adx: Optional[float] = None
+    ema_gap_atr: Optional[float] = None
+    htf_trend: Optional[str] = None
 
 
 class ABCDStrategy:
@@ -273,6 +277,11 @@ class ABCDStrategy:
         ema_slope_pct, volume_ratio = self._entry_context(candles, ema_values)
         slope_prev, slope10, ema_turn = self._slope_context(ema_values)
         regime_cross_n, atr_pct, sd_width_pct = self._regime_context(candles, closes, ema_values, mean, std)
+        try:                                    # record-only tags; a failure here must never block a signal
+            from . import entry_context
+            _adx, _gap, _htf = entry_context.build(candles, last_ema)
+        except Exception:
+            _adx = _gap = _htf = None
 
         if cross_up:
             entry_price = last_close
@@ -298,6 +307,7 @@ class ABCDStrategy:
                 atr_pct=atr_pct,
                 sd_width_pct=sd_width_pct,
                 ema_slope_prev_pct=slope_prev, ema_slope10_pct=slope10, ema_turn=ema_turn,
+                adx=_adx, ema_gap_atr=_gap, htf_trend=_htf,
             )
 
         entry_price = last_close
@@ -323,4 +333,5 @@ class ABCDStrategy:
             atr_pct=atr_pct,
             sd_width_pct=sd_width_pct,
             ema_slope_prev_pct=slope_prev, ema_slope10_pct=slope10, ema_turn=ema_turn,
+            adx=_adx, ema_gap_atr=_gap, htf_trend=_htf,
         )

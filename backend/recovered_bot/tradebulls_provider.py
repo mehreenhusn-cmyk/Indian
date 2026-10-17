@@ -98,6 +98,12 @@ class TradebullsProvider(LiveProvider):
 
     # ---- price handling -------------------------------------------------
     def _on_tick(self, key, raw, t):
+        hook = self.tick_hook
+        if hook is not None:
+            try:
+                hook()                       # wake the tick-driven SL check (just sets a flag)
+            except Exception:
+                pass
         for u, tkn in self.spec["index_tokens"].items():
             if key == tkn:
                 v = self._scale(u, raw)

@@ -16,6 +16,20 @@ def to_strategy_candles(cs):
              "volume": c.get("v", 0)} for c in cs]
 
 
+# Entry-context tags the strategy already computes (metadata only) - kept with the trade for the Strategy Doctor.
+TAG_FIELDS = ("entry_zone", "ema_slope_pct", "volume_ratio", "sd_mean", "sd_std", "regime_cross_n", "atr_pct",
+              "sd_width_pct", "ema_slope_prev_pct", "ema_slope10_pct", "ema_turn", "adx", "ema_gap_atr", "htf_trend")
+
+
+def signal_tags(sig, tf_min):
+    out = {"timeframe": f"{int(tf_min)}m"}
+    for k in TAG_FIELDS:
+        v = getattr(sig, k, None)
+        if v is not None:
+            out[k] = v
+    return out
+
+
 class IndiaStrategyRunner:
     def __init__(self, provider, engine, strategy, tf_min=5, history=300):
         self.p, self.e, self.strategy = provider, engine, strategy
@@ -34,6 +48,6 @@ class IndiaStrategyRunner:
         if sig is None:
             return None
         tps = [t for t in (sig.tp1, sig.tp2, sig.tp3, sig.tp4) if t]
-        res = self.e.on_signal(u, sig.action, sig.stop_loss, sig.tp1, tps=tps)
+        res = self.e.on_signal(u, sig.action, sig.stop_loss, sig.tp1, tps=tps, tags=signal_tags(sig, self.tf))
         res["signal"] = sig
         return res

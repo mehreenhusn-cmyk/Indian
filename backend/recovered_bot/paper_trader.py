@@ -300,6 +300,10 @@ def open_paper_trade(signal, source="watchlist", bot="b1"):
             "ema_slope_prev_pct": getattr(signal, "ema_slope_prev_pct", None),
             "ema_slope10_pct": getattr(signal, "ema_slope10_pct", None),
             "ema_turn": getattr(signal, "ema_turn", None),
+            # Strategy Doctor tags (entry_context.py) - record only.
+            "adx": getattr(signal, "adx", None),
+            "ema_gap_atr": getattr(signal, "ema_gap_atr", None),
+            "htf_trend": getattr(signal, "htf_trend", None),
             "sl_type": sl_type,
             "source": source,
             "last_ok_ts": time.time(),   # last moment a live price was successfully checked against SL/TP -
@@ -540,6 +544,12 @@ def _close_position(trade_id, reason, ltp, note=None, recovered=False):
     try:
         if ai_path_logger is not None:
             ai_path_logger.finish(pos, reason)
+    except Exception:
+        pass
+    try:                       # keep watching the price after the exit (how far it ran / came back) - record only
+        if _is_b1:
+            from . import ai_post_exit
+            ai_post_exit.start(pos, reason)
     except Exception:
         pass
     # Same "type" vocabulary the Alerts screen already color-codes by

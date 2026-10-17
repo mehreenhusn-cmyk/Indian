@@ -17,6 +17,7 @@ import 'widgets/bottom_nav_bar.dart';
 import 'widgets/owl_ambient_background.dart';
 import 'widgets/owl_drawer.dart';
 import 'widgets/live_ticker_bar.dart';
+import 'widgets/exit_confirm.dart';
 import 'widgets/owl_connection_banner.dart';
 import 'widgets/owl_welcome_overlay.dart';
 import 'services/market_mode.dart';
@@ -82,12 +83,21 @@ class _MarketRootState extends State<MarketRoot> {
       builder: (context, m, _) {
         final india = m == 'india';
         if (india) _indiaSeen = true; // built on first visit, then kept alive
-        return IndexedStack(
-          index: india ? 1 : 0,
-          children: [
-            const MainScreen(),
-            _indiaSeen ? const IndiaPaperScreen() : const SizedBox.shrink(),
-          ],
+        // One Back rule for the whole app (see exit_confirm.dart): other tab -> first tab -> "Exit app?".
+        // canPop is false only here at the root; pushed pages (charts, sheets) still close normally.
+        return PopScope(
+          canPop: false,
+          onPopInvokedWithResult: (didPop, _) {
+            if (didPop) return;
+            BackGuard.handleBack(context, m);
+          },
+          child: IndexedStack(
+            index: india ? 1 : 0,
+            children: [
+              const MainScreen(),
+              _indiaSeen ? const IndiaPaperScreen() : const SizedBox.shrink(),
+            ],
+          ),
         );
       },
     );
@@ -125,6 +135,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    BackGuard.cryptoGoHome = _backToFirstTab;
     _wsService = WebSocketService();
     _wsService.onMessage = (data) {
       context.read<AppProvider>().updateFromWebSocket(data);
@@ -202,6 +213,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    if (BackGuard.cryptoGoHome == _backToFirstTab) BackGuard.cryptoGoHome = null;
     _pollTimer?.cancel();
     _keepAliveTimer?.cancel();
     _wsService.disconnect();
@@ -237,6 +249,18 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
 
     (ctx as Element).visitChildren(visit);
     return out;
+  }
+
+  /// Back button: from any tab except the first, go to the first tab (Dash). Returns false when already there.
+  bool _backToFirstTab() {
+    if (!mounted || _currentIndex == 0) return false;
+    AppHaptics.light();
+    _saveScroll(_currentIndex);
+    setState(() => _currentIndex = 0);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _currentIndex == 0) _restoreScroll(0, <int, double>{});
+    });
+    return true;
   }
 
   void _saveScroll(int index) {

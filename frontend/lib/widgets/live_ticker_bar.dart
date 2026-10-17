@@ -4,6 +4,8 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../theme/app_theme.dart';
+import '../theme/app_motion.dart';
+import '../services/market_mode.dart';
 
 /// OBSIDIAN TERMINAL TOP BAR (formerly "LIVE TICKER BAR").
 ///
@@ -98,6 +100,9 @@ class _LiveTickerBarState extends State<LiveTickerBar> with TickerProviderStateM
           ),
           child: Row(
             children: [
+              // ---- Market switch: one tap, same spot in both markets (no swipe needed) ----
+              const MarketModeSwitch(),
+              const SizedBox(width: 8),
               // ---- Left group: shrinks first when space runs out ----
               Expanded(
                 child: Align(
@@ -108,8 +113,12 @@ class _LiveTickerBarState extends State<LiveTickerBar> with TickerProviderStateM
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        _tickerPill(exchange: exchange, leverage: leverage, compact: compact),
-                        const SizedBox(width: 8),
+                        // The market switch needs room on a phone: below ~420dp the exchange pill is
+                        // dropped (it is still shown in Settings); the latency badge stays.
+                        if (box.maxWidth >= 420) ...[
+                          _tickerPill(exchange: exchange, leverage: leverage, compact: compact),
+                          const SizedBox(width: 8),
+                        ],
                         _latencyBadge(
                           connected: connected,
                           netMs: netMs,
@@ -467,4 +476,77 @@ class _PanicRingPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _PanicRingPainter oldDelegate) =>
       oldDelegate.progress != progress || oldDelegate.color != color;
+}
+
+
+/// CRYPTO | INDIA switch. One tap changes the market; it sits in the same place in both terminals.
+/// Each market has its own colour so one glance tells which one is on screen:
+/// Crypto = the app's blue accent, India = saffron.
+class MarketModeSwitch extends StatelessWidget {
+  const MarketModeSwitch({super.key});
+
+  static const Color indiaColor = Color(0xFFFF9933);
+
+  Widget _seg(BuildContext context, String label, bool on, Color color, VoidCallback onTap) {
+    final p = context.palette;
+    return Expanded(
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: on ? color : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Text(
+            label,
+            maxLines: 1,
+            style: TextStyle(
+              color: on ? Colors.black : p.textSecondary,
+              fontSize: 10.5,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.2,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    return ValueListenableBuilder<String>(
+      valueListenable: MarketMode.mode,
+      builder: (context, m, _) {
+        final india = m == 'india';
+        return Container(
+          width: 106,
+          height: 30,
+          padding: const EdgeInsets.all(2),
+          decoration: BoxDecoration(
+            color: p.surfaceHigher,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: (india ? indiaColor : p.accent).withOpacity(0.6)),
+          ),
+          child: Row(children: [
+            _seg(context, 'CRYPTO', !india, p.accent, () {
+              if (india) {
+                AppHaptics.light();
+                MarketMode.set('crypto');
+              }
+            }),
+            _seg(context, 'INDIA', india, indiaColor, () {
+              if (!india) {
+                AppHaptics.light();
+                MarketMode.set('india');
+              }
+            }),
+          ]),
+        );
+      },
+    );
+  }
 }

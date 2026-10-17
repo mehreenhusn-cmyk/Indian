@@ -160,8 +160,25 @@ class IndiaSettingsTab extends StatelessWidget {
         ),
         ISection(
           title: 'Exits',
-          summary: 'TP${_n('target_level').toInt()} · trail ${settings['trail_mode']}',
+          summary: 'TP${_n('target_level').toInt()} · trail ${settings['trail_mode']} · SL ${settings['sl_type'] ?? 'index'}',
           children: [
+            _label(context, 'Stop-loss type'),
+            IChoice<String>(
+              values: const ['index', 'premium', 'both'],
+              current: '${settings['sl_type'] ?? 'index'}',
+              label: (v) => v == 'index' ? 'Index (current)' : (v == 'premium' ? 'Premium %' : 'Both'),
+              onPick: (v) => _set(context, {'sl_type': v}),
+            ),
+            if ('${settings['sl_type'] ?? 'index'}' != 'index') ...[
+              _label(context, 'Premium stop: exit when premium falls by'),
+              IChoice<double>(
+                values: const [15, 20, 30, 40],
+                current: _n('premium_sl_pct') == 0 ? 30 : _n('premium_sl_pct'),
+                label: (v) => '${v.toStringAsFixed(0)}%',
+                onPick: (v) => _set(context, {'premium_sl_pct': v}),
+              ),
+            ],
+            _hint(context, 'Index = the strategy\'s own SL on the index (what the bot used so far). Premium % = exit when the option itself loses that much, whatever the index does. Both = whichever comes first. Default stays Index.'),
             _label(context, 'Final target'),
             IChoice<int>(values: const [1, 2, 3, 4], current: _n('target_level').toInt(), label: (v) => 'TP$v', onPick: (v) => _set(context, {'target_level': v})),
             _switch(context, 'TP1 hit -> SL to entry', 'breakeven', 'Applies from the next candle.'),
