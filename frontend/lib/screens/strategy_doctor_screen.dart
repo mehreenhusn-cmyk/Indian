@@ -10,6 +10,7 @@ import '../theme/app_theme.dart';
 import '../theme/app_motion.dart';
 import '../widgets/owl_route.dart';
 import '../widgets/doctor_verdict_card.dart';
+import 'ai_report_screen.dart';
 
 /// Own short request for the Doctor (20 s, one try, utf-8 body). It no longer shares the AI-tab request queue, so a busy or
 /// stuck AI request can never keep this screen on an endless spinner; a failure carries a readable reason.
@@ -113,6 +114,15 @@ class _StrategyDoctorScreenState extends State<StrategyDoctorScreen> {
         elevation: 0,
         title: Text(widget.india ? 'India Strategy Doctor' : 'Strategy Doctor', style: context.type.section.copyWith(fontWeight: FontWeight.w700)),
         actions: [
+          if (!widget.india)
+            IconButton(
+              icon: const Icon(Icons.description_outlined),
+              tooltip: 'AI Report',
+              onPressed: () {
+                AppHaptics.light();
+                Navigator.of(context).push(OwlRoute(builder: (_) => const AiReportScreen()));
+              },
+            ),
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
             tooltip: 'Refresh',

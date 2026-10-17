@@ -1285,6 +1285,41 @@ async def filter_lab_page(tf: str = "5m", days: int = 7, restart: int = 0):
         return PlainTextResponse(f"Filter Lab is not available: {type(e).__name__}: {e}")
 
 
+@app.get("/api/filter_lab_all")
+async def filter_lab_all(start: int = 0, restart: int = 0, days: int = 7):
+    """App button: start=1 runs 3m, 5m and 15m one after the other; without start it only reports the progress (JSON). Read-only replay."""
+    try:
+        import filter_lab
+        if start:
+            filter_lab.start_all(max(1, min(days, 30)), restart=bool(restart))
+        return filter_lab.status_all()
+    except Exception as e:
+        return {"running": False, "error": f"{type(e).__name__}: {e}", "tfs": {}}
+
+
+@app.get("/api/report/save")
+async def report_save():
+    """App button: writes owl_report_<date>.txt into the phone's Download folder (see ai_report.save_to_downloads)."""
+    try:
+        from recovered_bot import ai_report
+        return await asyncio.to_thread(ai_report.save_to_downloads)
+    except Exception as e:
+        return {"ok": False, "path": "", "bytes": 0, "hint": f"Report failed: {type(e).__name__}: {e}"}
+
+
+@app.get("/api/report")
+async def full_report():
+    """ONE downloadable text file (ai_report.py): strategy, indicators, settings (no secrets), Doctor summary, Filter Lab results and the
+    closed-trades table - to send to any AI. Read-only."""
+    from fastapi.responses import PlainTextResponse
+    try:
+        from recovered_bot import ai_report
+        txt = await asyncio.to_thread(ai_report.build_text)
+    except Exception as e:
+        txt = f"Report failed: {type(e).__name__}: {e}"
+    return PlainTextResponse(txt, headers={"Content-Disposition": 'attachment; filename="owl_report.txt"'})
+
+
 _BOOK_CACHE = {}      # key -> (time, answer)
 
 

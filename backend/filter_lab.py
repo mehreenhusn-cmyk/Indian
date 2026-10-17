@@ -13,6 +13,11 @@ What it does
   3. Labels every signal with both indicators (ai_ind_features: Special 13 SD zone, Special Master TSI + Z).
   4. Tests simple "skip this signal if ..." gates, each on the OLDER 60% and the NEWER 40% of the signals.
      A gate is CONFIRMED only when the skipped trades were clearly worse than the kept ones in BOTH halves.
+  5. NEW: tests a WIDER stop-loss (previous candle, last 3 candles, last-10 swing, ATR) and "after TP1 move SL to entry + fee buffer",
+     on the SAME signals (only the SL changes, never tighter than today), older vs newer half, fee included.
+  6. NEW: Bollinger Band (20, 2) filters as their own section: squeeze (sideways), price side of the middle band, stretched, expanding.
+  7. NEW: "direction check" - after the bot's SL was hit, did price still reach TP1? (SL too tight vs direction really wrong)
+  8. NEW: every filter shows "loss avoided" and "profit missed", so you see what it saves and what it costs.
 Nothing here changes the bot. Results are a replay (no slippage), so treat them as evidence, not a promise.
 """
 import json
@@ -127,6 +132,228 @@ def _cooldown_keep(rows, candles_gap):
     return keep
 
 
+
+# ---------------------------------------------------------------- Bollinger Band gates (row -> True = KEEP)
+def _bbt(r):
+    """price position inside the band seen from the trade: 0 = lower band for a long, 1 = upper band; short is mirrored."""
+    b = r.get("bb")
+    if not b or b.get("pb") is None:
+        return None
+    return b["pb"] if _buy(r) else 1.0 - b["pb"]
+
+
+def _g_bb_squeeze(r):      # skip when the bands are in the narrowest quarter of the last 100 candles (sideways)
+    b = r.get("bb")
+    return b is None or b.get("rk") is None or b["rk"] >= 25.0
+
+
+def _g_bb_side(r):         # price on the trade's side of the middle band (long above, short below)
+    t = _bbt(r)
+    return t is None or t > 0.5
+
+
+def _g_bb_not_late(r):     # skip when price is already outside the band in the trade's direction (late entry)
+    t = _bbt(r)
+    return t is None or t <= 1.0
+
+
+def _g_bb_expanding(r):    # bands are wider than 5 candles ago (volatility waking up)
+    b = r.get("bb")
+    return b is None or b.get("exp") is None or b["exp"] >= 1.0
+
+
+BB_GATES = [
+    ("BB squeeze: skip if band width is in the narrowest 25% of last 100 candles", _g_bb_squeeze),
+    ("BB side: long only above the middle band, short only below it", _g_bb_side),
+    ("BB late: skip if price is already outside the band in the trade's direction", _g_bb_not_late),
+    ("BB expanding: band width now >= 5 candles ago", _g_bb_expanding),
+]
+
+
+def bb_series(S, n=20):
+    """Bollinger (n, 2 SD) from closes: band width in % of the middle line, and %B (0 = lower band, 1 = upper band)."""
+    c = S["c"]
+    N = len(c)
+    ref = c[0] if N else 0.0
+    p1, p2 = [0.0] * (N + 1), [0.0] * (N + 1)
+    for i in range(N):
+        d = c[i] - ref
+        p1[i + 1] = p1[i] + d
+        p2[i + 1] = p2[i] + d * d
+    w, pb = [None] * N, [None] * N
+    for i in range(n - 1, N):
+        s1, s2 = p1[i + 1] - p1[i + 1 - n], p2[i + 1] - p2[i + 1 - n]
+        m = s1 / n
+        sd = math.sqrt(max(s2 / n - m * m, 0.0))
+        mean = m + ref
+        if mean > 0 and sd > 0:
+            w[i] = 4.0 * sd / mean * 100.0
+            pb[i] = (c[i] - (mean - 2.0 * sd)) / (4.0 * sd)
+    return w, pb
+
+
+def bb_info(w, pb, i):
+    if i >= len(w) or w[i] is None:
+        return None
+    win = [x for x in w[max(0, i - 99):i + 1] if x is not None]
+    rk = 100.0 * sum(1 for x in win if x <= w[i]) / len(win)
+    prev = w[i - 5] if i >= 5 else None
+    return {"w": round(w[i], 3), "rk": round(rk, 1), "pb": round(pb[i], 3), "exp": round(w[i] / prev, 3) if prev else None}
+
+
+# ---------------------------------------------------------------- stop-loss variants (same signals, only the SL changes)
+MAX_FWD = 300                 # same as ai_shadow_lab.MAX_FWD (candles a simulated trade may run)
+BARS_AFTER = 30               # direction check: candles after the SL exit in which TP1 may still be touched
+SL_NAMES = [("base", "SL = signal candle extreme (bot today)"),
+            ("prev1", "SL = signal OR previous candle extreme, the wider one"),
+            ("prev3", "SL = widest extreme of the last 3 candles"),
+            ("swing10", "SL = extreme of the last 10 candles"),
+            ("atr15", "SL at least 1.5 x ATR(14) from entry"),
+            ("atr2", "SL at least 2 x ATR(14) from entry")]
+BE_NAMES = {"be0": "after TP1: SL to entry (bot today)", "bef": "after TP1: SL to entry + fee buffer"}
+MIN_PAIR_OLD, MIN_PAIR_NEW = 30, 15
+
+
+def _atr(S, i, n=14):
+    h, l, c = S["h"], S["l"], S["c"]
+    if i < n:
+        return None
+    return sum(max(h[k] - l[k], abs(h[k] - c[k - 1]), abs(l[k] - c[k - 1])) for k in range(i - n + 1, i + 1)) / n
+
+
+def sl_levels(S, i, is_long, entry, base_sl):
+    """SL price per variant. A variant is never TIGHTER than the bot's own SL."""
+    h, l = S["h"], S["l"]
+
+    def wider(x):
+        return min(base_sl, x) if is_long else max(base_sl, x)
+
+    def ext(a):
+        return min(l[i - a + 1:i + 1]) if is_long else max(h[i - a + 1:i + 1])
+
+    out = {"base": base_sl, "prev1": wider(ext(2)), "prev3": wider(ext(3)), "swing10": wider(ext(10))}
+    a = _atr(S, i)
+    if a:
+        out["atr15"] = wider(entry - 1.5 * a if is_long else entry + 1.5 * a)
+        out["atr2"] = wider(entry - 2.0 * a if is_long else entry + 2.0 * a)
+    return out
+
+
+def sim_trade(S, i, is_long, entry, sl, tp1, tp4, be_buf_pct=0.0):
+    """The bot's live rule (T4: target TP4, SL -> entry after TP1, opposite EMA50 cross exits) with a chosen SL.
+    be_buf_pct > 0 moves the SL to entry + that % (price) instead of entry. Returns [ret % price move, why, bars]."""
+    h, l, c, n = S["h"], S["l"], S["c"], S["n"]
+    end = min(n - 1, i + MAX_FWD)
+    opp = S["xdn"] if is_long else S["xup"]
+    be_px = entry * (1 + be_buf_pct / 100.0) if is_long else entry * (1 - be_buf_pct / 100.0)
+    if (is_long and be_px >= tp1) or (not is_long and be_px <= tp1):
+        be_px = entry
+    cur, be, got = sl, False, None
+    for j in range(i + 1, end + 1):
+        hh, ll = h[j], l[j]
+        if (ll <= cur) if is_long else (hh >= cur):
+            got = (cur, "BE" if be else "SL", j - i)
+            break
+        if (hh >= tp4) if is_long else (ll <= tp4):
+            got = (tp4, "TP", j - i)
+            break
+        if opp[j]:
+            got = (c[j], "REV", j - i)
+            break
+        if not be and ((hh >= tp1) if is_long else (ll <= tp1)) and ((be_px > cur) if is_long else (be_px < cur)):
+            cur, be = be_px, True              # applies from the NEXT candle
+    if got is None:
+        got = (c[end], "TIMEOUT", end - i) if end - i >= MAX_FWD else (c[end] if end > i else entry, "OPEN", max(end - i, 0))
+    px, why, bars = got
+    return [(px - entry) / entry * 100.0 * (1.0 if is_long else -1.0), why, bars]
+
+
+def tp1_after_exit(S, i, is_long, tp1, exit_bar):
+    """True/False: did price touch TP1 within BARS_AFTER candles after the exit candle? None = not enough candles."""
+    j0, j1 = i + exit_bar + 1, min(S["n"] - 1, i + exit_bar + BARS_AFTER)
+    if j1 - j0 + 1 < BARS_AFTER:
+        return None
+    h, l = S["h"], S["l"]
+    return any((h[j] >= tp1) if is_long else (l[j] <= tp1) for j in range(j0, j1 + 1))
+
+
+def enrich_row(r, S, i, w, pb, lev, fee):
+    """adds r['alt'] (net per SL variant and break-even mode), r['bb'] and r['after'] to one replay row."""
+    is_long = r["a"] == "BUY"
+    entry, base_sl, tp1, tp4 = r["e"], r["sl"], r["tp"][0], r["tp"][3]
+    r["bb"] = bb_info(w, pb, i)
+    if (is_long and base_sl >= entry) or (not is_long and base_sl <= entry):
+        return
+    buf = fee / lev if lev else 0.0                          # fee as a % of price: 1% ROI at 10x = 0.1% price
+    alt, open_seen = {}, False
+    for name, sl in sl_levels(S, i, is_long, entry, base_sl).items():
+        for bk, bp in (("be0", 0.0), ("bef", buf)):
+            ret, why, bars = sim_trade(S, i, is_long, entry, sl, tp1, tp4, bp)
+            open_seen = open_seen or why == "OPEN"
+            alt[f"{name}|{bk}"] = [round(ret * lev - fee, 3), why, bars, round(abs(entry - sl) / entry * 100.0, 3)]
+    if open_seen:
+        return                                               # data ended while a variant was still running: do not compare
+    r["alt"] = alt
+    if alt["base|be0"][1] == "SL":
+        r["after"] = tp1_after_exit(S, i, is_long, tp1, alt["base|be0"][2])
+
+
+def _paired_z(d):
+    n = len(d)
+    if n < 2:
+        return 0.0
+    m = _mean(d)
+    se = math.sqrt(sum((x - m) ** 2 for x in d) / (n - 1) / n)
+    return m / se if se > 0 else 0.0
+
+
+def sl_tests(rows):
+    """each SL variant vs today's SL on the SAME signals, older vs newer half. Positive diff = variant better."""
+    rs = [r for r in rows if r.get("alt")]
+    if len(rs) < 40:
+        return None
+    old, new = split_rows(rs)
+    base = [r["alt"]["base|be0"][0] for r in rs]
+    out = {"n": len(rs), "base": {"net": round(sum(base), 1), "avg": round(_mean(base), 2),
+                                  "win": round(100.0 * sum(1 for x in base if x > 0) / len(base), 1),
+                                  "sl_rate": round(100.0 * sum(1 for r in rs if r["alt"]["base|be0"][1] == "SL") / len(rs), 1),
+                                  "bars": round(_mean([r["alt"]["base|be0"][2] for r in rs]), 1),
+                                  "sl_pct": round(_mean([r["alt"]["base|be0"][3] for r in rs]), 2)}, "rows": []}
+    for bk in ("be0", "bef"):
+        for sk, _ in SL_NAMES:
+            key = f"{sk}|{bk}"
+            if key == "base|be0":
+                continue
+            po, pn = [r for r in old if key in r["alt"]], [r for r in new if key in r["alt"]]
+            do = [r["alt"][key][0] - r["alt"]["base|be0"][0] for r in po]
+            dn = [r["alt"][key][0] - r["alt"]["base|be0"][0] for r in pn]
+            allr = po + pn
+            v = [r["alt"][key][0] for r in allr]
+            zo, zn = _paired_z(do), _paired_z(dn)
+            if len(po) < MIN_PAIR_OLD or len(pn) < MIN_PAIR_NEW:
+                verdict = "not enough data"
+            elif zo >= Z_OLD and zn >= Z_NEW:
+                verdict = "BETTER than today in both halves (confirmed)"
+            elif zo <= -Z_OLD and zn <= -Z_NEW:
+                verdict = "WORSE than today in both halves"
+            else:
+                verdict = "not confirmed (no clear difference on both halves)"
+            out["rows"].append({"key": key, "sl": dict(SL_NAMES)[sk], "be": BE_NAMES[bk], "verdict": verdict, "n": len(allr),
+                                "net": round(sum(v), 1), "avg": round(_mean(v), 2),
+                                "win": round(100.0 * sum(1 for x in v if x > 0) / len(v), 1) if v else 0.0,
+                                "sl_rate": round(100.0 * sum(1 for r in allr if r["alt"][key][1] == "SL") / len(allr), 1) if allr else 0.0,
+                                "bars": round(_mean([r["alt"][key][2] for r in allr]), 1),
+                                "sl_pct": round(_mean([r["alt"][key][3] for r in allr]), 2),
+                                "d_old": round(_mean(do), 2), "d_new": round(_mean(dn), 2),
+                                "z_old": round(zo, 2), "z_new": round(zn, 2)})
+    return out
+
+
+def direction_check(rows):
+    ds = [r["after"] for r in rows if r.get("after") is not None]
+    return {"n": len(ds), "yes": sum(1 for x in ds if x)}
+
+
 # ---------------------------------------------------------------- judging
 def judge(old, new, keep_fn):
     ko = [r for r in old if keep_fn(r)]
@@ -145,6 +372,9 @@ def judge(old, new, keep_fn):
         out["verdict"] = "HARMFUL: skipped trades were better in both halves"
     else:
         out["verdict"] = "not confirmed (no clear difference on both halves)"
+    sk = [r["net"] for r in so + sn]
+    out["avoided"] = round(-sum(x for x in sk if x < 0), 1)      # losses of the skipped trades (the filter saved these)
+    out["missed"] = round(sum(x for x in sk if x > 0), 1)        # profits of the skipped trades (the filter gave these up)
     out["saved_old"] = round(-out["old"]["skipped"]["net"], 1)
     out["saved_new"] = round(-out["new"]["skipped"]["net"], 1)
     return out
@@ -178,6 +408,15 @@ def analyse(rows):
     combo_fns = [_g_chop, _g_tsi_line, _g_reward_half]
     res.append(("COMBO: chop + TSI line + reward>=0.5", judge(old, new, lambda r: all(f(r) for f in combo_fns))))
     rep["gates"] = res
+    rep["bb_gates"] = [(name, judge(old, new, fn)) for name, fn in BB_GATES]
+    rep["sl"] = sl_tests(rows)
+    rep["direction"] = direction_check(rows)
+    rep["by_bb_rank"] = table_by(rows, lambda r: None if not r.get("bb") or r["bb"].get("rk") is None else
+                                 ("band width narrowest 25% (squeeze)" if r["bb"]["rk"] < 25 else "band width 25-50%" if r["bb"]["rk"] < 50
+                                  else "band width 50-75%" if r["bb"]["rk"] < 75 else "band width widest 25%"))
+    rep["by_bb_pos"] = table_by(rows, lambda r: None if _bbt(r) is None else
+                                ("outside band AGAINST the trade" if _bbt(r) < 0 else "wrong half of the band" if _bbt(r) <= 0.5
+                                 else "right half of the band" if _bbt(r) <= 1.0 else "outside band IN the trade direction (late)"))
     rep["by_zone"] = table_by(rows, lambda r: (r.get("sig") or {}).get("zone"))
     rep["by_side"] = table_by(rows, lambda r: r["a"])
     rep["by_z_band"] = table_by(rows, lambda r: None if r["ind"].get("z") is None else
@@ -194,19 +433,70 @@ def _line(name, s):
     return f"  {name}: {s['n']} trades, net {s['net']:+.1f}, avg {s['avg']:+.2f}, win {s['win']:.0f}%"
 
 
-def text_report(rep, tf, days, lev, fee):
-    L = [f"FILTER LAB - {tf} candles, last {days} days, leverage {lev}x, fee {fee}% ROI per trade (net = ROI % after fee)",
-         f"Signals replayed: {rep['n']} (older {rep['n_old']} / newer {rep['n_new']})", "",
-         "BOT AS IT IS (no filter):",
-         _line("older ", rep["baseline"]["old"]), _line("newer ", rep["baseline"]["new"]), "",
-         "FILTERS - 'skipped' = trades the filter would have removed. Good filter: skipped trades lose money in BOTH halves.", ""]
-    for name, j in rep["gates"]:
+def _gate_lines(gates):
+    L = []
+    for name, j in gates:
         L.append(f"* {name}")
         L.append(f"    {j['verdict']}")
         for half in ("old", "new"):
             k, s = j[half]["kept"], j[half]["skipped"]
             L.append(f"    {half:3s}: kept {k['n']} (net {k['net']:+.0f}, avg {k['avg']:+.2f}) | skipped {s['n']} (net {s['net']:+.0f}, avg {s['avg']:+.2f})")
-        L.append(f"    P&L change if applied: older {j['saved_old']:+.0f}, newer {j['saved_new']:+.0f}")
+        L.append(f"    loss avoided {j.get('avoided', 0):+.0f} | profit missed {-j.get('missed', 0):+.0f} | net effect {j['saved_old'] + j['saved_new']:+.0f} (ROI points)")
+    return L
+
+
+def _sl_text(rep):
+    L = []
+    d = rep.get("direction") or {}
+    if d.get("n"):
+        L += ["", "DIRECTION CHECK - was the SL too tight, or was the direction wrong?",
+              f"  Bot's SL was hit in {d['n']} trades (that had {BARS_AFTER} candles of data after). In {d['yes']} of them ({100.0 * d['yes'] / d['n']:.0f}%) "
+              f"price still touched TP1 within {BARS_AFTER} candles after the SL exit.",
+              "  Large share = direction was often right and the SL was too tight. The SL test below shows if a wider SL really pays after fees."]
+    sl = rep.get("sl")
+    if sl:
+        b = sl["base"]
+        L += ["", "STOP-LOSS TEST - same signals, only the SL changes (never tighter than today). Net = ROI points after fee. Positive 'vs today' = better.",
+              f"  TODAY: {sl['n']} trades, net {b['net']:+.0f}, avg {b['avg']:+.2f}, win {b['win']:.0f}%, SL hit {b['sl_rate']:.0f}%, avg hold {b['bars']} candles, avg SL distance {b['sl_pct']}% of price"]
+        for x in sl["rows"]:
+            L.append(f"* {x['sl']} | {x['be']}")
+            L.append(f"    {x['verdict']}")
+            L.append(f"    net {x['net']:+.0f}, avg {x['avg']:+.2f}, win {x['win']:.0f}%, SL hit {x['sl_rate']:.0f}%, avg hold {x['bars']} candles, avg SL distance {x['sl_pct']}%")
+            L.append(f"    vs today per trade: older {x['d_old']:+.2f}, newer {x['d_new']:+.2f}")
+        L.append("  Note: signals are replayed one by one (overlapping trades, max-open limits and slippage are not modelled).")
+    return L
+
+
+def _summary(rep):
+    good = [n for n, j in rep["gates"] + rep["bb_gates"] if j["verdict"].startswith("CONFIRMED")]
+    sl = rep.get("sl")
+    better = [f"{x['sl']} | {x['be']}" for x in (sl or {}).get("rows", []) if x["verdict"].startswith("BETTER")]
+    L = ["SIMPLE VERDICT"]
+    L.append("  Filters that help in BOTH halves: " + ("; ".join(good) if good else "none confirmed yet"))
+    L.append("  SL changes that help in BOTH halves: " + ("; ".join(better) if better else "none confirmed yet"))
+    if sl and sl["rows"]:
+        top = max(sl["rows"], key=lambda x: x["d_old"] + x["d_new"])
+        L.append(f"  Closest SL idea (NOT confirmed unless listed above): {top['sl']} | {top['be']} -> {top['d_old']:+.2f} older, {top['d_new']:+.2f} newer per trade")
+    L.append("  How to read: 'loss avoided' = losing trades the rule would skip; 'profit missed' = winning trades it would also skip. "
+             "A good rule avoids a lot and misses little, in BOTH halves.")
+    return L
+
+
+def text_report(rep, tf, days, lev, fee):
+    L = [f"FILTER LAB - {tf} candles, last {days} days, leverage {lev}x, fee {fee}% ROI per trade (net = ROI % after fee)",
+         f"Signals replayed: {rep['n']} (older {rep['n_old']} / newer {rep['n_new']})", ""] + _summary(rep) + [""] + [
+         "BOT AS IT IS (no filter):",
+         _line("older ", rep["baseline"]["old"]), _line("newer ", rep["baseline"]["new"]), "",
+         "FILTERS - 'skipped' = trades the filter would have removed. Good filter: skipped trades lose money in BOTH halves.", ""]
+    L += _gate_lines(rep["gates"])
+    L += ["", "BOLLINGER BAND FILTERS (20 candles, 2 SD) - each one is its own on/off rule, tested the same way as above.",
+          "  squeeze = bands narrow = sideways market; middle band = 20-candle average; 'late' = price already outside the band."]
+    L += _gate_lines(rep["bb_gates"])
+    for title, key in (("BY BAND WIDTH (compared with the last 100 candles)", "by_bb_rank"), ("BY PRICE POSITION IN THE BAND (seen from the trade)", "by_bb_pos")):
+        L += ["", title]
+        for k, s in sorted(rep[key].items(), key=lambda kv: kv[1]["avg"]):
+            L.append(_line(k, s))
+    L += _sl_text(rep)
     for title, key in (("BY SD ZONE OF ENTRY (Special 13)", "by_zone"), ("BY Z-SCORE AT ENTRY", "by_z_band"),
                        ("TSI vs ITS SIGNAL LINE", "by_tsi_line"), ("EMA50 CROSSES IN LAST 20 CANDLES", "by_cross_n"), ("BY SIDE", "by_side")):
         L += ["", title]
@@ -229,12 +519,27 @@ def collect(tf, days, coins, lev, fee, log=print):
             log(f"[{n}/{len(coins)}] {sym}: no candles (skipped)")
             continue
         got = LAB._process(sym, tf, candles, None, since)
+        try:                                   # extra series for the SL test and the Bollinger filters (read-only maths)
+            from recovered_bot import ai_ind_features as F
+            S = F.build(candles)
+            tmap = {t: k for k, t in enumerate(S["t"])}
+            bw, bp = bb_series(S)
+        except Exception:
+            S = tmap = bw = bp = None
         for r in got:
             o = (r.get("o") or {}).get("T4")
             if not o or o[1] == "OPEN":
                 continue
             r["net"] = o[0] * lev - fee
+            if S is not None:
+                k = tmap.get(r["t"] - TF_MS[tf] + 1)
+                if k is not None:
+                    try:
+                        enrich_row(r, S, k, bw, bp, lev, fee)
+                    except Exception:
+                        pass
             rows.append(r)
+        time.sleep(0.01)                       # keep the phone's CPU free for the live bot
         log(f"[{n}/{len(coins)}] {sym}: {len(got)} signals")
     return rows
 
@@ -286,6 +591,43 @@ def job_status(tf="5m", days=7, lev=10.0, fee=1.0, restart=False):
                 f"Reload this page in a minute.")
     age = int((time.time() - j["t"]) / 60)
     return j["text"] + f"\n\n(result computed {age} min ago; add &restart=1 to the link to run it again)"
+
+
+_ALL = {"running": False}
+
+
+def _all_worker(days, lev, fee, restart):
+    try:
+        for tf in ("3m", "5m", "15m"):
+            j = _JOBS.get(tf)
+            if j and j["state"] == "done" and not restart:
+                continue
+            _JOBS[tf] = {"state": "running", "text": "", "progress": "starting...", "t": time.time()}
+            _job(tf, days, lev, fee)             # runs here, one timeframe after the other (kind to the phone's CPU)
+    finally:
+        _ALL["running"] = False
+
+
+def start_all(days=7, lev=10.0, fee=1.0, restart=False):
+    """starts 3m, 5m and 15m one after the other in ONE background thread (does nothing if already running)."""
+    if _ALL["running"]:
+        return False
+    _ALL["running"] = True
+    for tf in ("3m", "5m", "15m"):
+        j = _JOBS.get(tf)
+        if restart or not j or j["state"] != "done":
+            _JOBS[tf] = {"state": "queued", "text": "", "progress": "waiting", "t": time.time()}
+    threading.Thread(target=_all_worker, args=(int(days), float(lev), float(fee), bool(restart)), daemon=True, name="filter_lab_all").start()
+    return True
+
+
+def status_all():
+    out = {"running": _ALL["running"], "tfs": {}}
+    for tf in ("3m", "5m", "15m"):
+        j = _JOBS.get(tf)
+        out["tfs"][tf] = ({"state": "not run", "progress": "", "age_min": None} if not j else
+                          {"state": j["state"], "progress": j.get("progress", ""), "age_min": int((time.time() - j["t"]) / 60)})
+    return out
 
 
 def main(argv):

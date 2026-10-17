@@ -24,6 +24,10 @@ dependencies:
   # Utilities
   shared_preferences: ^2.2.2
 
+  # AI Report screen: save / share the report file
+  share_plus: ^7.2.2
+  path_provider: ^2.1.2
+
   # Trade sounds (order filled / target hit / stop loss hit) - see lib/services/sound_service.dart
   audioplayers: ^6.1.0
   
