@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -8,6 +10,16 @@ import '../theme/app_theme.dart';
 import '../theme/app_motion.dart';
 import '../widgets/owl_route.dart';
 import '../widgets/doctor_verdict_card.dart';
+
+/// Own short request for the Doctor (20 s, one try, utf-8 body). It no longer shares the AI-tab request queue, so a busy or
+/// stuck AI request can never keep this screen on an endless spinner; a failure carries a readable reason.
+Future<Map<String, dynamic>> _doctorFetch(String base) async {
+  final res = await http.get(Uri.parse('$base/api/ai/doctor')).timeout(const Duration(seconds: 20));
+  if (res.statusCode != 200) throw 'The backend answered HTTP ${res.statusCode}';
+  final m = jsonDecode(utf8.decode(res.bodyBytes));
+  if (m is! Map) throw 'The backend sent an unexpected reply';
+  return Map<String, dynamic>.from(m);
+}
 
 double _d(dynamic v) => (v is num) ? v.toDouble() : 0.0;
 int _i(dynamic v) => (v is num) ? v.toInt() : 0;
@@ -38,6 +50,7 @@ class _StrategyDoctorScreenState extends State<StrategyDoctorScreen> {
   String _sellName = 'SELL';
   bool _loading = true;
   bool _failed = false;
+  String _err = '';
   Timer? _timer;
 
   @override
@@ -63,7 +76,16 @@ class _StrategyDoctorScreenState extends State<StrategyDoctorScreen> {
         r = null;
       }
     } else {
-      r = await context.read<AppProvider>().fetchDoctor();
+      try {
+        r = await _doctorFetch(context.read<AppProvider>().baseUrl);
+        _err = '';
+      } on TimeoutException {
+        r = null;
+        _err = 'No answer within 20 seconds.';
+      } catch (e) {
+        r = null;
+        _err = '$e';
+      }
     }
     if (!mounted) return;
     setState(() {
@@ -113,6 +135,7 @@ class _StrategyDoctorScreenState extends State<StrategyDoctorScreen> {
         return Center(
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             Text('Could not load the report.', style: context.type.secondary),
+            if (_err.isNotEmpty) Padding(padding: const EdgeInsets.fromLTRB(24, 6, 24, 0), child: Text(_err, textAlign: TextAlign.center, style: context.type.secondary)),
             const SizedBox(height: 12),
             FilledButton(onPressed: _load, child: const Text('Retry')),
           ]),
@@ -444,7 +467,12 @@ class _StrategyDoctorCardState extends State<StrategyDoctorCard> {
 
   Future<void> _load() async {
     if (!mounted) return;
-    final r = await context.read<AppProvider>().fetchDoctor();
+    Map<String, dynamic>? r;
+    try {
+      r = await _doctorFetch(context.read<AppProvider>().baseUrl);
+    } catch (_) {
+      r = null;
+    }
     if (!mounted) return;
     setState(() {
       if (r != null) _data = r;

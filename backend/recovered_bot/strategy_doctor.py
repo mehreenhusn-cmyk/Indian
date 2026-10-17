@@ -151,6 +151,8 @@ def _clean_trades(raw):
             pnl = _num(t.get("pnl_usdt"))
             if roi is None or pnl is None:
                 continue
+            if abs(roi) > 400.0:      # impossible at 10x (a 40% move) = bad price tick; one such trade (+6600 pts) had skewed every average
+                continue
             ts = _num(t.get("opened_at_ts")) or _num(t.get("closed_at_ts")) or 0.0
             out.append({"t": t, "act": act, "roi": roi, "pnl": pnl, "ts": ts})
         except Exception:
@@ -311,8 +313,8 @@ def _sd_rules(rows, names=None, unit="USDT"):
     names = names or {"BUY": "BUY", "SELL": "SELL"}
     b_, s_ = names["BUY"], names["SELL"]
     out = []
-    for fid, name in (("sdr_mean", f"{b_} below the mean line, {s_} above it"),
-                      ("sdr_edge", f"{b_} below -1SD, {s_} above +1SD")):
+    for fid, name in (("sdr_mean", f"SKIP: {b_} below the mean line / {s_} above it"),
+                      ("sdr_edge", f"SKIP: {b_} below -1SD / {s_} above +1SD")):
         blocked = [r for r in rows if fid in r.get("tags", {})]
         kept = [r for r in rows if fid not in r.get("tags", {}) and r["zi"] is not None]
         b, k = _stat(blocked), _stat(kept)

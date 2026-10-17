@@ -1273,6 +1273,18 @@ async def ai_doctor():
                 "error": f"{type(e).__name__}: {e}"}
 
 
+@app.get("/api/filter_lab")
+async def filter_lab_page(tf: str = "5m", days: int = 7, restart: int = 0):
+    """Filter Lab (filter_lab.py): replays the bot's own strategy on Binance candles and tests Z / TSI / chop / reward
+    filters on older vs newer signals. Plain text for the phone browser. One-shot, own thread, read-only."""
+    from fastapi.responses import PlainTextResponse
+    try:
+        import filter_lab
+        return PlainTextResponse(filter_lab.job_status(tf, max(1, min(days, 30)), restart=bool(restart)))
+    except Exception as e:
+        return PlainTextResponse(f"Filter Lab is not available: {type(e).__name__}: {e}")
+
+
 _BOOK_CACHE = {}      # key -> (time, answer)
 
 
