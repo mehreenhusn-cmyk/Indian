@@ -525,6 +525,8 @@ def collect(tf, days, coins, lev, fee, log=print):
         try:                                   # extra series for the SL test and the Bollinger filters (read-only maths)
             from recovered_bot import ai_ind_features as F
             S = F.build(candles)
+            S["tbv"] = [c.get("tbv") for c in candles]      # taker buy volume (only set by variant_lab's CVD patch)
+            S["vol"] = [c.get("volume") for c in candles]
             tmap = {t: k for k, t in enumerate(S["t"])}
             bw, bp = bb_series(S)
         except Exception:

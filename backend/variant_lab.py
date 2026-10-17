@@ -8,6 +8,8 @@ signals under many scenarios and compare each one with the bot today:
   * Exit / stop-loss : wider SL, SL to entry + fee after TP1, exit at TP2, hold till the opposite signal (no TP4 exit)
   * Indicators       : TSI with the trade, Z with the trade, both agree, low chop (a scenario SKIPS some signals)
   * Bollinger        : squeeze / side / late / expanding (skips)
+  * CVD (order flow) : taker buy-sell volume ("CVD proxy" from Binance candles, no extra data needed): does the money flow agree with
+                       the signal? Also "wait 1 candle, then enter only if flow still agrees" (a control without CVD is shown too)
   * Bands            : EMA200 bands instead of SMA200 SD bands (TP levels move)
   * Combos           : a few mixes of the above
 
@@ -29,7 +31,51 @@ import filter_lab as FL
 
 BIG = 1e18
 TFS = ("3m", "5m", "15m")
-GROUP_ORDER = ["Exit and stop-loss", "Indicators (skip signals)", "Bollinger (skip signals)", "Bands", "Mixes"]
+GROUP_ORDER = ["Exit and stop-loss", "Indicators (skip signals)", "Bollinger (skip signals)", "CVD (order flow)", "Bands", "Mixes"]
+
+
+# ---------------------------------------------------------------- CVD proxy (taker buy volume is already inside every Binance kline row)
+def _patch_candles():
+    """Makes the lab's candle reader keep the taker-buy volume (kline column 9) as c['tbv'] while Strategy Lab runs.
+    Only adds one extra key to candle dicts; returns a function that puts the original reader back."""
+    from recovered_bot import ai_shadow_lab as LAB
+    orig = LAB._to_candles
+
+    def with_tbv(raw, now_ms):
+        out = orig(raw, now_ms)
+        try:
+            by_t = {int(r[0]): r for r in raw}
+            for c in out:
+                row = by_t.get(c["timestamp"])
+                c["tbv"] = float(row[9]) if row is not None and len(row) > 9 else None
+        except Exception:
+            pass
+        return out
+
+    LAB._to_candles = with_tbv
+    return lambda: setattr(LAB, "_to_candles", orig)
+
+
+def _share(S, a, b):
+    """taker delta share over candles a..b: (buy - sell volume) / volume, from -1 (all sellers) to +1 (all buyers). None = no data."""
+    tb, vo = S.get("tbv"), S.get("vol")
+    if not tb or not vo or a < 0 or b >= len(tb):
+        return None
+    d = v = 0.0
+    for j in range(a, b + 1):
+        if tb[j] is None or vo[j] is None:
+            return None
+        d += 2.0 * tb[j] - vo[j]
+        v += vo[j]
+    return round(d / v, 4) if v > 0 else None
+
+
+def _agree(r, key, thr=0.0):
+    """True = flow agrees with the trade side (or no CVD data: keep the signal, like the other gates)."""
+    v = (r.get("cvd") or {}).get(key)
+    if v is None:
+        return True
+    return v > thr if r["a"] == "BUY" else v < -thr
 
 
 # ---------------------------------------------------------------- extra variants per signal (added while filter_lab collects)
@@ -64,6 +110,19 @@ def enrich(r, S, i, lev, fee):
         up = sorted(v for v in lv if v > entry)[:4] if is_long else sorted((v for v in lv if v < entry), reverse=True)[:4]
         if len(up) == 4:
             put("ema", base_sl, up[0], up[3])
+    # --- CVD tags + "wait 1 candle" entry (same SL, same TP levels, enter at the CLOSE of the next candle if the signal still stands)
+    n, c = S["n"], S["c"]
+    cv = {"s1": _share(S, i, i), "s3": _share(S, i - 2, i)}
+    j = i + 1
+    if j < n:
+        cv["w1"], cv["w2"] = _share(S, j, j), _share(S, i, j)
+        e50, cj = S["e50"][j], c[j]
+        still = e50 is not None and ((cj > e50 and cj > base_sl and cj < tps[0]) if is_long else (cj < e50 and cj < base_sl and cj > tps[0]))
+        if still:
+            ret, why, bars = FL.sim_trade(S, j, is_long, cj, base_sl, tps[0], tps[3], 0.0)
+            if why != "OPEN":
+                x["wait"] = [round(ret * lev - fee, 3), why, bars]
+    r["cvd"] = cv
     r["x"] = x
 
 
@@ -82,6 +141,16 @@ def _x(key):
 
 def _gate(fn):
     return lambda r: _b(r) if fn(r) else None
+
+
+def _wait(r):
+    """'wait 1 candle' scenario: net of the delayed entry, or None when the signal no longer stood one candle later (skipped)."""
+    w = (r.get("x") or {}).get("wait")
+    return w[0] if w else None
+
+
+def _wait_cvd(r):
+    return _wait(r) if _agree(r, "w1") and _agree(r, "w2") else None
 
 
 def _both(r):
@@ -106,6 +175,14 @@ SCENARIOS = [
     ("Bollinger (skip signals)", "bb_side", "Long above / short below mid band", _gate(FL._g_bb_side)),
     ("Bollinger (skip signals)", "bb_late", "Skip late (outside band)", _gate(FL._g_bb_not_late)),
     ("Bollinger (skip signals)", "bb_exp", "Only when bands expanding", _gate(FL._g_bb_expanding)),
+    ("CVD (order flow)", "cvd3", "CVD agrees with the trade (last 3 candles)", _gate(lambda r: _agree(r, "s3"))),
+    ("CVD (order flow)", "cvd_push", "Signal candle pushed by real flow (>=10%)", _gate(lambda r: _agree(r, "s1", 0.10))),
+    ("CVD (order flow)", "cvd_exp", "CVD agrees + only when bands expanding",
+     _gate(lambda r: _agree(r, "s3") and FL._g_bb_expanding(r))),
+    ("CVD (order flow)", "wait", "Wait 1 candle, then enter (no CVD, control)", _wait),
+    ("CVD (order flow)", "wait_cvd", "Wait 1 candle + CVD still agrees", _wait_cvd),
+    ("CVD (order flow)", "run_cvd", "Hold till opposite + CVD agrees",
+     lambda r: _x("run")(r) if _agree(r, "s3") else None),
     ("Bands", "ema", "EMA200 bands instead of SMA200 SD bands", _x("ema")),
     ("Mixes", "mix1", "Wider SL (prev) + skip squeeze",
      lambda r: _alt("prev1|be0")(r) if FL._g_bb_squeeze(r) else None),
@@ -219,7 +296,9 @@ def _save():
 
 def _worker(days, lev, fee):
     FL.EXTRA_ENRICH = enrich
+    restore = None
     try:
+        restore = _patch_candles()
         coins = FL.default_coins(lambda m: None)
         for tf in TFS:
             def log(m, tf=tf):
@@ -238,6 +317,8 @@ def _worker(days, lev, fee):
         _STATE["progress"] = f"failed: {type(e).__name__}: {e}"
     finally:
         FL.EXTRA_ENRICH = None
+        if restore:
+            restore()
         _STATE["running"] = False
 
 
@@ -273,7 +354,11 @@ def main(argv):
         print("timeframe must be 3m, 5m or 15m")
         return 1
     FL.EXTRA_ENRICH = enrich
-    rows = FL.collect(tf, days, FL.default_coins(), 10.0, 1.0)
+    restore = _patch_candles()
+    try:
+        rows = FL.collect(tf, days, FL.default_coins(), 10.0, 1.0)
+    finally:
+        restore()
     print("\n" + text_report(analyse(rows), tf, days))
     return 0
 

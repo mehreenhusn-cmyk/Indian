@@ -84,7 +84,7 @@ class _VariantLabCardState extends State<VariantLabCard> {
     final done = res['state'] == 'done' && res['ok'] == true;
     final answer = (res['answer'] is List) ? (res['answer'] as List).map((e) => '$e').toList() : <String>[];
     final rows = (res['rows'] is List) ? (res['rows'] as List).whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList() : <Map<String, dynamic>>[];
-    const groups = ['Exit and stop-loss', 'Indicators (skip signals)', 'Bollinger (skip signals)', 'Bands', 'Mixes'];
+    const groups = ['Exit and stop-loss', 'Indicators (skip signals)', 'Bollinger (skip signals)', 'CVD (order flow)', 'Bands', 'Mixes'];
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.only(bottom: 10),
