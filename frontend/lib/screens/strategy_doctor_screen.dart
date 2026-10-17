@@ -427,6 +427,7 @@ class StrategyDoctorCard extends StatefulWidget {
 class _StrategyDoctorCardState extends State<StrategyDoctorCard> {
   Map<String, dynamic>? _data;
   Timer? _timer;
+  bool _failed = false;
 
   @override
   void initState() {
@@ -444,7 +445,11 @@ class _StrategyDoctorCardState extends State<StrategyDoctorCard> {
   Future<void> _load() async {
     if (!mounted) return;
     final r = await context.read<AppProvider>().fetchDoctor();
-    if (mounted && r != null) setState(() => _data = r);
+    if (!mounted) return;
+    setState(() {
+      if (r != null) _data = r;
+      _failed = r == null && _data == null;
+    });
   }
 
   @override
@@ -455,7 +460,7 @@ class _StrategyDoctorCardState extends State<StrategyDoctorCard> {
     final enough = d != null && d['enough'] == true;
     final heads = (d != null && d['headline'] is List) ? (d['headline'] as List).map((e) => '$e').toList() : <String>[];
     final avoidConf = d == null ? 0 : _list(d['avoid']).where((r) => r['status'] == 'confirmed').length;
-    final badge = d == null ? 'Loading' : (n == 0 ? 'No trades yet' : (enough ? (avoidConf > 0 ? '$avoidConf leak${avoidConf == 1 ? '' : 's'} confirmed' : 'No leak confirmed') : 'Learning $n/${_i(d['min_sample'])}'));
+    final badge = d == null ? (_failed ? 'No answer' : 'Loading') : (n == 0 ? 'No trades yet' : (enough ? (avoidConf > 0 ? '$avoidConf leak${avoidConf == 1 ? '' : 's'} confirmed' : 'No leak confirmed') : 'Learning $n/${_i(d['min_sample'])}'));
     final bc = d == null || n == 0 ? p.textMuted : (enough ? (avoidConf > 0 ? p.warning : p.profit) : p.warning);
     return Container(
       margin: const EdgeInsets.only(bottom: AppSpacing.l),
@@ -487,7 +492,9 @@ class _StrategyDoctorCardState extends State<StrategyDoctorCard> {
             ]),
             const SizedBox(height: 6),
             Text(
-              heads.length > 2 ? heads[2] : (heads.isNotEmpty ? heads.first : 'Tap to see which entries lose and which win.'),
+              (d == null && _failed)
+                  ? 'The backend did not give a report: ${context.read<AppProvider>().aiLastError ?? 'unknown reason'}. Tap to retry.'
+                  : (heads.length > 2 ? heads[2] : (heads.isNotEmpty ? heads.first : 'Tap to see which entries lose and which win.')),
               maxLines: 3,
               overflow: TextOverflow.ellipsis,
               style: context.type.metadata.copyWith(height: 1.35),

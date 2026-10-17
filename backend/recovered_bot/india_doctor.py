@@ -66,7 +66,7 @@ def build(closed):
         except ImportError:
             import doctor_verdict
         rep["verdict"] = doctor_verdict.build(rows(closed), unit="Rs")      # read-only extra section
-        return rep
+        return strategy_doctor._finite(rep)
     except Exception as e:
         return {"ok": False, "sample": 0, "enough": False, "unit": "Rs", "min_sample": strategy_doctor.MIN_SAMPLE,
                 "headline": ["India Strategy Doctor could not read the trades yet."], "error": f"{type(e).__name__}: {e}"}

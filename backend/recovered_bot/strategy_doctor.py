@@ -19,6 +19,7 @@ How a rule is judged (no invented thresholds):
 
 Pure Python (no pandas / numpy). build() never raises.
 """
+import math
 import time
 
 MIN_SAMPLE = 30      # below this the screen says "not enough data"
@@ -56,9 +57,22 @@ def _num(v):
     try:
         if v is None or v == "" or str(v).lower() in ("none", "nan"):
             return None
-        return float(v)
+        x = float(v)
+        return x if math.isfinite(x) else None      # inf / -inf used to travel into the report and break the JSON reply
     except Exception:
         return None
+
+
+def _finite(o):
+    """Safety net: replace any inf / NaN anywhere in the report by None. FastAPI refuses to send a reply that holds even
+    one such number (HTTP 500), and the app then shows 'Loading' for ever."""
+    if isinstance(o, float):
+        return o if math.isfinite(o) else None
+    if isinstance(o, dict):
+        return {k: _finite(v) for k, v in o.items()}
+    if isinstance(o, (list, tuple)):
+        return [_finite(v) for v in o]
+    return o
 
 
 def _stat(rows):
@@ -411,7 +425,7 @@ def build(limit=5000):
             rep["verdict"] = doctor_verdict.build([x["t"] for x in _clean_trades(raw)], unit="USDT", studies=True)
         except Exception:
             pass
-        return rep
+        return _finite(rep)
     except Exception as e:
         return {"ok": False, "sample": 0, "enough": False, "min_sample": MIN_SAMPLE,
                 "headline": ["Strategy Doctor could not read the trades yet."], "error": f"{type(e).__name__}: {e}"}
