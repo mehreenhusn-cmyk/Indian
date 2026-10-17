@@ -1297,6 +1297,20 @@ async def filter_lab_all(start: int = 0, restart: int = 0, days: int = 7):
         return {"running": False, "error": f"{type(e).__name__}: {e}", "tfs": {}}
 
 
+@app.get("/api/variant_lab")
+async def variant_lab_api(start: int = 0, days: int = 14):
+    """Strategy Lab (variant_lab.py): the bot's own signals replayed under many scenarios (wider SL, hold till opposite signal, TSI/Z,
+    Bollinger, EMA bands ...) and compared with the bot, older vs newer data. start=1 runs 3m, 5m, 15m in one background thread.
+    Without start it only returns the saved result / progress (JSON). Read-only, never touches trading."""
+    try:
+        import variant_lab
+        if start:
+            variant_lab.start(max(3, min(days, 30)))
+        return variant_lab.status()
+    except Exception as e:
+        return {"running": False, "error": f"{type(e).__name__}: {e}", "tfs": {}}
+
+
 @app.get("/api/report/save")
 async def report_save():
     """App button: writes owl_report_<date>.txt into the phone's Download folder (see ai_report.save_to_downloads)."""

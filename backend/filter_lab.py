@@ -508,6 +508,9 @@ def text_report(rep, tf, days, lev, fee):
 
 
 # ---------------------------------------------------------------- data
+EXTRA_ENRICH = None        # optional hook(r, S, i, lev, fee) set by variant_lab
+
+
 def collect(tf, days, coins, lev, fee, log=print):
     from recovered_bot import ai_shadow_lab as LAB
     rows = []
@@ -538,6 +541,11 @@ def collect(tf, days, coins, lev, fee, log=print):
                         enrich_row(r, S, k, bw, bp, lev, fee)
                     except Exception:
                         pass
+                    if EXTRA_ENRICH is not None:           # variant_lab adds its exit / band variants (read-only maths)
+                        try:
+                            EXTRA_ENRICH(r, S, k, lev, fee)
+                        except Exception:
+                            pass
             rows.append(r)
         time.sleep(0.01)                       # keep the phone's CPU free for the live bot
         log(f"[{n}/{len(coins)}] {sym}: {len(got)} signals")

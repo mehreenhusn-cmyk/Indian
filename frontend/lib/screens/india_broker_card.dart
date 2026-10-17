@@ -59,6 +59,7 @@ class _IndiaBrokerCardState extends State<IndiaBrokerCard> {
       if (!mounted) return;
       setState(() {
         _info = Map<String, dynamic>.from(j as Map);
+        if (!_loaded && (_info['name'] == 'fyers' || _info['name'] == 'tradebulls')) _broker = '${_info['name']}';
         _loaded = true;
       });
       _loadWhatIf();
@@ -74,6 +75,9 @@ class _IndiaBrokerCardState extends State<IndiaBrokerCard> {
       if (mounted && r['what_if'] is Map) setState(() => _whatIf = Map<String, dynamic>.from(r['what_if'] as Map));
     } catch (_) {}
   }
+
+  /// True when the exchange chip that is selected is the one that is actually connected right now.
+  bool get _mine => '${_info['name']}' == _broker;
 
   Map<String, dynamic> get _saved {
     final s = _info['saved'];
@@ -215,6 +219,7 @@ class _IndiaBrokerCardState extends State<IndiaBrokerCard> {
     if (acc is! Map || acc.isEmpty) return [];
     final rows = <Widget>[const SizedBox(height: 8)];
     for (final e in acc.entries) {
+      if ('${e.key}' != _broker) continue;
       final a = Map<String, dynamic>.from(e.value as Map);
       final name = '${e.key}' == 'fyers' ? 'Fyers' : 'Tradebulls';
       final cash = a['net_available'] != null ? inr(nd(a['net_available'])) : '-';
@@ -223,8 +228,9 @@ class _IndiaBrokerCardState extends State<IndiaBrokerCard> {
       if (a['total'] != null) rows.add(Text('Total ${inr(nd(a['total']))}   Used ${a['used'] == null ? '-' : inr(nd(a['used']))}', style: t.secondary));
       if (err.isNotEmpty) rows.add(Text(friendlyError(err), style: t.metadata.copyWith(color: p.warning)));
     }
+    if (rows.length == 1) return [];
     rows.add(TextButton.icon(
-      onPressed: _busy || !(_info['connected'] == true || _info['login_ok'] == true) ? null : _refreshBalance,
+      onPressed: _busy || !_mine || !(_info['connected'] == true || _info['login_ok'] == true) ? null : _refreshBalance,
       icon: const Icon(Icons.refresh, size: 16),
       label: const Text('Refresh balance'),
     ));
@@ -275,8 +281,8 @@ class _IndiaBrokerCardState extends State<IndiaBrokerCard> {
   Widget build(BuildContext context) {
     final t = context.type;
     final p = context.palette;
-    final loginOk = _info['login_ok'] == true;
-    final live = _info['connected'] == true;
+    final loginOk = _mine && _info['login_ok'] == true;
+    final live = _mine && _info['connected'] == true;
     final acct = _info['account'] is Map ? Map<String, dynamic>.from(_info['account'] as Map) : <String, dynamic>{};
     final saved = _saved;
     final status = live

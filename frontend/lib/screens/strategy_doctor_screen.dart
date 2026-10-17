@@ -10,6 +10,7 @@ import '../theme/app_theme.dart';
 import '../theme/app_motion.dart';
 import '../widgets/owl_route.dart';
 import '../widgets/doctor_verdict_card.dart';
+import '../widgets/variant_lab_card.dart';
 import 'ai_report_screen.dart';
 
 /// Own short request for the Doctor (20 s, one try, utf-8 body). It no longer shares the AI-tab request queue, so a busy or
@@ -182,6 +183,10 @@ class _StrategyDoctorScreenState extends State<StrategyDoctorScreen> {
             const SizedBox(height: 10),
             for (final h in headline) _bullet(context, h),
           ]),
+          if (!widget.india) ...[
+            _title(context, 'Strategy Lab'),
+            const VariantLabCard(),
+          ],
           if (_map(d['verdict']).isNotEmpty) ...[
             _title(context, 'Doctor Verdict'),
             DoctorVerdictCard(verdict: _map(d['verdict'])),
