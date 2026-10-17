@@ -73,8 +73,10 @@ class IndiaRuntime:
     def __init__(self, data_dir):
         self.dir = data_dir
         self.lock = threading.RLock()
+        self._stop_evt = threading.Event()      # wakes the market-closed sleep when Stop is pressed
         self.thread = None
         self.running = False
+        self._stop_evt.set()
         self.finished = False
         self.events = deque(maxlen=40)
         self.settings = dict(DEFAULTS)
@@ -147,10 +149,40 @@ class IndiaRuntime:
         self.runner._last.clear()
 
     # ------------------------------------------------------------ loop ---
+    def _prewarm(self, positions=(), unders=(), candles=False):
+        """Network fetches done OUTSIDE self.lock. They only fill the provider cache (own lock), so the code that
+        runs under self.lock later reads warm data and returns fast. Same calls the engine/runner make -> same data.
+        Returns (limited, skip): skip = underlyings whose candles could not be fetched this round."""
+        limited, skip, p = False, set(), self.provider
+        if not getattr(p, "is_live", False):
+            return limited, skip
+        for pos in positions:
+            try:
+                u = pos["underlying"]
+                p.get_spot(u)
+                p.get_last_candle(u)
+                p.get_option_ltp(pos["contract"])
+            except india_broker.RateLimited:
+                limited = True
+            except Exception:
+                pass                                   # engine.on_tick handles its own errors, as before
+        if candles:
+            for u in unders:
+                try:
+                    p.get_candles(u.upper(), self.runner.tf, self.runner.history)
+                except india_broker.RateLimited:
+                    limited = True
+                    skip.add(u)
+                except Exception as e:
+                    log.exception("prewarm %s", u)
+                    self.broker_error = f"{u}: {e}"[:200]
+                    skip.add(u)
+        return limited, skip
+
     def _loop(self):
         while True:
             t0 = time.time()
-            with self.lock:
+            with self.lock:                                   # short: no network, no sleep in here
                 if not self.running:
                     break
                 live = getattr(self.provider, "is_live", False)
@@ -158,12 +190,23 @@ class IndiaRuntime:
                     self.engine.close_all("END")
                     self.running, self.finished = False, True
                     break
-                if live:
-                    self._keepalive()
-                if live and india_chain.market_status(self.provider.now()) == "CLOSED" and not self.engine.open:
-                    time.sleep(min(30.0, max(5.0, float(self.settings["poll_sec"]))))   # market closed: no calls needed
-                    continue
-                limited = False
+                closed = live and india_chain.market_status(self.provider.now()) == "CLOSED" and not self.engine.open
+                poll = float(self.settings["poll_sec"])
+            if live:
+                self._keepalive()                             # outside the lock (may call the broker)
+            if closed:
+                self._stop_evt.wait(min(30.0, max(5.0, poll)))   # market closed: sleep WITHOUT the lock; Stop wakes it
+                continue
+            with self.lock:                                   # Stop / source switch may have happened meanwhile
+                if not self.running:
+                    break
+                live = getattr(self.provider, "is_live", False)
+                unders = list(self.settings["underlyings"])
+                positions = list(self.engine.open.values())
+            limited, skip = self._prewarm(positions, unders, candles=True)   # slow broker calls, no lock held
+            with self.lock:
+                if not self.running:
+                    break
                 try:
                     self.engine.on_tick()
                 except india_broker.RateLimited:
@@ -171,7 +214,9 @@ class IndiaRuntime:
                 except Exception as e:
                     log.exception("on_tick")
                     self.broker_error = str(e)[:200]
-                for u in self.settings["underlyings"]:
+                for u in unders:
+                    if u in skip:
+                        continue
                     try:
                         r = self.runner.run(u)
                     except india_broker.RateLimited:
@@ -213,6 +258,9 @@ class IndiaRuntime:
                 if gap < 0.4:
                     time.sleep(0.4 - gap)
                 self._fast_last = time.time()
+                with self.lock:
+                    pos = list(self.engine.open.values())
+                self._prewarm(pos)                           # broker fetches outside the lock
                 with self.lock:
                     if self.running and self.engine.open:
                         self.engine.on_tick()
@@ -280,6 +328,7 @@ class IndiaRuntime:
             self._save_settings()
         with self.lock:
             self.running = False
+            self._stop_evt.set()
             self._drop_session()
             if getattr(prov, "data_ready", True):
                 self.live, self.login_ok, self.broker_error = prov, None, ""
@@ -423,6 +472,7 @@ class IndiaRuntime:
         self._save_settings()
         with self.lock:
             self.running = False
+            self._stop_evt.set()
             self._drop_session()
             self.broker_error = ""
             self.settings["source"] = "demo"
@@ -440,6 +490,7 @@ class IndiaRuntime:
                 self._build()
             if self.running:
                 return
+            self._stop_evt.clear()
             self.running = True
             self.settings["was_running"] = True
             self._save_settings()
@@ -450,12 +501,14 @@ class IndiaRuntime:
     def stop(self):
         with self.lock:
             self.running = False
+            self._stop_evt.set()
             self.settings["was_running"] = False
             self._save_settings()
 
     def reset(self):
         with self.lock:
             self.running = False
+            self._stop_evt.set()
             if self.live is not None:               # a reset must really clear the saved live trades
                 try:
                     os.remove(self._state_file())

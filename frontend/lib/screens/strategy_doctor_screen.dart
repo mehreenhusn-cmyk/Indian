@@ -7,6 +7,7 @@ import '../services/india_api.dart';
 import '../theme/app_theme.dart';
 import '../theme/app_motion.dart';
 import '../widgets/owl_route.dart';
+import '../widgets/doctor_verdict_card.dart';
 
 double _d(dynamic v) => (v is num) ? v.toDouble() : 0.0;
 int _i(dynamic v) => (v is num) ? v.toInt() : 0;
@@ -148,6 +149,10 @@ class _StrategyDoctorScreenState extends State<StrategyDoctorScreen> {
             const SizedBox(height: 10),
             for (final h in headline) _bullet(context, h),
           ]),
+          if (_map(d['verdict']).isNotEmpty) ...[
+            _title(context, 'Doctor Verdict'),
+            DoctorVerdictCard(verdict: _map(d['verdict'])),
+          ],
           if (sample > 0 && enough) ...[
             _title(context, 'Avoid these entries'),
             if (avoid.isEmpty) _empty(context, 'No avoid rule passed the checks yet.'),

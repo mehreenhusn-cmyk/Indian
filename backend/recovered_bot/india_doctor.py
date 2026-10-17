@@ -45,7 +45,8 @@ def rows(closed):
                 "timeframe": tags.get("timeframe"),
             }
             for k in ("entry_zone", "ema_slope_pct", "volume_ratio", "regime_cross_n", "atr_pct", "sd_width_pct",
-                      "ema_turn", "adx", "ema_gap_atr", "htf_trend"):
+                      "ema_turn", "adx", "ema_gap_atr", "htf_trend",
+                      "z_band", "tsi_band", "tsi_with_trade", "z_with_trade"):
                 r[k] = tags.get(k)
             if str(t.get("reason")) == "MANUAL":
                 r["clean_exit_reason"] = "MANUAL"
@@ -60,6 +61,11 @@ def build(closed):
     try:
         rep = strategy_doctor.build_from(rows(closed), unit="Rs", side_names=SIDE_NAMES, post_exit=False)
         rep["market"] = "india"
+        try:
+            from . import doctor_verdict
+        except ImportError:
+            import doctor_verdict
+        rep["verdict"] = doctor_verdict.build(rows(closed), unit="Rs")      # read-only extra section
         return rep
     except Exception as e:
         return {"ok": False, "sample": 0, "enough": False, "unit": "Rs", "min_sample": strategy_doctor.MIN_SAMPLE,

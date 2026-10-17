@@ -30,6 +30,39 @@ def signal_tags(sig, tf_min):
     return out
 
 
+def _band(v, cuts, names):
+    for c, n in zip(cuts, names):
+        if v < c:
+            return n
+    return names[-1]
+
+
+def indicator_tags(cs, action):
+    """RECORD-ONLY: Special Master numbers (Z-score, TSI) at the signal candle, kept with the trade so the Doctor can
+    later study TSI x SD zone. Never raises, never feeds back into any trade decision."""
+    try:
+        from . import ai_ind_features as F
+    except ImportError:
+        try:
+            import ai_ind_features as F
+        except ImportError:
+            return {}
+    try:
+        S = F.build(to_strategy_candles(cs))
+        i = len(cs) - 1
+        z, tsi, tsl = S["z"][i], S["tsi"][i], S["tsl"][i]
+        if None in (z, tsi, tsl):
+            return {}
+        buy = str(action).upper() == "BUY"
+        return {"z": round(z, 2), "tsi": round(tsi, 2), "tsi_sig": round(tsl, 2),
+                "z_band": _band(z, (-2, -1, 1, 2), ("z<-2", "z -2..-1", "z -1..1", "z 1..2", "z>2")),
+                "tsi_band": _band(tsi, (-25, 0, 25), ("tsi<-25", "tsi -25..0", "tsi 0..25", "tsi>25")),
+                "tsi_with_trade": "with" if ((tsi > tsl) == buy) else "against",
+                "z_with_trade": "with" if ((z > 0) == buy) else "against"}
+    except Exception:
+        return {}
+
+
 class IndiaStrategyRunner:
     def __init__(self, provider, engine, strategy, tf_min=5, history=300):
         self.p, self.e, self.strategy = provider, engine, strategy
@@ -48,6 +81,8 @@ class IndiaStrategyRunner:
         if sig is None:
             return None
         tps = [t for t in (sig.tp1, sig.tp2, sig.tp3, sig.tp4) if t]
-        res = self.e.on_signal(u, sig.action, sig.stop_loss, sig.tp1, tps=tps, tags=signal_tags(sig, self.tf))
+        tags = signal_tags(sig, self.tf)
+        tags.update(indicator_tags(cs, sig.action))              # record-only (Doctor study); no trade decision uses it
+        res = self.e.on_signal(u, sig.action, sig.stop_loss, sig.tp1, tps=tps, tags=tags)
         res["signal"] = sig
         return res

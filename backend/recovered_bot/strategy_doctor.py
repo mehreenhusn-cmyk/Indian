@@ -405,7 +405,13 @@ def build(limit=5000):
     try:
         from . import trade_store
         raw = trade_store.get_all_closed(limit, net=True)
-        return build_from(raw)
+        rep = build_from(raw)
+        try:                                              # read-only extra: hold time / leakage / time of day + AI study headlines
+            from . import doctor_verdict
+            rep["verdict"] = doctor_verdict.build([x["t"] for x in _clean_trades(raw)], unit="USDT", studies=True)
+        except Exception:
+            pass
+        return rep
     except Exception as e:
         return {"ok": False, "sample": 0, "enough": False, "min_sample": MIN_SAMPLE,
                 "headline": ["Strategy Doctor could not read the trades yet."], "error": f"{type(e).__name__}: {e}"}
