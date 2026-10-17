@@ -27,12 +27,64 @@ import 'theme/app_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Safety net: if any widget fails to build, show the real error text on screen instead of a blank
+  // screen, so the cause can be read (and sent) straight from the phone.
+  ErrorWidget.builder = (FlutterErrorDetails d) => Material(
+        color: const Color(0xFF1A0000),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(12, 40, 12, 12),
+          child: Text(
+            'App error (send this text):\n${d.exceptionAsString()}\n\n${d.stack.toString().split('\n').take(8).join('\n')}',
+            style: const TextStyle(color: Color(0xFFFF8A80), fontSize: 11),
+          ),
+        ),
+      );
+
   // Required once, before runApp, for the foreground-service isolate to be
   // able to send data back to this main isolate (see foreground_service.dart).
-  FlutterForegroundTask.initCommunicationPort();
-  final prefs = await SharedPreferences.getInstance();
+  try {
+    FlutterForegroundTask.initCommunicationPort();
+  } catch (_) {}
+
+  final SharedPreferences prefs;
+  try {
+    prefs = await SharedPreferences.getInstance();
+  } catch (e, st) {
+    runApp(_BootError('$e\n$st'));
+    return;
+  }
+
+  // If the last start never finished (crash / blank screen), open in Crypto this time instead of
+  // reopening the market that may be the one failing. The flag is cleared once the first screen is up.
+  const bootKey = 'owl_boot_pending';
+  final lastBootFailed = prefs.getBool(bootKey) ?? false;
   MarketMode.load(prefs); // reopen in the market you used last
+  if (lastBootFailed) MarketMode.mode.value = 'crypto';
+  await prefs.setBool(bootKey, true);
+  Timer(const Duration(seconds: 6), () => prefs.setBool(bootKey, false));
+
   runApp(OwlApp(prefs: prefs));
+}
+
+/// Shown only if the very first start-up step throws (nothing else can draw yet).
+class _BootError extends StatelessWidget {
+  final String text;
+  const _BootError(this.text);
+
+  @override
+  Widget build(BuildContext context) => MaterialApp(
+        debugShowCheckedModeBanner: false,
+        home: Scaffold(
+          backgroundColor: const Color(0xFF1A0000),
+          body: SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(12),
+              child: Text('Start-up error (send this text):\n$text', style: const TextStyle(color: Color(0xFFFF8A80), fontSize: 11)),
+            ),
+          ),
+        ),
+      );
 }
 
 class OwlApp extends StatelessWidget {
