@@ -25,7 +25,7 @@ dependencies:
   shared_preferences: ^2.2.2
 
   # AI Report screen: save / share the report file
-  share_plus: ^7.2.2
+  share_plus: ^10.1.4   # 7.x was compiled against Android 33 and broke the release build (needs 34+)
   path_provider: ^2.1.2
 
   # Trade sounds (order filled / target hit / stop loss hit) - see lib/services/sound_service.dart

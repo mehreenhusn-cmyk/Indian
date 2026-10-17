@@ -4,6 +4,7 @@ import '../services/india_api.dart';
 import '../theme/app_theme.dart';
 import '../widgets/india_ui.dart';
 import 'india_broker_card.dart';
+import 'india_telegram_card.dart';
 
 const kIndiaIndices = ['NIFTY', 'BANKNIFTY', 'FINNIFTY'];
 const kIndiaTfs = [1, 3, 5, 15];
@@ -101,6 +102,7 @@ class IndiaSettingsTab extends StatelessWidget {
       padding: const EdgeInsets.all(AppSpacing.l),
       children: [
         IndiaBrokerCard(api: api, onChanged: onChanged),
+        IndiaTelegramCard(api: api, onChanged: onChanged),
         ISection(
           title: 'Market & timeframe',
           summary: '${unders.join(' + ')} · ${tf}m',

@@ -47,7 +47,8 @@ DEFAULTS = {"underlyings": ["NIFTY", "BANKNIFTY"], "tf": 5, "lots": 1, "itm_dept
             "min_premium": 20.0, "pin_fallback": True, "emergency_pct": 0.0,
             "sl_type": "index", "premium_sl_pct": 30.0,
             "max_loss_pct": 0.0, "capital": 200000.0, "speed_sec": 1.0, "source": "demo", "poll_sec": 5.0,
-            "auto_connect_fyers": True, "was_running": False}
+            "auto_connect_fyers": True, "was_running": False,
+            "tg_enabled": False, "tg_tf": 15}
 # engine-side settings (applied live); the rest (capital/speed/underlyings) are runtime-side
 ENGINE_KEYS = ("lots", "itm_depth", "product", "target_level", "breakeven", "trail_mode",
                "fit_balance", "budget_pct", "min_premium", "pin_fallback",
@@ -56,7 +57,7 @@ NUM = {"lots": (int, 1, 50), "itm_depth": (int, 1, 5), "target_level": (int, 1, 
        "speed_sec": (float, 0.1, 60.0), "poll_sec": (float, 2.0, 60.0), "budget_pct": (float, 0.1, 1.0),
        "min_premium": (float, 0.0, 1000.0), "emergency_pct": (float, 0.0, 0.9), "premium_sl_pct": (float, 1.0, 90.0),
        "max_loss_pct": (float, 0.0, 100.0), "capital": (float, 1000.0, 1e9)}
-BOOLS = ("breakeven", "fit_balance", "pin_fallback", "auto_connect_fyers")
+BOOLS = ("breakeven", "fit_balance", "pin_fallback", "auto_connect_fyers", "tg_enabled")
 
 
 def _ser(o):
@@ -103,6 +104,15 @@ class IndiaRuntime:
         self._fast_thread.start()
         self._auto_thread = None
         self._start_autoconnect()
+        self.tg = None              # India Telegram signals: own watcher thread, never touches trading
+        try:
+            from .india_telegram import IndiaTelegram
+        except ImportError:
+            from india_telegram import IndiaTelegram
+        try:
+            self.tg = IndiaTelegram(self, data_dir)
+        except Exception:
+            log.exception("india telegram watcher could not start")
 
     # ----------------------------------------------------------- build ---
     @staticmethod
@@ -539,6 +549,14 @@ class IndiaRuntime:
             for k in BOOLS:
                 if k in d:
                     s[k] = bool(d[k])
+            if "tg_tf" in d:
+                try:
+                    v = int(d["tg_tf"])
+                except (TypeError, ValueError):
+                    v = None
+                if v not in (5, 15):
+                    raise ValueError("Telegram timeframe must be 5 or 15 minutes")
+                s["tg_tf"] = v
             if "tf" in d:
                 tf = self._tf_ok(d["tf"], default=None)
                 if tf is None:

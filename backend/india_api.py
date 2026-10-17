@@ -173,4 +173,45 @@ def make_router(require_api_token, data_dir):
     def broker_forget(payload: dict, _a=Depends(require_api_token)):
         return rt().forget_broker(str(payload.get("broker", "")).lower())
 
+    # ---- India Telegram signals (token / chat id are saved on the server, never returned in full) ----
+    def tg():
+        t = rt().tg
+        if t is None:
+            raise HTTPException(status_code=503, detail="India Telegram is not available")
+        return t
+
+    @r.get("/telegram")
+    def telegram_info(_a=Depends(require_api_token)):
+        return tg().info()
+
+    @r.post("/telegram")
+    def telegram_save(payload: dict, _a=Depends(require_api_token)):
+        try:
+            tg().save_creds(payload.get("bot_token"), payload.get("chat_id"))
+            patch = {k: payload[k] for k in ("tg_enabled", "tg_tf") if k in payload}
+            if "enabled" in payload:
+                patch["tg_enabled"] = payload["enabled"]
+            if "tf" in payload:
+                patch["tg_tf"] = payload["tf"]
+            if patch:
+                rt().update_settings(patch)
+        except (ValueError, TypeError) as e:
+            raise HTTPException(status_code=400, detail=str(e))
+        return tg().info()
+
+    @r.post("/telegram/test")
+    def telegram_test(_a=Depends(require_api_token)):
+        ok, msg = tg().send_test()
+        return {"ok": ok, "message": msg, **tg().info()}
+
+    @r.post("/telegram/find_chat")
+    def telegram_find_chat(_a=Depends(require_api_token)):
+        ok, msg = tg().find_chat()
+        return {"ok": ok, "message": msg, **tg().info()}
+
+    @r.post("/telegram/forget")
+    def telegram_forget(_a=Depends(require_api_token)):
+        tg().forget()
+        return tg().info()
+
     return r
