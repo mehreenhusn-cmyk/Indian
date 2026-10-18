@@ -28,11 +28,11 @@ def test_card():
     sent = opened + timedelta(minutes=15, seconds=7)
     c = T.format_card(sig("BUY"), "NIFTY", 15, 7, opened, sent, itm_depth=1)
     assert c.startswith("🟢 LONG SIGNAL") and "Signal #   : 7" in c and "Timeframe  : 15m" in c
-    assert "NIFTY 24500 CE" in c, c                    # nearest in-the-money strike (same helper the bot uses)
+    assert "Option" not in c and "Bot        : Faisal sir" in c, c      # no option line, bot name is Faisal sir
     assert "(7s after close)" in c and "14:15 - 14:30" in c and "tradingview" not in c.lower()
     assert "Stop Loss  : 24472.35 (0.16%)" in c
     p = T.format_card(sig("SELL"), "BANKNIFTY", 5, 1, opened, sent)
-    assert p.startswith("🔴 SHORT SIGNAL") and " PE" in p and "SELL (Put)" in p
+    assert p.startswith("🔴 SHORT SIGNAL") and "SELL (Put)" in p and "Option" not in p
 
 
 def test_boundary_and_session():

@@ -199,6 +199,37 @@ def _z(a, b, sign):
         return 0.0
 
 
+IST_OFFSET = 19800          # 5h30m: days are counted in Indian time (same as the app)
+
+
+def _day(ts):
+    try:
+        ts = float(ts)
+        return time.strftime("%d %b", time.gmtime(ts + IST_OFFSET)) if ts > 0 else None
+    except Exception:
+        return None
+
+
+def day_table(pairs, days=7):
+    """pairs: [(row, kept_bool)] -> newest day first: [{day, bot_n, bot_net, idea_n, idea_net}] (last `days` days with trades)."""
+    d = {}
+    for r, kept in pairs:
+        k = _day(r.get("ts"))
+        if not k:
+            continue
+        e = d.setdefault(k, {"day": k, "ts": float(r["ts"]), "bot_n": 0, "bot_net": 0.0, "idea_n": 0, "idea_net": 0.0})
+        e["bot_n"] += 1
+        e["bot_net"] += r["roi"]
+        if kept:
+            e["idea_n"] += 1
+            e["idea_net"] += r["roi"]
+    out = sorted(d.values(), key=lambda x: -x["ts"])[:days]
+    for e in out:
+        e.pop("ts", None)
+        e["bot_net"], e["idea_net"] = round(e["bot_net"], 1), round(e["idea_net"], 1)
+    return out
+
+
 def saved_eval(rows):
     """rows: Doctor's clean trades (oldest first): {"t": trade, "act": BUY/SELL, "roi": float}.
     -> {key: {state, n_known, n_skip, vs_bot, verdict}}.  verdict: up (rule would have helped) / down / unclear."""
@@ -230,7 +261,9 @@ def saved_eval(rows):
                 verdict = "up"                  # skipped trades were clearly worse in both halves
             elif _z(so, ko, -1) >= Z_OLD and _z(sn, kn, -1) >= Z_NEW:
                 verdict = "down"                # skipped trades were clearly better in both halves
-        out[key] = {"state": "ok", "n_known": len(known), "n_skip": len(skipped), "vs_bot": round(vs, 1), "verdict": verdict}
+        out[key] = {"state": "ok", "n_known": len(known), "n_skip": len(skipped), "vs_bot": round(vs, 1), "verdict": verdict,
+                    "net": round(sum(r["roi"] for r, k in known if k), 1), "n_keep": sum(1 for r, k in known if k),
+                    "by_day": day_table([(r, k) for r, k in known])}
     return out
 
 
@@ -300,7 +333,16 @@ def build_from(replay, rows):
         sign, mixed = _replay_sign(d["replay"])
         v = _combine(sign, mixed, s)
         nets = [x.get("net", 0.0) for x in d["replay"].values() if x.get("taken")]
-        row = {"key": key, "title": d["title"], "group": d["group"], "replay": d["replay"], "saved": s,
+        profit_tfs = [tf for tf, x in d["replay"].items() if x.get("taken") and x.get("net", 0.0) > 0]
+        saved_profit = s.get("state") == "ok" and s.get("n_keep", 0) >= 30 and s.get("net", 0.0) > 0
+        if profit_tfs or saved_profit:
+            answer = "PROFIT"
+        elif nets or s.get("state") == "ok":
+            answer = "LOSING"
+        else:
+            answer = "NO DATA"
+        row = {"key": key, "title": d["title"], "group": d["group"], "replay": d["replay"], "saved": s, "answer": answer,
+               "best_net": max(nets) if nets else None,
                "verdict": v, "label": LABELS[v], "vshort": VSHORT[v], "desc": DESC.get(key, ""),
                "short": SHORT.get(key) or d["title"][:24],
                "profit_tfs": [tf for tf, x in d["replay"].items() if x.get("taken") and x.get("net", 0.0) > 0],
@@ -316,6 +358,21 @@ def build_from(replay, rows):
                       "better": sum(1 for r in g["rows"] if r["verdict"] in GOOD),
                       "worse": sum(1 for r in g["rows"] if r["verdict"] in BAD),
                       "mixed": sum(1 for r in g["rows"] if r["verdict"] == "mixed")} for g in out["groups"]]
+    out["bot_by_day"] = day_table([(r, False) for r in rows])
+    profit_ideas = sorted((r for r in flat if r["answer"] == "PROFIT"),
+                          key=lambda r: -(r["best_net"] if r["best_net"] is not None else -1e9))[:5]
+    closest = sorted((r for r in flat if r["answer"] == "LOSING" and r["best_net"] is not None), key=lambda r: -r["best_net"])[:3]
+    out["profit_ideas"], out["closest"] = profit_ideas, closest
+    bot_best = max((out["bot"][tf]["net"] for tf in done), default=None)
+    if profit_ideas:
+        out["answer_box"] = {"kind": "profit", "text": f"{len(profit_ideas)} idea(s) made a real profit after fees: "
+                             + "; ".join(r["short"] for r in profit_ideas[:3]) + ". Try on paper first."}
+    elif flat:
+        c = closest[0] if closest else None
+        extra = f" Closest: {c['short']} still loses {c['best_net']:.0f}" + (f" (bot {bot_best:.0f})." if bot_best is not None else ".") if c else ""
+        out["answer_box"] = {"kind": "none", "text": "No idea makes a profit yet. Change nothing." + extra}
+    else:
+        out["answer_box"] = {"kind": "wait", "text": "Tap Run tests to start. Nothing to show yet."}
     out["bot_row"] = {"replay": {tf: out["bot"][tf]["net"] for tf in done}, "saved": saved_net if rows else None, "saved_n": len(rows)}
     rank = {"helps": 0, "replay_up": 1, "saved_up": 2, "mixed": 3, "unclear": 4, "saved_down": 5, "replay_down": 5, "hurts": 6}
     out["top"] = sorted((r for r in flat if r["verdict"] in ("helps", "replay_up", "saved_up", "mixed")),

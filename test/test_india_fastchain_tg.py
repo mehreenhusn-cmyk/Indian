@@ -77,6 +77,7 @@ def test_token_check_and_demo(monkeypatch=None):
         assert tg.info()["token_check"] == {"ok": True, "text": "Token OK: @ooowlbot"}
         ok, _ = tg.send_demo_signal()
         assert ok and sent and sent[-1].startswith("🧪 DEMO") and "TP4" in sent[-1] and "Stop Loss" in sent[-1]
+        assert "after close" not in sent[-1] and "Option" not in sent[-1] and "Faisal sir" in sent[-1]
         tg.forget()
         assert tg.info()["token_check"]["ok"] is None
     finally:

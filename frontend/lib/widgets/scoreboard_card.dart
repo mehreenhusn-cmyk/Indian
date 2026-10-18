@@ -80,15 +80,6 @@ class _ScoreboardCardState extends State<ScoreboardCard> {
   static List<Map<String, dynamic>> _list(dynamic v) =>
       (v is List) ? v.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList() : <Map<String, dynamic>>[];
 
-  Color _vcol(AppPalette p, String v) {
-    if (v == 'helps') return p.profit;
-    if (v == 'hurts') return p.loss;
-    if (v == 'mixed') return p.warning;
-    if (v == 'replay_up' || v == 'saved_up') return p.profit.withOpacity(0.75);
-    if (v == 'replay_down' || v == 'saved_down') return p.loss.withOpacity(0.75);
-    return p.textSecondary;
-  }
-
   @override
   Widget build(BuildContext context) {
     final p = context.palette;
@@ -116,8 +107,7 @@ class _ScoreboardCardState extends State<ScoreboardCard> {
             child: Text(running ? 'Running...' : (tfsDone.isEmpty ? 'Run tests' : 'Run again')),
           ),
         ]),
-        Text('One line per idea. Replay = the bot\'s signals on old candles. Saved = your own closed trades. HELPS needs both to agree.',
-            style: context.type.metadata),
+        Text('Does the idea make real money after fees? Numbers are the idea\'s own result, not "better than bot".', style: context.type.metadata),
         if (running) ...[
           const SizedBox(height: 8),
           const LinearProgressIndicator(),
@@ -127,39 +117,41 @@ class _ScoreboardCardState extends State<ScoreboardCard> {
         if (_loading) const Padding(padding: EdgeInsets.only(top: 12), child: LinearProgressIndicator()),
         if (_err.isNotEmpty)
           Padding(padding: const EdgeInsets.only(top: 8), child: Text(_err, style: context.type.metadata.copyWith(color: p.loss))),
-        if (headline.isNotEmpty) ...[
-          const SizedBox(height: 10),
-          for (final h in headline)
-            Padding(padding: const EdgeInsets.only(bottom: 4), child: Text(h, style: context.type.secondary.copyWith(color: p.textPrimary, height: 1.35))),
-        ],
-        if (byTf.isNotEmpty) ...[
-          const SizedBox(height: 10),
-          _label(context, 'BY TIMEFRAME (replay)'),
-          for (final t in byTf) _tfLine(context, t),
-        ],
+        if (_d['answer_box'] is Map) _answerBox(context, Map<String, dynamic>.from(_d['answer_box'] as Map)),
         if (groups.isNotEmpty) ...[
-          const SizedBox(height: 12),
-          _label(context, 'TESTING ${_d['total'] ?? groups.length} IDEAS IN ${groups.length} GROUPS'),
-          Text('Numbers = ROI points better (+) or worse (-) than the normal bot. 3m / 5m / 15m = old candle data. Saved = your closed trades. Tap a row for details.',
-              style: context.type.metadata),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           _tableHeader(context),
           _botRow(context, Map<String, dynamic>.from((_d['bot_row'] as Map?) ?? {}), tfsDone),
+          if (_list(_d['profit_ideas']).isNotEmpty) ...[
+            const SizedBox(height: 8),
+            _label(context, 'MADE PROFIT'),
+            for (final r in _list(_d['profit_ideas'])) _tableRow(context, r, tfsDone, 'top'),
+          ] else if (_list(_d['closest']).isNotEmpty) ...[
+            const SizedBox(height: 8),
+            _label(context, 'CLOSEST 3 (all still losing)'),
+            for (final r in _list(_d['closest'])) _tableRow(context, r, tfsDone, 'top'),
+          ],
         ],
-        if (_list(_d['top']).isNotEmpty) ...[
-          const SizedBox(height: 10),
-          _label(context, 'TOP 5 (best first)'),
-          for (final r in _list(_d['top'])) _tableRow(context, r, tfsDone, 'top'),
-        ],
+        if (_list(_d['bot_by_day']).isNotEmpty) _dayFold(context, 'Day by day: normal bot', 'Last 7 days of your saved trades', [
+          for (final x in _list(_d['bot_by_day'])) Text('${x['day']}:  ${x['bot_n']} trades, net ${_f(_n(x['bot_net']))}', style: context.type.metadata),
+        ]),
         if (groups.isNotEmpty)
           Theme(
             data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
             child: ExpansionTile(
               tilePadding: EdgeInsets.zero,
               childrenPadding: EdgeInsets.zero,
-              title: Text('All ideas by group', style: context.type.primary.copyWith(fontWeight: FontWeight.w700)),
-              subtitle: Text('${_d['total'] ?? ''} ideas: Bollinger, SD / EMA bands, TSI / Z, CVD, exits, Kim\'s ideas', style: context.type.metadata),
+              title: Text('All ideas (${_d['total'] ?? ''})', style: context.type.primary.copyWith(fontWeight: FontWeight.w700)),
+              subtitle: Text('Grouped. Tap an idea to see what it does and day by day.', style: context.type.metadata),
               children: [
+                for (final h in headline)
+                  Padding(padding: const EdgeInsets.only(bottom: 4), child: Text(h, style: context.type.metadata.copyWith(height: 1.35))),
+                if (byTf.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  _label(context, 'BY TIMEFRAME (replay)'),
+                  for (final t in byTf) _tfLine(context, t),
+                ],
+                const SizedBox(height: 6),
                 _tableHeader(context),
                 for (final g in groups) ...[
                   const SizedBox(height: 8),
@@ -173,12 +165,37 @@ class _ScoreboardCardState extends State<ScoreboardCard> {
         if (groups.isNotEmpty)
           Padding(
             padding: const EdgeInsets.only(top: 10),
-            child: Text(
-                'Numbers are ROI points after fees. + means the idea beat the normal bot. Many tests on the same data can still give a lucky winner, so try a winner on paper first. '
-                'Saved trades have no Bollinger, CVD, TSI or exit data, so those ideas show replay only.',
+            child: Text('ROI points after fees. PROFIT = the idea\'s own result is above zero. Saved = your closed trades (n/a = not enough data). Try a winner on paper first.',
                 style: context.type.metadata),
           ),
       ]),
+    );
+  }
+
+  Widget _answerBox(BuildContext context, Map<String, dynamic> a) {
+    final p = context.palette;
+    final k = '${a['kind']}';
+    final c = k == 'profit' ? p.profit : (k == 'none' ? p.warning : p.textSecondary);
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(top: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(color: c.withOpacity(0.12), borderRadius: BorderRadius.circular(10), border: Border.all(color: c.withOpacity(0.5))),
+      child: Text('${a['text']}', style: context.type.secondary.copyWith(color: p.textPrimary, fontWeight: FontWeight.w700, height: 1.35)),
+    );
+  }
+
+  Widget _dayFold(BuildContext context, String title, String sub, List<Widget> kids) {
+    return Theme(
+      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+      child: ExpansionTile(
+        tilePadding: EdgeInsets.zero,
+        childrenPadding: const EdgeInsets.only(bottom: 8),
+        expandedCrossAxisAlignment: CrossAxisAlignment.start,
+        title: Text(title, style: context.type.primary.copyWith(fontWeight: FontWeight.w700)),
+        subtitle: Text(sub, style: context.type.metadata),
+        children: kids,
+      ),
     );
   }
 
@@ -230,7 +247,7 @@ class _ScoreboardCardState extends State<ScoreboardCard> {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 4),
       decoration: BoxDecoration(border: Border(bottom: BorderSide(color: p.textSecondary.withOpacity(0.35)))),
-      child: Row(children: [h('Idea', _wIdea, left: true), h('3m', _wTf), h('5m', _wTf), h('15m', _wTf), h('Saved', _wSaved), h('Result', _wVerdict)]),
+      child: Row(children: [h('Idea', _wIdea, left: true), h('3m', _wTf), h('5m', _wTf), h('15m', _wTf), h('Saved', _wSaved), h('Answer', _wVerdict)]),
     );
   }
 
@@ -268,17 +285,17 @@ class _ScoreboardCardState extends State<ScoreboardCard> {
     final open = _open.contains(id);
     final rep = (r['replay'] is Map) ? Map<String, dynamic>.from(r['replay'] as Map) : <String, dynamic>{};
     final sv = (r['saved'] is Map) ? Map<String, dynamic>.from(r['saved'] as Map) : <String, dynamic>{};
-    final v = '${r['verdict']}';
     Widget tfCell(String tf) {
       final x = rep[tf];
       if (x is! Map) return _cell(context, '-', color: p.textSecondary);
-      final vs = _n(x['vs_bot']);
-      return _cell(context, _f(vs), color: vs > 0 ? p.profit : (vs < 0 ? p.loss : p.textSecondary), bold: x['verdict'] == 'better' || x['verdict'] == 'worse');
+      if (x['taken'] == 0) return _cell(context, '0 trades', color: p.textSecondary);
+      final nt = _n(x['net']);
+      return _cell(context, _f(nt), color: nt > 0 ? p.profit : (nt < 0 ? p.loss : p.textSecondary), bold: nt > 0);
     }
     Widget savedCell() {
       if (sv['state'] != 'ok') return _cell(context, 'n/a', color: p.textSecondary, flex: _wSaved);
-      final vs = _n(sv['vs_bot']);
-      return _cell(context, _f(vs), color: vs > 0 ? p.profit : (vs < 0 ? p.loss : p.textSecondary), flex: _wSaved);
+      final nt = _n(sv['net']);
+      return _cell(context, _f(nt), color: nt > 0 ? p.profit : (nt < 0 ? p.loss : p.textSecondary), flex: _wSaved);
     }
     final profit = (r['profit_tfs'] is List && (r['profit_tfs'] as List).isNotEmpty);
     return InkWell(
@@ -296,7 +313,7 @@ class _ScoreboardCardState extends State<ScoreboardCard> {
             tfCell('5m'),
             tfCell('15m'),
             savedCell(),
-            _cell(context, '${r['vshort'] ?? r['label']}', color: _vcol(p, v), bold: true, flex: _wVerdict),
+            _cell(context, '${r['answer'] ?? ''}', color: r['answer'] == 'PROFIT' ? p.profit : (r['answer'] == 'LOSING' ? p.loss : p.textSecondary), bold: true, flex: _wVerdict),
           ]),
           if (open)
             Padding(
@@ -311,6 +328,13 @@ class _ScoreboardCardState extends State<ScoreboardCard> {
                     ? 'Saved trades: rule would skip ${sv['n_skip']} of ${sv['n_known']} trades, ${_f(_n(sv['vs_bot']))} vs bot'
                     : (sv['state'] == 'no_data' ? 'Saved trades: only ${sv['n_known']} trades have this data, not enough' : 'Saved trades: this idea cannot be tested on saved trades'),
                     style: context.type.metadata),
+                Text('Old verdict (bot vs idea): ${r['label'] ?? r['vshort']}', style: context.type.metadata),
+                if (sv['state'] == 'ok' && _list(sv['by_day']).isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text('Day by day (your saved trades):', style: context.type.metadata.copyWith(fontWeight: FontWeight.w700)),
+                  for (final x in _list(sv['by_day']))
+                    Text('${x['day']}:  bot ${x['bot_n']} trades ${_f(_n(x['bot_net']))}   |   this idea ${x['idea_n']} trades ${_f(_n(x['idea_net']))}', style: context.type.metadata),
+                ],
                 Text(profit ? 'PROFIT after fees on: ${(r['profit_tfs'] as List).join(', ')}' : (rep.isNotEmpty ? 'Still losing after fees (it only loses less than the bot)' : ''),
                     style: context.type.metadata.copyWith(color: profit ? p.profit : p.warning, fontWeight: FontWeight.w700)),
               ]),

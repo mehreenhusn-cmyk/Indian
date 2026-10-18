@@ -76,6 +76,28 @@ def main():
         {"label": "SD 200 + rule", "n": 5, "avg": -1.3, "verdict": "better"}]}]})
     assert blk["tfs"][0]["plain"][0]["len"] == 200 and blk["tfs"][0]["rule"][0]["avg"] == -1.3
     assert SB.sd_block(None) is None
+
+    # simple view: idea's own result, answer words, day by day
+    assert out["answer_box"]["kind"] == "none" and "Change nothing" in out["answer_box"]["text"], out["answer_box"]
+    assert by["o_adx"]["answer"] == "LOSING" and out["profit_ideas"] == [] and out["closest"]
+    rp = fake_replay()
+    for tf in rp["tfs"].values():
+        for r in tf["rows"]:
+            if r["key"] == "o_adx":
+                r["net"] = 55.0                          # this idea alone ends above zero
+            else:
+                r["net"] = -20.0
+    dated = fake_trades()
+    for i, r in enumerate(dated):
+        r["ts"] = 1792000000 + i * 3 * 3600
+    o7 = SB.build_from(rp, dated)
+    assert o7["answer_box"]["kind"] == "profit" and o7["profit_ideas"][0]["key"] == "o_adx", o7["answer_box"]
+    b7 = {r["key"]: r for g in o7["groups"] for r in g["rows"]}
+    assert b7["o_adx"]["answer"] == "PROFIT" and b7["bb_sq"]["answer"] == "LOSING"
+    assert len(o7["bot_by_day"]) == 7 and o7["bot_by_day"][0]["bot_n"] > 0
+    d0 = b7["o_adx"]["saved"]["by_day"][0]
+    assert d0["idea_n"] <= d0["bot_n"] and "day" in d0
+    assert SB.build_from({"tfs": {}}, [])["answer_box"]["kind"] == "wait"
     # table data: total, counts per group, bot row, short names
     assert out["total"] == 3 and sum(c["n"] for c in out["counts"]) == 3, out["counts"]
     assert out["bot_row"]["replay"]["15m"] == -300.0 and out["bot_row"]["saved_n"] == len(rows)

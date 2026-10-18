@@ -39,7 +39,7 @@ MARKET_OPEN = (9, 15)
 MARKET_CLOSE = (15, 30)
 FEED_WAIT_SEC = 120                 # how long we keep asking for a candle the feed has not delivered yet
 HISTORY = 300                       # same as the bot's runner, so the candle cache is shared when tf matches
-BOT_NAME = "HUSSAIN"
+BOT_NAME = "Faisal sir"
 
 
 def _clean(text, token):
@@ -54,7 +54,7 @@ def _hhmm(dt):
     return dt.astimezone(IST).strftime("%H:%M")
 
 
-def format_card(sig, underlying, tf, number, candle_open, sent_at, itm_depth=1, data_label="Fyers", bot_name=BOT_NAME):
+def format_card(sig, underlying, tf, number, candle_open, sent_at, itm_depth=1, data_label="Fyers", bot_name=BOT_NAME, demo=False):
     """Plain-text signal card, same layout as the crypto card. `sig` = strategy.Signal."""
     is_long = str(sig.action).upper() == "BUY"
     entry = float(sig.entry_price)
@@ -65,13 +65,6 @@ def format_card(sig, underlying, tf, number, candle_open, sent_at, itm_depth=1, 
         return ((tp - entry) if is_long else (entry - tp)) / entry * 100 if entry else 0.0
 
     sl_pct = ((entry - sl) if is_long else (sl - entry)) / entry * 100 if entry else 0.0
-    otype = opt.option_type_for(sig.action)
-    try:
-        step = opt.UNDERLYINGS[underlying]["step"]
-        strike = opt.strike_for(entry, otype, step, "ITM", int(itm_depth))
-        option_line = f"Option     : {underlying} {strike} {otype} (ITM {int(itm_depth)})"
-    except Exception:
-        option_line = f"Option     : {underlying} {otype}"
     candle_close = candle_open + timedelta(minutes=tf)
     delay = max(0, int((sent_at - candle_close).total_seconds()))
     lines = [
@@ -82,7 +75,6 @@ def format_card(sig, underlying, tf, number, candle_open, sent_at, itm_depth=1, 
         f"Symbol     : {underlying}",
         f"Direction  : {'BUY (Call)' if is_long else 'SELL (Put)'}",
         f"Timeframe  : {tf}m",
-        option_line,
         "--------------------------",
         f"Entry      : {entry:.2f}",
         f"Stop Loss  : {sl:.2f} ({sl_pct:.2f}%)",
@@ -92,7 +84,7 @@ def format_card(sig, underlying, tf, number, candle_open, sent_at, itm_depth=1, 
         f"TP4        : {float(sig.tp4):.2f} ({pct(sig.tp4):.2f}%)",
         "--------------------------",
         f"Candle     : {_hhmm(candle_open)} - {_hhmm(candle_close)} IST (closed {_hhmm(candle_close)})",
-        f"Sent       : {sent_at.astimezone(IST).strftime('%H:%M:%S')} IST ({delay}s after close)",
+        f"Sent       : {sent_at.astimezone(IST).strftime('%H:%M:%S')} IST" + ("" if demo else f" ({delay}s after close)"),
         f"Data       : {data_label}",
         f"Bot        : {bot_name}",
     ]
@@ -243,7 +235,7 @@ class IndiaTelegram:
 
         und = (self.rt.settings.get("underlyings") or ["NIFTY"])[0]
         card = format_card(_S, und, tf, 0, opened, now, itm_depth=self.rt.settings.get("itm_depth", 1),
-                           data_label="DEMO (sample numbers)", bot_name=BOT_NAME)
+                           data_label="DEMO (sample numbers)", bot_name=BOT_NAME, demo=True)
         return self._post("🧪 DEMO - not a real signal\n" + card, token, chat, "test")
 
     def find_chat(self):
