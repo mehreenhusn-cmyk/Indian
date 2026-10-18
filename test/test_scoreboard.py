@@ -66,6 +66,16 @@ def main():
     # too few saved trades -> "no_data", not a made-up verdict
     out6 = SB.build_from(fake_replay(), fake_trades(n=20))
     assert {r["key"]: r for g in out6["groups"] for r in g["rows"]}["o_adx"]["saved"]["state"] == "no_data"
+    # extras: plain description, top list, profit flag, SD length block
+    assert by["o_adx"]["desc"] and by["bb_sq"]["desc"].startswith("Bollinger")
+    assert out["top"] and out["top"][0]["key"] == "o_adx" and len(out["top"]) <= 5
+    assert by["o_adx"]["still_losing"] is True and by["o_adx"]["profit_tfs"] == []
+    assert any("No idea makes a profit" in h for h in out["headline"]), out["headline"]
+    blk = SB.sd_block({"answer": ["x"], "tfs": [{"tf": "15m", "rows": [
+        {"label": "SD 200 (bot)", "n": 9, "avg": -1.1, "verdict": "bot"}, {"label": "SD 100", "n": 9, "avg": -1.0, "verdict": "unclear"},
+        {"label": "SD 200 + rule", "n": 5, "avg": -1.3, "verdict": "better"}]}]})
+    assert blk["tfs"][0]["plain"][0]["len"] == 200 and blk["tfs"][0]["rule"][0]["avg"] == -1.3
+    assert SB.sd_block(None) is None
     # the API calls build(5000) through _swr(key, ttl, fn, 5000): build must accept that one argument (this was the TypeError in the app)
     r = SB.build(5000)
     assert isinstance(r, dict) and "groups" in r, r

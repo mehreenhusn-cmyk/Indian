@@ -136,11 +136,29 @@ class _ScoreboardCardState extends State<ScoreboardCard> {
           _label(context, 'BY TIMEFRAME (replay)'),
           for (final t in byTf) _tfLine(context, t),
         ],
-        for (final g in groups) ...[
+        if (_list(_d['top']).isNotEmpty) ...[
           const SizedBox(height: 12),
-          _label(context, '${g['title']}'.toUpperCase()),
-          for (final r in _list(g['rows'])) _ideaRow(context, r, tfsDone),
+          _label(context, 'TOP IDEAS (best first)'),
+          for (final r in _list(_d['top'])) _ideaRow(context, r, tfsDone),
         ],
+        if (groups.isNotEmpty)
+          Theme(
+            data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+            child: ExpansionTile(
+              tilePadding: EdgeInsets.zero,
+              childrenPadding: EdgeInsets.zero,
+              title: Text('All ideas by type', style: context.type.primary.copyWith(fontWeight: FontWeight.w700)),
+              subtitle: Text('Bollinger, SD / EMA bands, TSI / Z, CVD, exits, Kim\'s ideas', style: context.type.metadata),
+              children: [
+                for (final g in groups) ...[
+                  const SizedBox(height: 8),
+                  _label(context, '${g['title']}'.toUpperCase()),
+                  for (final r in _list(g['rows'])) _ideaRow(context, r, tfsDone),
+                ],
+              ],
+            ),
+          ),
+        if (_d['sd_length'] is Map) _sdBlock(context, Map<String, dynamic>.from(_d['sd_length'] as Map)),
         if (groups.isNotEmpty)
           Padding(
             padding: const EdgeInsets.only(top: 10),
@@ -210,8 +228,49 @@ class _ScoreboardCardState extends State<ScoreboardCard> {
           const SizedBox(width: 8),
           Text('${r['label']}', style: context.type.label.copyWith(color: col, fontWeight: FontWeight.w800)),
         ]),
+        if ('${r['desc'] ?? ''}'.isNotEmpty)
+          Padding(padding: const EdgeInsets.only(bottom: 2), child: Text('${r['desc']}', style: context.type.metadata.copyWith(color: p.textSecondary))),
         Text.rich(TextSpan(style: context.type.metadata, children: spans)),
+        if (rep.isNotEmpty)
+          Text(
+            (r['profit_tfs'] is List && (r['profit_tfs'] as List).isNotEmpty)
+                ? 'PROFIT after fees on: ${(r['profit_tfs'] as List).join(', ')}'
+                : 'Still losing after fees (it only loses less than the bot)',
+            style: context.type.metadata.copyWith(
+                color: (r['profit_tfs'] is List && (r['profit_tfs'] as List).isNotEmpty) ? p.profit : p.warning, fontWeight: FontWeight.w700),
+          ),
       ]),
+    );
+  }
+
+  Widget _sdBlock(BuildContext context, Map<String, dynamic> sd) {
+    final p = context.palette;
+    final ans = (sd['answer'] is List) ? (sd['answer'] as List).map((e) => '$e').toList() : <String>[];
+    String line(dynamic xs) {
+      final l = _list(xs);
+      if (l.isEmpty) return 'no data';
+      return l.map((x) => 'SD ${x['len']} ${x['avg'] is num ? (x['avg'] as num).toStringAsFixed(1) : '-'}').join('   ');
+    }
+    return Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          tilePadding: EdgeInsets.zero,
+          childrenPadding: EdgeInsets.zero,
+          title: Text('SD length test (200 / 150 / 100 / 50)', style: context.type.primary.copyWith(fontWeight: FontWeight.w700)),
+          subtitle: Text('Average result per trade after fees, majors only', style: context.type.metadata),
+          children: [
+            for (final a in ans) Padding(padding: const EdgeInsets.only(bottom: 4), child: Text(a, style: context.type.secondary.copyWith(color: p.textPrimary, height: 1.35))),
+            for (final t in _list(sd['tfs'])) ...[
+              const SizedBox(height: 6),
+              Text('${t['tf']}', style: context.type.primary.copyWith(fontWeight: FontWeight.w800)),
+              Text('Every signal:  ${line(t['plain'])}', style: context.type.metadata),
+              Text('With SD 0 rule:  ${line(t['rule'])}', style: context.type.metadata),
+            ],
+          ],
+        ),
+      ),
     );
   }
 }

@@ -3,17 +3,13 @@ name: Flutter CI
 on:
   push:
     branches: [ main ]
-    # Backend-only / test-only / notes-only pushes do not change the APK, so they do not build one
-    # (every build stores a new APK in GitHub Actions storage, which is limited to 0.5 GB on the free plan).
+    # Every push builds a new APK now (backend and test files too), so a backend-only upload also starts a build.
+    # Only notes (.md) are ignored. Old APKs are removed by the "Cleanup Actions storage" workflow after each build.
     paths-ignore:
-      - 'backend/**'
-      - 'test/**'
       - '**.md'
   pull_request:
     branches: [ main ]
     paths-ignore:
-      - 'backend/**'
-      - 'test/**'
       - '**.md'
   workflow_dispatch:
 

@@ -39,6 +39,52 @@ LABELS = {
     "unclear": "NOT CLEAR",
 }
 
+
+# One plain line per idea: what it does to the bot's signals (shown under the idea name in the app).
+DESC = {
+    "sl_prev1": "Stop-loss placed at the previous candle's extreme, so it is a bit wider than the bot's.",
+    "sl_prev3": "Stop-loss at the extreme of the last 3 candles (wider than the bot).",
+    "sl_swing": "Stop-loss at the extreme of the last 10 candles (much wider).",
+    "sl_atr": "Stop-loss 1.5 x ATR away (ATR = normal candle size).",
+    "be_fee": "After TP1 is hit, move the stop to entry + fee instead of leaving it.",
+    "tp2": "Close the whole trade at TP2 instead of waiting for TP4.",
+    "run": "No TP4 exit. Stay in the trade until the opposite signal comes.",
+    "run_prev1": "Stay till the opposite signal, with the wider previous-candle stop-loss.",
+    "tsi": "Take the signal only if TSI (buyers vs sellers) points the same way as the trade.",
+    "zmove": "Take the signal only if the Z-score is moving in the trade's direction.",
+    "zrule": "SD 0 rule: no BUY below the mean line, no SELL above the mean line.",
+    "both": "Take the signal only if both TSI and Z-score agree with the trade.",
+    "chop": "Skip signals when the EMA50 was crossed more than 2 times in the last 20 candles (messy market).",
+    "bb_sq": "Bollinger Bands squeeze = bands tight = sideways market. Skip signals inside a squeeze.",
+    "bb_side": "BUY only above the Bollinger middle line, SELL only below it.",
+    "bb_late": "Skip signals when price is already outside the Bollinger band (move is late).",
+    "bb_exp": "Take signals only while the Bollinger Bands are opening up (trend starting).",
+    "cvd3": "Take the signal only if real buy/sell flow (CVD) of the last 3 candles agrees.",
+    "cvd_push": "Take the signal only if the signal candle was pushed by real flow (10% or more).",
+    "cvd_exp": "CVD agrees AND Bollinger Bands are opening up.",
+    "wait": "Do not enter on the signal candle. Wait 1 candle, then enter (control test).",
+    "wait_cvd": "Wait 1 candle, then enter only if CVD still agrees.",
+    "run_cvd": "Stay till the opposite signal, but only on signals where CVD agrees.",
+    "ema": "SD bands built on EMA200 instead of SMA200 (EMA reacts faster than SMA).",
+    "mix1": "Wider previous-candle stop-loss + skip Bollinger squeeze.",
+    "mix2": "TSI and Z both agree + wider previous-candle stop-loss.",
+    "mix3": "Stay till the opposite signal, only when TSI agrees.",
+    "mix4": "Stay till the opposite signal + wider stop-loss + skip squeeze.",
+    "o_adx": "Kim: take the signal only if ADX is 20 or more (trend is strong).",
+    "o_adx22": "Kim: same as ADX 20, but stricter (ADX 22 or more).",
+    "o_htf": "Kim: take the signal only if the higher-timeframe trend agrees.",
+    "o_slope": "Kim: take the signal only if the EMA50 line is sloping the same way as the trade.",
+    "o_vol": "Kim: take the signal only if volume is at least 1.1x of the last 20 candles.",
+    "o_gap": "Kim: skip if price is already far from EMA50 (more than 0.75 ATR).",
+    "o_1r": "Kim: skip if TP1 is closer than the stop-loss (reward smaller than risk).",
+    "o_bundle": "Kim: all his filters together (ADX, higher TF, slope, chop, volume, gap, 1R). Very few trades remain.",
+    "o_atr": "Kim: stop-loss set by ATR (0.8 to 1.8 ATR), skip if TP1 is less than 1R.",
+    "o_part": "Kim: book profit in parts: 40% at TP1, 30% at TP2, 20% at TP3, 10% at TP4.",
+    "o_conf": "Kim: wait 1 candle and enter only if it also closes beyond the signal candle.",
+    "o_pull": "Kim: after the signal wait up to 5 candles for a pullback to EMA50, then enter.",
+    "o_pkg": "Kim: full package = all filters + ATR stop + partial exits. Very few trades.",
+}
+
 # saved-trade version of an idea: (trade dict, "BUY"/"SELL") -> True = trade is kept, False = trade would be skipped, None = data missing.
 MIN_OLD, MIN_NEW = 15, 5
 Z_OLD, Z_NEW = 2.0, 1.64
@@ -218,7 +264,7 @@ def build_from(replay, rows):
         for r in tfs[tf].get("rows") or []:
             d = ideas.setdefault(r["key"], {"key": r["key"], "title": r["title"], "group": GROUP_TITLES.get(r["group"], r["group"]), "replay": {}})
             d["replay"][tf] = {"vs_bot": r.get("vs_bot", 0.0), "verdict": r.get("verdict", "unclear"),
-                               "taken": r.get("taken", 0)}
+                               "taken": r.get("taken", 0), "net": r.get("net", 0.0)}
     if not ideas and saved:                  # replay not run yet: still show the saved-trades half
         for key, title, group in (("zrule", "No long below mean / no short above (SD rule)", "SD bands / EMA bands"),
                                   ("chop", "Low chop (max 2 EMA50 crosses)", "TSI / Z-score / chop"),
@@ -235,14 +281,21 @@ def build_from(replay, rows):
         s = saved.get(key) or {"state": "replay_only", "n_known": 0, "n_skip": 0, "vs_bot": 0.0, "verdict": "unclear"}
         sign, mixed = _replay_sign(d["replay"])
         v = _combine(sign, mixed, s)
+        nets = [x.get("net", 0.0) for x in d["replay"].values() if x.get("taken")]
         row = {"key": key, "title": d["title"], "group": d["group"], "replay": d["replay"], "saved": s,
-               "verdict": v, "label": LABELS[v]}
+               "verdict": v, "label": LABELS[v], "desc": DESC.get(key, ""),
+               "profit_tfs": [tf for tf, x in d["replay"].items() if x.get("taken") and x.get("net", 0.0) > 0],
+               "still_losing": bool(nets) and all(n <= 0 for n in nets)}
         flat.append(row)
     for g in GROUP_ORDER:
         rs = [r for r in flat if r["group"] == g]
         if rs:
             out["groups"].append({"title": g, "rows": rs})
 
+    rank = {"helps": 0, "replay_up": 1, "saved_up": 2, "mixed": 3, "unclear": 4, "saved_down": 5, "replay_down": 5, "hurts": 6}
+    out["top"] = sorted((r for r in flat if r["verdict"] in ("helps", "replay_up", "saved_up", "mixed")),
+                        key=lambda r: (rank[r["verdict"]], -sum(x["vs_bot"] for x in r["replay"].values())))[:5]
+    n_profit = sum(1 for r in flat if r["profit_tfs"])
     n_help = sum(1 for r in flat if r["verdict"] == "helps")
     n_hurt = sum(1 for r in flat if r["verdict"] == "hurts")
     n_mix = sum(1 for r in flat if r["verdict"] == "mixed")
@@ -267,6 +320,12 @@ def build_from(replay, rows):
         if bad:
             h.append("Do not use: " + "; ".join(r["title"] for r in bad[:3]) + ".")
 
+    if done and flat:
+        if n_profit:
+            h.append(f"{n_profit} ideas make a real profit after fees on at least one timeframe (marked PROFIT on the line).")
+        else:
+            h.append("No idea makes a profit after fees on any timeframe yet. BETTER only means it loses less than the bot.")
+
     for tf in done:                          # which idea works / fails on which timeframe
         best = worst = None
         for r in flat:
@@ -283,6 +342,20 @@ def build_from(replay, rows):
     return out
 
 
+def sd_block(sd):
+    """scan_lab SD length test (200/150/100/50, plain and with the SD 0 rule) -> short lines + one compact line per timeframe."""
+    if not isinstance(sd, dict) or not sd.get("tfs"):
+        return None
+    out = {"answer": [str(x) for x in (sd.get("answer") or [])][:4], "tfs": []}
+    for t in sd["tfs"]:
+        rows = {(r.get("label", "").replace(" (bot)", "")): r for r in (t.get("rows") or []) if isinstance(r, dict)}
+        plain = [(n, rows.get(f"SD {n}")) for n in (200, 150, 100, 50)]
+        rule = [(n, rows.get(f"SD {n} + rule")) for n in (200, 150, 100, 50)]
+        fmt = lambda xs: [{"len": n, "avg": r.get("avg"), "n": r.get("n"), "verdict": r.get("verdict")} for n, r in xs if r]
+        out["tfs"].append({"tf": t.get("tf"), "plain": fmt(plain), "rule": fmt(rule)})
+    return out
+
+
 def build(limit=5000):
     """Reads the saved Strategy Lab result + the bot's closed trades. Never raises."""
     try:
@@ -296,6 +369,12 @@ def build(limit=5000):
     except Exception:
         rows = []
     try:
-        return build_from(replay, rows)
+        res = build_from(replay, rows)
+        try:
+            import scan_lab
+            res["sd_length"] = sd_block(scan_lab.status().get("sd"))
+        except Exception:
+            res["sd_length"] = None
+        return res
     except Exception as e:
         return {"ok": False, "error": f"{type(e).__name__}: {e}", "headline": ["Scoreboard could not be built yet."], "groups": []}
