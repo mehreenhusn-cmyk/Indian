@@ -124,15 +124,22 @@ class _VariantLabCardState extends State<VariantLabCard> {
           const SizedBox(height: 10),
           for (final l in answer) Padding(padding: const EdgeInsets.only(bottom: 4), child: Text(l, style: context.type.secondary.copyWith(color: p.textPrimary, height: 1.35))),
         ],
-        if (done)
-          for (final g in groups) ...[
-            if (rows.any((r) => r['group'] == g)) ...[
-              const SizedBox(height: 12),
-              Text(g.toUpperCase(), style: context.type.label.copyWith(fontWeight: FontWeight.w800, letterSpacing: 1.0)),
-              const SizedBox(height: 4),
-              for (final r in rows.where((r) => r['group'] == g)) _row(context, r),
-            ],
-          ],
+        if (done && rows.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          Text('TOP 3 IDEAS (best vs the bot today)', style: context.type.label.copyWith(fontWeight: FontWeight.w800, letterSpacing: 1.0)),
+          const SizedBox(height: 4),
+          for (final r in ([...rows]..sort((a, b) => _d(b['vs_bot']).compareTo(_d(a['vs_bot'])))).take(3)) _row(context, r),
+          Text(rows.any((r) => r['verdict'] == 'better') ? 'At least one idea beat the bot in both older and newer data.' : 'None of them is proven yet. Do not change the bot because of these.',
+              style: context.type.secondary.copyWith(color: p.textPrimary, height: 1.35)),
+        ],
+        if (done) ...[
+          const SizedBox(height: 12),
+          Text('COMPARISON TABLE: normal bot vs every scenario', style: context.type.label.copyWith(fontWeight: FontWeight.w800, letterSpacing: 1.0)),
+          const SizedBox(height: 2),
+          Text('net = ROI points after fees. vs bot = how much better (+) or worse (-) than the normal bot.', style: context.type.metadata),
+          const SizedBox(height: 6),
+          _table(context, res, rows, groups),
+        ],
         if (done)
           Padding(
             padding: const EdgeInsets.only(top: 10),
@@ -143,6 +150,46 @@ class _VariantLabCardState extends State<VariantLabCard> {
           ),
       ]),
     );
+  }
+
+  Widget _table(BuildContext context, Map<String, dynamic> res, List<Map<String, dynamic>> rows, List<String> groups) {
+    final p = context.palette;
+    final bot = (res['bot'] is Map) ? Map<String, dynamic>.from(res['bot'] as Map) : <String, dynamic>{};
+    Widget cell(String x, {int flex = 1, Color? c, bool bold = false, TextAlign a = TextAlign.right}) => Expanded(
+        flex: flex, child: Text(x, textAlign: a, style: context.type.metadata.copyWith(color: c ?? p.textPrimary, fontWeight: bold ? FontWeight.w800 : FontWeight.w400, fontSize: 11)));
+    Widget line(String name, String trades, String net, String win, String vs, String word, Color col, {bool bold = false, Color? vsCol}) => Padding(
+          padding: const EdgeInsets.symmetric(vertical: 3),
+          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            cell(name, flex: 6, a: TextAlign.left, bold: bold),
+            cell(trades, flex: 2),
+            cell(net, flex: 2, c: vsCol),
+            cell(win, flex: 2),
+            cell(vs, flex: 2, c: vsCol, bold: true),
+            cell(word, flex: 3, c: col, bold: true),
+          ]),
+        );
+    final out = <Widget>[
+      line('Scenario', 'trades', 'net', 'win', 'vs bot', 'result', p.textSecondary, vsCol: p.textSecondary),
+      const Divider(height: 6),
+      line('NORMAL BOT', '${_i(res['n'])}', _s(_d(bot['net'])), '${_d(bot['win']).toStringAsFixed(0)}%', '-', 'bot', p.textSecondary, bold: true, vsCol: p.textPrimary),
+    ];
+    for (final g in groups) {
+      final gr = rows.where((r) => r['group'] == g).toList();
+      if (gr.isEmpty) continue;
+      out.add(Padding(
+        padding: const EdgeInsets.only(top: 8, bottom: 2),
+        child: Text(g.toUpperCase(), style: context.type.label.copyWith(fontWeight: FontWeight.w800, letterSpacing: 0.8, color: p.textSecondary)),
+      ));
+      for (final r in gr) {
+        final v = '${r['verdict']}';
+        final vs = _d(r['vs_bot']);
+        final col = v == 'better' ? p.profit : v == 'worse' ? p.loss : p.textSecondary;
+        final word = v == 'better' ? 'BETTER' : v == 'worse' ? 'WORSE' : v == 'unclear' ? 'not clear' : 'few data';
+        out.add(line('${r['title']}', '${_i(r['taken'])}', _s(_d(r['net'])), '${_d(r['win']).toStringAsFixed(0)}%', _s(vs, sign: true), word, col,
+            vsCol: vs > 0 ? p.profit : (vs < 0 ? p.loss : p.textSecondary)));
+      }
+    }
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: out);
   }
 
   Widget _row(BuildContext context, Map<String, dynamic> r) {

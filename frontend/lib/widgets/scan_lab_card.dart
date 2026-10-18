@@ -69,6 +69,42 @@ class _ScanLabCardState extends State<ScanLabCard> {
   static int _i(dynamic v) => (v is num) ? v.toInt() : 0;
   static String _n(double v) => (v > 0 ? '+' : '') + v.toStringAsFixed(1);
 
+  Widget _sdTable(BuildContext context, Map<String, dynamic> t) {
+    final p = context.palette;
+    final rows = _maps(t['rows']);
+    if (rows.isEmpty) return const SizedBox.shrink();
+    Widget cell(String x, {int flex = 1, Color? c, bool bold = false, TextAlign a = TextAlign.right}) => Expanded(
+        flex: flex, child: Text(x, textAlign: a, style: context.type.metadata.copyWith(color: c ?? p.textPrimary, fontWeight: bold ? FontWeight.w800 : FontWeight.w400)));
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text('${t['tf']}', style: context.type.primary.copyWith(fontWeight: FontWeight.w700)),
+        const SizedBox(height: 2),
+        Row(children: [
+          cell('SD length', flex: 3, a: TextAlign.left, c: p.textSecondary),
+          cell('trades', c: p.textSecondary),
+          cell('TP4 %', c: p.textSecondary),
+          cell('avg/trade', flex: 2, c: p.textSecondary),
+          cell('result', flex: 2, c: p.textSecondary),
+        ]),
+        for (final r in rows)
+          Builder(builder: (_) {
+            final v = '${r['verdict']}';
+            final col = v == 'better' ? p.profit : v == 'worse' ? p.loss : p.textSecondary;
+            final word = v == 'bot' ? 'bot today' : v == 'better' ? 'BETTER' : v == 'worse' ? 'WORSE' : v == 'too_few' ? 'few trades' : 'not clear';
+            final avg = r['avg'] == null ? '-' : _n(_d(r['avg']));
+            return Row(children: [
+              cell('${r['label']}', flex: 3, a: TextAlign.left, bold: v == 'bot'),
+              cell('${_i(r['n'])}'),
+              cell(r['tp4'] == null ? '-' : _d(r['tp4']).toStringAsFixed(0)),
+              cell(avg, flex: 2, c: _d(r['avg']) > 0 ? p.profit : p.loss),
+              cell(word, flex: 2, c: col, bold: v == 'better' || v == 'worse'),
+            ]);
+          }),
+      ]),
+    );
+  }
+
   static String _word(Map<String, dynamic> s) => '${s['best_verdict']}' == 'winner' ? 'WINNER' : 'not proven';
 
   List<Map<String, dynamic>> _maps(dynamic v) =>
@@ -178,11 +214,12 @@ class _ScanLabCardState extends State<ScanLabCard> {
           ),
         if (sdAnswer.isNotEmpty) ...[
           const SizedBox(height: 10),
-          Text('SD LENGTH TEST (majors): 200 candles today vs 150 / 100 / 50',
+          Text('SD LENGTH TEST (majors): 200 candles today vs 150 / 100 / 50, with and without the SD0 rule',
               style: context.type.label.copyWith(fontWeight: FontWeight.w800, letterSpacing: 1.0)),
           const SizedBox(height: 6),
           for (final l in sdAnswer)
             Padding(padding: const EdgeInsets.only(bottom: 6), child: Text(l, style: context.type.secondary.copyWith(color: p.textPrimary, height: 1.35))),
+          for (final t in sdTfs) _sdTable(context, t),
           Theme(
             data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
             child: ExpansionTile(

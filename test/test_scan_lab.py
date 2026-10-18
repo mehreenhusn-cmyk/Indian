@@ -100,6 +100,13 @@ assert sts[-1]["len"] == 200 and "vs200" not in sts[-1] and sts[1]["vs200_verdic
 assert 0 <= sts[0]["tp4"] <= sts[0]["tp1"] <= 100 and sts[0]["min_hold"] is not None
 sm = SC.sd_summary({"15m": sts})
 assert sm["answer"] and sm["tfs"][0]["lines"][0].startswith("SD 50") and any("SD 100" in a or "SD 200" in a for a in sm["answer"])
+rst = SC.sd_stats(rows, "15m", used, 90, rule=True)
+assert all(x["rule"] and x["n"] <= sts[0]["n"] for x in rst), "rule only removes signals"
+assert all("vs200_verdict" in x for x in rst if x["n"]), "every rule row is compared with the bot today"
+smr = SC.sd_summary({"15m": sts + rst})
+assert len(smr["tfs"][0]["rows"]) == 8 and any("SD0 rule" in a for a in smr["answer"]) and len(smr["answer"]) <= 6
+assert sum(1 for r in smr["tfs"][0]["rows"] if r["verdict"] == "bot") == 1
+print("\n".join(smr["answer"]))
 SC._STATE["sd"] = None
 SC.run_sd(["15m", "1h"], ("MAJORS",), log=lambda m: None)
 assert SC.status()["sd"]["tfs"] and os.path.exists(os.path.join(os.environ["OWL_DATA_DIR"], "scan_sd.txt"))

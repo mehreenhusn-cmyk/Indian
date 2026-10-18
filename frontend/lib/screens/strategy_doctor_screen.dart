@@ -174,6 +174,21 @@ class _StrategyDoctorScreenState extends State<StrategyDoctorScreen> {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(AppSpacing.l, 4, AppSpacing.l, 32),
         children: [
+          _resultCard(context, d, sample, enough, avoid, take, fin),
+          if (!widget.india) ...[
+            _title(context, 'Strategy Lab'),
+            const VariantLabCard(),
+            _title(context, 'Scan Lab'),
+            const ScanLabCard(),
+          ],
+          Theme(
+            data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+            child: ExpansionTile(
+              tilePadding: EdgeInsets.zero,
+              childrenPadding: EdgeInsets.zero,
+              title: Text('Full details (all the data)', style: context.type.primary.copyWith(fontWeight: FontWeight.w700)),
+              subtitle: Text('Everything is still here, just folded', style: context.type.metadata),
+              children: [
           _card(context, accent: enough ? p.accent : p.warning, children: [
             Row(children: [
               Icon(Icons.medical_services_outlined, size: 18, color: p.accent),
@@ -184,12 +199,6 @@ class _StrategyDoctorScreenState extends State<StrategyDoctorScreen> {
             const SizedBox(height: 10),
             for (final h in headline) _bullet(context, h),
           ]),
-          if (!widget.india) ...[
-            _title(context, 'Strategy Lab'),
-            const VariantLabCard(),
-            _title(context, 'Scan Lab'),
-            const ScanLabCard(),
-          ],
           if (_map(d['verdict']).isNotEmpty) ...[
             _title(context, 'Doctor Verdict'),
             DoctorVerdictCard(verdict: _map(d['verdict'])),
@@ -228,12 +237,58 @@ class _StrategyDoctorScreenState extends State<StrategyDoctorScreen> {
             const SizedBox(height: 10),
             for (final n in notes) Padding(padding: const EdgeInsets.only(bottom: 4), child: Text('• $n', style: context.type.metadata)),
           ],
+              ],
+            ),
+          ),
         ],
       ),
     );
   }
 
   // ---------- pieces ----------
+  /// Short plain-words answer at the top. Everything else lives under "Full details".
+  Widget _resultCard(BuildContext context, Map<String, dynamic> d, int sample, bool enough, List<Map<String, dynamic>> avoid,
+      List<Map<String, dynamic>> take, Map<String, dynamic> fin) {
+    final p = context.palette;
+    if (sample == 0) {
+      return _card(context, accent: p.warning, children: [
+        Text('RESULT', style: context.type.label.copyWith(fontWeight: FontWeight.w800, letterSpacing: 1.0)),
+        const SizedBox(height: 6),
+        Text('No closed trades read yet, so nothing to say. Come back after some trades close.', style: context.type.secondary.copyWith(color: p.textPrimary)),
+      ]);
+    }
+    final net = _d(fin['net_pnl']);
+    final okA = avoid.where((r) => '${r['status']}' == 'confirmed').toList();
+    final okT = take.where((r) => '${r['status']}' == 'confirmed').toList();
+    final maybe = [...avoid, ...take].where((r) => '${r['status']}' != 'confirmed').map((r) => '${r['label']}').toSet().toList();
+    final conf = _i(fin['confirmed_rules']);
+    Widget row(String head, String body, Color c) => Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(head, style: context.type.label.copyWith(color: c, fontWeight: FontWeight.w800, letterSpacing: 0.8)),
+            const SizedBox(height: 2),
+            Text(body, style: context.type.secondary.copyWith(color: p.textPrimary, height: 1.35)),
+          ]),
+        );
+    String money(Map<String, dynamic> r) => r['saved_usdt'] == null ? '' : ' (skipping it would have saved ${_sg(_d(r['saved_usdt']), 2)} $_unit)';
+    return _card(context, accent: enough ? p.accent : p.warning, children: [
+      Row(children: [
+        Icon(Icons.fact_check_outlined, size: 18, color: p.accent),
+        const SizedBox(width: 8),
+        Expanded(child: Text('RESULT', style: context.type.label.copyWith(fontWeight: FontWeight.w800, letterSpacing: 1.0))),
+        _chip(context, enough ? '$sample trades' : 'Learning $sample/${_i(d['min_sample'])}', enough ? p.accent : p.warning),
+      ]),
+      const SizedBox(height: 8),
+      row('BOT SO FAR', 'Made ${_sg(net, 2)} $_unit after fees on $sample trades.', net >= 0 ? p.profit : p.loss),
+      row('WHAT HELPS', okT.isEmpty ? 'Nothing proven yet.' : okT.map((r) => '${r['label']}').join('; ') + '.', p.profit),
+      row('WHAT HURTS', okA.isEmpty ? 'No leak confirmed yet.' : okA.map((r) => '${r['label']}${money(r)}').join('; ') + '.', p.loss),
+      if (conf > 0 && fin['with_rules_pnl'] != null)
+        row('IF THOSE RULES WERE ON', '${_sg(_d(fin['with_rules_pnl']), 2)} $_unit instead of ${_sg(net, 2)} (${_sg(_d(fin['delta_usdt']), 2)} difference). Past only, not a promise.', p.accent),
+      row('NOT CLEAR YET', maybe.isEmpty ? 'Nothing waiting.' : maybe.take(4).join('; ') + (maybe.length > 4 ? ' and ${maybe.length - 4} more' : '') + '. The data cannot say yes or no yet.', p.warning),
+      Text('Tables with every scenario vs the normal bot are below. Folded section = full data.', style: context.type.metadata),
+    ]);
+  }
+
   Widget _card(BuildContext context, {required List<Widget> children, Color? accent}) {
     final p = context.palette;
     return Container(

@@ -436,6 +436,7 @@ def sd_step(group, tf, coins, days, cache, log):
                 if r is None:
                     res = None
                     break
+                r["ok"] = (entry >= m) if is_long else (entry <= m)     # SD0 rule: no BUY below the mean line, no SELL above it
                 res[n] = r
             if res:
                 for n in SD_LENS:
@@ -448,17 +449,18 @@ def _med(v):
     return int(round(statistics.median(v))) if v else None
 
 
-def sd_stats(rows, tf, used, days):
-    """rows: {N: [(t, sym, result)]} -> list of one stats dict per SD length (+ paired comparison with 200)."""
+def sd_stats(rows, tf, used, days, rule=False):
+    """rows: {N: [(t, sym, result)]} -> one stats dict per SD length.
+    rule=False: every EMA50 signal is traded. rule=True: the SD0 rule skips BUY below / SELL above that length's mean line.
+    Every row is compared with ONE reference: the bot today (SD 200, no rule), per signal (a skipped signal counts as 0)."""
     tfm = TF_MIN[tf]
-    base = {(t, sym): r["net"] for t, sym, r in rows[200]}
+    ref = {(t, sym): r["net"] for t, sym, r in rows[200]}
     out = []
     for N in SD_LENS:
-        rs = rows[N]
+        rs = rows[N] if not rule else [x for x in rows[N] if x[2].get("ok")]
         n = len(rs)
-        st = {"len": N, "n": n}
+        st = {"len": N, "n": n, "rule": rule, "signals": len(ref)}
         if n:
-            nets = [r["net"] for _, _, r in rs]
             hits = [[r["hit"][k] for _, _, r in rs] for k in range(4)]
             tp1 = [r for _, _, r in rs if r["hit"][0] is not None]
             back = [r for r in tp1 if r["hit"][3] is None]
@@ -473,8 +475,9 @@ def sd_stats(rows, tf, used, days):
                        "min_tp1": (lambda m: None if m is None else m * tfm)(_med([x for x in hits[0] if x is not None])),
                        "min_tp4": (lambda m: None if m is None else m * tfm)(_med([x for x in hits[3] if x is not None])),
                        "min_hold": (lambda m: None if m is None else m * tfm)(_med([r["bars"] for _, _, r in rs]))})
-        if N != 200 and n:
-            d = sorted((t, r["net"] - base[(t, sym)]) for t, sym, r in rs if (t, sym) in base)
+        if (N != 200 or rule) and n:
+            taken = {(t, sym): r["net"] for t, sym, r in rs}
+            d = sorted((k[0], taken.get(k, 0.0) - v) for k, v in ref.items())
             cut = int(len(d) * FL.OLD_SHARE)
             do, dn = [x[1] for x in d[:cut]], [x[1] for x in d[cut:]]
             zo, zn = FL._paired_z(do), FL._paired_z(dn)
@@ -486,7 +489,7 @@ def sd_stats(rows, tf, used, days):
                 v = "worse"
             else:
                 v = "unclear"
-            st["vs200"] = round(sum(x[1] for x in d) / len(d), 2) if d else 0.0
+            st["vs200"] = round(sum(x[1] for x in d) / len(d), 2) if d else 0.0      # average gain per signal vs the bot today
             st["vs200_verdict"] = v
         out.append(st)
     return out
@@ -494,52 +497,56 @@ def sd_stats(rows, tf, used, days):
 
 def sd_line(st):
     if not st.get("n"):
-        return f"SD {st['len']}: no trades"
+        return f"SD {st['len']}{' + SD0 rule' if st.get('rule') else ''}: no trades"
     f = lambda v: "-" if v is None else str(v)
-    tag = " (bot today)" if st["len"] == 200 else ""
-    vs = "" if st["len"] == 200 else f" | vs 200: {st.get('vs200', 0):+.2f} ({ {'better': 'BETTER', 'worse': 'WORSE', 'unclear': 'not clear', 'too_few': 'too few'}[st.get('vs200_verdict', 'unclear')] })"
-    return (f"SD {st['len']}{tag}: {st['n']} trades ({st['rate']}/coin/day) | TP1 {st['tp1']:.0f}%, TP2 {st['tp2']:.0f}%, TP4 {st['tp4']:.0f}% | "
+    rl = " + SD0 rule" if st.get("rule") else ""
+    tag = " (bot today)" if (st["len"] == 200 and not st.get("rule")) else ""
+    vs = "" if "vs200" not in st else f" | vs 200: {st.get('vs200', 0):+.2f} ({ {'better': 'BETTER', 'worse': 'WORSE', 'unclear': 'not clear', 'too_few': 'too few'}[st.get('vs200_verdict', 'unclear')] })"
+    return (f"SD {st['len']}{rl}{tag}: {st['n']} trades ({st['rate']}/coin/day) | TP1 {st['tp1']:.0f}%, TP2 {st['tp2']:.0f}%, TP4 {st['tp4']:.0f}% | "
             f"hit TP1 but never TP4: {f(st['back'])}% | median minutes: TP1 {f(st['min_tp1'])}, TP4 {f(st['min_tp4'])}, whole trade {f(st['min_hold'])} | "
             f"avg {st['avg']:+.2f}, win {st['win']:.0f}%{vs}")
 
 
+def _lbl(st):
+    return f"SD {st['len']}" + (" + rule" if st.get("rule") else "")
+
+
 def sd_summary(per_tf):
-    """per_tf: {tf: [stats]} -> short answer + per-timeframe lines for the app."""
-    ans, tfs = [], []
-    better, worse, bestlen = [], [], []
-    agg = {n: {"n": 0, "tp1": 0, "tp4": 0, "n_tp1": 0, "n_back": 0} for n in SD_LENS}
-    for tf, sts in per_tf.items():
-        tfs.append({"tf": tf, "lines": [sd_line(x) for x in sts]})
-        ok = [x for x in sts if x.get("n", 0) >= 30]
-        if ok:
-            b = max(ok, key=lambda x: x["avg"])
-            bestlen.append(f"{tf} {b['len']}")
-        for x in sts:
-            if x["len"] == 100 and x.get("vs200_verdict") == "better":
-                better.append(tf)
-            if x["len"] == 100 and x.get("vs200_verdict") == "worse":
-                worse.append(tf)
-            if x.get("n"):
-                a = agg[x["len"]]
-                a["n"] += x["n"]
-                a["tp1"] += round(x["tp1"] * x["n"] / 100.0)
-                a["tp4"] += round(x["tp4"] * x["n"] / 100.0)
-                a["n_tp1"] += x["n_tp1"]
-                a["n_back"] += x["n_back"]
+    """per_tf: {tf: [stats (plain rows then rule rows)]} -> a SHORT answer, a small table per timeframe, and details."""
     if not per_tf:
         return {"answer": ["Nothing finished yet."], "tfs": []}
-    if better:
-        ans.append(f"SD 100 beat SD 200 in BOTH older and newer data on: {', '.join(better)}.")
-    else:
-        ans.append("SD 100 did not clearly beat SD 200 on any timeframe." + (f" SD 200 was clearly better on: {', '.join(worse)}." if worse else ""))
-    if bestlen:
-        ans.append("Best average trade by timeframe (SD length): " + ", ".join(bestlen) + ".")
-    for n in (200, 100):
-        a = agg[n]
-        if a["n"] and a["n_tp1"]:
-            ans.append(f"SD {n}{' (bot today)' if n == 200 else ''}: TP1 hit {100.0 * a['tp1'] / a['n']:.0f}%, TP4 hit {100.0 * a['tp4'] / a['n']:.0f}%, "
-                       f"and {100.0 * a['n_back'] / a['n_tp1']:.0f}% of trades that touched TP1 never reached TP4 (all timeframes together).")
-    ans.append("Signals are the same (EMA50 cross); only the TP levels move with the SD length. Same fees, same SL.")
+    tfs, bot_avg, plain_better, plain_worse, rule_better, rule_worse, proven = [], [], {}, {}, {}, {}, []
+    agg = {n: {"n": 0, "tp4": 0} for n in SD_LENS}
+    for tf, sts in per_tf.items():
+        rows = []
+        for x in sts:
+            base = x["len"] == 200 and not x.get("rule")
+            v = x.get("vs200_verdict")
+            rows.append({"label": _lbl(x) + (" (bot)" if base else ""), "n": x.get("n", 0), "tp4": x.get("tp4"), "avg": x.get("avg"),
+                         "win": x.get("win"), "vs": None if base else x.get("vs200"), "verdict": "bot" if base else (v or "unclear"), "rule": bool(x.get("rule"))})
+            if base and x.get("n"):
+                bot_avg.append(f"{tf} {x['avg']:+.2f}")
+            if not base and v in ("better", "worse"):
+                key = (plain_better if v == "better" else plain_worse) if not x.get("rule") else (rule_better if v == "better" else rule_worse)
+                key.setdefault(_lbl(x), []).append(tf)
+                if v == "better":
+                    proven.append(f"{_lbl(x)} on {tf}")
+            if not x.get("rule") and x.get("n"):
+                agg[x["len"]]["n"] += x["n"]
+                agg[x["len"]]["tp4"] += round(x["tp4"] * x["n"] / 100.0)
+        tfs.append({"tf": tf, "rows": rows, "lines": [sd_line(x) for x in sts]})
+    ans = []
+    if bot_avg:
+        ans.append("Bot today (SD 200, every signal): average per trade after fees: " + ", ".join(bot_avg) + " ROI pts.")
+    ans.append("Proven better than the bot (both older and newer data): " + (", ".join(proven) + "." if proven else "nothing yet."))
+    fmt = lambda d: "; ".join(f"{k}: {', '.join(v)}" for k, v in d.items())
+    ans.append("Shorter SD length alone (every signal traded): " + (("better - " + fmt(plain_better) + ". ") if plain_better else "") +
+               (("worse - " + fmt(plain_worse) + ". ") if plain_worse else "") + ("no clear change." if not plain_better and not plain_worse else ""))
+    ans.append("With the SD0 rule (no BUY below the mean line, no SELL above it): " + (("better - " + fmt(rule_better) + ". ") if rule_better else "") +
+               (("worse - " + fmt(rule_worse) + ". ") if rule_worse else "") + ("no clear change." if not rule_better and not rule_worse else ""))
+    tp4 = [f"SD {n} {100.0 * a['tp4'] / a['n']:.0f}%" for n, a in sorted(agg.items(), reverse=True) if a["n"]]
+    if tp4:
+        ans.append("TP4 hit rate (all timeframes, no rule): " + ", ".join(tp4) + ". A shorter length puts TP4 closer, so it hits more often, but each win is smaller too.")
     return {"answer": ans, "tfs": tfs}
 
 
@@ -554,11 +561,11 @@ def run_sd(tfs=None, groups=("MAJORS",), log=print):
         for g, coins in coin_sets.items():
             days = DAYS[tf]
             rows, used = sd_step(g, tf, coins, days, cache, log)
-            per_tf[tf] = sd_stats(rows, tf, used, days)
+            per_tf[tf] = sd_stats(rows, tf, used, days) + sd_stats(rows, tf, used, days, rule=True)
             summ = sd_summary(per_tf)
             _STATE["sd"] = summ
             _STATE["sd_made"] = time.time()
-            txt = ["SD LENGTH TEST (majors) - EMA50 cross signals, bot's SL and TP1-4, only the SD length changes. ROI points after fee (10x, 1%).", ""] + summ["answer"] + [""]
+            txt = ["SD LENGTH TEST (majors) - EMA50 cross signals, bot's SL and TP1-4, only the SD length changes; second set of rows also applies the SD0 rule. ROI points after fee (10x, 1%).", ""] + summ["answer"] + [""]
             for t in summ["tfs"]:
                 txt += [f"=== {t['tf']} ({DAYS[t['tf']]} days) ==="] + t["lines"] + [""]
             with open(os.path.join(base, "scan_sd.txt"), "w", encoding="utf-8") as f:
