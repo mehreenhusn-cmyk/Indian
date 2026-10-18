@@ -260,7 +260,7 @@ class _StrategyDoctorScreenState extends State<StrategyDoctorScreen> {
     final net = _d(fin['net_pnl']);
     final okA = avoid.where((r) => '${r['status']}' == 'confirmed').toList();
     final okT = take.where((r) => '${r['status']}' == 'confirmed').toList();
-    final maybe = [...avoid, ...take].where((r) => '${r['status']}' != 'confirmed').map((r) => '${r['label']}').toSet().toList();
+    final maybe = [...avoid, ...take].where((r) => '${r['status']}' != 'confirmed').map((r) => '${r['title'] ?? ''}'.isEmpty ? '${r['label']}' : '${r['title']} - ${r['label']}').toSet().toList();
     final conf = _i(fin['confirmed_rules']);
     Widget row(String head, String body, Color c) => Padding(
           padding: const EdgeInsets.only(bottom: 8),
@@ -270,7 +270,9 @@ class _StrategyDoctorScreenState extends State<StrategyDoctorScreen> {
             Text(body, style: context.type.secondary.copyWith(color: p.textPrimary, height: 1.35)),
           ]),
         );
-    String money(Map<String, dynamic> r) => r['saved_usdt'] == null ? '' : ' (skipping it would have saved ${_sg(_d(r['saved_usdt']), 2)} $_unit)';
+    String name(Map<String, dynamic> r) => '${r['title'] ?? ''}'.isEmpty ? '${r['label']}' : '${r['title']} - ${r['label']}';
+    String money(Map<String, dynamic> r) =>
+        r['saved_usdt'] == null ? '' : ' - ${_i(r['n_all'])} trades, skipping them would have saved ${_sg(_d(r['saved_usdt']), 2)} $_unit';
     return _card(context, accent: enough ? p.accent : p.warning, children: [
       Row(children: [
         Icon(Icons.fact_check_outlined, size: 18, color: p.accent),
@@ -280,8 +282,8 @@ class _StrategyDoctorScreenState extends State<StrategyDoctorScreen> {
       ]),
       const SizedBox(height: 8),
       row('BOT SO FAR', 'Made ${_sg(net, 2)} $_unit after fees on $sample trades.', net >= 0 ? p.profit : p.loss),
-      row('WHAT HELPS', okT.isEmpty ? 'Nothing proven yet.' : okT.map((r) => '${r['label']}').join('; ') + '.', p.profit),
-      row('WHAT HURTS', okA.isEmpty ? 'No leak confirmed yet.' : okA.map((r) => '${r['label']}${money(r)}').join('; ') + '.', p.loss),
+      row('WHAT HELPS', okT.isEmpty ? 'Nothing proven yet.' : okT.map((r) => name(r)).join('; ') + '.', p.profit),
+      row('WHAT HURTS', okA.isEmpty ? 'No leak confirmed yet.' : okA.map((r) => '${name(r)}${money(r)}').join('; ') + '.', p.loss),
       if (conf > 0 && fin['with_rules_pnl'] != null)
         row('IF THOSE RULES WERE ON', '${_sg(_d(fin['with_rules_pnl']), 2)} $_unit instead of ${_sg(net, 2)} (${_sg(_d(fin['delta_usdt']), 2)} difference). Past only, not a promise.', p.accent),
       row('NOT CLEAR YET', maybe.isEmpty ? 'Nothing waiting.' : maybe.take(4).join('; ') + (maybe.length > 4 ? ' and ${maybe.length - 4} more' : '') + '. The data cannot say yes or no yet.', p.warning),

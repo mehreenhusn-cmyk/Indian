@@ -126,6 +126,13 @@ class _VariantLabCardState extends State<VariantLabCard> {
         ],
         if (done && rows.isNotEmpty) ...[
           const SizedBox(height: 12),
+          Text('SCOREBOARD', style: context.type.label.copyWith(fontWeight: FontWeight.w800, letterSpacing: 1.0)),
+          const SizedBox(height: 4),
+          Text(_score(rows, null), style: context.type.secondary.copyWith(color: p.textPrimary, height: 1.35)),
+          if (rows.any((r) => r['group'] == 'Outside suggestion (4 points)'))
+            Text("Kimi's ideas: " + _score(rows.where((r) => r['group'] == 'Outside suggestion (4 points)').toList(), null),
+                style: context.type.secondary.copyWith(color: p.textPrimary, height: 1.35)),
+          const SizedBox(height: 12),
           Text('TOP 3 IDEAS (best vs the bot today)', style: context.type.label.copyWith(fontWeight: FontWeight.w800, letterSpacing: 1.0)),
           const SizedBox(height: 4),
           for (final r in ([...rows]..sort((a, b) => _d(b['vs_bot']).compareTo(_d(a['vs_bot'])))).take(3)) _row(context, r),
@@ -150,6 +157,11 @@ class _VariantLabCardState extends State<VariantLabCard> {
           ),
       ]),
     );
+  }
+
+  static String _score(List<Map<String, dynamic>> rows, String? g) {
+    int c(String k) => rows.where((r) => '${r['verdict']}' == k).length;
+    return '${rows.length} ideas tested: ${c('better')} better than the bot, ${c('worse')} worse, ${c('unclear')} not clear, ${c('not_enough')} too few trades.';
   }
 
   Widget _table(BuildContext context, Map<String, dynamic> res, List<Map<String, dynamic>> rows, List<String> groups) {
