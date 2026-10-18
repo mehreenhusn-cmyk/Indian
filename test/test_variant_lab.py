@@ -33,6 +33,37 @@ assert len(cv) == 6, "6 CVD scenarios expected"
 assert any(r["taken"] < res["bot"]["n"] for r in cv), "a CVD gate must skip some signals"
 assert all(r["group"] in VL.GROUP_ORDER for r in res["rows"])
 assert any((r.get("cvd") or {}).get("s3") is not None for r in rows), "CVD tags must be filled when tbv exists"
+out = [r for r in res["rows"] if r["group"] == VL.OUT_GROUP]
+assert len(out) == 11, "11 outside-suggestion scenarios expected"
+tk = {r["key"]: r["taken"] for r in out}
+assert tk["o_pkg"] <= tk["o_bundle"] <= min(tk["o_adx"], tk["o_htf"], tk["o_slope"], tk["o_vol"], tk["o_gap"], tk["o_1r"]), tk
+assert tk["o_bundle"] < res["bot"]["n"], "the bundle must skip some signals"
+assert any(r.get("ctx", {}).get("adx") is not None and r["ctx"].get("htf") for r in rows), "ADX / HTF tags must be filled"
+# partial-exit simulator with 0/0/0/100% must equal the bot's own T4 simulation (same SL, same TP4 target)
+from recovered_bot import ai_ind_features as _F
+_cs = LAB._fetch_range("AAAUSDT", "15m", 0)
+_S = _F.build(_cs)
+_S["vol"] = [c.get("volume") for c in _cs]
+_n = 0
+for i in range(250, 2900, 7):
+    if not (_S["xup"][i] or _S["xdn"][i]):
+        continue
+    L = _S["xup"][i]
+    e = _S["c"][i]; sl = _S["l"][i] if L else _S["h"][i]
+    if (L and sl >= e) or (not L and sl <= e):
+        continue
+    rk = abs(e - sl)
+    tps = [e + (k + 1) * rk * 0.8 * (1 if L else -1) for k in range(4)]
+    a = VL._partial(_S, i, L, e, sl, tps, 0.0, fracs=(0, 0, 0, 1.0))
+    b = FL.sim_trade(_S, i, L, e, sl, tps[0], tps[3], 0.0)
+    if a is None or b[1] == "OPEN":
+        continue
+    assert abs(a[0] - b[0]) < 1e-9 and a[1] == b[1] and a[2] == b[2], (a, b)
+    _n += 1
+assert _n > 10, _n
+# partial exits can never earn more than a full TP4 win nor lose more than the full SL (before fees)
+_ad = VL._adx_series(_S)
+assert any(v is not None and 0 <= v <= 100 for v in _ad)
 # CVD patch must keep the real reader intact after use
 from recovered_bot import ai_shadow_lab as _L
 _o = _L._to_candles

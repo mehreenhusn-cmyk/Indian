@@ -31,7 +31,8 @@ import filter_lab as FL
 
 BIG = 1e18
 TFS = ("3m", "5m", "15m")
-GROUP_ORDER = ["Exit and stop-loss", "Indicators (skip signals)", "Bollinger (skip signals)", "CVD (order flow)", "Bands", "Mixes"]
+OUT_GROUP = "Outside suggestion (4 points)"
+GROUP_ORDER = ["Exit and stop-loss", "Indicators (skip signals)", "Bollinger (skip signals)", "CVD (order flow)", "Bands", "Mixes", OUT_GROUP]
 
 
 # ---------------------------------------------------------------- CVD proxy (taker buy volume is already inside every Binance kline row)
@@ -122,8 +123,215 @@ def enrich(r, S, i, lev, fee):
             ret, why, bars = FL.sim_trade(S, j, is_long, cj, base_sl, tps[0], tps[3], 0.0)
             if why != "OPEN":
                 x["wait"] = [round(ret * lev - fee, 3), why, bars]
+    # --- "outside suggestion" scenarios (4 points): tags, ATR-clamped stop, partial exits, confirmation candle
+    try:
+        ctx = _ctx(r, S, i)
+        atr = ctx.get("atr")
+        buf = fee / lev if lev else 0.0
+        risk0 = abs(entry - base_sl)
+        p0 = _partial(S, i, is_long, entry, base_sl, tps, buf)
+        if p0 is not None:
+            x["partial"] = [round(p0[0] * lev - fee, 3), p0[1], p0[2]]
+        if atr and risk0 > 0:
+            risk = min(max(risk0, 0.8 * atr), 1.8 * atr)
+            sl2 = entry - risk if is_long else entry + risk
+            if abs(tps[0] - entry) < risk:
+                x["atr_clamp"] = None                                    # TP1 less than 1R with the new stop: skipped
+                x["pkg"] = None
+            else:
+                ret, why, bars = FL.sim_trade(S, i, is_long, entry, sl2, tps[0], tps[3], 0.0)
+                if why != "OPEN":
+                    x["atr_clamp"] = [round(ret * lev - fee, 3), why, bars]
+                p2 = _partial(S, i, is_long, entry, sl2, tps, buf)
+                if p2 is not None:
+                    x["pkg"] = [round(p2[0] * lev - fee, 3), p2[1], p2[2]]
+        if i + 1 < S["n"]:
+            ctx["confirm"] = (S["c"][i + 1] > S["c"][i]) if is_long else (S["c"][i + 1] < S["c"][i])
+    except Exception:
+        pass
     r["cvd"] = cv
     r["x"] = x
+
+
+
+# ---------------------------------------------------------------- "outside suggestion" helpers (read-only maths on the same candles)
+def _adx_series(S, period=14):
+    """Wilder ADX per candle (same maths as recovered_bot/entry_context.adx), computed once per coin and cached."""
+    a = S.get("_adx")
+    if a is not None:
+        return a
+    h, l, c, n = S["h"], S["l"], S["c"], S["n"]
+    a = [None] * n
+    if n > period * 2 + 1:
+        tr, pdm, mdm = [0.0], [0.0], [0.0]
+        for i in range(1, n):
+            up, dn = h[i] - h[i - 1], l[i - 1] - l[i]
+            pdm.append(up if (up > dn and up > 0) else 0.0)
+            mdm.append(dn if (dn > up and dn > 0) else 0.0)
+            tr.append(max(h[i] - l[i], abs(h[i] - c[i - 1]), abs(l[i] - c[i - 1])))
+        s_tr, s_p, s_m = sum(tr[1:period + 1]), sum(pdm[1:period + 1]), sum(mdm[1:period + 1])
+        dx = {}
+        for i in range(period, n):
+            if i > period:
+                s_tr = s_tr - s_tr / period + tr[i]
+                s_p = s_p - s_p / period + pdm[i]
+                s_m = s_m - s_m / period + mdm[i]
+            if s_tr <= 0:
+                dx[i] = 0.0
+                continue
+            pdi, mdi = 100.0 * s_p / s_tr, 100.0 * s_m / s_tr
+            dx[i] = 100.0 * abs(pdi - mdi) / (pdi + mdi) if (pdi + mdi) > 0 else 0.0
+        first = period * 2 - 1
+        if first < n:
+            cur = sum(dx[k] for k in range(period, period * 2)) / period
+            a[first] = cur
+            for i in range(first + 1, n):
+                cur = (cur * (period - 1) + dx[i]) / period
+                a[i] = cur
+    S["_adx"] = a
+    return a
+
+
+def _htf(S, i, factor=5, ema_len=20, window=600):
+    """Higher-timeframe trend like recovered_bot/entry_context.htf_trend: 'up' / 'down' / 'flat' / None (approximate)."""
+    c = S["c"][max(0, i + 1 - window):i + 1]
+    m = len(c) // factor
+    if m < ema_len + 3:
+        return None
+    start = len(c) - m * factor
+    closes = [c[start + (k + 1) * factor - 1] for k in range(m)]
+    kk = 2.0 / (ema_len + 1)
+    e = sum(closes[:ema_len]) / ema_len
+    ser = [e]
+    for x in closes[ema_len:]:
+        e = x * kk + e * (1 - kk)
+        ser.append(e)
+    last, back = ser[-1], ser[-3]
+    if last <= 0:
+        return None
+    slope = (last - back) / last * 100.0
+    if closes[-1] > last and slope > 0.02:
+        return "up"
+    if closes[-1] < last and slope < -0.02:
+        return "down"
+    return "flat"
+
+
+def _partial(S, i, is_long, entry, sl, tps, be_pct, fracs=(0.4, 0.3, 0.2, 0.1)):
+    """Partial exits: 40% at TP1, 30% at TP2, 20% at TP3, 10% at TP4. After TP1 the SL moves to entry (+ fee buffer) from the NEXT candle.
+    The rest leaves at the SL, or at the close of an opposite EMA50 cross. Returns [ret % of price, why, bars] or None while still open."""
+    h, l, c, n = S["h"], S["l"], S["c"], S["n"]
+    end = min(n - 1, i + FL.MAX_FWD)
+    opp = S["xdn"] if is_long else S["xup"]
+    be_px = entry * (1 + be_pct / 100.0) if is_long else entry * (1 - be_pct / 100.0)
+    if (is_long and be_px >= tps[0]) or (not is_long and be_px <= tps[0]):
+        be_px = entry
+    sign = 1.0 if is_long else -1.0
+    left, tot, hit, cur, be = 1.0, 0.0, 0, sl, False
+    for j in range(i + 1, end + 1):
+        if (l[j] <= cur) if is_long else (h[j] >= cur):
+            tot += left * (cur - entry) / entry * 100.0 * sign
+            return [tot, "BE" if be else "SL", j - i]
+        newhit = False
+        while hit < 4 and ((h[j] >= tps[hit]) if is_long else (l[j] <= tps[hit])):
+            part = fracs[hit]
+            tot += part * (tps[hit] - entry) / entry * 100.0 * sign
+            left -= part
+            hit += 1
+            newhit = True
+        if hit >= 4 or left <= 1e-9:
+            return [tot, "TP", j - i]
+        if opp[j]:
+            tot += left * (c[j] - entry) / entry * 100.0 * sign
+            return [tot, "REV", j - i]
+        if newhit and not be and hit >= 1 and ((be_px > cur) if is_long else (be_px < cur)):
+            cur, be = be_px, True
+    if end - i >= FL.MAX_FWD:
+        tot += left * (c[end] - entry) / entry * 100.0 * sign
+        return [tot, "TIMEOUT", end - i]
+    return None
+
+
+def _ctx(r, S, i):
+    """r['ctx']: the values the 4-point suggestion looks at, measured at the signal candle."""
+    is_long = r["a"] == "BUY"
+    entry, sl, tps = r["e"], r["sl"], r["tp"]
+    ctx = {}
+    adx = _adx_series(S)
+    ctx["adx"] = round(adx[i], 2) if adx[i] is not None else None
+    ctx["htf"] = _htf(S, i)
+    e50 = S["e50"]
+    if e50[i] is not None and i >= 3 and e50[i - 3]:
+        ctx["slope"] = (e50[i] - e50[i - 3]) / e50[i - 3] * 100.0
+    a = FL._atr(S, i)
+    ctx["atr"] = a
+    if a and e50[i] is not None:
+        ctx["gap"] = abs(S["c"][i] - e50[i]) / a
+    vol = S.get("vol")
+    if vol and i >= 20 and all(v is not None for v in vol[i - 20:i + 1]):
+        avg = sum(vol[i - 20:i]) / 20.0
+        if avg > 0:
+            ctx["volr"] = vol[i] / avg
+    r["ctx"] = ctx
+    return ctx
+
+
+def _agree_dir(r, key, up_when_long=True):
+    v = (r.get("ctx") or {}).get(key)
+    if v is None:
+        return True
+    return v > 0 if r["a"] == "BUY" else v < 0
+
+
+def _g_adx(r):
+    v = (r.get("ctx") or {}).get("adx")
+    return v is None or v >= 20.0
+
+
+def _g_htf(r):
+    v = (r.get("ctx") or {}).get("htf")
+    return v is None or v == ("up" if r["a"] == "BUY" else "down")
+
+
+def _g_slope(r):
+    return _agree_dir(r, "slope")
+
+
+def _g_vol(r):
+    v = (r.get("ctx") or {}).get("volr")
+    return v is None or v >= 1.1
+
+
+def _g_gap(r):
+    v = (r.get("ctx") or {}).get("gap")
+    return v is None or v <= 0.75
+
+
+def _g_1r(r):
+    return FL._g_reward(r)
+
+
+def _g_bundle(r):
+    return all(f(r) for f in (_g_adx, _g_htf, _g_slope, FL._g_chop, _g_vol, _g_gap, _g_1r))
+
+
+def _xs(key):
+    """scenario value that can also SKIP: key missing = data problem (use the bot's value), key stored as None = the scenario skipped it."""
+    def fn(r):
+        x = r.get("x") or {}
+        if key not in x:
+            return _b(r)
+        return None if x[key] is None else x[key][0]
+    return fn
+
+
+def _confirm(r):
+    """wait 1 candle, enter only if that candle also CLOSED beyond the cross candle's close (a real follow-through)."""
+    return _wait(r) if (r.get("ctx") or {}).get("confirm", True) else None
+
+
+def _pkg(r):
+    return _xs("pkg")(r) if _g_bundle(r) else None
 
 
 # ---------------------------------------------------------------- scenarios: fn(row) -> net of the scenario, or None = signal skipped
@@ -192,6 +400,17 @@ SCENARIOS = [
      lambda r: _x("run")(r) if FL._g_tsi_line(r) else None),
     ("Mixes", "mix4", "Hold till opposite + wider SL + skip squeeze",
      lambda r: _x("run_prev1")(r) if FL._g_bb_squeeze(r) else None),
+    (OUT_GROUP, "o_adx", "Trend strength: ADX 20 or more", _gate(_g_adx)),
+    (OUT_GROUP, "o_htf", "Higher-timeframe trend agrees", _gate(_g_htf)),
+    (OUT_GROUP, "o_slope", "EMA50 slope agrees with the trade", _gate(_g_slope)),
+    (OUT_GROUP, "o_vol", "Volume at least 1.1x of last 20 candles", _gate(_g_vol)),
+    (OUT_GROUP, "o_gap", "Price not stretched from EMA50 (0.75 ATR)", _gate(_g_gap)),
+    (OUT_GROUP, "o_1r", "TP1 at least 1R away", _gate(_g_1r)),
+    (OUT_GROUP, "o_bundle", "All filters together (ADX+HTF+slope+chop+vol+gap+1R)", _gate(_g_bundle)),
+    (OUT_GROUP, "o_atr", "ATR stop (0.8 to 1.8 ATR), skip if TP1 < 1R", _xs("atr_clamp")),
+    (OUT_GROUP, "o_part", "Partial exits 40/30/20/10 at TP1-TP4", _xs("partial")),
+    (OUT_GROUP, "o_conf", "Wait 1 candle, enter only if it closes beyond", _confirm),
+    (OUT_GROUP, "o_pkg", "FULL PACKAGE: filters + ATR stop + partial exits", _pkg),
 ]
 
 

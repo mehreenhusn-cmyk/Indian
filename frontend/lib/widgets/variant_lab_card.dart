@@ -84,7 +84,7 @@ class _VariantLabCardState extends State<VariantLabCard> {
     final done = res['state'] == 'done' && res['ok'] == true;
     final answer = (res['answer'] is List) ? (res['answer'] as List).map((e) => '$e').toList() : <String>[];
     final rows = (res['rows'] is List) ? (res['rows'] as List).whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList() : <Map<String, dynamic>>[];
-    const groups = ['Exit and stop-loss', 'Indicators (skip signals)', 'Bollinger (skip signals)', 'CVD (order flow)', 'Bands', 'Mixes'];
+    const groups = ['Exit and stop-loss', 'Indicators (skip signals)', 'Bollinger (skip signals)', 'CVD (order flow)', 'Bands', 'Mixes', 'Outside suggestion (4 points)'];
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.only(bottom: 10),
@@ -136,7 +136,7 @@ class _VariantLabCardState extends State<VariantLabCard> {
           const SizedBox(height: 12),
           Text('COMPARISON TABLE: normal bot vs every scenario', style: context.type.label.copyWith(fontWeight: FontWeight.w800, letterSpacing: 1.0)),
           const SizedBox(height: 2),
-          Text('net = ROI points after fees. vs bot = how much better (+) or worse (-) than the normal bot.', style: context.type.metadata),
+          Text('taken = trades it took, ignored = signals it skipped. net = ROI points after fees. vs bot = how much better (+) or worse (-) than the normal bot.', style: context.type.metadata),
           const SizedBox(height: 6),
           _table(context, res, rows, groups),
         ],
@@ -157,11 +157,12 @@ class _VariantLabCardState extends State<VariantLabCard> {
     final bot = (res['bot'] is Map) ? Map<String, dynamic>.from(res['bot'] as Map) : <String, dynamic>{};
     Widget cell(String x, {int flex = 1, Color? c, bool bold = false, TextAlign a = TextAlign.right}) => Expanded(
         flex: flex, child: Text(x, textAlign: a, style: context.type.metadata.copyWith(color: c ?? p.textPrimary, fontWeight: bold ? FontWeight.w800 : FontWeight.w400, fontSize: 11)));
-    Widget line(String name, String trades, String net, String win, String vs, String word, Color col, {bool bold = false, Color? vsCol}) => Padding(
+    Widget line(String name, String trades, String skip, String net, String win, String vs, String word, Color col, {bool bold = false, Color? vsCol}) => Padding(
           padding: const EdgeInsets.symmetric(vertical: 3),
           child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
             cell(name, flex: 6, a: TextAlign.left, bold: bold),
             cell(trades, flex: 2),
+            cell(skip, flex: 2),
             cell(net, flex: 2, c: vsCol),
             cell(win, flex: 2),
             cell(vs, flex: 2, c: vsCol, bold: true),
@@ -169,9 +170,9 @@ class _VariantLabCardState extends State<VariantLabCard> {
           ]),
         );
     final out = <Widget>[
-      line('Scenario', 'trades', 'net', 'win', 'vs bot', 'result', p.textSecondary, vsCol: p.textSecondary),
+      line('Scenario', 'taken', 'ignored', 'net', 'win', 'vs bot', 'result', p.textSecondary, vsCol: p.textSecondary),
       const Divider(height: 6),
-      line('NORMAL BOT', '${_i(res['n'])}', _s(_d(bot['net'])), '${_d(bot['win']).toStringAsFixed(0)}%', '-', 'bot', p.textSecondary, bold: true, vsCol: p.textPrimary),
+      line('NORMAL BOT', '${_i(res['n'])}', '0', _s(_d(bot['net'])), '${_d(bot['win']).toStringAsFixed(0)}%', '-', 'bot', p.textSecondary, bold: true, vsCol: p.textPrimary),
     ];
     for (final g in groups) {
       final gr = rows.where((r) => r['group'] == g).toList();
@@ -185,7 +186,7 @@ class _VariantLabCardState extends State<VariantLabCard> {
         final vs = _d(r['vs_bot']);
         final col = v == 'better' ? p.profit : v == 'worse' ? p.loss : p.textSecondary;
         final word = v == 'better' ? 'BETTER' : v == 'worse' ? 'WORSE' : v == 'unclear' ? 'not clear' : 'few data';
-        out.add(line('${r['title']}', '${_i(r['taken'])}', _s(_d(r['net'])), '${_d(r['win']).toStringAsFixed(0)}%', _s(vs, sign: true), word, col,
+        out.add(line('${r['title']}', '${_i(r['taken'])}', '${(_i(res['n']) - _i(r['taken'])).clamp(0, 1 << 30)}', _s(_d(r['net'])), '${_d(r['win']).toStringAsFixed(0)}%', _s(vs, sign: true), word, col,
             vsCol: vs > 0 ? p.profit : (vs < 0 ? p.loss : p.textSecondary)));
       }
     }
