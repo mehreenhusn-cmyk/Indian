@@ -1311,6 +1311,17 @@ async def variant_lab_api(start: int = 0, days: int = 14):
         return {"running": False, "error": f"{type(e).__name__}: {e}", "tfs": {}}
 
 
+@app.get("/api/scoreboard")
+async def scoreboard_api():
+    """Final Scoreboard (scoreboard.py): one verdict per idea, Strategy Lab replay (3m/5m/15m) + the bot's saved closed trades side by side.
+    Read-only: it only reads the saved Strategy Lab result and the trade archive. Never touches trading."""
+    try:
+        import scoreboard
+        return await _swr("scoreboard", 20.0, scoreboard.build, 5000)
+    except Exception as e:
+        return {"ok": False, "error": f"{type(e).__name__}: {e}", "groups": [], "headline": []}
+
+
 @app.get("/api/scan_lab")
 async def scan_lab_api(start: str = ""):
     """Scan Lab (scan_lab.py): entry line (EMA30/50, SMA30/50, mean), timeframe 3m-2h, fixed majors vs movers, SD-band support/resistance.

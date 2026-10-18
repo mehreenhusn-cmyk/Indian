@@ -10,6 +10,7 @@ import '../theme/app_theme.dart';
 import '../theme/app_motion.dart';
 import '../widgets/owl_route.dart';
 import '../widgets/doctor_verdict_card.dart';
+import '../widgets/scoreboard_card.dart';
 import '../widgets/variant_lab_card.dart';
 import '../widgets/scan_lab_card.dart';
 import 'ai_report_screen.dart';
@@ -176,10 +177,23 @@ class _StrategyDoctorScreenState extends State<StrategyDoctorScreen> {
         children: [
           _resultCard(context, d, sample, enough, avoid, take, fin),
           if (!widget.india) ...[
-            _title(context, 'Strategy Lab'),
-            const VariantLabCard(),
-            _title(context, 'Scan Lab'),
-            const ScanLabCard(),
+            _title(context, 'Final scoreboard'),
+            const ScoreboardCard(),
+            Theme(
+              data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+              child: ExpansionTile(
+                tilePadding: EdgeInsets.zero,
+                childrenPadding: EdgeInsets.zero,
+                title: Text('Lab details (all rows, Scan Lab)', style: context.type.primary.copyWith(fontWeight: FontWeight.w700)),
+                subtitle: Text('Strategy Lab table and Scan Lab, folded. Nothing is removed.', style: context.type.metadata),
+                children: [
+                  _title(context, 'Strategy Lab'),
+                  const VariantLabCard(),
+                  _title(context, 'Scan Lab'),
+                  const ScanLabCard(),
+                ],
+              ),
+            ),
           ],
           Theme(
             data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
