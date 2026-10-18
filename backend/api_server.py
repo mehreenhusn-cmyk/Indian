@@ -1311,6 +1311,40 @@ async def variant_lab_api(start: int = 0, days: int = 14):
         return {"running": False, "error": f"{type(e).__name__}: {e}", "tfs": {}}
 
 
+@app.get("/api/doctor_summary")
+async def doctor_summary_api():
+    """Top 3 plain actions for the Strategy Doctor screen (doctor_extra.py). Read-only, uses the cached Doctor + scoreboard."""
+    try:
+        import doctor_extra, scoreboard
+        from recovered_bot import strategy_doctor
+        d = await _swr("doctor", 60.0, strategy_doctor.build, 5000)
+        b = await _swr("scoreboard", 20.0, scoreboard.build, 5000)
+        out = doctor_extra.summary(d, b)
+        try:                                           # chips for the timeframe / coin filter
+            out["options"] = doctor_extra.options(trade_store.get_all_closed(5000, net=True))
+        except Exception:
+            out["options"] = {"tfs": [], "coins": []}
+        return out
+    except Exception as e:
+        return {"ok": False, "actions": [], "error": f"{type(e).__name__}: {e}"}
+
+
+@app.get("/api/doctor_filter")
+async def doctor_filter_api(tf: str = "", coin: str = ""):
+    """Strategy Doctor for ONE timeframe and/or ONE coin (doctor_extra.py). Read-only."""
+    import doctor_extra
+    return await asyncio.to_thread(doctor_extra.filtered, tf, coin, 5000)
+
+
+@app.get("/api/health_meter")
+async def health_meter_api():
+    """OK / SLOW + plain lines (doctor_extra.py). Cheap: reads the timings the server already keeps."""
+    import doctor_extra
+    now = time.time()
+    held = round(now - _HEAVY_NOW["since"], 1) if _HEAVY_NOW["key"] else 0.0
+    return doctor_extra.health(_TIMING, _HEAVY_NOW["key"], held, _safe_status("ai_cpu_meter"))
+
+
 @app.get("/api/scoreboard")
 async def scoreboard_api():
     """Final Scoreboard (scoreboard.py): one verdict per idea, Strategy Lab replay (3m/5m/15m) + the bot's saved closed trades side by side.

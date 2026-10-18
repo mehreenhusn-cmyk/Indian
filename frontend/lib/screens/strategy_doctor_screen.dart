@@ -10,6 +10,7 @@ import '../theme/app_theme.dart';
 import '../theme/app_motion.dart';
 import '../widgets/owl_route.dart';
 import '../widgets/doctor_verdict_card.dart';
+import '../widgets/doctor_top_card.dart';
 import '../widgets/scoreboard_card.dart';
 import '../widgets/variant_lab_card.dart';
 import '../widgets/scan_lab_card.dart';
@@ -17,8 +18,11 @@ import 'ai_report_screen.dart';
 
 /// Own short request for the Doctor (20 s, one try, utf-8 body). It no longer shares the AI-tab request queue, so a busy or
 /// stuck AI request can never keep this screen on an endless spinner; a failure carries a readable reason.
-Future<Map<String, dynamic>> _doctorFetch(String base) async {
-  final res = await http.get(Uri.parse('$base/api/ai/doctor')).timeout(const Duration(seconds: 20));
+Future<Map<String, dynamic>> _doctorFetch(String base, [String tf = '', String coin = '']) async {
+  final url = (tf.isEmpty && coin.isEmpty)
+      ? '$base/api/ai/doctor'
+      : '$base/api/doctor_filter?tf=${Uri.encodeQueryComponent(tf)}&coin=${Uri.encodeQueryComponent(coin)}';
+  final res = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 20));
   if (res.statusCode != 200) throw 'The backend answered HTTP ${res.statusCode}';
   final m = jsonDecode(utf8.decode(res.bodyBytes));
   if (m is! Map) throw 'The backend sent an unexpected reply';
@@ -55,6 +59,8 @@ class _StrategyDoctorScreenState extends State<StrategyDoctorScreen> {
   bool _loading = true;
   bool _failed = false;
   String _err = '';
+  String _ftf = ''; // filter: timeframe (crypto only)
+  String _fcoin = ''; // filter: coin (crypto only)
   Timer? _timer;
 
   @override
@@ -81,7 +87,7 @@ class _StrategyDoctorScreenState extends State<StrategyDoctorScreen> {
       }
     } else {
       try {
-        r = await _doctorFetch(context.read<AppProvider>().baseUrl);
+        r = await _doctorFetch(context.read<AppProvider>().baseUrl, _ftf, _fcoin);
         _err = '';
       } on TimeoutException {
         r = null;
@@ -175,6 +181,18 @@ class _StrategyDoctorScreenState extends State<StrategyDoctorScreen> {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(AppSpacing.l, 4, AppSpacing.l, 32),
         children: [
+          if (!widget.india)
+            DoctorTopCard(
+              tf: _ftf,
+              coin: _fcoin,
+              onFilter: (t, c) {
+                setState(() {
+                  _ftf = t;
+                  _fcoin = c;
+                });
+                _load();
+              },
+            ),
           _resultCard(context, d, sample, enough, avoid, take, fin),
           if (!widget.india) ...[
             _title(context, 'Final scoreboard'),
