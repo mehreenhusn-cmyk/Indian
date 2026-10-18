@@ -76,6 +76,15 @@ def main():
         {"label": "SD 200 + rule", "n": 5, "avg": -1.3, "verdict": "better"}]}]})
     assert blk["tfs"][0]["plain"][0]["len"] == 200 and blk["tfs"][0]["rule"][0]["avg"] == -1.3
     assert SB.sd_block(None) is None
+    # table data: total, counts per group, bot row, short names
+    assert out["total"] == 3 and sum(c["n"] for c in out["counts"]) == 3, out["counts"]
+    assert out["bot_row"]["replay"]["15m"] == -300.0 and out["bot_row"]["saved_n"] == len(rows)
+    assert by["o_adx"]["short"] == "ADX 20+" and by["o_adx"]["vshort"] == "HELPS"
+    kim = [c for c in out["counts"] if c["title"] == "Kim's ideas"][0]
+    assert kim["better"] == 1 and kim["worse"] == 0
+    assert all(len(r["short"]) <= 26 for g in out["groups"] for r in g["rows"])
+    import variant_lab as _VL
+    assert all(x[1] in SB.SHORT and x[1] in SB.DESC for x in _VL.SCENARIOS), "every Strategy Lab idea needs a short name and a plain line"
     # the API calls build(5000) through _swr(key, ttl, fn, 5000): build must accept that one argument (this was the TypeError in the app)
     r = SB.build(5000)
     assert isinstance(r, dict) and "groups" in r, r

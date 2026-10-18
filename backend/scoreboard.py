@@ -85,6 +85,24 @@ DESC = {
     "o_pkg": "Kim: full package = all filters + ATR stop + partial exits. Very few trades.",
 }
 
+# Short names for the table (the long name + plain line open when the row is tapped).
+SHORT = {
+    "sl_prev1": "SL prev candle", "sl_prev3": "SL last 3 candles", "sl_swing": "SL last 10 candles", "sl_atr": "SL 1.5 ATR",
+    "be_fee": "SL to entry after TP1", "tp2": "Exit at TP2", "run": "Hold till opposite", "run_prev1": "Hold + wider SL",
+    "tsi": "TSI agrees", "zmove": "Z moving with trade", "zrule": "SD 0 rule", "both": "TSI + Z agree", "chop": "Low chop",
+    "bb_sq": "Skip BB squeeze", "bb_side": "Above/below BB mid", "bb_late": "Skip late (outside BB)", "bb_exp": "BB expanding",
+    "cvd3": "CVD agrees", "cvd_push": "Real flow push", "cvd_exp": "CVD + BB expanding", "wait": "Wait 1 candle",
+    "wait_cvd": "Wait 1 + CVD", "run_cvd": "Hold + CVD", "ema": "EMA200 bands",
+    "mix1": "Wider SL + no squeeze", "mix2": "TSI+Z + wider SL", "mix3": "Hold + TSI", "mix4": "Hold + SL + no squeeze",
+    "o_adx": "ADX 20+", "o_adx22": "ADX 22+", "o_htf": "Higher TF agrees", "o_slope": "EMA50 slope agrees", "o_vol": "Volume 1.1x",
+    "o_gap": "Not stretched (0.75 ATR)", "o_1r": "TP1 at least 1R", "o_bundle": "All Kim filters", "o_atr": "ATR stop (Kim)",
+    "o_part": "Partial exits 40/30/20/10", "o_conf": "Wait + close beyond", "o_pull": "Wait for pullback", "o_pkg": "Kim full package",
+}
+VSHORT = {"helps": "HELPS", "hurts": "HURTS", "mixed": "MIXED", "replay_up": "REPLAY +", "replay_down": "REPLAY -",
+          "saved_up": "SAVED +", "saved_down": "SAVED -", "unclear": "NOT CLEAR"}
+GOOD = ("helps", "replay_up", "saved_up")
+BAD = ("hurts", "replay_down", "saved_down")
+
 # saved-trade version of an idea: (trade dict, "BUY"/"SELL") -> True = trade is kept, False = trade would be skipped, None = data missing.
 MIN_OLD, MIN_NEW = 15, 5
 Z_OLD, Z_NEW = 2.0, 1.64
@@ -283,7 +301,8 @@ def build_from(replay, rows):
         v = _combine(sign, mixed, s)
         nets = [x.get("net", 0.0) for x in d["replay"].values() if x.get("taken")]
         row = {"key": key, "title": d["title"], "group": d["group"], "replay": d["replay"], "saved": s,
-               "verdict": v, "label": LABELS[v], "desc": DESC.get(key, ""),
+               "verdict": v, "label": LABELS[v], "vshort": VSHORT[v], "desc": DESC.get(key, ""),
+               "short": SHORT.get(key) or d["title"][:24],
                "profit_tfs": [tf for tf, x in d["replay"].items() if x.get("taken") and x.get("net", 0.0) > 0],
                "still_losing": bool(nets) and all(n <= 0 for n in nets)}
         flat.append(row)
@@ -292,6 +311,12 @@ def build_from(replay, rows):
         if rs:
             out["groups"].append({"title": g, "rows": rs})
 
+    out["total"] = len(flat)
+    out["counts"] = [{"title": g["title"], "n": len(g["rows"]),
+                      "better": sum(1 for r in g["rows"] if r["verdict"] in GOOD),
+                      "worse": sum(1 for r in g["rows"] if r["verdict"] in BAD),
+                      "mixed": sum(1 for r in g["rows"] if r["verdict"] == "mixed")} for g in out["groups"]]
+    out["bot_row"] = {"replay": {tf: out["bot"][tf]["net"] for tf in done}, "saved": saved_net if rows else None, "saved_n": len(rows)}
     rank = {"helps": 0, "replay_up": 1, "saved_up": 2, "mixed": 3, "unclear": 4, "saved_down": 5, "replay_down": 5, "hurts": 6}
     out["top"] = sorted((r for r in flat if r["verdict"] in ("helps", "replay_up", "saved_up", "mixed")),
                         key=lambda r: (rank[r["verdict"]], -sum(x["vs_bot"] for x in r["replay"].values())))[:5]

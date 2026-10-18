@@ -24,6 +24,7 @@ try:
     from . import tradebulls_provider  # noqa: F401  (registers the Tradebulls broker)
     from . import fyers_provider  # noqa: F401  (registers the Fyers broker)
     from . import fyers_client, india_pricing
+    from . import india_options as opt
     from .india_paper import TRAIL_MODES, PRODUCTS, SL_TYPES
 except ImportError:
     from strategy import ABCDStrategy
@@ -34,6 +35,7 @@ except ImportError:
     import tradebulls_provider  # noqa: F401  (registers the Tradebulls broker)
     import fyers_provider  # noqa: F401  (registers the Fyers broker)
     import fyers_client, india_pricing
+    import india_options as opt
     from india_paper import TRAIL_MODES, PRODUCTS, SL_TYPES
 
 log = logging.getLogger("india_runtime")
@@ -579,25 +581,57 @@ class IndiaRuntime:
             return dict(s)
 
     # ---- option chain / pins / reports --------------------------------
+    def _warm_chain(self, underlying, expiry, width):
+        """Slow broker calls for the chain, done OUTSIDE self.lock (they only fill the provider cache),
+        so the trading loop and every other screen never wait for them. -> timing dict (seconds)."""
+        p, t = self.provider, {}
+        if not getattr(p, "is_live", False):
+            return t
+        u = str(underlying).upper()
+        try:
+            t0 = time.time()
+            contracts = p.get_contracts(u)
+            t["contracts"] = round(time.time() - t0, 2)
+            t0 = time.time()
+            spot = p.get_spot(u)
+            step = opt.UNDERLYINGS[u]["step"]
+            now = p.now()
+            exps = sorted({c["expiry"] for c in contracts if c["expiry"] >= now.date()})
+            s = self.settings
+            min_days = max(int(s["min_days_to_expiry"]), 2 if s["product"] == "CARRY" else 0)
+            want = date.fromisoformat(expiry) if expiry else None
+            exp = want if want in exps else (opt.pick_expiry(set(exps), now.date(), min_days) or (exps[0] if exps else None))
+            atm = opt.atm_strike(spot, step)
+            pf = getattr(p, "prefetch", None)
+            if pf and exp:
+                pf([c["symbol"] for c in contracts
+                    if c["expiry"] == exp and abs(c["strike"] - atm) <= width * step and c.get("symbol")])
+            t["quotes"] = round(time.time() - t0, 2)
+        except Exception:
+            pass                                        # build_chain below reports the real error / last chain
+        return t
+
     def chain(self, underlying, expiry=None, width=10):
+        timing = self._warm_chain(underlying, expiry, width)    # no lock held while waiting for the broker
         with self.lock:
             exp = date.fromisoformat(expiry) if expiry else None
             key = (str(underlying).upper(), expiry)
             try:
                 out = _ser(india_chain.build_chain(self.engine, underlying, exp, width))
+                out["timing"] = timing
                 self._chain_last[key] = out
                 return out
             except india_broker.BrokerError as e:      # never a raw HTTP 500: show the last chain, or an empty one
                 last = self._chain_last.get(key)
                 if last:
-                    return {**last, "stale": True, "error": str(e)[:160]}
+                    return {**last, "stale": True, "error": str(e)[:160], "timing": timing}
                 u = str(underlying).upper()
                 return _ser({"underlying": u, "spot": 0.0, "atm": 0, "step": 0, "expiry": None,
                              "trade_expiry": None, "expiries": [], "lot": None, "budget": 0.0, "rows": [],
                              "has_oi": False, "pins": [], "day_mode": self.engine.day_mode,
                              "default_mode": {"mode": "ITM", "depth": int(self.settings["itm_depth"])},
                              "status": india_chain.market_status(self.provider.now()),
-                             "as_on": self.provider.now(), "stale": True, "error": str(e)[:160]})
+                             "as_on": self.provider.now(), "stale": True, "error": str(e)[:160], "timing": timing})
 
     def set_pin(self, underlying, side, spec):
         with self.lock:

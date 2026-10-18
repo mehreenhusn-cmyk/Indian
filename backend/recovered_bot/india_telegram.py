@@ -125,6 +125,7 @@ class IndiaTelegram:
         self._checked = {}            # (underlying, tf) -> close time (iso) already evaluated
         self._try_at = {}             # (underlying, tf) -> next time we may ask the feed again
         self.last = {"ok": None, "error": "", "at": None, "kind": "", "signal_at": None}
+        self.token_check = {"ok": None, "text": ""}    # result of the last Telegram getMe check
         self.note = ""
         self._wake = threading.Event()
         self.state = {"count": 0, "sent": []}
@@ -160,9 +161,31 @@ class IndiaTelegram:
         if new != old:
             self.creds.save(CRED_NAME, new)
             self._wake.set()
+        if bot_token is not None and str(bot_token).strip():
+            self.check_token()                # tells at once if the token is wrong (no more plain "404")
 
     def forget(self):
         self.creds.clear(CRED_NAME)
+        self.token_check = {"ok": None, "text": ""}
+
+    def check_token(self):
+        """Asks Telegram getMe. -> (ok, text). Never raises, never shows the token."""
+        token, _ = self._creds()
+        if not token:
+            self.token_check = {"ok": False, "text": "Bot Token not set"}
+            return False, self.token_check["text"]
+        try:
+            r = requests.get(f"https://api.telegram.org/bot{token}/getMe", timeout=10)
+            if r.status_code == 200 and r.json().get("ok"):
+                name = r.json().get("result", {}).get("username", "")
+                self.token_check = {"ok": True, "text": f"Token OK: @{name}"}
+            elif r.status_code in (401, 404):
+                self.token_check = {"ok": False, "text": "Token is wrong or revoked. Copy it again from BotFather (only the token line)"}
+            else:
+                self.token_check = {"ok": False, "text": f"Telegram answered {r.status_code}. Try again"}
+        except Exception as e:
+            self.token_check = {"ok": False, "text": _clean(f"Could not reach Telegram: {type(e).__name__}", token)}
+        return self.token_check["ok"], self.token_check["text"]
 
     def info(self):
         token, chat = self._creds()
@@ -172,6 +195,7 @@ class IndiaTelegram:
                 "chat_id": chat, "data_live": live is not None,
                 "data_label": getattr(live, "name", None) or "Fyers",
                 "sent_count": int(self.state.get("count", 0)),
+                "token_check": dict(self.token_check),
                 "last": dict(self.last), "note": self.note}
 
     # --------------------------------------------------------------- send ---
@@ -205,6 +229,22 @@ class IndiaTelegram:
         now = datetime.now(IST).strftime("%Y-%m-%d %H:%M:%S")
         return self._post(f"✅ Owl Terminal - India Telegram test\nTime : {now} IST\n"
                           f"Timeframe : {self.tf}m\nIf you see this, India signals will come here.", token, chat, "test")
+
+    def send_demo_signal(self):
+        """Sends a card that looks exactly like a real signal, with SAMPLE numbers (marked DEMO). -> (ok, message)."""
+        token, chat = self._creds()
+        now = datetime.now(IST)
+        tf = self.tf
+        opened = boundary(now, tf) - timedelta(minutes=tf)
+
+        class _S:                                    # sample numbers only
+            action, entry_price, stop_loss = "BUY", 24500.0, 24420.0
+            tp1, tp2, tp3, tp4 = 24560.0, 24620.0, 24680.0, 24760.0
+
+        und = (self.rt.settings.get("underlyings") or ["NIFTY"])[0]
+        card = format_card(_S, und, tf, 0, opened, now, itm_depth=self.rt.settings.get("itm_depth", 1),
+                           data_label="DEMO (sample numbers)", bot_name=BOT_NAME)
+        return self._post("🧪 DEMO - not a real signal\n" + card, token, chat, "test")
 
     def find_chat(self):
         """Reads the newest chat that messaged the bot (send /start to the bot first). -> (ok, message)."""

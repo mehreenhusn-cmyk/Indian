@@ -8,7 +8,9 @@ Option chart  : history of the option symbol; if Fyers has no intraday history f
 """
 import csv
 import io
+import json
 import math
+import os
 import re
 import time
 from datetime import date, datetime, timedelta, timezone
@@ -113,6 +115,7 @@ class FyersProvider(LiveProvider):
         self.token_session = None
         self.refresh_day = None
         self.auto_note = ""
+        self.timing = {}                     # seconds of the last slow steps (shown on the chain screen)
         self._last_check = 0.0
         self.client.renewer = self._renew
 
@@ -259,16 +262,62 @@ class FyersProvider(LiveProvider):
     def account_info(self):
         return dict(self.account)
 
+    def _master_path(self):
+        return os.path.join(self.data_dir, "fyers_master.json") if self.data_dir else None
+
+    def _master_from_disk(self, today):
+        """Today's contract list saved earlier (a restart must not download it again)."""
+        path = self._master_path()
+        try:
+            with open(path) as f:
+                d = json.load(f)
+            if d.get("day") != today.isoformat():
+                return None
+            out = {}
+            for u, cs in d["master"].items():
+                out[u] = [{**c, "expiry": date.fromisoformat(c["expiry"])} for c in cs]
+            return out if any(out.values()) else None
+        except Exception:
+            return None
+
+    def _master_to_disk(self, today):
+        path = self._master_path()
+        if not path:
+            return
+        try:
+            data = {u: [{**c, "expiry": c["expiry"].isoformat()} for c in cs] for u, cs in self._master.items()}
+            tmp = path + ".tmp"
+            with open(tmp, "w") as f:
+                json.dump({"day": today.isoformat(), "master": data}, f)
+            os.replace(tmp, path)
+        except Exception:
+            pass
+
     def _load_master(self):
         today = datetime.now(IST).date()
         if self._master_day == today and self._master:
             return
+        t0 = time.time()
+        disk = self._master_from_disk(today)
+        if disk:
+            self._master, self._master_day = disk, today
+            self.timing["contracts"] = round(time.time() - t0, 2)
+            return
         try:
             self._master = parse_master(self.client.symbol_master("NSE_FO"), today=today)
             self._master_day = today
+            self._master_to_disk(today)
+            self.timing["contracts"] = round(time.time() - t0, 2)
         except BrokerError:
             if not self._master:
                 raise
+
+    def warm_master(self):
+        """Load the contract list now (called in the background right after connect)."""
+        try:
+            self._load_master()
+        except Exception:
+            pass
 
     # ---- hooks ----------------------------------------------------------
     def _to_candles(self, rows):

@@ -204,6 +204,16 @@ def make_router(require_api_token, data_dir):
         ok, msg = tg().send_test()
         return {"ok": ok, "message": msg, **tg().info()}
 
+    @r.post("/telegram/demo")
+    def telegram_demo(_a=Depends(require_api_token)):
+        ok, msg = tg().send_demo_signal()
+        return {"ok": ok, "message": "Demo signal sent" if ok else msg, **tg().info()}
+
+    @r.post("/telegram/check")
+    def telegram_check(_a=Depends(require_api_token)):
+        ok, msg = tg().check_token()
+        return {"ok": ok, "message": msg, **tg().info()}
+
     @r.post("/telegram/find_chat")
     def telegram_find_chat(_a=Depends(require_api_token)):
         ok, msg = tg().find_chat()

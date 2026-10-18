@@ -108,6 +108,8 @@ class _IndiaTelegramCardState extends State<IndiaTelegramCard> {
     final live = _info['data_live'] == true;
     final last = _info['last'] is Map ? Map<String, dynamic>.from(_info['last'] as Map) : <String, dynamic>{};
     final note = '${_info['note'] ?? ''}';
+    final check = _info['token_check'] is Map ? Map<String, dynamic>.from(_info['token_check'] as Map) : <String, dynamic>{};
+    final checkText = '${check['text'] ?? ''}';
     return ISection(
       title: 'Telegram signals (India)',
       summary: enabled ? 'On · ${tf}m' : 'Off',
@@ -143,11 +145,19 @@ class _IndiaTelegramCardState extends State<IndiaTelegramCard> {
           OutlinedButton(
               onPressed: _busy || !tokenSaved || chat.isEmpty ? null : () => _run(() => widget.api.post('/telegram/test', {}, const Duration(seconds: 25))),
               child: const Text('Send test message')),
+          OutlinedButton(
+              onPressed: _busy || !tokenSaved || chat.isEmpty ? null : () => _run(() => widget.api.post('/telegram/demo', {}, const Duration(seconds: 25))),
+              child: const Text('Send demo signal')),
         ]),
         Padding(
           padding: const EdgeInsets.only(top: 6),
           child: Text('Chat ID: open your bot in Telegram, send /start once, then tap "Find Chat ID".', style: IT.small(context)),
         ),
+        if (tokenSaved && checkText.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Text(checkText, style: IT.small(context).copyWith(color: check['ok'] == true ? Colors.green : Colors.redAccent)),
+          ),
         if (_busy) const Padding(padding: EdgeInsets.only(top: 8), child: LinearProgressIndicator()),
         if (_msg.isNotEmpty)
           Padding(

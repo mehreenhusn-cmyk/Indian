@@ -190,6 +190,10 @@ class _IndiaChainTabState extends State<IndiaChainTab> {
                     ? 'Option prices are not ready yet${_note.isNotEmpty ? ' - ${friendlyError(_note)}' : ''}. Retrying...'
                     : 'Slow down - showing last data${_note.isNotEmpty ? ' (${friendlyError(_note)})' : ''}',
                 style: t.secondary.copyWith(color: p.warning)),
+          if (ch?['timing'] is Map && (ch!['timing'] as Map).isNotEmpty)
+            Text(
+                'Load time: ${(ch['timing'] as Map).entries.map((e) => '${e.value}s ${e.key}').join(', ')}',
+                style: t.secondary),
           if (parts != null) ...parts[0],
         ]),
       ),
