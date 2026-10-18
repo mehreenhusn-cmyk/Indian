@@ -1311,6 +1311,20 @@ async def variant_lab_api(start: int = 0, days: int = 14):
         return {"running": False, "error": f"{type(e).__name__}: {e}", "tfs": {}}
 
 
+@app.get("/api/scan_lab")
+async def scan_lab_api(start: str = ""):
+    """Scan Lab (scan_lab.py): entry line (EMA30/50, SMA30/50, mean), timeframe 3m-2h, fixed majors vs movers, SD-band support/resistance.
+    start=quick (majors, 15m/1h/2h), start=full (all, slow) or start=sd (SD length 200 vs 100/150/50) runs it in one background thread. Without start it only returns the saved
+    short answer / progress (JSON). Read-only, never touches trading."""
+    try:
+        import scan_lab
+        if start in ("quick", "full", "sd"):
+            scan_lab.start(start)
+        return scan_lab.status()
+    except Exception as e:
+        return {"running": False, "error": f"{type(e).__name__}: {e}", "summary": None}
+
+
 @app.get("/api/report/save")
 async def report_save():
     """App button: writes owl_report_<date>.txt into the phone's Download folder (see ai_report.save_to_downloads)."""
