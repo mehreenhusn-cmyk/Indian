@@ -66,6 +66,9 @@ def main():
     # too few saved trades -> "no_data", not a made-up verdict
     out6 = SB.build_from(fake_replay(), fake_trades(n=20))
     assert {r["key"]: r for g in out6["groups"] for r in g["rows"]}["o_adx"]["saved"]["state"] == "no_data"
+    # the API calls build(5000) through _swr(key, ttl, fn, 5000): build must accept that one argument (this was the TypeError in the app)
+    r = SB.build(5000)
+    assert isinstance(r, dict) and "groups" in r, r
     print("test_scoreboard OK")
 
 

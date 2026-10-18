@@ -283,7 +283,7 @@ def build_from(replay, rows):
     return out
 
 
-def build():
+def build(limit=5000):
     """Reads the saved Strategy Lab result + the bot's closed trades. Never raises."""
     try:
         replay = VL.status() if VL else {"tfs": {}}
@@ -292,7 +292,7 @@ def build():
     rows = []
     try:
         from recovered_bot import trade_store, strategy_doctor as SD
-        rows = SD._clean_trades(trade_store.get_all_closed(5000, net=True))
+        rows = SD._clean_trades(trade_store.get_all_closed(int(limit or 5000), net=True))
     except Exception:
         rows = []
     try:
