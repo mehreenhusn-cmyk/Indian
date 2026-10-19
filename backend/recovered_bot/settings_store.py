@@ -99,6 +99,12 @@ _defaults = {
     "ai2_provider": "mistral",    # "mistral" or "groq" (both have a free plan), or "openai" / "gemini" / "anthropic"
     "ai2_api_key": "",            # SECURITY: never hardcode - paste via Settings only
     "ai2_model": "",              # optional; "" = a sensible vision model for that provider
+    "ai3_provider": "groq",      # extra free key #3: "mistral", "groq", "gemini", "openrouter" ... (empty key = slot unused)
+    "ai3_api_key": "",            # SECURITY: never hardcode - paste via Settings only
+    "ai3_model": "",              # optional
+    "ai4_provider": "groq",      # extra free key #4: "mistral", "groq", "gemini", "openrouter" ... (empty key = slot unused)
+    "ai4_api_key": "",            # SECURITY: never hardcode - paste via Settings only
+    "ai4_model": "",              # optional
     # ---- the older AI modules (Coach, Pick, Desk, Shadow Lab, trackers ...). OFF = no background threads, no heavy work.
     "legacy_ai_enabled": False,
 }

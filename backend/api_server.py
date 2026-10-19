@@ -726,6 +726,26 @@ async def get_system():
     return snap
 
 
+@app.get("/api/ops")
+async def get_ops():
+    """Left-swipe Backend panel: which zip is live, uptime, restarts today, last problems (see ops_status.py)."""
+    from recovered_bot import ops_status
+    return await asyncio.to_thread(ops_status.snapshot, DATA_DIR)
+
+
+@app.get("/api/app_prefs")
+async def app_prefs_get():
+    """App-side choices (theme, sounds) backed up on the phone's backend, so a fresh app install gets them back."""
+    from recovered_bot import ops_status
+    return await asyncio.to_thread(ops_status.prefs_get, DATA_DIR)
+
+
+@app.post("/api/app_prefs")
+async def app_prefs_set(payload: dict, _auth=Depends(require_api_token)):
+    from recovered_bot import ops_status
+    return await asyncio.to_thread(ops_status.prefs_merge, DATA_DIR, payload)
+
+
 @app.get("/api/positions")
 def get_positions(bot: str = "b1"):
     """Standalone positions endpoint - same live/paper exclusivity as the
@@ -931,7 +951,7 @@ async def get_candles(symbol: str, limit: int = 260, tf: str = None):
 # looks like our own mask, so opening Settings and hitting Save without
 # touching a secret field can never overwrite the real stored secret with
 # the masked placeholder.
-_SETTINGS_SECRET_KEYS = ("binance_api_secret", "telegram_bot_token", "ai2_api_key")
+_SETTINGS_SECRET_KEYS = ("binance_api_secret", "telegram_bot_token", "ai2_api_key", "ai3_api_key", "ai4_api_key")
 _SECRET_MASK_PREFIX = "\u2022\u2022\u2022\u2022"  # "••••"
 
 

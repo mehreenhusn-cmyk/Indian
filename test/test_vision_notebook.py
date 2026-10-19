@@ -46,6 +46,7 @@ out, err = V._call_ai("sys", "txt", b"png"); assert err is None and "SKIP" in ou
 
 # 3) backup key (Mistral) answers while the main key is out of quota; main stays paused on its own
 cfg["ai2_api_key"] = "BBB"
+V._rr[0] = 1                                                      # round-robin: next call starts with the main key
 script[:] = [gem_min, gem_min, oai_ok]
 out, err = V._call_ai("sys", "txt", b"png")
 assert err is None and "backup" in out, (out, err)
@@ -54,6 +55,20 @@ assert V._stat["model"].startswith("backup:")
 assert V.quota_resume_at() == 0                                   # backup is free -> not "all paused"
 n0 = len(calls); script[:] = [oai_ok]
 V._call_ai("sys", "txt", None); assert "mistral" in calls[-1] and len(calls) == n0 + 1   # main skipped (paused), text-only call works
+
+# 3b) three free keys: calls are SHARED (round-robin), a paused key is skipped, no key is hit twice in a row
+for k in list(V._pause): V._pause[k] = 0
+cfg["ai3_api_key"] = "CCC"; cfg["ai3_provider"] = "groq"; cfg["ai4_api_key"] = "DDD"; cfg["ai4_provider"] = "openrouter"
+assert [x["slot"] for x in V._slots()] == ["main", "backup", "backup2", "backup3"], V._slots()
+hosts = []
+for _ in range(8):
+    script[:] = [lambda u: (hosts.append(u.split("/")[2]) or oai_ok(u)), lambda u: (hosts.append(u.split("/")[2]) or oai_ok(u)), lambda u: (hosts.append(u.split("/")[2]) or oai_ok(u)), lambda u: (hosts.append(u.split("/")[2]) or gem_ok(u))]
+    V._call_ai("sys", "txt", None)
+assert len(set(hosts)) >= 3, hosts                                # load is spread, not always the first key
+mon = V.monitor(); assert len(mon["slots"]) == 4
+script[:] = []; cfg["ai3_api_key"] = ""; cfg["ai4_api_key"] = ""; cfg["ai2_api_key"] = "BBB"
+for k in list(V._pause): V._pause[k] = 0
+V._rr[0] = 1
 
 # 4) signal during quota: stays queued (no ERROR, tries not used, budget not charged)
 for k in list(V._pause): V._pause[k] = time.time() + 600

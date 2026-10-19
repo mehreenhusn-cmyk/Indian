@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../theme/app_theme.dart';
-import 'owl_card.dart';
+import 'backend_status_panel.dart';
 import 'owl_route.dart';
 import '../screens/ai_assistant_screen.dart';
 import '../services/market_mode.dart';
@@ -151,47 +151,16 @@ class OwlDrawer extends StatelessWidget {
                         ),
                         const SizedBox(height: AppSpacing.l),
 
-                        // ---- Exchange status (locked, not a switcher) ----
+                        // ---- Backend status (swipe-from-left panel) ----
                         Text(
-                          'EXCHANGE',
+                          'BACKEND',
                           style: t.metadata.copyWith(
                             fontWeight: FontWeight.w700,
                             letterSpacing: 1.1,
                           ),
                         ),
                         const SizedBox(height: AppSpacing.m - 2),
-                        OWLCard(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: AppSpacing.m,
-                            vertical: AppSpacing.m - 2,
-                          ),
-                          child: Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(6),
-                                decoration: BoxDecoration(
-                                  color: p.accent.withOpacity(0.15),
-                                  borderRadius: BorderRadius.circular(AppSpacing.radiusSmall),
-                                ),
-                                child: Icon(Icons.currency_bitcoin, color: p.accent, size: 18),
-                              ),
-                              const SizedBox(width: AppSpacing.m - 2),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'Binance Futures',
-                                      style: t.primary.copyWith(fontWeight: FontWeight.w700),
-                                    ),
-                                    Text('USDT-M Perpetual · Locked', style: t.metadata),
-                                  ],
-                                ),
-                              ),
-                              Icon(Icons.lock_outline, color: p.accent, size: 16),
-                            ],
-                          ),
-                        ),
+                        const BackendStatusPanel(),
                       ],
                     ),
                   ),

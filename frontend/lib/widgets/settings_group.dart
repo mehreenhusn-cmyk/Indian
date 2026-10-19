@@ -86,10 +86,10 @@ class _SettingsGroupState extends State<SettingsGroup> {
   Widget build(BuildContext context) {
     final p = context.palette;
     final t = context.type;
-    final radius = BorderRadius.circular(22);
+    final radius = BorderRadius.circular(16);
 
     return Container(
-      margin: const EdgeInsets.only(bottom: AppSpacing.m),
+      margin: const EdgeInsets.only(bottom: 6),
       // Neomorphism: soft raised card (light edge top-left, soft shadow bottom-right).
       decoration: BoxDecoration(
         color: p.surfaceElevated,
@@ -98,13 +98,13 @@ class _SettingsGroupState extends State<SettingsGroup> {
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(p.brightness == Brightness.dark ? 0.35 : 0.07),
-            blurRadius: 14,
-            offset: const Offset(4, 6),
+            blurRadius: 8,
+            offset: const Offset(2, 3),
           ),
           BoxShadow(
             color: Colors.white.withOpacity(p.brightness == Brightness.dark ? 0.03 : 0.95),
-            blurRadius: 12,
-            offset: const Offset(-4, -4),
+            blurRadius: 6,
+            offset: const Offset(-2, -2),
           ),
         ],
       ),
@@ -120,15 +120,15 @@ class _SettingsGroupState extends State<SettingsGroup> {
             child: Padding(
               padding: const EdgeInsets.symmetric(
                 horizontal: AppSpacing.m,
-                vertical: AppSpacing.m,
+                vertical: 9,
               ),
               child: Row(
                 children: [
                   if (widget.icon != null) ...[
                     // Claymorphism: puffy gradient tile with a soft coloured shadow.
                     Container(
-                      width: 42,
-                      height: 42,
+                      width: 34,
+                      height: 34,
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           begin: Alignment.topLeft,
@@ -138,18 +138,18 @@ class _SettingsGroupState extends State<SettingsGroup> {
                             widget.tint ?? p.accent,
                           ],
                         ),
-                        borderRadius: BorderRadius.circular(14),
+                        borderRadius: BorderRadius.circular(11),
                         boxShadow: [
                           BoxShadow(
-                            color: (widget.tint ?? p.accent).withOpacity(0.38),
-                            blurRadius: 10,
-                            offset: const Offset(0, 5),
+                            color: (widget.tint ?? p.accent).withOpacity(0.30),
+                            blurRadius: 6,
+                            offset: const Offset(0, 3),
                           ),
                         ],
                       ),
-                      child: Icon(widget.icon, size: 22, color: Colors.white),
+                      child: Icon(widget.icon, size: 18, color: Colors.white),
                     ),
-                    const SizedBox(width: AppSpacing.m),
+                    const SizedBox(width: 10),
                   ],
                   Expanded(
                     child: Column(
@@ -161,12 +161,12 @@ class _SettingsGroupState extends State<SettingsGroup> {
                           overflow: TextOverflow.ellipsis,
                           style: t.primary.copyWith(
                             fontWeight: FontWeight.w700,
-                            fontSize: 15,
+                            fontSize: 14.5,
                             color: p.textPrimary,
                           ),
                         ),
                         if (widget.summary != null && widget.summary!.isNotEmpty) ...[
-                          const SizedBox(height: 2),
+                          const SizedBox(height: 1),
                           Text(
                             widget.summary!,
                             maxLines: 1,

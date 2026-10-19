@@ -352,7 +352,7 @@ class _VisionTabScreenState extends State<VisionTabScreen> {
                     Row(
                       children: [
                         Expanded(
-                          child: Text('${sl['slot'] == 'main' ? 'Main key' : 'Backup key'} (${sl['provider'] ?? ''})',
+                          child: Text('${sl['slot'] == 'main' ? 'Main key' : sl['slot'] == 'backup' ? 'Backup key' : sl['slot'] == 'backup2' ? 'Backup key 2' : 'Backup key 3'} (${sl['provider'] ?? ''})',
                               style: TextStyle(color: p.textPrimary, fontSize: 12.5, fontWeight: FontWeight.w800)),
                         ),
                         Text(sl['state'] == 'paused' ? 'OUT OF QUOTA' : 'READY',

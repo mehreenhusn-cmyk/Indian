@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/india_api.dart';
+import '../services/india_ticks.dart';
 import '../theme/app_theme.dart';
 import '../widgets/india_ui.dart';
 import '../widgets/special_master.dart';
@@ -57,7 +58,11 @@ class _IndiaChartScreenState extends State<IndiaChartScreen> {
   SpecialMasterData? _smData;
   List<_C>? _smFor;
   String _smKey = '';
-  String _source = '', _optErr = '', _feedMode = '';
+  String _source = '', _optErr = '', _feedMode = '', _note = '';
+  double? _livePx; // last pushed price (about once a second) - the newest candle follows it between full reloads
+  bool _pxUp = true;
+  DateTime? _lastReload;
+  bool _again = false; // a reload was asked while one was running (index / timeframe switched)
   bool get _isOpt => widget.optionKey != null;
 
   int _visible = 80; // candles on screen
@@ -78,6 +83,10 @@ class _IndiaChartScreenState extends State<IndiaChartScreen> {
     _loadPrefs();
     _load();
     _timer = Timer.periodic(const Duration(seconds: 3), (_) => _load());
+    if (!_isOpt) {
+      IndiaTicks.instance.start(widget.api);
+      IndiaTicks.instance.data.addListener(_onTick);
+    }
     _clock = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted && _live && !_isOpt) setState(() {}); // candle-close countdown + stale check
     });
@@ -85,9 +94,42 @@ class _IndiaChartScreenState extends State<IndiaChartScreen> {
 
   @override
   void dispose() {
+    if (!_isOpt) {
+      IndiaTicks.instance.data.removeListener(_onTick);
+      IndiaTicks.instance.stop();
+    }
     _timer?.cancel();
     _clock?.cancel();
     super.dispose();
+  }
+
+  /// A fresh price arrived (about once a second): move the newest candle with it, like a broker app. When the price already belongs to
+  /// the NEXT candle, ask the backend for a full reload (it builds the new candle and the indicators).
+  void _onTick() {
+    if (!mounted || _isOpt || !_live || _c.isEmpty || _tf <= 0) return;
+    final sp = IndiaTicks.instance.data.value['spots'];
+    if (sp is! Map) return;
+    final s = sp[_u];
+    if (s is! Map) return;
+    final px = nd(s['lp']);
+    final at = nd(s['at']).toInt();
+    if (px <= 0) return;
+    final last = _c.last;
+    if (at >= last.ts + _tf * 60) {
+      final now = DateTime.now();
+      if (_lastReload == null || now.difference(_lastReload!).inMilliseconds > 2000) {
+        _lastReload = now;
+        _load();
+      }
+      return;
+    }
+    if (_livePx == px) return;
+    setState(() {
+      _pxUp = _livePx == null ? true : px >= _livePx!;
+      _livePx = px;
+      _updated = DateTime.now();
+      _c[_c.length - 1] = _C(last.ts, last.lbl, last.day, last.date, last.o, math.max(last.h, px), math.min(last.l, px), px, last.x50);
+    });
   }
 
   Future<void> _loadPrefs() async {
@@ -113,14 +155,22 @@ class _IndiaChartScreenState extends State<IndiaChartScreen> {
   }
 
   Future<void> _load() async {
-    if (_busy || !mounted) return;
+    if (!mounted) return;
+    if (_busy) {
+      _again = true; // run once more right after this one (index / timeframe may have changed)
+      return;
+    }
     _busy = true;
+    final reqU = _u, reqTf = _tf;
     try {
-      final tfq = _tf > 0 ? '&tf=$_tf' : '';
+      final tfq = reqTf > 0 ? '&tf=$reqTf' : '';
       final q = _isOpt
           ? '/option_candles?key=${Uri.encodeQueryComponent(widget.optionKey!)}&limit=600$tfq'
-          : '/candles?underlying=$_u&limit=600$tfq';
-      final d = Map<String, dynamic>.from(await widget.api.get(q) as Map);
+          : '/candles?underlying=$reqU&limit=600$tfq';
+      // the first load of an index downloads several days of history: allow more time than a normal refresh
+      final d = Map<String, dynamic>.from(await widget.api.get(q, _loaded ? null : const Duration(seconds: 25)) as Map);
+      if (!mounted) return;
+      if (reqU != _u || (reqTf != _tf && reqTf != 0)) return; // the answer is for the index / timeframe you just left: drop it
       final cs = ((d['candles'] as List?) ?? []).map((e) => _C.from(Map<String, dynamic>.from(e as Map))).toList();
       final ser = _Ser.from(Map<String, dynamic>.from((d['indicators'] as Map?) ?? {}));
       if (!mounted) return;
@@ -137,6 +187,8 @@ class _IndiaChartScreenState extends State<IndiaChartScreen> {
         _live = d['live'] == true;
         _source = '${d['source'] ?? ''}';
         _optErr = '${d['error'] ?? ''}';
+        _note = '${d['note'] ?? ''}';
+        if (_c.isNotEmpty) _livePx = _c.last.c;
         _feedMode = '${d['feed_mode'] ?? ''}';
         _updated = DateTime.now();
         _error = '';
@@ -149,12 +201,17 @@ class _IndiaChartScreenState extends State<IndiaChartScreen> {
       });
     } finally {
       _busy = false;
+      if (_again && mounted) {
+        _again = false;
+        _load();
+      }
     }
   }
 
   void _pickIndex(String u) {
     setState(() {
       _u = u;
+      _livePx = null;
       _c = [];
       _s = _Ser();
       _loaded = false;
@@ -167,6 +224,7 @@ class _IndiaChartScreenState extends State<IndiaChartScreen> {
   void _pickTf(int m) {
     setState(() {
       _tf = m;
+      _livePx = null;
       _c = [];
       _s = _Ser();
       _loaded = false;
@@ -284,6 +342,14 @@ class _IndiaChartScreenState extends State<IndiaChartScreen> {
           titleSpacing: 0,
           title: Text('${_isOpt ? widget.optionTitle : _u}  ${_tf > 0 ? '${_tf}m' : ''}', style: IT.h(context).copyWith(fontSize: 16)),
           actions: [
+            if (!_isOpt && _live && _livePx != null)
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: Text(_livePx!.toStringAsFixed(2),
+                      style: IT.h(context).copyWith(fontSize: 14, fontWeight: FontWeight.w800, color: _pxUp ? p.profit : p.loss)),
+                ),
+              ),
             Padding(
               padding: const EdgeInsets.only(right: 12),
               child: Center(child: IPill(_isOpt && _source.isNotEmpty ? _source : (_live ? '${_stale ? 'STALE' : 'LIVE'}${_feedMode == 'WEBSOCKET' ? ' WS' : (_feedMode == 'REST' ? ' REST' : '')}' : 'DEMO'), _live && !_stale ? p.profit : p.warning)),
@@ -326,6 +392,8 @@ class _IndiaChartScreenState extends State<IndiaChartScreen> {
                 Padding(padding: const EdgeInsets.only(top: 4), child: Text(_optErr, style: IT.small(context).copyWith(color: p.warning))),
               if (_error.isNotEmpty)
                 Padding(padding: const EdgeInsets.only(top: 4), child: SelectableText(_error, style: IT.small(context).copyWith(color: p.loss))),
+              if (!_isOpt && _note.isNotEmpty)
+                Padding(padding: const EdgeInsets.only(top: 4), child: Text(_note, style: IT.small(context))),
             ]),
           ),
         ),
@@ -391,7 +459,16 @@ class _IndiaChartScreenState extends State<IndiaChartScreen> {
 
   Widget _chart(BuildContext context) {
     final t = context.type;
-    if (!_loaded) return const Center(child: CircularProgressIndicator());
+    if (!_loaded) {
+      return Center(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          const CircularProgressIndicator(),
+          const SizedBox(height: 12),
+          Text('Loading ${_isOpt ? 'option' : _u} candles... the first open of an index can take a few seconds.',
+              textAlign: TextAlign.center, style: IT.small(context)),
+        ]),
+      );
+    }
     if (_c.length < 2) {
       return Center(
         child: Padding(

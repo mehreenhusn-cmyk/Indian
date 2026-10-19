@@ -504,7 +504,9 @@ _OAI_STYLE = {      # provider -> (url, default vision model). All three speak t
     "openai": ("https://api.openai.com/v1/chat/completions", "gpt-4o-mini"),
     "mistral": ("https://api.mistral.ai/v1/chat/completions", "mistral-small-latest"),
     "groq": ("https://api.groq.com/openai/v1/chat/completions", "meta-llama/llama-4-scout-17b-16e-instruct"),
+    "openrouter": ("https://openrouter.ai/api/v1/chat/completions", "meta-llama/llama-4-maverick:free"),   # free model names change: set the Model field if it says 404
 }
+_rr = [0]            # round-robin counter: calls are SHARED between the ready keys instead of emptying the first key first
 _pause = {}          # "slot:model" -> time until which that model is paused (quota or key problem)
 QUOTA_PROBE_S = 1800  # after a DAILY quota error one test call is made every 30 minutes until Google says yes again
 
@@ -519,11 +521,12 @@ def _slots():
     key, prov, model = _ai_key()
     if key:
         out.append({"slot": "main", "key": key, "provider": prov, "model": model})
-    k2 = str(_cfg("ai2_api_key", "") or "").strip()
-    if k2:
-        p2 = str(_cfg("ai2_provider", "mistral") or "mistral").strip().lower()
-        out.append({"slot": "backup", "key": k2, "provider": p2 if p2 in _OAI_STYLE or p2 in ("gemini", "anthropic") else "mistral",
-                    "model": str(_cfg("ai2_model", "") or "").strip()})
+    for n, name in ((2, "backup"), (3, "backup2"), (4, "backup3")):
+        k = str(_cfg(f"ai{n}_api_key", "") or "").strip()
+        if k:
+            p = str(_cfg(f"ai{n}_provider", "mistral") or "mistral").strip().lower()
+            out.append({"slot": name, "key": k, "provider": p if p in _OAI_STYLE or p in ("gemini", "anthropic") else "mistral",
+                        "model": str(_cfg(f"ai{n}_model", "") or "").strip()})
     return out
 
 
@@ -683,8 +686,8 @@ def monitor():
     return {"slots": slots, "used_24h": _day_used(), "cap": cap, "waiting": waiting, "last_min": len(_calls),
             "max_per_min": max(1, int(_f(_cfg("vision_max_per_min", 6), 6))), "last_error": _stat.get("error") or "",
             "model": _stat.get("model", ""),
-            "tip": ("Both keys are out of quota. Signals wait, stop-loss still works." if slots and all(x["state"] == "paused" for x in slots)
-                    else "The main key is out, the backup key is answering." if len(slots) > 1 and slots[0]["state"] == "paused"
+            "tip": ("All keys are out of quota. Signals wait, stop-loss still works." if slots and all(x["state"] == "paused" for x in slots)
+                    else "Some keys are out of quota, the others are answering." if len(slots) > 1 and any(x["state"] == "paused" for x in slots)
                     else "Everything is running." if slots else "No AI key yet.")}
 
 
@@ -697,6 +700,9 @@ def _call_ai(system, text, png=None):
         return None, "No AI key: add one in Settings > AI Assistant."
     b64 = base64.b64encode(png).decode() if png else None
     last = "unknown error"
+    if len(sls) > 1:                      # share the load: start with a different ready key each call
+        _rr[0] = (_rr[0] + 1) % len(sls)
+        sls = sls[_rr[0]:] + sls[:_rr[0]]
     for attempt in range(2):
         transient = False
         for sl in sls:
@@ -1315,12 +1321,12 @@ def snapshot(limit=80):
         msg = f"Daily AI limit reached ({int(_f(_cfg('vision_max_calls_day', 200), 200))} calls in 24 h). New signals are not judged until calls free up."
     elif quota_resume_at() > 0:
         msg = (f"AI quota is used up on every key. Signals wait and the stop-loss still works. Trying again at {_ist(quota_resume_at())} IST."
-               + ("" if str(_cfg("ai2_api_key", "") or "").strip() else " Tip: add a free backup key in Settings > AI backup key."))
+               + ("" if len(_slots()) > 1 else " Tip: add free backup keys in Settings > AI Assistant (Backup key 1-3)."))
     elif _stat["error"]:
         msg = "Last AI problem: " + _stat["error"]
     return {
         "ready": bool(key) and enabled(), "message": msg, "provider": provider, "model": _stat.get("model", ""),
-        "backup": bool(str(_cfg("ai2_api_key", "") or "").strip()), "paused_until": quota_resume_at(),
+        "backup": len(_slots()) > 1, "paused_until": quota_resume_at(),
         "since": _state["since"], "calls_last_min": len(_calls), "calls_24h": _day_used(), "monitor": monitor(),
         "summary": {"closed": len(closed), "wins": len(wins), "net": net, "unrealized": unreal, "open": len(opens),
                     "win_rate": (len(wins) * 100.0 / len(closed)) if closed else None,

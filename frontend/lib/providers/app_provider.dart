@@ -149,16 +149,17 @@ class AppProvider extends ChangeNotifier {
   }
 
   /// Theme Mode (Light/Dark) - stored locally in SharedPreferences so it is
-  /// instant, works offline, and defaults to DARK (the app's original look).
+  /// instant, works offline, and defaults to LIGHT unless dark was chosen (a fresh install used to start black).
   /// Deliberately NOT read from the backend `theme` setting: that key is a
   /// legacy Kivy default of "light" and would flip every existing user to
   /// light mode on first launch.
   ThemeMode get themeMode =>
-      prefs.getString('theme_mode') == 'light' ? ThemeMode.light : ThemeMode.dark;
+      prefs.getString('theme_mode') == 'dark' ? ThemeMode.dark : ThemeMode.light;
 
   Future<bool> setThemeMode(ThemeMode mode) async {
     final ok = await prefs.setString('theme_mode', mode == ThemeMode.light ? 'light' : 'dark');
     notifyListeners();
+    pushPrefsBackup();
     return ok;
   }
 
@@ -258,6 +259,65 @@ class AppProvider extends ChangeNotifier {
     }
   }
 
+  /// Ops panel (GET /api/ops): which zip is live, uptime, restarts, last problems. Returns the map (no notifyListeners). null on failure.
+  Future<Map<String, dynamic>?> fetchOps() async {
+    try {
+      final res = await http.get(_u('/api/ops')).timeout(_quickTimeout);
+      if (res.statusCode == 200) {
+        final body = jsonDecode(res.body);
+        if (body is Map<String, dynamic>) return body;
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  // ---- App-choice backup: theme + sound choices are copied to the phone's backend (owl_data), so a freshly installed app gets them back.
+  static const _prefsRestoredKey = 'prefs_restored_v1';
+  static const _syncKeys = ['theme_mode', 'voice_enabled', 'voice_entry', 'voice_exit', 'voice_fg_only'];
+  Timer? _pushTimer;
+
+  void pushPrefsBackup() {
+    _pushTimer?.cancel();
+    _pushTimer = Timer(const Duration(seconds: 2), () async {
+      try {
+        final m = <String, dynamic>{};
+        for (final k in _syncKeys) {
+          final v = prefs.get(k);
+          if (v is String || v is bool || v is int) m[k] = v;
+        }
+        if (m.isEmpty) return;
+        await http
+            .post(_u('/api/app_prefs'), headers: {'Content-Type': 'application/json'}, body: jsonEncode(m))
+            .timeout(const Duration(seconds: 8));
+      } catch (_) {}
+    });
+  }
+
+  /// Fresh install only: copies the saved choices back, never overwrites a choice already made on this phone.
+  Future<void> _restorePrefsIfFresh() async {
+    try {
+      if (prefs.getBool(_prefsRestoredKey) == true) return;
+      final res = await http.get(_u('/api/app_prefs')).timeout(_quickTimeout);
+      if (res.statusCode != 200) return;
+      final body = jsonDecode(res.body);
+      if (body is Map) {
+        for (final k in _syncKeys) {
+          if (prefs.containsKey(k)) continue;
+          final v = body[k];
+          if (v is String) {
+            await prefs.setString(k, v);
+          } else if (v is bool) {
+            await prefs.setBool(k, v);
+          } else if (v is int) {
+            await prefs.setInt(k, v);
+          }
+        }
+      }
+      await prefs.setBool(_prefsRestoredKey, true);
+      notifyListeners();
+    } catch (_) {}
+  }
+
   Future<void> init() async {
     baseUrl = prefs.getString(_backendUrlKey) ?? _defaultBaseUrl;
     await Future.wait([
@@ -269,6 +329,7 @@ class AppProvider extends ChangeNotifier {
     ]);
     initLoaded = true; // the welcome loading bar reads this: status, signals, settings, equity and calendar are all fetched
     notifyListeners();
+    _restorePrefsIfFresh().then((_) => pushPrefsBackup()); // not awaited
     warmAi(); // not awaited: runs quietly behind the first screen
   }
 
@@ -1555,22 +1616,26 @@ class AppProvider extends ChangeNotifier {
 
   Future<void> setSoundEnabled(bool v) async {
     await prefs.setBool(_kSoundOn, v);
+    pushPrefsBackup();
     if (!v) await sound.stop();
     notifyListeners();
   }
 
   Future<void> setSoundEntryOn(bool v) async {
     await prefs.setBool(_kSoundEntry, v);
+    pushPrefsBackup();
     notifyListeners();
   }
 
   Future<void> setSoundExitOn(bool v) async {
     await prefs.setBool(_kSoundExit, v);
+    pushPrefsBackup();
     notifyListeners();
   }
 
   Future<void> setSoundOnlyWhenOpen(bool v) async {
     await prefs.setBool(_kSoundFgOnly, v);
+    pushPrefsBackup();
     notifyListeners();
   }
 

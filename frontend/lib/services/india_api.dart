@@ -11,8 +11,8 @@ class IndiaApi {
 
   Uri _u(String path) => Uri.parse('$base/api/india$path');
 
-  Future<dynamic> get(String path) async {
-    final res = await http.get(_u(path)).timeout(_timeout);
+  Future<dynamic> get(String path, [Duration? timeout]) async {
+    final res = await http.get(_u(path)).timeout(timeout ?? _timeout);
     if (res.statusCode >= 400) throw Exception(_err(res));
     return jsonDecode(res.body);
   }

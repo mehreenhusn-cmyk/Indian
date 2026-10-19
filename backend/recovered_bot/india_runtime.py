@@ -722,16 +722,21 @@ class IndiaRuntime:
         u = underlying.upper()
         if u not in ALL_UNDERLYINGS:
             raise ValueError("unknown underlying")
-        with self.lock:
+        with self.lock:                                   # short: only read the settings
             pv = self.provider
             tf = self._tf_ok(tf, default=int(self.settings["tf"]))
-            warm = 250                                    # extra history so SD/EMA match the strategy
-            try:
-                cs = list(pv.get_candles(u, tf, limit + warm))
-                last = pv.get_forming_candle(u, tf)
-            except Exception as e:                       # live feed hiccup: show what we have
-                self.broker_error = f"{u} candles: {e}"[:200]
-                cs, last = [], None
+            bot_tf = int(self.settings["tf"])
+        warm = 250                                        # extra history so SD/EMA match the strategy
+        err = None
+        try:                                              # the broker download runs OUTSIDE the lock, so a slow first load
+            cs = list(pv.get_candles(u, tf, limit + warm))    # of an index can not freeze the dashboard, the loop or other charts
+            last = pv.get_forming_candle(u, tf)
+        except Exception as e:                            # live feed hiccup: show what we have
+            err = f"{u} candles: {e}"[:200]
+            cs, last = [], None
+        with self.lock:
+            if err:
+                self.broker_error = err
             n_closed, forming = len(cs), False
             if last and (not cs or last["t"] > cs[-1]["t"]):
                 cs.append(last)
@@ -740,11 +745,67 @@ class IndiaRuntime:
             lv = [{"id": x["id"], "action": x["action"], "entry": x["entry_spot"], "sl": x["sl_spot"],
                    "tps": list(x["tps"]), "target": x.get("target"), "tp_hit": x.get("tp_hit", 0)}
                   for x in self.engine.open.values() if x["underlying"] == u]
-            out = {"underlying": u, "tf": tf, "bot_tf": int(self.settings["tf"]), "tf_choices": list(TF_CHOICES),
-                   "live": self.live is not None, "forming": forming, "indicators": ics, "levels": lv,
-                   "feed_mode": (self.provider.feed_mode()["mode"] if self.live is not None and hasattr(self.provider, "feed_mode") else None),
+            live = self.live is not None
+            out = {"underlying": u, "tf": tf, "bot_tf": bot_tf, "tf_choices": list(TF_CHOICES),
+                   "live": live, "forming": forming, "indicators": ics, "levels": lv,
+                   "feed_mode": (self.provider.feed_mode()["mode"] if live and hasattr(self.provider, "feed_mode") else None),
+                   "note": self._data_note(err),
                    "candles": self._candle_rows(cs, ics)}
             return out
+
+    def _data_note(self, err=None):
+        """One plain sentence for the chart: where the prices come from and why they may be slow or missing."""
+        try:
+            pv = self.provider
+            if self.live is None:
+                return "Demo data: candles are replayed one per second. Connect Fyers in Settings for real Indian prices."
+            mkt = india_chain.market_status(pv.now())
+            fm = pv.feed_mode() if hasattr(pv, "feed_mode") else {}
+            if str(self.broker_error).startswith("Fyers limit") or "limit" in str(err or "").lower():
+                return "Fyers call limit reached - showing the last data for a few seconds."
+            if mkt == "CLOSED":
+                return "Market is closed: no new prices until 9:15 IST."
+            if fm.get("mode") == "WEBSOCKET":
+                return "Live by WebSocket: price updates about every second."
+            return "WebSocket is not live, so prices come by REST and update every few seconds. " + str(fm.get("note") or "")[:120]
+        except Exception:
+            return ""
+
+    def ticks(self):
+        """Tiny live-price answer for the app (polled about once a second). NO runtime lock and NO broker call:
+        it only reads the price the WebSocket already pushed, so it is fast even when other calls are slow."""
+        now = time.time()
+        pv = self.provider
+        live = self.live is not None
+        spots, mode = {}, "DEMO"
+        try:
+            if live:
+                feed = getattr(pv, "feed", None)
+                from .fyers_provider import INDEX_SYM
+                for u in ALL_UNDERLYINGS:
+                    hit = None
+                    try:
+                        with feed.lock:
+                            hit = feed.ticks.get(INDEX_SYM[u])
+                    except Exception:
+                        hit = None
+                    if hit:
+                        spots[u] = {"lp": float(hit[1]["lp"]), "at": hit[0], "age_ms": int((now - hit[0]) * 1000), "src": "ws"}
+                    else:                                   # no pushed price yet: the last price the loop fetched (REST)
+                        v = getattr(pv, "_last_spot", {}).get(u)
+                        if v:
+                            spots[u] = {"lp": float(v), "at": now, "age_ms": None, "src": "rest"}
+                fm = pv.feed_mode() if hasattr(pv, "feed_mode") else {}
+                mode = fm.get("mode") or "REST"
+            else:
+                for u in ALL_UNDERLYINGS:
+                    try:
+                        spots[u] = {"lp": round(float(pv.get_spot(u)), 2), "at": now, "age_ms": 0, "src": "demo"}
+                    except Exception:
+                        pass
+        except Exception as e:
+            return {"live": live, "mode": mode, "spots": spots, "now": now, "error": str(e)[:120]}
+        return {"live": live, "mode": mode, "spots": spots, "now": now}
 
     def _pack(self, cs, n_closed, limit):
         """Indicators over warm-up + shown candles, then trim the warm-up part."""

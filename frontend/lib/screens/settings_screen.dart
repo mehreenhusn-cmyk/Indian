@@ -38,6 +38,10 @@ const _textKeys = <String>[
   'ai_model',
   'ai2_provider',
   'ai2_api_key',
+  'ai3_provider',
+  'ai3_api_key',
+  'ai4_provider',
+  'ai4_api_key',
 ];
 
 const _labels = <String, String>{
@@ -66,6 +70,10 @@ const _labels = <String, String>{
   'ai_model': 'AI model',
   'ai2_provider': 'AI backup provider',
   'ai2_api_key': 'AI backup key',
+  'ai3_provider': 'AI backup provider 2',
+  'ai3_api_key': 'AI backup key 2',
+  'ai4_provider': 'AI backup provider 3',
+  'ai4_api_key': 'AI backup key 3',
 };
 
 const _scopes = <String, String>{
@@ -94,6 +102,10 @@ const _scopes = <String, String>{
   'ai_model': _scopeLive,
   'ai2_provider': _scopeLive,
   'ai2_api_key': _scopeLive,
+  'ai3_provider': _scopeLive,
+  'ai3_api_key': _scopeLive,
+  'ai4_provider': _scopeLive,
+  'ai4_api_key': _scopeLive,
 };
 
 const _secretKeys = <String>{
@@ -102,6 +114,8 @@ const _secretKeys = <String>{
   'binance_api_secret',
   'ai_api_key',
   'ai2_api_key',
+  'ai3_api_key',
+  'ai4_api_key',
 };
 
 const _numDefaults = <String, double>{
@@ -681,7 +695,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final maxOpen = (double.tryParse(_controllers['max_open_trades']!.text.trim()) ?? 0);
     Widget chip(String label, String value, Color c) => Expanded(
           child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 6),
+            padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 6),
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(p.brightness == Brightness.dark ? 0.08 : 0.55),
               borderRadius: BorderRadius.circular(16),
@@ -701,9 +715,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
         );
     return Container(
-      margin: const EdgeInsets.only(bottom: AppSpacing.m),
+      margin: const EdgeInsets.only(bottom: 6),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(18),
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -711,21 +725,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(18),
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
           child: Container(
-            padding: const EdgeInsets.all(AppSpacing.m),
+            padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(p.brightness == Brightness.dark ? 0.05 : 0.30),
-              borderRadius: BorderRadius.circular(24),
+              borderRadius: BorderRadius.circular(18),
               border: Border.all(color: Colors.white.withOpacity(p.brightness == Brightness.dark ? 0.16 : 0.75), width: 1),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Your setup right now', style: t.secondary.copyWith(fontWeight: FontWeight.w700, color: p.textPrimary)),
-                const SizedBox(height: AppSpacing.s),
                 Row(
                   children: [
                     chip('Mode', _liveTradingEnabled ? 'LIVE' : 'PAPER', _liveTradingEnabled ? p.loss : p.accent),
@@ -760,7 +772,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             Column(
               children: [
                 Padding(
-                  padding: const EdgeInsets.all(AppSpacing.l),
+                  padding: const EdgeInsets.fromLTRB(AppSpacing.l, AppSpacing.s, AppSpacing.l, AppSpacing.s),
                   child: Row(
                     children: [
                       Text('Settings', style: t.section.copyWith(fontSize: 22, fontWeight: FontWeight.bold)),
@@ -1119,6 +1131,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               isText: true,
                               errors: errors,
                               helper: 'Optional. Free key from console.mistral.ai or console.groq.com. The Vision AI switches to it by itself when the main key is out of quota.',
+                            ),
+                            _field(
+                              'Backup provider 2 (Vision AI)',
+                              'ai3_provider',
+                              isText: true,
+                              errors: errors,
+                              helper: 'Type mistral, groq, gemini or openrouter. Leave the key empty if unused.',
+                            ),
+                            _field(
+                              'Backup key 2 (Vision AI)',
+                              'ai3_api_key',
+                              isText: true,
+                              errors: errors,
+                              helper: 'Optional. Calls are shared between all keys, so no single key runs out early.',
+                            ),
+                            _field(
+                              'Backup provider 3 (Vision AI)',
+                              'ai4_provider',
+                              isText: true,
+                              errors: errors,
+                              helper: 'Type mistral, groq, gemini or openrouter. Leave the key empty if unused.',
+                            ),
+                            _field(
+                              'Backup key 3 (Vision AI)',
+                              'ai4_api_key',
+                              isText: true,
+                              errors: errors,
+                              helper: 'Optional. Calls are shared between all keys, so no single key runs out early.',
                             ),
                             Padding(
                               padding: const EdgeInsets.only(bottom: 4),
