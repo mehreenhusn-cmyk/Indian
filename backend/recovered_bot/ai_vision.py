@@ -48,12 +48,13 @@ _px = {}               # symbol -> (price, time)
 _calls = []            # times of AI calls in the last minute (rate limit)
 _day_calls = []        # times of AI calls in the last 24 h (daily cap = the owner's budget)
 _stat = {"error": "", "ok_at": 0.0, "pause_until": 0.0, "model": ""}
+_mon = []              # AI call log for the "AI Calls" card: (time, slot, kind ok|quota|error, seconds)
 _started = False
 _botmap = {"t": 0.0, "closed": {}, "open": set()}
 _gem_ok = {"name": None}
 _last_save = [0.0]
 
-_GEMINI_MODELS = ["gemini-flash-latest", "gemini-2.5-flash", "gemini-2.0-flash"]
+_GEMINI_MODELS = ["gemini-flash-lite-latest", "gemini-flash-latest"]   # old gemini-2.5 / 2.0 names removed (retired); a 404 suggestion is added on the fly
 _ANTHROPIC_MODEL = "claude-haiku-4-5-20251001"
 _OPENAI_MODEL = "gpt-4o-mini"
 
@@ -85,11 +86,17 @@ The empty space on the right of the picture is the future: nothing is known ther
 Think about what past candles say about where price may go next. Give honest probabilities, not certainty. If the picture is unclear, say so and choose SKIP or WAIT."""
 
 
-def guide_text():
+def guide_text(symbol=None, side=None):
     notes = str(_cfg("vision_notes", "") or "").strip()
     out = GUIDE
     if notes:
         out += "\n\nOWNER'S OWN NOTES (written by the person who built these indicators; trust them):\n" + notes
+    try:                                                   # the learning notebook: approved rules + the AI's own recent lessons
+        if bool(_cfg("vision_lessons_enabled", True)):
+            from . import ai_vision_lessons as L
+            out += L.prompt_block(symbol, side)
+    except Exception as e:
+        print(f"[Vision] notebook: {e}")
     return out
 
 
@@ -114,6 +121,8 @@ def init(path):
         _file = os.path.join(path, "ai_vision.json")
         _img_dir = os.path.join(path, "vision_img")
         os.makedirs(_img_dir, exist_ok=True)
+        from . import ai_vision_lessons as L
+        L.init(path)
     except Exception as e:
         print(f"[Vision] init: {e}")
 
@@ -488,13 +497,38 @@ def render_chart(symbol, candles, tf_label, side=None, marks=None, title_extra="
 
 
 # ------------------------------------------------------------------ AI call
+# Two key slots: "main" (Settings > AI Assistant) and an optional "backup" (Settings > AI backup key: Mistral or Groq, both have a
+# free plan). When one slot runs out of quota it is paused on its own and the next slot answers. If every slot is paused the
+# signals simply wait (they are NOT marked ERROR) and the tab shows when the quota is expected back.
+_OAI_STYLE = {      # provider -> (url, default vision model). All three speak the same "OpenAI chat" format.
+    "openai": ("https://api.openai.com/v1/chat/completions", "gpt-4o-mini"),
+    "mistral": ("https://api.mistral.ai/v1/chat/completions", "mistral-small-latest"),
+    "groq": ("https://api.groq.com/openai/v1/chat/completions", "meta-llama/llama-4-scout-17b-16e-instruct"),
+}
+_pause = {}          # "slot:model" -> time until which that model is paused (quota or key problem)
+QUOTA_PROBE_S = 1800  # after a DAILY quota error one test call is made every 30 minutes until Google says yes again
+
+
 def _ai_key():
     key = str(_cfg("ai_api_key", "") or "").strip()
     return key, str(_cfg("ai_provider", "openai") or "openai"), str(_cfg("ai_model", "") or "").strip()
 
 
+def _slots():
+    out = []
+    key, prov, model = _ai_key()
+    if key:
+        out.append({"slot": "main", "key": key, "provider": prov, "model": model})
+    k2 = str(_cfg("ai2_api_key", "") or "").strip()
+    if k2:
+        p2 = str(_cfg("ai2_provider", "mistral") or "mistral").strip().lower()
+        out.append({"slot": "backup", "key": k2, "provider": p2 if p2 in _OAI_STYLE or p2 in ("gemini", "anthropic") else "mistral",
+                    "model": str(_cfg("ai2_model", "") or "").strip()})
+    return out
+
+
 def ready():
-    return bool(_ai_key()[0])
+    return bool(_slots())
 
 
 def _short(r):
@@ -507,85 +541,193 @@ def _short(r):
         return f"{r.status_code}"
 
 
-def _call_ai(system, text, png):
-    """-> (reply text, error). One call, with a short retry on 'busy' answers."""
-    key, provider, model = _ai_key()
-    if not key:
+def _quota_wait(r):
+    """Seconds to wait after a 429 answer. A DAILY limit -> probe again in 30 min, a per-minute limit -> what the server says."""
+    txt = ""
+    try:
+        txt = r.text or ""
+    except Exception:
+        pass
+    if re.search(r"PerDay|per day|daily|insufficient_quota|billing", txt, re.I):
+        return QUOTA_PROBE_S
+    m = re.search(r"retryDelay\"?\s*:\s*\"?(\d+(?:\.\d+)?)s", txt)
+    if m:
+        return min(3600, int(float(m.group(1))) + 2)
+    try:
+        return min(3600, max(5, int(float(r.headers.get("Retry-After", "")))))
+    except Exception:
+        return 60
+
+
+def _slot_paused_until(sl):
+    """When this slot can be used again (0 = now). A slot is paused only when ALL its candidate models are paused."""
+    names = _slot_models(sl)
+    now = time.time()
+    waits = [_pause.get(f"{sl['slot']}:{n}", 0.0) for n in names]
+    return 0.0 if not waits or min(waits) <= now else min(waits)
+
+
+def _slot_models(sl):
+    if sl["provider"] == "gemini":
+        if sl["model"]:
+            return [sl["model"]]
+        first = [_gem_ok["name"]] if _gem_ok["name"] else []
+        return first + [m for m in _GEMINI_MODELS if m not in first]
+    if sl["provider"] == "anthropic":
+        return [sl["model"] or _ANTHROPIC_MODEL]
+    return [sl["model"] or _OAI_STYLE.get(sl["provider"], _OAI_STYLE["openai"])[1]]
+
+
+def _try_gemini(sl, system, text, b64):
+    last = "unknown error"
+    for nm in _slot_models(sl):
+        if _pause.get(f"{sl['slot']}:{nm}", 0.0) > time.time():
+            continue
+        gc = {"temperature": 0.2, "maxOutputTokens": 1000, "responseMimeType": "application/json"}
+        if "2.5-flash" in nm:
+            gc["thinkingConfig"] = {"thinkingBudget": 0}
+        parts = [{"text": text}] + ([{"inline_data": {"mime_type": "image/png", "data": b64}}] if b64 else [])
+        body = {"systemInstruction": {"parts": [{"text": system}]}, "contents": [{"role": "user", "parts": parts}], "generationConfig": gc}
+        r = requests.post(f"https://generativelanguage.googleapis.com/v1beta/models/{nm}:generateContent",
+                          headers={"x-goog-api-key": sl["key"], "Content-Type": "application/json"}, json=body, timeout=50)
+        if r.status_code == 200:
+            ps = (r.json().get("candidates") or [{}])[0].get("content", {}).get("parts") or []
+            out = "".join(p.get("text", "") for p in ps if isinstance(p, dict))
+            if out.strip():
+                _gem_ok["name"] = nm
+                return out, None, nm
+            last = "empty answer"
+            continue
+        last = _short(r)
+        if r.status_code == 429:
+            _pause[f"{sl['slot']}:{nm}"] = time.time() + _quota_wait(r)
+            continue
+        if r.status_code == 404:                      # retired model name: pause it for a day, try the next one
+            _pause[f"{sl['slot']}:{nm}"] = time.time() + 86400
+            sug = re.search(r"use models/([\w.\-]+)", r.text)
+            if sug and not sl["model"] and sug.group(1) not in _GEMINI_MODELS:
+                _GEMINI_MODELS.append(sug.group(1))
+            continue
+        if r.status_code in (401, 403) or (r.status_code == 400 and "API key" in r.text):
+            for n2 in _slot_models(sl):
+                _pause[f"{sl['slot']}:{n2}"] = time.time() + 600
+            return None, "AI key problem - " + last, nm
+    return None, last, ""
+
+
+def _try_anthropic(sl, system, text, b64):
+    nm = _slot_models(sl)[0]
+    content = ([{"type": "image", "source": {"type": "base64", "media_type": "image/png", "data": b64}}] if b64 else []) + [{"type": "text", "text": text}]
+    r = requests.post("https://api.anthropic.com/v1/messages",
+                      headers={"x-api-key": sl["key"], "anthropic-version": "2023-06-01", "content-type": "application/json"},
+                      json={"model": nm, "max_tokens": 900, "temperature": 0.2, "system": system, "messages": [{"role": "user", "content": content}]}, timeout=60)
+    if r.status_code == 200:
+        return "".join(b.get("text", "") for b in r.json().get("content", []) if b.get("type") == "text"), None, nm
+    if r.status_code == 429:
+        _pause[f"{sl['slot']}:{nm}"] = time.time() + _quota_wait(r)
+    elif r.status_code in (401, 403):
+        _pause[f"{sl['slot']}:{nm}"] = time.time() + 600
+        return None, "AI key problem - " + _short(r), nm
+    return None, _short(r), nm
+
+
+def _try_oai(sl, system, text, b64):
+    url, _dm = _OAI_STYLE.get(sl["provider"], _OAI_STYLE["openai"])
+    nm = _slot_models(sl)[0]
+    user = [{"type": "text", "text": text}] + ([{"type": "image_url", "image_url": {"url": "data:image/png;base64," + b64}}] if b64 else [])
+    body = {"model": nm, "temperature": 0.2, "max_tokens": 900, "response_format": {"type": "json_object"},
+            "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}]}
+    r = requests.post(url, headers={"Authorization": f"Bearer {sl['key']}", "Content-Type": "application/json"}, json=body, timeout=60)
+    if r.status_code == 200:
+        return r.json()["choices"][0]["message"]["content"], None, nm
+    if r.status_code == 429:
+        _pause[f"{sl['slot']}:{nm}"] = time.time() + _quota_wait(r)
+    elif r.status_code in (401, 403):
+        _pause[f"{sl['slot']}:{nm}"] = time.time() + 600
+        return None, "AI key problem - " + _short(r), nm
+    return None, _short(r), nm
+
+
+def quota_resume_at():
+    """Earliest time any key slot can be used again, or 0 when one is free right now."""
+    sls = _slots()
+    if not sls:
+        return 0.0
+    ws = [_slot_paused_until(s) for s in sls]
+    return 0.0 if min(ws) <= 0 else min(ws)
+
+
+def _mon_add(slot, kind, secs):
+    now = time.time()
+    _mon.append((now, slot, kind, round(float(secs), 2)))
+    if len(_mon) > 1500 or (_mon and now - _mon[0][0] > 86400 * 1.2):
+        _mon[:] = [x for x in _mon if now - x[0] < 86400][-1500:]
+
+
+def monitor():
+    """Numbers for the AI Calls card (last 24 h): calls per key, how many worked / hit quota / failed, speed, and why it waits."""
+    now = time.time()
+    rows = [x for x in _mon if now - x[0] < 86400]
+    slots = []
+    for sl in _slots():
+        mine = [x for x in rows if x[1] == sl["slot"]]
+        ok = [x for x in mine if x[2] == "ok"]
+        pu = _slot_paused_until(sl)
+        slots.append({"slot": sl["slot"], "provider": sl["provider"], "calls": len(mine), "ok": len(ok),
+                      "quota": sum(1 for x in mine if x[2] == "quota"), "errors": sum(1 for x in mine if x[2] == "error"),
+                      "avg_s": round(sum(x[3] for x in ok) / len(ok), 1) if ok else None,
+                      "state": "paused" if pu > 0 else "ready", "paused_until": pu})
+    with _lock:
+        waiting = sum(1 for d in _state["dec"] if d.get("status") in ("queued", "waiting"))
+    cap = int(_f(_cfg("vision_max_calls_day", 200), 200))
+    return {"slots": slots, "used_24h": _day_used(), "cap": cap, "waiting": waiting, "last_min": len(_calls),
+            "max_per_min": max(1, int(_f(_cfg("vision_max_per_min", 6), 6))), "last_error": _stat.get("error") or "",
+            "model": _stat.get("model", ""),
+            "tip": ("Both keys are out of quota. Signals wait, stop-loss still works." if slots and all(x["state"] == "paused" for x in slots)
+                    else "The main key is out, the backup key is answering." if len(slots) > 1 and slots[0]["state"] == "paused"
+                    else "Everything is running." if slots else "No AI key yet.")}
+
+
+def _call_ai(system, text, png=None):
+    """-> (reply text, error). png=None = a text-only call (used by the learning notebook).
+    Tries the main slot, then the backup slot. A quota answer pauses only that slot. When every slot is paused the error starts with
+    'quota:' (callers keep the signal waiting instead of marking it ERROR)."""
+    sls = _slots()
+    if not sls:
         return None, "No AI key: add one in Settings > AI Assistant."
-    b64 = base64.b64encode(png).decode()
+    b64 = base64.b64encode(png).decode() if png else None
     last = "unknown error"
     for attempt in range(2):
-        try:
-            if provider == "gemini":
-                names = [model] if model else ([_gem_ok["name"]] if _gem_ok["name"] else []) + [m for m in _GEMINI_MODELS if m != _gem_ok["name"]]
-                miss = ""
-                for nm in names:
-                    gc = {"temperature": 0.2, "maxOutputTokens": 1000, "responseMimeType": "application/json"}
-                    if "2.5-flash" in nm:
-                        gc["thinkingConfig"] = {"thinkingBudget": 0}
-                    body = {"systemInstruction": {"parts": [{"text": system}]},
-                            "contents": [{"role": "user", "parts": [{"text": text}, {"inline_data": {"mime_type": "image/png", "data": b64}}]}],
-                            "generationConfig": gc}
-                    r = requests.post(f"https://generativelanguage.googleapis.com/v1beta/models/{nm}:generateContent",
-                                      headers={"x-goog-api-key": key, "Content-Type": "application/json"}, json=body, timeout=50)
-                    if r.status_code == 200:
-                        parts = (r.json().get("candidates") or [{}])[0].get("content", {}).get("parts") or []
-                        out = "".join(p.get("text", "") for p in parts if isinstance(p, dict))
-                        if out.strip():
-                            _gem_ok["name"] = nm
-                            _stat["model"] = nm
-                            _stat["error"] = ""
-                            return out, None
-                        last = "empty answer"
-                        continue
-                    if r.status_code == 404:                  # retired model name: remember it, try the next one (or the one Google suggests)
-                        miss = _short(r)
-                        sug = re.search(r"use models/([\w.\-]+)", r.text)
-                        if sug and not model and sug.group(1) not in names:
-                            names.append(sug.group(1))
-                        continue
-                    last = _short(r)
-                    if r.status_code in (401, 403) or (r.status_code == 400 and "API key" in r.text):
-                        return None, "AI key problem - " + last
-                    if r.status_code not in (429, 503, 400):
-                        break
-                if last == "unknown error" and miss:
-                    last = miss
-            elif provider == "anthropic":
-                nm = model or _ANTHROPIC_MODEL
-                body = {"model": nm, "max_tokens": 900, "temperature": 0.2, "system": system,
-                        "messages": [{"role": "user", "content": [
-                            {"type": "image", "source": {"type": "base64", "media_type": "image/png", "data": b64}},
-                            {"type": "text", "text": text}]}]}
-                r = requests.post("https://api.anthropic.com/v1/messages",
-                                  headers={"x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json"},
-                                  json=body, timeout=60)
-                if r.status_code == 200:
-                    out = "".join(b.get("text", "") for b in r.json().get("content", []) if b.get("type") == "text")
-                    _stat["model"] = nm
-                    return out, None
-                last = _short(r)
-                if r.status_code in (401, 403):
-                    return None, "AI key problem - " + last
-            else:
-                nm = model or _OPENAI_MODEL
-                body = {"model": nm, "temperature": 0.2, "max_tokens": 900, "response_format": {"type": "json_object"},
-                        "messages": [{"role": "system", "content": system},
-                                     {"role": "user", "content": [{"type": "text", "text": text},
-                                                                  {"type": "image_url", "image_url": {"url": "data:image/png;base64," + b64}}]}]}
-                r = requests.post("https://api.openai.com/v1/chat/completions",
-                                  headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"}, json=body, timeout=60)
-                if r.status_code == 200:
-                    _stat["model"] = nm
-                    return r.json()["choices"][0]["message"]["content"], None
-                last = _short(r)
-                if r.status_code in (401, 403):
-                    return None, "AI key problem - " + last
-        except requests.exceptions.RequestException as e:
-            last = f"network: {str(e)[:120]}"
-        except Exception as e:
-            last = f"unexpected: {str(e)[:120]}"
+        transient = False
+        for sl in sls:
+            if _slot_paused_until(sl) > 0:
+                continue
+            t0 = time.time()
+            try:
+                fn = _try_gemini if sl["provider"] == "gemini" else _try_anthropic if sl["provider"] == "anthropic" else _try_oai
+                out, err, nm = fn(sl, system, text, b64)
+            except requests.exceptions.RequestException as e:
+                out, err, nm = None, f"network: {str(e)[:120]}", ""
+            except Exception as e:
+                out, err, nm = None, f"unexpected: {str(e)[:120]}", ""
+            try:
+                _mon_add(sl["slot"], "ok" if (out is not None and str(out).strip()) else ("quota" if _slot_paused_until(sl) > 0 else "error"), time.time() - t0)
+            except Exception:
+                pass
+            if out is not None and str(out).strip():
+                _stat["model"] = (sl["slot"] + ": " if sl["slot"] != "main" else "") + (nm or sl["provider"])
+                _stat["error"] = ""
+                return out, None
+            if err:
+                last = err
+            if _slot_paused_until(sl) <= 0 and not (err or "").startswith("AI key problem"):
+                transient = True
+        if not transient:
+            break
         time.sleep(2.0 * (attempt + 1))
+    at = quota_resume_at()
+    if at > 0:
+        return None, "quota: " + (last if last != "unknown error" else "AI quota used up")
     return None, last
 
 
@@ -607,6 +749,14 @@ def _count():
     now = time.time()
     _calls.append(now)
     _day_calls.append(now)
+
+
+def _uncount():
+    """A call that never reached the AI (quota) must not eat the daily budget."""
+    if _calls:
+        _calls.pop()
+    if _day_calls:
+        _day_calls.pop()
 
 
 def _day_used():
@@ -647,6 +797,11 @@ def _signal_prompt(rec, lv, price):
     prev = ""
     if rec.get("reason") and rec.get("decision") == "WAIT":
         prev = f"\nEarlier you said WAIT: \"{rec['reason']}\" (waiting for: {rec.get('wait_for') or 'a better entry'}). Check whether that has happened now.\n"
+    try:
+        from . import ai_vision_lessons as _L
+        prev += _L.similar_block(rec["symbol"], rec["side"], rec.get("feat"))
+    except Exception:
+        pass
     return (f"A bot signal just fired.\nSymbol: {rec['symbol']}; timeframe {_tf_label(rec['tf_min'])}; signal: {rec['side']} "
             f"(the bot wants to go {_side_word(rec['side'])}); bot entry price {_fmt(rec.get('sig_price'))}; price now {_fmt(price)}.\n"
             f"Numbers read from the same chart: {_lv_text(lv)}.{prev}\n"
@@ -860,12 +1015,25 @@ def _process_signal(rec):
     try:
         png = render_chart(sym, candles, _tf_label(tf), rec["side"], {"bar_ts": rec["bar_ts"]})
         _f_, _e, lv = _levels(candles)
+        try:                                               # measured tags for the learning notebook (plain arithmetic, no AI)
+            from . import ai_vision_lessons as L
+            rec["feat"] = L.features(_f_, rec["side"])
+        except Exception:
+            pass
     except ImportError:
         return _finish(rec, "error", None, "Pillow is missing on the backend. Run: pkg install python-pillow")
     except Exception as e:
         return _retry(rec, f"chart: {str(e)[:80]}")
     _count()
-    text, err = _call_ai(guide_text(), _signal_prompt(rec, lv, price), png)
+    text, err = _call_ai(guide_text(sym, rec["side"]), _signal_prompt(rec, lv, price), png)
+    if err and str(err).startswith("quota:"):
+        # No quota left on any key: the signal just WAITS (it is not an error and it does not use up its 3 tries).
+        _uncount()
+        _stat["error"] = err
+        _stat["pause_until"] = quota_resume_at() or (time.time() + 60)
+        rec["next_try"] = _stat["pause_until"]
+        _log(f"{sym}: AI quota used up, waiting until {_ist(_stat['pause_until'])} IST")
+        return
     rec["checks"] = rec.get("checks", 0) + 1
     _save_img(rec["id"], png)
     rec["img"] = True
@@ -927,8 +1095,14 @@ def _review(tr, why):
         tr["last_review_bar"] = _bar_start(time.time(), tf)
         return _log(f"review {sym}: {str(e)[:80]}")
     _count()
-    text, err = _call_ai(guide_text(), _review_prompt(tr, lv, price, why), png)
+    text, err = _call_ai(guide_text(sym, tr["side"]), _review_prompt(tr, lv, price, why), png)
     tr["last_review_bar"] = _bar_start(time.time(), tf)
+    if err and str(err).startswith("quota:"):
+        _uncount()
+        _stat["error"] = err
+        _stat["pause_until"] = quota_resume_at() or (time.time() + 60)
+        tr["last_review_bar"] = 0                       # look again as soon as the quota is back (the hard stop keeps working meanwhile)
+        return
     _save_img(tr["id"], png)
     if err:
         _stat["error"] = err
@@ -982,7 +1156,7 @@ def _tick_trades():
 
 def _next_job():
     now = time.time()
-    review_n = max(1, int(_f(_cfg("vision_review_candles", 2), 2)))
+    review_n = max(1, int(_f(_cfg("vision_review_candles", 4), 4)))
     with _lock:
         trades = [t for t in _state["trades"] if t["status"] == "open"]
         decs = list(_state["dec"])
@@ -1016,16 +1190,45 @@ def _next_job():
     return None
 
 
+def _expire_stale():
+    """Signals that waited too long (AI busy or no quota) are closed with an honest reason instead of hanging in the queue."""
+    now = time.time()
+    with _lock:
+        decs = list(_state["dec"])
+    for r in decs:
+        if r["status"] == "queued" and now - (r.get("sig_time") or now) > r["tf_min"] * 60 + 90:
+            out_of_quota = now < _stat["pause_until"] or quota_resume_at() > 0
+            _finish(r, "late", None, "The AI had no quota left; this signal was too old to judge." if out_of_quota
+                    else "The AI was busy; this signal was too old to judge.")
+
+
+def _lessons_job():
+    """Idle time = write a lesson / the daily rules. Never when the budget is nearly used (signals come first)."""
+    if not bool(_cfg("vision_lessons_enabled", True)):
+        return False
+    cap = int(_f(_cfg("vision_max_calls_day", 200), 200))
+    if cap > 0 and _day_used() >= int(cap * 0.7):
+        return False
+    try:
+        import sys
+        from . import ai_vision_lessons as L
+        return bool(L.next_job(sys.modules[__name__]))
+    except Exception as e:
+        _log(f"notebook: {str(e)[:100]}")
+        return False
+
+
 def _step():
     if not enabled():
         return False
     _scan_signals()
     _tick_trades()
+    _expire_stale()
     if time.time() < _stat["pause_until"] or not ready() or not _gate():
         return False
     job = _next_job()
     if not job:
-        return False
+        return _lessons_job()
     kind, obj, why = job
     cap = int(_f(_cfg("vision_max_calls_day", 200), 200))
     if cap > 0:                                        # the owner's daily budget: new signals stop first, open-trade checks get 50% extra
@@ -1108,13 +1311,17 @@ def snapshot(limit=80):
         msg = "Vision AI is switched off."
     elif not key:
         msg = "Add your AI key in Settings > AI Assistant to start the Vision AI."
-    elif int(_f(_cfg("vision_max_calls_day", 200), 200)) > 0 and _day_used() >= int(_f(_cfg("vision_max_calls_day", 200), 200)):
+    elif quota_resume_at() <= 0 and int(_f(_cfg("vision_max_calls_day", 200), 200)) > 0 and _day_used() >= int(_f(_cfg("vision_max_calls_day", 200), 200)):
         msg = f"Daily AI limit reached ({int(_f(_cfg('vision_max_calls_day', 200), 200))} calls in 24 h). New signals are not judged until calls free up."
+    elif quota_resume_at() > 0:
+        msg = (f"AI quota is used up on every key. Signals wait and the stop-loss still works. Trying again at {_ist(quota_resume_at())} IST."
+               + ("" if str(_cfg("ai2_api_key", "") or "").strip() else " Tip: add a free backup key in Settings > AI backup key."))
     elif _stat["error"]:
         msg = "Last AI problem: " + _stat["error"]
     return {
         "ready": bool(key) and enabled(), "message": msg, "provider": provider, "model": _stat.get("model", ""),
-        "since": _state["since"], "calls_last_min": len(_calls), "calls_24h": _day_used(),
+        "backup": bool(str(_cfg("ai2_api_key", "") or "").strip()), "paused_until": quota_resume_at(),
+        "since": _state["since"], "calls_last_min": len(_calls), "calls_24h": _day_used(), "monitor": monitor(),
         "summary": {"closed": len(closed), "wins": len(wins), "net": net, "unrealized": unreal, "open": len(opens),
                     "win_rate": (len(wins) * 100.0 / len(closed)) if closed else None,
                     "avg": (net / len(closed)) if closed else None,

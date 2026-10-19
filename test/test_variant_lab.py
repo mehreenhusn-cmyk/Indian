@@ -39,6 +39,13 @@ tk = {r["key"]: r["taken"] for r in out}
 assert tk["o_pkg"] <= tk["o_bundle"] <= min(tk["o_adx"], tk["o_htf"], tk["o_slope"], tk["o_vol"], tk["o_gap"], tk["o_1r"]), tk
 assert tk["o_bundle"] < res["bot"]["n"], "the bundle must skip some signals"
 assert any(r.get("ctx", {}).get("adx") is not None and r["ctx"].get("htf") for r in rows), "ADX / HTF tags must be filled"
+nw = [r for r in res["rows"] if r["group"] == VL.NEW_GROUP]
+assert len(nw) == 8, "8 photo-idea scenarios expected"
+tn = {r["key"]: r["taken"] for r in nw}
+print("photo ideas taken:", tn, "bot:", res["bot"]["n"])
+assert tn["sd100"] > 0 and tn["kell_exit"] > 0, tn
+assert tn["kell_base"] < res["bot"]["n"] and tn["meanrev"] < res["bot"]["n"], "base-break / mean-reversion must pick only some signals"
+assert tn["kell_mix"] <= tn["kell_base"]
 # partial-exit simulator with 0/0/0/100% must equal the bot's own T4 simulation (same SL, same TP4 target)
 from recovered_bot import ai_ind_features as _F
 _cs = LAB._fetch_range("AAAUSDT", "15m", 0)

@@ -24,9 +24,10 @@ GROUP_TITLES = {
     "Bands": "SD bands / EMA bands",
     "Mixes": "Mixes",
     "Outside suggestion (4 points)": "Kim's ideas",
+    "Photo ideas (SD100, mean reversion, Kell)": "Photo ideas",
 }
 GROUP_ORDER = ["Bollinger Bands", "SD bands / EMA bands", "TSI / Z-score / chop", "CVD (order flow)",
-               "Exit and stop-loss", "Kim's ideas", "Mixes"]
+               "Exit and stop-loss", "Kim's ideas", "Photo ideas", "Mixes"]
 
 LABELS = {
     "helps": "HELPS",
@@ -70,6 +71,14 @@ DESC = {
     "mix2": "TSI and Z both agree + wider previous-candle stop-loss.",
     "mix3": "Stay till the opposite signal, only when TSI agrees.",
     "mix4": "Stay till the opposite signal + wider stop-loss + skip squeeze.",
+    "sd100": "SD bands built on the last 100 candles instead of 200 (reacts faster). Same entry, same stop, targets = next 4 bands.",
+    "meanrev": "Opposite idea: when the signal fires while price is already beyond the 2nd SD band, trade BACK to the mean instead. Only those signals are traded.",
+    "nospike": "Skip the signal when its candle is a spike (range bigger than 3 ATR). Often a late chase.",
+    "e30side": "Filter on the bot's signals: take it only if EMA30 is already on the trade's side of EMA50. (It is a filter, not a new EMA30 entry.)",
+    "smaside": "Filter on the bot's signals: take it only if price is on the trade's side of the SMA200 mean, the line your SD bands are built on.",
+    "kell_base": "Oliver Kell idea: take the signal only when price breaks out of a tight sideways base (last 8 candles within 2.5 ATR).",
+    "kell_exit": "Oliver Kell exit: stay in until a candle closes beyond BOTH EMA10 and EMA20 against the trade (same stop-loss, no TP4 exit).",
+    "kell_mix": "Kell base break for entry + Kell EMA10/20 exit. Few trades remain.",
     "o_adx": "Kim: take the signal only if ADX is 20 or more (trend is strong).",
     "o_adx22": "Kim: same as ADX 20, but stricter (ADX 22 or more).",
     "o_htf": "Kim: take the signal only if the higher-timeframe trend agrees.",
@@ -94,6 +103,8 @@ SHORT = {
     "cvd3": "CVD agrees", "cvd_push": "Real flow push", "cvd_exp": "CVD + BB expanding", "wait": "Wait 1 candle",
     "wait_cvd": "Wait 1 + CVD", "run_cvd": "Hold + CVD", "ema": "EMA200 bands",
     "mix1": "Wider SL + no squeeze", "mix2": "TSI+Z + wider SL", "mix3": "Hold + TSI", "mix4": "Hold + SL + no squeeze",
+    "sd100": "SD100 bands", "meanrev": "Mean reversion", "nospike": "Skip spike", "e30side": "EMA30 side", "smaside": "SMA200 side",
+    "kell_base": "Kell base break", "kell_exit": "Kell EMA exit", "kell_mix": "Kell mix",
     "o_adx": "ADX 20+", "o_adx22": "ADX 22+", "o_htf": "Higher TF agrees", "o_slope": "EMA50 slope agrees", "o_vol": "Volume 1.1x",
     "o_gap": "Not stretched (0.75 ATR)", "o_1r": "TP1 at least 1R", "o_bundle": "All Kim filters", "o_atr": "ATR stop (Kim)",
     "o_part": "Partial exits 40/30/20/10", "o_conf": "Wait + close beyond", "o_pull": "Wait for pullback", "o_pkg": "Kim full package",

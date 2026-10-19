@@ -32,7 +32,8 @@ import filter_lab as FL
 BIG = 1e18
 TFS = ("3m", "5m", "15m")
 OUT_GROUP = "Outside suggestion (4 points)"
-GROUP_ORDER = ["Exit and stop-loss", "Indicators (skip signals)", "Bollinger (skip signals)", "CVD (order flow)", "Bands", "Mixes", OUT_GROUP]
+NEW_GROUP = "Photo ideas (SD100, mean reversion, Kell)"
+GROUP_ORDER = ["Exit and stop-loss", "Indicators (skip signals)", "Bollinger (skip signals)", "CVD (order flow)", "Bands", "Mixes", OUT_GROUP, NEW_GROUP]
 
 
 # ---------------------------------------------------------------- CVD proxy (taker buy volume is already inside every Binance kline row)
@@ -149,9 +150,82 @@ def enrich(r, S, i, lev, fee):
             ctx["confirm"] = (S["c"][i + 1] > S["c"][i]) if is_long else (S["c"][i + 1] < S["c"][i])
     except Exception:
         pass
+    try:
+        _enrich_new(r, S, i, lev, fee, x, is_long, entry, base_sl, tps)
+    except Exception:
+        pass
     r["cvd"] = cv
     r["x"] = x
 
+
+
+# ---------------------------------------------------------------- photo ideas (read-only maths on the same candles, lab only)
+def _ema_cached(S, n):
+    k = f"_e{n}"
+    e = S.get(k)
+    if e is None:
+        from recovered_bot import ai_ind_features as F
+        e = S[k] = F.ema(S["c"], n, seed="sma")
+    return e
+
+
+def _enrich_new(r, S, i, lev, fee, x, is_long, entry, base_sl, tps):
+    c, h, l = S["c"], S["h"], S["l"]
+    # 1) SD100: the SD ladder built on a 100-candle mean / deviation instead of 200 (same SL, TP = next 4 bands)
+    if i >= 100:
+        w = c[i - 99:i + 1]
+        m = sum(w) / 100.0
+        sd = (sum((v - m) ** 2 for v in w) / 100.0) ** 0.5
+        if sd > 0:
+            lv = [m + k * sd for k in (-3, -2, -1, 0, 1, 2, 3)]
+            up = sorted(v for v in lv if v > entry)[:4] if is_long else sorted((v for v in lv if v < entry), reverse=True)[:4]
+            if len(up) == 4:
+                ret, why, bars = FL.sim_trade(S, i, is_long, entry, base_sl, up[0], up[3], 0.0)
+                if why != "OPEN":
+                    x["sd100"] = [round(ret * lev - fee, 3), why, bars]
+        # 2) mean reversion at the SD band: signal fired while price is already beyond the 2nd band in the trade's direction ->
+        #    trade the OTHER way back to the mean (stop = 1 SD further out, target = the mean). Only these signals are traded.
+        far2 = (entry > m + 2 * sd) if is_long else (entry < m - 2 * sd)
+        if far2 and sd > 0:
+            rev_long = not is_long
+            sl_r = entry + sd if not rev_long else entry - sd
+            tp1_r = entry + (m - entry) * 0.5
+            ret, why, bars = FL.sim_trade(S, i, rev_long, entry, sl_r, tp1_r, m, 0.0)
+            if why != "OPEN":
+                x["meanrev"] = [round(ret * lev - fee, 3), why, bars]
+    # 3) abnormal candle: the signal candle is a spike (range bigger than 3 x ATR) -> often a late chase
+    a = FL._atr(S, i)
+    ctx = r.get("ctx") or {}
+    if a:
+        ctx["spike"] = (h[i] - l[i]) > 3.0 * a
+    # 4) Kell "base and break": the 8 candles before the signal were a tight base (range <= 2.5 ATR) and the signal candle closes beyond it
+    if a and i >= 9:
+        hi8, lo8 = max(h[i - 8:i]), min(l[i - 8:i])
+        tight = (hi8 - lo8) <= 2.5 * a
+        broke = (c[i] > hi8) if is_long else (c[i] < lo8)
+        ctx["base_break"] = bool(tight and broke)
+    # 5) Kell exit: stay in the trade until a candle CLOSES beyond BOTH EMA10 and EMA20 against it (no TP4 exit; stop as the bot)
+    e10, e20 = _ema_cached(S, 10), _ema_cached(S, 20)
+    end = min(S["n"] - 1, i + FL.MAX_FWD)
+    got = None
+    for j in range(i + 1, end + 1):
+        if (l[j] <= base_sl) if is_long else (h[j] >= base_sl):
+            got = (base_sl, "SL", j - i)
+            break
+        if e10[j] is not None and e20[j] is not None and ((c[j] < e10[j] and c[j] < e20[j]) if is_long else (c[j] > e10[j] and c[j] > e20[j])):
+            got = (c[j], "EMA", j - i)
+            break
+    if got is not None:
+        ret = (got[0] - entry) / entry * 100.0 * (1.0 if is_long else -1.0)
+        x["kell_exit"] = [round(ret * lev - fee, 3), got[1], got[2]]
+    r["ctx"] = ctx
+    # 6) EMA30 / EMA200-SMA side filters (the bot's entry is EMA50 only, so these are FILTERS on its signals, not new entries)
+    e30, e50 = _ema_cached(S, 30), S["e50"]
+    if e30[i] is not None and e50[i] is not None:
+        ctx["e30_side"] = (e30[i] > e50[i]) if is_long else (e30[i] < e50[i])
+    sm = S.get("sma")
+    if sm and sm[i] is not None:
+        ctx["sma_side"] = (c[i] > sm[i]) if is_long else (c[i] < sm[i])
 
 
 # ---------------------------------------------------------------- "outside suggestion" helpers (read-only maths on the same candles)
@@ -411,6 +485,14 @@ SCENARIOS = [
     (OUT_GROUP, "o_part", "Partial exits 40/30/20/10 at TP1-TP4", _xs("partial")),
     (OUT_GROUP, "o_conf", "Wait 1 candle, enter only if it closes beyond", _confirm),
     (OUT_GROUP, "o_pkg", "FULL PACKAGE: filters + ATR stop + partial exits", _pkg),
+    (NEW_GROUP, "sd100", "SD100: SD bands on 100 candles instead of 200", _x("sd100")),
+    (NEW_GROUP, "meanrev", "Mean reversion: signal beyond 2nd SD band -> trade back to the mean", lambda r: (r.get("x") or {}).get("meanrev", [None])[0]),
+    (NEW_GROUP, "nospike", "Skip spike candle (signal candle bigger than 3 ATR)", _gate(lambda r: not (r.get("ctx") or {}).get("spike", False))),
+    (NEW_GROUP, "e30side", "EMA30 on the trade's side of EMA50 (filter)", _gate(lambda r: (r.get("ctx") or {}).get("e30_side", True))),
+    (NEW_GROUP, "smaside", "Price on the trade's side of SMA200 (filter)", _gate(lambda r: (r.get("ctx") or {}).get("sma_side", True))),
+    (NEW_GROUP, "kell_base", "Kell: take only a break out of a tight base", _gate(lambda r: (r.get("ctx") or {}).get("base_break", False))),
+    (NEW_GROUP, "kell_exit", "Kell exit: leave when price closes beyond EMA10 and EMA20", _x("kell_exit")),
+    (NEW_GROUP, "kell_mix", "Kell base break + Kell exit", lambda r: _x("kell_exit")(r) if (r.get("ctx") or {}).get("base_break", False) else None),
 ]
 
 

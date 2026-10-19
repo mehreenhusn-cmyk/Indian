@@ -90,10 +90,15 @@ _defaults = {
     "vision_max_per_min": 6,      # AI calls per minute (free tiers are small); extra signals wait in line or time out
     "vision_max_calls_day": 200,  # AI calls per 24 h (your budget). 0 = no limit. New signals stop first, open-trade checks get 50% extra
     "vision_max_open": 8,         # AI virtual trades open at once
-    "vision_review_candles": 2,   # an open AI trade is re-read every N closed candles (plus when its target is touched)
+    "vision_review_candles": 4,   # an open AI trade is re-read every N closed candles (plus when its target is touched). 4 keeps free quotas alive; the hard stop is checked every tick anyway
     "vision_max_risk_pct": 3.0,   # an AI stop further than this (% of price) is refused: the trade is skipped
     "vision_only_opened": True,   # judge only signals the bot really opened (False = every signal)
     "vision_notes": "",           # the owner's own notes about the indicators, added to the AI guide (edited in the app)
+    "vision_lessons_enabled": True,  # learning notebook (ai_vision_lessons.py): a lesson after every closed AI trade + rules you approve. Uses a few cheap text calls in idle time
+    # ---- optional BACKUP AI key for the Vision AI: used automatically when the main key runs out of quota ----
+    "ai2_provider": "mistral",    # "mistral" or "groq" (both have a free plan), or "openai" / "gemini" / "anthropic"
+    "ai2_api_key": "",            # SECURITY: never hardcode - paste via Settings only
+    "ai2_model": "",              # optional; "" = a sensible vision model for that provider
     # ---- the older AI modules (Coach, Pick, Desk, Shadow Lab, trackers ...). OFF = no background threads, no heavy work.
     "legacy_ai_enabled": False,
 }

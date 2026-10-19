@@ -855,6 +855,27 @@ class AppProvider extends ChangeNotifier {
     }
   }
 
+  /// The Vision AI's learning notebook: lessons, proposed / approved rules with evidence (GET /api/vision/lessons). null on failure.
+  Future<Map<String, dynamic>?> fetchVisionLessons() async {
+    try {
+      final res = await http.get(_u('/api/vision/lessons')).timeout(const Duration(seconds: 12));
+      if (res.statusCode == 200) return jsonDecode(res.body) as Map<String, dynamic>;
+    } catch (_) {}
+    return null;
+  }
+
+  /// Approve / delete / un-approve one proposed rule (POST /api/vision/rule). action: 'approve' | 'delete' | 'propose'.
+  Future<bool> actVisionRule(String id, String action) async {
+    try {
+      final res = await http
+          .post(_u('/api/vision/rule'), headers: {'Content-Type': 'application/json'}, body: jsonEncode({'id': id, 'action': action}))
+          .timeout(const Duration(seconds: 10));
+      return res.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// URL of a chart picture. live=false: the picture the AI saw when it decided; live=true: a fresh one with stop / target lines.
   String visionImageUrl(String id, {bool live = false}) {
     final bucket = DateTime.now().millisecondsSinceEpoch ~/ (live ? 30000 : 600000);

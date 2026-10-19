@@ -10,12 +10,14 @@ import '../widgets/ai_chat_popup.dart';
 import '../widgets/owl_eye_dot.dart';
 import '../widgets/owl_pressable.dart';
 import '../widgets/owl_refresh.dart';
+import '../widgets/vision_notebook_view.dart';
 
 /// The AI tab (Vision AI).
 ///   Live     - the AI's own virtual account: open trades with live P&L, stop and target, and what the AI says about them.
 ///   Signals  - every bot signal and what the AI decided (take / skip / wait) with the reason.
 ///   Results  - how the AI trades did, and what the bot did on the signals the AI took or skipped.
 ///   Guide    - what the AI is told about your indicators, plus your own notes.
+///   Notebook - what the AI learned from its own closed trades: lessons, and rules you approve or delete.
 /// Tap any row to see the exact chart the AI looked at, its checklist and its notes.
 /// All numbers come from the backend (ai_vision.py). The phone only draws them.
 
@@ -208,7 +210,7 @@ class _VisionTabScreenState extends State<VisionTabScreen> {
   }
 
   Widget _tabStrip(AppPalette p) {
-    const labels = ['Live', 'Signals', 'Results', 'Guide'];
+    const labels = ['Live', 'Signals', 'Results', 'Guide', 'Notebook'];
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: AppSpacing.l),
       padding: const EdgeInsets.all(3),
@@ -256,6 +258,9 @@ class _VisionTabScreenState extends State<VisionTabScreen> {
   }
 
   Widget _body(AppPalette p) {
+    if (_tab == 4) {
+      return const VisionNotebookView();
+    }
     if (_tab == 3) {
       _loadGuide();
       return _guideTab(p);
@@ -304,6 +309,80 @@ class _VisionTabScreenState extends State<VisionTabScreen> {
     );
   }
 
+  String _hhmm(double? t) {
+    if (t == null || t <= 0) return '';
+    final dt = DateTime.fromMillisecondsSinceEpoch((t * 1000).toInt());
+    return '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+  }
+
+  /// "AI Calls" card: how many calls the keys made in the last 24 h, which key answers, and why signals wait. Numbers come from the backend.
+  Widget _monitorCard(AppPalette p, Map<String, dynamic> d) {
+    final m = _m(d['monitor']);
+    if (m.isEmpty) return const SizedBox.shrink();
+    final slots = _l(m['slots']).map(_m).toList();
+    final used = (_d(m['used_24h']) ?? 0).toInt();
+    final cap = (_d(m['cap']) ?? 0).toInt();
+    final waiting = (_d(m['waiting']) ?? 0).toInt();
+    final tip = (m['tip'] ?? '').toString();
+    final err = (m['last_error'] ?? '').toString();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.cardGap),
+      child: _VCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const _VLabel('AI CALLS (LAST 24 HOURS)'),
+            const SizedBox(height: 8),
+            Text(cap > 0 ? '$used of $cap calls used (your daily cap in the app)' : '$used calls made',
+                style: TextStyle(color: p.textPrimary, fontSize: 13, fontWeight: FontWeight.w700)),
+            if (cap > 0) ...[
+              const SizedBox(height: 6),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: LinearProgressIndicator(value: (used / cap).clamp(0.0, 1.0), minHeight: 5, backgroundColor: p.border, color: p.accent),
+              ),
+            ],
+            const SizedBox(height: 10),
+            for (final sl in slots)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text('${sl['slot'] == 'main' ? 'Main key' : 'Backup key'} (${sl['provider'] ?? ''})',
+                              style: TextStyle(color: p.textPrimary, fontSize: 12.5, fontWeight: FontWeight.w800)),
+                        ),
+                        Text(sl['state'] == 'paused' ? 'OUT OF QUOTA' : 'READY',
+                            style: TextStyle(color: sl['state'] == 'paused' ? p.warning : p.profit, fontSize: 10.5, fontWeight: FontWeight.w800)),
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${sl['calls'] ?? 0} calls  ·  ${sl['ok'] ?? 0} worked  ·  ${sl['quota'] ?? 0} quota stops  ·  ${sl['errors'] ?? 0} errors'
+                      '${sl['avg_s'] != null ? '  ·  avg ${sl['avg_s']} s' : ''}'
+                      '${sl['state'] == 'paused' && _hhmm(_d(sl['paused_until'])).isNotEmpty ? '  ·  back about ${_hhmm(_d(sl['paused_until']))}' : ''}',
+                      style: context.type.metadata.copyWith(fontSize: 11, height: 1.35),
+                    ),
+                  ],
+                ),
+              ),
+            if (waiting > 0)
+              Text('$waiting signal(s) are waiting for the AI.', style: context.type.metadata.copyWith(color: p.textPrimary, height: 1.35)),
+            if (tip.isNotEmpty) Text(tip, style: context.type.metadata.copyWith(height: 1.35)),
+            if (err.isNotEmpty && slots.every((x) => x['state'] == 'paused'))
+              Padding(
+                padding: const EdgeInsets.only(top: 3),
+                child: Text('Last AI message: ${err.length > 140 ? err.substring(0, 140) : err}', style: context.type.metadata.copyWith(fontSize: 10.5, height: 1.35)),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _section(String text) => Padding(
         padding: const EdgeInsets.only(top: 6, bottom: 8),
         child: _VLabel(text),
@@ -334,6 +413,7 @@ class _VisionTabScreenState extends State<VisionTabScreen> {
         padding: _pad,
         children: [
           _banner(p, d),
+          _monitorCard(p, d),
           _VCard(
             glow: total >= 0 ? p.profit : p.loss,
             child: Column(

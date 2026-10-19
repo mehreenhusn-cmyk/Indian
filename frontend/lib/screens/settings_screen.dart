@@ -36,6 +36,8 @@ const _textKeys = <String>[
   'binance_api_secret',
   'ai_api_key',
   'ai_model',
+  'ai2_provider',
+  'ai2_api_key',
 ];
 
 const _labels = <String, String>{
@@ -62,6 +64,8 @@ const _labels = <String, String>{
   'binance_api_secret': 'Binance API secret',
   'ai_api_key': 'AI API key',
   'ai_model': 'AI model',
+  'ai2_provider': 'AI backup provider',
+  'ai2_api_key': 'AI backup key',
 };
 
 const _scopes = <String, String>{
@@ -88,6 +92,8 @@ const _scopes = <String, String>{
   'binance_api_secret': _scopeLive,
   'ai_api_key': _scopeLive,
   'ai_model': _scopeLive,
+  'ai2_provider': _scopeLive,
+  'ai2_api_key': _scopeLive,
 };
 
 const _secretKeys = <String>{
@@ -95,6 +101,7 @@ const _secretKeys = <String>{
   'binance_api_key',
   'binance_api_secret',
   'ai_api_key',
+  'ai2_api_key',
 };
 
 const _numDefaults = <String, double>{
@@ -1098,6 +1105,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               errors: errors,
                               helper: 'Leave empty = automatic. If a model name is retired (404), the backend '
                                   'falls back to the newest working one by itself.',
+                            ),
+                            _field(
+                              'Backup provider (Vision AI)',
+                              'ai2_provider',
+                              isText: true,
+                              errors: errors,
+                              helper: 'Type mistral or groq (both have a free plan). Used only when the main key runs out of quota.',
+                            ),
+                            _field(
+                              'Backup key (Vision AI)',
+                              'ai2_api_key',
+                              isText: true,
+                              errors: errors,
+                              helper: 'Optional. Free key from console.mistral.ai or console.groq.com. The Vision AI switches to it by itself when the main key is out of quota.',
                             ),
                             Padding(
                               padding: const EdgeInsets.only(bottom: 4),

@@ -836,6 +836,20 @@ async def vision_notes(payload: dict, _auth=Depends(require_api_token)):
     return ai_vision.set_notes(payload.get("notes", ""))
 
 
+@app.get("/api/vision/lessons")
+async def vision_lessons():
+    """The Vision AI's learning notebook: latest lessons, proposed / approved rules and the evidence for each (ai_vision_lessons.py)."""
+    from recovered_bot import ai_vision, ai_vision_lessons
+    return await asyncio.to_thread(ai_vision_lessons.snapshot, ai_vision)
+
+
+@app.post("/api/vision/rule")
+async def vision_rule(payload: dict, _auth=Depends(require_api_token)):
+    """Approve / delete / un-approve one proposed rule. Only approved rules are shown to the Vision AI."""
+    from recovered_bot import ai_vision_lessons
+    return ai_vision_lessons.set_rule(str(payload.get("id", "")), payload.get("action", ""))
+
+
 @app.get("/api/alerts")
 def get_alerts():
     rows = status.get().get("alerts", [])
@@ -917,7 +931,7 @@ async def get_candles(symbol: str, limit: int = 260, tf: str = None):
 # looks like our own mask, so opening Settings and hitting Save without
 # touching a secret field can never overwrite the real stored secret with
 # the masked placeholder.
-_SETTINGS_SECRET_KEYS = ("binance_api_secret", "telegram_bot_token")
+_SETTINGS_SECRET_KEYS = ("binance_api_secret", "telegram_bot_token", "ai2_api_key")
 _SECRET_MASK_PREFIX = "\u2022\u2022\u2022\u2022"  # "••••"
 
 
