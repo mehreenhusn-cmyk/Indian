@@ -420,7 +420,7 @@ def _eff_ttl(key, ttl):
 
 async def _swr_refresh(key):
     fn, a = _SWR_JOBS[key]
-    heavy = key not in _LIGHT_KEYS
+    heavy = key not in _LIGHT_KEYS and not (isinstance(key, str) and key.startswith("vision_state"))
     # SMOOTH FIX 2: a screen that only needs ~1 s (diary 0.5 s, observer 0.9 s) used to wait 6-32 s behind the 40 s
     # A/B board build. Once a screen has been MEASURED as cheap it uses the light lane and never takes the heavy lock.
     _t = _TIMING.get(key)
@@ -881,7 +881,9 @@ async def daily_report_endpoint():
 async def vision_state(limit: int = 80):
     """Open AI trades (live P&L), closed AI trades, the AI decision on every bot signal, and the scoreboard."""
     from recovered_bot import ai_vision
-    return await asyncio.to_thread(ai_vision.snapshot, max(1, min(int(limit), 200)))
+    # SMOOTH FIX: the app polls this often; every poll rebuilt the whole answer (70 calls = 38 s in 4 h). Now one shared,
+    # cached build (3 s) in the light lane; stale answer is returned at once while a fresh one builds behind it.
+    return await _swr(f"vision_state:{max(1, min(int(limit), 200))}", 3.0, ai_vision.snapshot, max(1, min(int(limit), 200)))
 
 
 @app.get("/api/vision/image/{item_id}")
