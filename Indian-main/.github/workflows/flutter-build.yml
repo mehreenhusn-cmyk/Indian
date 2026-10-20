@@ -1,0 +1,98 @@
+name: Flutter CI
+
+on:
+  push:
+    branches: [ main ]
+    # Every push builds a new APK now (backend and test files too), so a backend-only upload also starts a build.
+    # Only notes (.md) are ignored. Old APKs are removed by the "Cleanup Actions storage" workflow after each build.
+    paths-ignore:
+      - '**.md'
+  pull_request:
+    branches: [ main ]
+    paths-ignore:
+      - '**.md'
+  workflow_dispatch:
+
+# A newer push cancels a build that is still running (no half-finished APKs piling up).
+concurrency:
+  group: flutter-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        channel: 'stable'
+
+    - name: Install dependencies
+      working-directory: ./frontend
+      run: flutter pub get
+
+    - name: Generate native platform folders
+      working-directory: ./frontend
+      run: flutter create . --platforms=android
+
+    - name: Patch AndroidManifest (INTERNET + cleartext)
+      working-directory: ./frontend
+      run: |
+        MANIFEST=android/app/src/main/AndroidManifest.xml
+        sed -i 's#<application#<uses-permission android:name="android.permission.INTERNET"/>\n    <application#' "$MANIFEST"
+        sed -i 's#<application#<application android:usesCleartextTraffic="true"#' "$MANIFEST"
+        cat "$MANIFEST"
+
+    - name: Patch AndroidManifest (Owl Terminal branding + foreground service)
+      working-directory: ./frontend
+      run: |
+        MANIFEST=android/app/src/main/AndroidManifest.xml
+        sed -i 's#android:label="trading_bot"#android:label="Owl Terminal"#' "$MANIFEST"
+        sed -i 's#<application#<uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>\n    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC"/>\n    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>\n    <uses-permission android:name="android.permission.WAKE_LOCK"/>\n    <application#' "$MANIFEST"
+        sed -i 's#</application>#    <service\n        android:name="com.pravera.flutter_foreground_task.service.ForegroundService"\n        android:foregroundServiceType="dataSync"\n        android:exported="false" />\n</application>#' "$MANIFEST"
+        cat "$MANIFEST"
+
+    - name: Generate launcher icon (owl mascot)
+      working-directory: ./frontend
+      run: dart run flutter_launcher_icons
+
+    # Analyze aur Test hata diya hai taaki build direct chale
+    # --no-shrink: the release build's code shrinker (R8) removed Java methods that the newer
+    # shared_preferences plugin calls directly, so the app died at start-up with
+    # "NoSuchMethodError ... SharedPreferencesApiRegistrar.getAll". Without shrinking they stay.
+    # Retry ONLY when the failure is a download glitch (for example the Android NDK zip cut off at 33% -> "Error on ZipFile unknown archive").
+    # A real Dart/Kotlin compile error stops at once, so a genuine bug is never hidden behind retries and the log stays short.
+    - name: Build APK (retries only on download glitches)
+      working-directory: ./frontend
+      run: |
+        set -o pipefail
+        for attempt in 1 2 3; do
+          echo "=== Build attempt $attempt of 3 ==="
+          if flutter build apk --release --no-shrink 2>&1 | tee build_attempt.log; then
+            exit 0
+          fi
+          if grep -qiE "ZipFile|unknown archive|NDK|Could not (download|resolve|GET)|Read timed out|Connection reset|Premature end|Unexpected end of ZLIB" build_attempt.log; then
+            echo "Download glitch detected. Removing any half-downloaded NDK and trying again in 20 s."
+            rm -rf "${ANDROID_SDK_ROOT:-$ANDROID_HOME}"/ndk/* 2>/dev/null || true
+            sleep 20
+          else
+            echo "This is a real build error, not a download glitch. Not retrying."
+            exit 1
+          fi
+        done
+        echo "Build still failing after 3 attempts."
+        exit 1
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: release-apk
+        path: frontend/build/app/outputs/flutter-apk/app-release.apk
+        # Keep the APK for 1 day only (the default is 90 days, which is what filled the 0.5 GB).
+        # Download it the same day. The Cleanup workflow also removes older ones.
+        retention-days: 1
+        compression-level: 0
