@@ -254,10 +254,12 @@ def _closed_with_feat(V):
 
 # ------------------------------------------------------------------ lessons
 _SYS_LESSON = ("You keep a trading notebook for a crypto paper-trading bot. You are given one CLOSED virtual trade with what the AI thought "
-               "when it entered and how the trade ended. Write ONE short lesson in simple English (max 25 words): what to repeat or what to "
-               "avoid next time, in terms of the chart and indicators. Be honest: if the result looks like normal market noise, say so and "
-               "do not invent a cause. Never invent numbers. Answer with JSON only: "
-               '{"lesson":"...","kind":"entry|stop|exit|good|noise"}')
+               "when it entered and how the trade ended. Write ONE short lesson in simple English (max 35 words): what to repeat or what to "
+               "avoid next time, in terms of the chart and BOTH indicator families (EMA/SD and TSI/Z). "
+               "Also mention if the stop was too tight/wide or if trailing the target would have captured more of the peak ROI. "
+               "Be honest: if the result looks like normal market noise, say so and do not invent a cause. Never invent numbers. "
+               "Answer with JSON only: "
+               '{"lesson":"...","kind":"entry|stop|exit|good|noise","sl_note":"one short phrase or empty","trail_note":"one short phrase or empty"}')
 
 
 def _hold_text(tr):
@@ -266,6 +268,18 @@ def _hold_text(tr):
         return f"{m} min"
     except Exception:
         return "?"
+
+
+def _sl_distance_text(tr, d):
+    try:
+        entry = float(tr.get("entry") or 0)
+        sl = float(tr.get("sl") or d.get("stop") or 0)
+        if not entry or not sl:
+            return "SL distance unknown"
+        pct = abs(entry - sl) / entry * 100.0
+        return f"SL was {pct:.2f}% from entry"
+    except Exception:
+        return "SL distance unknown"
 
 
 def _auto_lesson(tr):
@@ -282,15 +296,21 @@ def _write_one(V, tr):
     feat = d.get("feat") or {}
     tags = ", ".join(f"{k}={'yes' if v else 'no'}" for k, v in feat.items()) or "not measured"
     notes = " | ".join(_txt(n.get("text"), 110) for n in (tr.get("notes") or [])[-5:])
+    ind = d.get("indicator_summary") or {}
+    ind_line = "; ".join(f"{k}={v}" for k, v in ind.items() if v) if isinstance(ind, dict) else ""
     text = (f"Trade: {_txt(tr.get('symbol'), 20)} {tr.get('side')} on {V._tf_label(tr.get('tf_min') or 5)}, held {_hold_text(tr)}.\n"
             f"Result: {tr.get('pnl') or 0:+.2f} USDT ({tr.get('roi') or 0:+.1f}% ROI after fees); best ROI during the trade {tr.get('peak_roi') or 0:+.1f}%; "
             f"closed because: {_txt(tr.get('exit_reason'), 100)}.\n"
+            f"{_sl_distance_text(tr, d)}. Peak ROI {tr.get('peak_roi') or 0:+.1f}% vs final {tr.get('roi') or 0:+.1f}% "
+            f"(if peak was much higher, trailing might have helped).\n"
             f"Why you entered: {_txt(d.get('reason'), 160)}\nYour entry checklist: {_txt(json.dumps(d.get('checklist') or {}), 300)}\n"
+            f"Indicator summary at entry: {ind_line or 'n/a'}\n"
             f"Measured at entry (code, not opinion): {tags}.\nWhat happened while open: {notes or 'no notes'}\n"
             "Write the lesson now (JSON only).")
     V._count()
     out, err = V._call_ai(_SYS_LESSON, text, None)
     kind, lesson = None, None
+    sl_note, trail_note = "", ""
     if err:
         if str(err).startswith("quota:"):
             V._uncount()
@@ -298,8 +318,10 @@ def _write_one(V, tr):
         V._log(f"lesson {tr.get('symbol')}: {_txt(err, 100)}")
     else:
         j = V._parse(out) or {}
-        lesson = _txt(j.get("lesson"), 200) or None
+        lesson = _txt(j.get("lesson"), 220) or None
         kind = _txt(j.get("kind"), 10).lower() or None
+        sl_note = _txt(j.get("sl_note"), 80)
+        trail_note = _txt(j.get("trail_note"), 80)
     auto = False
     if not lesson:
         lesson, kind = _auto_lesson(tr)
@@ -308,7 +330,9 @@ def _write_one(V, tr):
         _state["lessons"].append({"id": "l" + str(tr.get("id")), "trade_id": tr.get("id"), "symbol": tr.get("symbol"), "side": tr.get("side"),
                                   "tf": V._tf_label(tr.get("tf_min") or 5), "pnl": round(float(tr.get("pnl") or 0), 2),
                                   "roi": round(float(tr.get("roi") or 0), 1), "text": lesson, "kind": kind or "noise", "auto": auto,
-                                  "feat": feat, "t": time.time(), "closed_at": tr.get("closed_at") or 0})
+                                  "sl_note": sl_note, "trail_note": trail_note,
+                                  "feat": feat, "indicator_summary": ind if isinstance(ind, dict) else {},
+                                  "t": time.time(), "closed_at": tr.get("closed_at") or 0})
     _save()
     return True
 

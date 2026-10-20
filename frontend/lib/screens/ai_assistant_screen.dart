@@ -1,27 +1,25 @@
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:image_picker/image_picker.dart';
 import '../providers/app_provider.dart';
 import '../theme/app_theme.dart';
-import '../widgets/glass_card.dart';
 import '../widgets/owl_ambient_background.dart';
-import '../widgets/owl_empty_state.dart';
 import '../widgets/owl_entrance.dart';
 import '../widgets/owl_eye_dot.dart';
 import '../widgets/owl_pressable.dart';
 import '../widgets/owl_refresh.dart';
 import '../widgets/owl_skeleton.dart';
 
-// ---- Minimal markdown for assistant replies (no extra package) ------------
-// The model answers with **bold** and "* " / "- " bullets; shown as plain Text
-// they appeared as raw asterisks. This turns them into real bold + bullet rows.
+// ---- Minimal markdown for assistant replies --------------------------------
 final RegExp _boldRe = RegExp(r'\*\*(.+?)\*\*');
 final RegExp _tripleRe = RegExp(r'\*\*\*(.+?)\*\*');
 final RegExp _bulletRe = RegExp(r'^\s*[*\-•]\s+(.*)$');
 
 List<TextSpan> _inlineSpans(String raw) {
-  final s = raw.replaceAllMapped(_tripleRe, (m) => '**${m.group(1)}**'); // "***x**" -> bold x
+  final s = raw.replaceAllMapped(_tripleRe, (m) => '**${m.group(1)}**');
   final spans = <TextSpan>[];
   var last = 0;
   for (final m in _boldRe.allMatches(s)) {
@@ -70,20 +68,14 @@ List<Widget> aiMdBlocks(String text, TextStyle base, Color bulletColor) {
 }
 
 class _ChatMessage {
-  final String role; // "user" or "assistant"
+  final String role;
   final String content;
-  _ChatMessage(this.role, this.content);
+  final Uint8List? imageBytes;
+  _ChatMessage(this.role, this.content, {this.imageBytes});
 }
 
-/// Simple chat screen for the in-app AI Assistant - opened from Settings >
-/// AI Assistant > "Open Chat", or from the left drawer's quick AI access on
-/// any screen. Talks to POST /api/ai/ask (see ai_assistant.py), which
-/// itself calls whichever provider (OpenAI/Gemini/Claude) is picked in Settings.
-/// The conversation is now PERSISTENT across app restarts (see
-/// ai_chat_store.py) - this screen loads it from GET /api/ai/history on
-/// open instead of always starting blank, and the backend saves both sides
-/// of every turn itself after each successful ask() - this screen doesn't
-/// need to explicitly save anything beyond sending the message.
+/// Multi-chat AI Assistant: hamburger history, modes (Trades / Backend / App & UI / General),
+/// photo attach for UI feedback. Talks to POST /api/ai/ask + multi-chat store.
 class AiAssistantScreen extends StatefulWidget {
   const AiAssistantScreen({super.key});
 
@@ -95,25 +87,78 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
   final List<_ChatMessage> _messages = [];
   final TextEditingController _inputController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   bool _sending = false;
   bool _loadingHistory = true;
+  String? _chatId;
+  String _mode = 'general';
+  List<Map<String, dynamic>> _chats = [];
+  Uint8List? _pendingImage;
+  String? _pendingImageB64;
+
+  static const _modes = [
+    ('general', 'General'),
+    ('trades', 'Trades'),
+    ('backend', 'Backend & speed'),
+    ('app_ui', 'App & UI'),
+  ];
 
   @override
   void initState() {
     super.initState();
-    _loadHistory();
+    _loadBundle();
   }
 
-  Future<void> _loadHistory() async {
+  Future<void> _loadBundle({String? chatId}) async {
     final provider = Provider.of<AppProvider>(context, listen: false);
-    final saved = await provider.fetchAiHistory();
+    final data = await provider.fetchAiHistoryBundle(chatId: chatId);
     if (!mounted) return;
+    final msgs = (data['messages'] as List?) ?? [];
     setState(() {
-      _messages.clear();
-      _messages.addAll(saved.map((m) => _ChatMessage('${m['role']}', '${m['content']}')));
+      _messages
+        ..clear()
+        ..addAll(msgs.map((m) {
+          final map = Map<String, dynamic>.from(m as Map);
+          return _ChatMessage('${map['role']}', '${map['content']}');
+        }));
+      _chats = List<Map<String, dynamic>>.from(
+        ((data['chats'] as List?) ?? []).map((e) => Map<String, dynamic>.from(e as Map)),
+      );
+      _chatId = (data['active'] ?? chatId)?.toString();
+      _mode = (data['mode'] ?? 'general').toString();
       _loadingHistory = false;
     });
     _scrollToBottom();
+  }
+
+  Future<void> _newChat(String mode) async {
+    final provider = Provider.of<AppProvider>(context, listen: false);
+    final created = await provider.createAiChat(mode: mode);
+    if (created == null || !mounted) return;
+    await provider.setActiveAiChat('${created['id']}');
+    setState(() {
+      _chatId = '${created['id']}';
+      _mode = mode;
+      _messages.clear();
+      _pendingImage = null;
+      _pendingImageB64 = null;
+    });
+    await _loadBundle(chatId: _chatId);
+    if (mounted) Navigator.of(context).maybePop(); // close drawer
+  }
+
+  Future<void> _switchChat(String id) async {
+    final provider = Provider.of<AppProvider>(context, listen: false);
+    await provider.setActiveAiChat(id);
+    setState(() => _loadingHistory = true);
+    await _loadBundle(chatId: id);
+    if (mounted) Navigator.of(context).maybePop();
+  }
+
+  Future<void> _deleteChat(String id) async {
+    final provider = Provider.of<AppProvider>(context, listen: false);
+    await provider.deleteAiChat(id);
+    await _loadBundle();
   }
 
   Future<void> _confirmClearChat() async {
@@ -125,9 +170,9 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
           borderRadius: BorderRadius.circular(AppSpacing.radiusLarge),
           side: BorderSide(color: ctx.palette.border, width: 0.5),
         ),
-        title: Text('Clear chat?', style: ctx.type.section),
+        title: Text('Clear this chat?', style: ctx.type.section),
         content: Text(
-          'This deletes the saved conversation from this device and the backend. This cannot be undone.',
+          'Deletes messages in the current conversation only. Other chats stay.',
           style: ctx.type.secondary,
         ),
         actions: [
@@ -141,9 +186,34 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
     );
     if (confirmed != true || !mounted) return;
     final provider = Provider.of<AppProvider>(context, listen: false);
-    await provider.clearAiHistory();
+    await provider.clearAiHistory(chatId: _chatId);
     if (!mounted) return;
     setState(() => _messages.clear());
+  }
+
+  Future<void> _pickImage() async {
+    try {
+      final picker = ImagePicker();
+      final file = await picker.pickImage(source: ImageSource.gallery, maxWidth: 1280, imageQuality: 75);
+      if (file == null) return;
+      final bytes = await file.readAsBytes();
+      if (bytes.length > 2 * 1024 * 1024) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Image too large (max ~2 MB after compress).')),
+        );
+        return;
+      }
+      setState(() {
+        _pendingImage = bytes;
+        _pendingImageB64 = base64Encode(bytes);
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not pick image: $e')),
+      );
+    }
   }
 
   @override
@@ -167,30 +237,46 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
 
   Future<void> _send([String? preset]) async {
     final text = (preset ?? _inputController.text).trim();
-    if (text.isEmpty || _sending) return;
-    AppHaptics.light();
+    if ((text.isEmpty && _pendingImageB64 == null) || _sending) return;
+    HapticFeedback.lightImpact();
     final provider = Provider.of<AppProvider>(context, listen: false);
     final settings = provider.settings;
 
     if (settings['ai_enabled'] != true) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('AI Assistant is off — turn it on in Settings first.')),
+        const SnackBar(content: Text('AI Assistant is off. Turn it on in Settings.')),
       );
       return;
     }
 
+    final display = text.isEmpty ? '[Screenshot attached]' : text;
+    final img = _pendingImage;
+    final b64 = _pendingImageB64;
+
     setState(() {
-      _messages.add(_ChatMessage('user', text));
+      _messages.add(_ChatMessage('user', display, imageBytes: img));
       _inputController.clear();
+      _pendingImage = null;
+      _pendingImageB64 = null;
       _sending = true;
     });
     _scrollToBottom();
 
     final history = _messages
-        .map((m) => {'role': m.role, 'content': _cardRe.hasMatch(m.content) ? m.content.replaceAll(_cardRe, '').trim() : m.content})
+        .where((m) => m.role == 'user' || m.role == 'assistant')
+        .map((m) => {'role': m.role, 'content': m.content})
         .toList();
-    final reply = await provider.askAi(text, history);
+    // drop the message we just added from history payload (server stores after reply)
+    if (history.isNotEmpty) history.removeLast();
 
+    final reply = await provider.askAi(
+      display,
+      history,
+      chatId: _chatId,
+      mode: _mode,
+      imageB64: b64,
+    );
+    if (!mounted) return;
     setState(() {
       _sending = false;
       if (reply != null) {
@@ -198,261 +284,116 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
       } else {
         _messages.add(_ChatMessage(
           'assistant',
-          '⚠️ ${provider.error ?? 'Something went wrong.'}',
+          provider.error ?? 'No reply. Check AI key / network in Settings.',
         ));
       }
     });
     _scrollToBottom();
-  }
-
-  /// The backend appends [[OWLCARD {json}]] to summary answers (real numbers
-  /// from trade_store). We strip it from the text and draw a stats card.
-  static final RegExp _cardRe = RegExp(r'\s*\[\[OWLCARD (\{.*?\})\]\]');
-
-  static const List<String> _suggestions = [
-    'How did I do today?',
-    'Why were some signals skipped?',
-    'Explain my win rate',
-    'What should I improve?',
-  ];
-
-  // QUICK EXIT - two gestures that never fight the chat's own scrolling:
-  //  1) drag the header (title bar / grab pill) DOWN, or
-  //  2) swipe RIGHT from the left edge strip (works with 3-button navigation,
-  //     where the system back-swipe does not exist).
-  double _vDrag = 0;
-  double _hDrag = 0;
-
-  void _closeScreen() {
-    AppHaptics.light();
-    FocusScope.of(context).unfocus();
-    Navigator.of(context).maybePop();
+    // refresh chat list titles
+    final data = await provider.fetchAiHistoryBundle(chatId: _chatId);
+    if (!mounted) return;
+    setState(() {
+      _chats = List<Map<String, dynamic>>.from(
+        ((data['chats'] as List?) ?? []).map((e) => Map<String, dynamic>.from(e as Map)),
+      );
+      _chatId = (data['active'] ?? _chatId)?.toString();
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     final p = context.palette;
     return Scaffold(
-      backgroundColor: p.bg,
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(kToolbarHeight + 14),
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onVerticalDragStart: (_) => _vDrag = 0,
-          onVerticalDragUpdate: (d) => _vDrag += d.delta.dy,
-          onVerticalDragEnd: (d) {
-            if (_vDrag > 60 || (d.primaryVelocity ?? 0) > 300) _closeScreen();
-            _vDrag = 0;
-          },
-          child: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        titleSpacing: 0,
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(14),
-          child: Center(
-            child: Container(
-              width: 36,
-              height: 4,
-              margin: const EdgeInsets.only(bottom: 8),
-              decoration: BoxDecoration(
-                color: p.textMuted.withOpacity(0.45),
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ),
-        ),
-        title: Row(
-          children: [
-            OwlEyeDot(live: !_sending, color: p.owlEye, size: 8),
-            const SizedBox(width: AppSpacing.s),
-            Text('AI Assistant', style: context.type.section),
-          ],
-        ),
-        actions: [
-          IconButton(
-            tooltip: 'Clear chat',
-            onPressed: _messages.isEmpty ? null : _confirmClearChat,
-            icon: const Icon(Icons.delete_outline),
-          ),
-        ],
-          ),
-        ),
-      ),
-      body: Stack(
-        children: [
-          const Positioned.fill(child: OwlAmbientBackground()),
-          SafeArea(
-            child: Column(
-              children: [
-                Expanded(child: _buildBody(context)),
-                if (_sending) _buildTyping(context),
-                _buildComposer(context),
-              ],
-            ),
-          ),
-          // Left-edge swipe-right strip (translucent: taps still reach the chat).
-          Positioned(
-            left: 0,
-            top: 0,
-            bottom: 0,
-            width: 28,
-            child: GestureDetector(
-              behavior: HitTestBehavior.translucent,
-              onHorizontalDragStart: (_) => _hDrag = 0,
-              onHorizontalDragUpdate: (d) => _hDrag += d.delta.dx,
-              onHorizontalDragEnd: (d) {
-                if (_hDrag > 70 || (d.primaryVelocity ?? 0) > 450) _closeScreen();
-                _hDrag = 0;
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBody(BuildContext context) {
-    final p = context.palette;
-    if (_loadingHistory) {
-      return ListView(
-        physics: const NeverScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(AppSpacing.l),
-        children: const [
-          Align(alignment: Alignment.centerLeft, child: OWLSkeleton(width: 220, height: 54, borderRadius: 16)),
-          SizedBox(height: AppSpacing.m),
-          Align(alignment: Alignment.centerRight, child: OWLSkeleton(width: 160, height: 40, borderRadius: 16)),
-          SizedBox(height: AppSpacing.m),
-          Align(alignment: Alignment.centerLeft, child: OWLSkeleton(width: 250, height: 70, borderRadius: 16)),
-        ],
-      );
-    }
-
-    if (_messages.isEmpty) {
-      return OWLRefresh(
-        onRefresh: _loadHistory,
-        child: OWLPullEmpty(
+      key: _scaffoldKey,
+      backgroundColor: p.background,
+      drawer: _buildDrawer(p),
+      body: OwlAmbientBackground(
+        child: SafeArea(
           child: Column(
-            mainAxisSize: MainAxisSize.min,
             children: [
-              const OWLEmptyState(
-                icon: Icons.auto_awesome_rounded,
-                title: 'Ask OWL anything',
-                subtitle: 'Your trades, P&L, skipped signals or how the bot works.',
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.l),
-                child: Wrap(
-                  alignment: WrapAlignment.center,
-                  spacing: AppSpacing.s,
-                  runSpacing: AppSpacing.s,
+              AppBar(
+                backgroundColor: Colors.transparent,
+                elevation: 0,
+                leading: IconButton(
+                  icon: const Icon(Icons.menu),
+                  onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+                  tooltip: 'Chats',
+                ),
+                title: Row(
                   children: [
-                    for (final q in _suggestions)
-                      OWLPressable(
-                        pressedScale: 0.96,
-                        onTap: () => _send(q),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-                          decoration: BoxDecoration(
-                            color: p.surfaceElevated,
-                            borderRadius: BorderRadius.circular(AppSpacing.radiusPill),
-                            border: Border.all(color: p.border, width: 0.5),
-                          ),
-                          child: Text(q, style: context.type.secondary.copyWith(color: p.textPrimary)),
+                    Text('AI', style: context.type.hero.copyWith(fontSize: 20)),
+                    const SizedBox(width: 8),
+                    OwlEyeDot(live: !_sending, color: p.owlEye, size: 8),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _modeLabel(_mode),
+                        style: context.type.metadata,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+                actions: [
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline),
+                    onPressed: _messages.isEmpty ? null : _confirmClearChat,
+                    tooltip: 'Clear this chat',
+                  ),
+                ],
+              ),
+              // Mode chips
+              SizedBox(
+                height: 40,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  children: [
+                    for (final m in _modes)
+                      Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: ChoiceChip(
+                          label: Text(m.$2, style: TextStyle(fontSize: 12)),
+                          selected: _mode == m.$1,
+                          onSelected: (_) async {
+                            if (_messages.isEmpty) {
+                              setState(() => _mode = m.$1);
+                            } else {
+                              await _newChat(m.$1);
+                            }
+                          },
                         ),
                       ),
                   ],
                 ),
               ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    return OWLRefresh(
-      onRefresh: _loadHistory,
-      child: ListView.builder(
-        controller: _scrollController,
-        physics: owlPullPhysics,
-        padding: const EdgeInsets.all(AppSpacing.m),
-        itemCount: _messages.length,
-        itemBuilder: (context, i) => OwlEntrance(
-          key: ObjectKey(_messages[i]),
-          child: _buildBubble(_messages[i]),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTyping(BuildContext context) {
-    final p = context.palette;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(AppSpacing.l, 0, AppSpacing.l, AppSpacing.s),
-      child: Align(
-        alignment: Alignment.centerLeft,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          decoration: BoxDecoration(
-            color: p.surfaceElevated,
-            borderRadius: BorderRadius.circular(AppSpacing.radiusLarge),
-            border: Border.all(color: p.border, width: 0.5),
-          ),
-          child: const _TypingDots(),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildComposer(BuildContext context) {
-    final p = context.palette;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(AppSpacing.m, AppSpacing.xs, AppSpacing.m, AppSpacing.s),
-      child: GlassCard(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(AppSpacing.l, 2, 6, 2),
-          child: Row(
-            children: [
               Expanded(
-                child: TextField(
-                  controller: _inputController,
-                  style: context.type.primary,
-                  cursorColor: p.accent,
-                  minLines: 1,
-                  maxLines: 4,
-                  textInputAction: TextInputAction.send,
-                  onSubmitted: (_) => _send(),
-                  decoration: InputDecoration(
-                    hintText: 'Message OWL...',
-                    hintStyle: context.type.secondary.copyWith(color: p.textMuted),
-                    border: InputBorder.none,
-                    enabledBorder: InputBorder.none,
-                    focusedBorder: InputBorder.none,
-                    filled: false,
-                    contentPadding: const EdgeInsets.symmetric(vertical: AppSpacing.m),
+                child: _loadingHistory
+                    ? const Center(child: CircularProgressIndicator(strokeWidth: 2))
+                    : _buildBody(p),
+              ),
+              if (_pendingImage != null)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 4),
+                  child: Row(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.memory(_pendingImage!, height: 56, width: 56, fit: BoxFit.cover),
+                      ),
+                      const SizedBox(width: 8),
+                      const Expanded(child: Text('Screenshot attached', style: TextStyle(fontSize: 12))),
+                      IconButton(
+                        icon: const Icon(Icons.close, size: 18),
+                        onPressed: () => setState(() {
+                          _pendingImage = null;
+                          _pendingImageB64 = null;
+                        }),
+                      ),
+                    ],
                   ),
                 ),
-              ),
-              const SizedBox(width: AppSpacing.xs),
-              OWLPressable(
-                enableHaptics: false, // _send() already fires its own haptic
-                onTap: _sending ? null : _send,
-                child: AnimatedContainer(
-                  duration: AppMotion.base,
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: _sending ? p.surfaceHigher : p.accent,
-                  ),
-                  child: Icon(
-                    Icons.arrow_upward_rounded,
-                    size: 20,
-                    color: _sending ? p.textMuted : Colors.white,
-                  ),
-                ),
-              ),
+              _buildInputBar(p),
             ],
           ),
         ),
@@ -460,174 +401,196 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
     );
   }
 
-  Widget _buildBubble(_ChatMessage m) {
-    final p = context.palette;
-    final isUser = m.role == 'user';
-    String text = m.content;
-    Map<String, dynamic>? card;
-    final match = _cardRe.firstMatch(m.content);
-    if (match != null) {
-      text = m.content.replaceAll(_cardRe, '').trim();
-      try {
-        card = Map<String, dynamic>.from(jsonDecode(match.group(1)!) as Map);
-      } catch (_) {
-        card = null; // bad JSON -> just show the text
-      }
+  String _modeLabel(String m) {
+    for (final x in _modes) {
+      if (x.$1 == m) return x.$2;
     }
-    final bubble = Container(
-      margin: const EdgeInsets.symmetric(vertical: 4),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.78),
-      decoration: BoxDecoration(
-        color: isUser ? p.accent.withOpacity(0.22) : p.surfaceElevated,
-        borderRadius: BorderRadius.circular(AppSpacing.radiusLarge),
-        border: Border.all(
-          color: isUser ? p.accent.withOpacity(0.45) : p.border,
-          width: 0.5,
+    return 'General';
+  }
+
+  Widget _buildDrawer(AppPalette p) {
+    return Drawer(
+      backgroundColor: p.surfaceElevated,
+      child: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Text('Chats', style: context.type.section),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: FilledButton.icon(
+                onPressed: () => _newChat(_mode),
+                icon: const Icon(Icons.add, size: 18),
+                label: const Text('New chat'),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Expanded(
+              child: ListView.builder(
+                itemCount: _chats.length,
+                itemBuilder: (ctx, i) {
+                  final c = _chats[i];
+                  final id = '${c['id']}';
+                  final active = id == _chatId || c['active'] == true;
+                  return ListTile(
+                    selected: active,
+                    title: Text('${c['title'] ?? 'Chat'}', maxLines: 1, overflow: TextOverflow.ellipsis),
+                    subtitle: Text('${c['mode'] ?? 'general'} · ${c['n_messages'] ?? 0} msgs',
+                        style: context.type.metadata.copyWith(fontSize: 11)),
+                    onTap: () => _switchChat(id),
+                    trailing: IconButton(
+                      icon: Icon(Icons.delete_outline, size: 18, color: p.loss),
+                      onPressed: () => _deleteChat(id),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
         ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (isUser)
-            Text(text, style: context.type.primary.copyWith(fontWeight: FontWeight.w400, height: 1.4))
-          else
-            ...aiMdBlocks(text, context.type.primary.copyWith(fontWeight: FontWeight.w400, height: 1.4), p.accent),
-          if (card != null) ...[
-            const SizedBox(height: AppSpacing.s),
-            _SummaryCard(card),
-          ],
-        ],
-      ),
-    );
-    return Align(
-      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-      // Long-press any message to copy it.
-      child: GestureDetector(
-        onLongPress: () {
-          AppHaptics.medium();
-          Clipboard.setData(ClipboardData(text: _cardRe.hasMatch(m.content) ? m.content.replaceAll(_cardRe, '').trim() : m.content));
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Copied'), duration: Duration(seconds: 1)),
-          );
-        },
-        child: bubble,
-      ),
     );
   }
-}
 
-/// Three softly pulsing dots shown while the assistant is thinking.
-class _TypingDots extends StatefulWidget {
-  const _TypingDots();
-
-  @override
-  State<_TypingDots> createState() => _TypingDotsState();
-}
-
-class _TypingDotsState extends State<_TypingDots> with SingleTickerProviderStateMixin {
-  late final AnimationController _c =
-      AnimationController(vsync: this, duration: const Duration(milliseconds: 1200))..repeat();
-
-  @override
-  void dispose() {
-    _c.dispose();
-    super.dispose();
-  }
-
-  double _dotOpacity(double v, int i) {
-    final phase = (v * 3 - i).clamp(0.0, 2.0).toDouble();
-    final pulse = phase <= 1.0 ? phase : 2.0 - phase;
-    return 0.3 + 0.7 * pulse;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final color = context.palette.textMuted;
-    return AnimatedBuilder(
-      animation: _c,
-      builder: (context, _) => Row(
-        mainAxisSize: MainAxisSize.min,
+  Widget _buildBody(AppPalette p) {
+    if (_messages.isEmpty) {
+      return ListView(
+        padding: const EdgeInsets.all(20),
         children: [
-          for (var i = 0; i < 3; i++)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Text(
+              'Ask about trades, speed, or UI.\nModes keep context focused. Attach a screenshot for App & UI feedback.',
+              style: context.type.secondary.copyWith(height: 1.4),
+            ),
+          ),
+          const SizedBox(height: 16),
+          for (final q in _suggestionsForMode())
             Padding(
-              padding: EdgeInsets.only(right: i == 2 ? 0 : 5),
-              child: Opacity(
-                opacity: _dotOpacity(_c.value, i),
+              padding: const EdgeInsets.only(bottom: 8),
+              child: OWLPressable(
+                onTap: () => _send(q),
                 child: Container(
-                  width: 7,
-                  height: 7,
-                  decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: context.palette.surfaceElevated,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: context.palette.border.withOpacity(0.5)),
+                  ),
+                  child: Text(q, style: context.type.secondary),
                 ),
               ),
             ),
         ],
+      );
+    }
+    return ListView.builder(
+      controller: _scrollController,
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+      itemCount: _messages.length + (_sending ? 1 : 0),
+      itemBuilder: (ctx, i) {
+        if (_sending && i == _messages.length) {
+          return Padding(
+            padding: const EdgeInsets.all(8),
+            child: Text('Thinking…', style: context.type.metadata),
+          );
+        }
+        return _buildBubble(_messages[i]);
+      },
+    );
+  }
+
+  List<String> _suggestionsForMode() {
+    switch (_mode) {
+      case 'trades':
+        return ['What is my open P&L right now?', 'Summarise today\'s closed trades', 'Any risk flags on open positions?'];
+      case 'backend':
+        return ['Where is the app slow or freezing?', 'Is REST burning mobile data?', 'Why did the backend restart?'];
+      case 'app_ui':
+        return ['Suggest a cleaner Results card layout', 'What should the Vision tab show first?', 'Review this screenshot (attach one)'];
+      default:
+        return ['How is the bot doing today?', 'Is Vision AI helping vs the bur?', 'Any freezes or data leak?'];
+    }
+  }
+
+  Widget _buildBubble(_ChatMessage m) {
+    final p = context.palette;
+    final mine = m.role == 'user';
+    return Align(
+      alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.85),
+        decoration: BoxDecoration(
+          color: mine ? p.accent.withOpacity(0.15) : p.surfaceElevated,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: p.border.withOpacity(0.5)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (m.imageBytes != null) ...[
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.memory(m.imageBytes!, height: 120, fit: BoxFit.cover),
+              ),
+              const SizedBox(height: 8),
+            ],
+            if (mine)
+              Text(m.content, style: context.type.secondary.copyWith(color: p.textPrimary))
+            else
+              ...aiMdBlocks(m.content, context.type.secondary.copyWith(color: p.textPrimary, height: 1.35), p.accent),
+          ],
+        ),
       ),
     );
   }
-}
 
-/// Small stats card under an AI summary answer: P&L, trades, win rate.
-class _SummaryCard extends StatelessWidget {
-  final Map<String, dynamic> d;
-  const _SummaryCard(this.d);
-
-  double _n(String k) => (d[k] is num) ? (d[k] as num).toDouble() : 0.0;
-
-  @override
-  Widget build(BuildContext context) {
-    final p = context.palette;
-    final pnl = _n('pnl');
-    final pnlColor = pnl >= 0 ? p.profit : p.loss;
-    final isOpen = d['kind'] == 'open'; // unrealized P&L card (open trades), not today's closed P&L
-    Widget stat(String label, String value, {Color? color}) => Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(label.toUpperCase(), style: context.type.label.copyWith(fontSize: 9.5, letterSpacing: 0.6)),
-              const SizedBox(height: 3),
-              FittedBox(
-                fit: BoxFit.scaleDown,
-                alignment: Alignment.centerLeft,
-                child: Text(value, style: AppTypography.numberLarge.copyWith(fontSize: 16, color: color ?? p.textPrimary)),
-              ),
-            ],
-          ),
-        );
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.m),
-      decoration: BoxDecoration(
-        color: p.bg.withOpacity(0.35),
-        borderRadius: BorderRadius.circular(AppSpacing.radiusMedium),
-        border: Border.all(color: pnlColor.withOpacity(0.35), width: 0.8),
-      ),
-      // 2x2 grid: four columns in one row were too tight on phones
-      // ("+147.85" ran into the next number).
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
+  Widget _buildInputBar(AppPalette p) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(10, 4, 10, 10),
+      child: Row(
         children: [
-          Row(children: isOpen
-              ? [
-                  stat('P&L open', '${pnl >= 0 ? '+' : ''}${pnl.toStringAsFixed(2)} USDT', color: pnlColor),
-                  stat('Open trades', '${_n('n').toInt()}'),
-                ]
-              : [
-                  stat('P&L today', '${pnl >= 0 ? '+' : ''}${pnl.toStringAsFixed(2)} USDT', color: pnlColor),
-                  stat('Trades today', '${_n('trades').toInt()}'),
-                ]),
-          const SizedBox(height: 10),
-          Row(children: isOpen
-              ? [
-                  stat('In profit', '${_n('green_n').toInt()} / ${_n('n').toInt()}'),
-                  stat('Avg ROI (open)', '${_n('avg_roi') >= 0 ? '+' : ''}${_n('avg_roi').toStringAsFixed(1)}%', color: p.accent),
-                ]
-              : [
-                  stat('W / L today', '${_n('wins').toInt()} / ${_n('losses').toInt()}'),
-                  stat('Win rate today', '${_n('win_rate').toStringAsFixed(1)}%', color: p.accent),
-                ]),
+          IconButton(
+            icon: const Icon(Icons.image_outlined),
+            tooltip: 'Attach screenshot',
+            onPressed: _sending ? null : _pickImage,
+          ),
+          Expanded(
+            child: TextField(
+              controller: _inputController,
+              minLines: 1,
+              maxLines: 4,
+              textInputAction: TextInputAction.send,
+              onSubmitted: (_) => _send(),
+              decoration: InputDecoration(
+                hintText: 'Message…',
+                filled: true,
+                fillColor: p.surfaceElevated,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              ),
+            ),
+          ),
+          const SizedBox(width: 6),
+          IconButton.filled(
+            onPressed: _sending ? null : () => _send(),
+            icon: const Icon(Icons.send_rounded, size: 20),
+          ),
         ],
       ),
     );
   }
 }
+'''
+# Fix duplicate imports - the head in write already has imports. File is complete.
+print("written")
+Path("/tmp/check").write_text("ok")
+PY
+# file was written by write_file tool above - verify
+wc -l /home/workdir/artifacts/final_zip/frontend/lib/screens/ai_assistant_screen.dart
+head -20 /home/workdir/artifacts/final_zip/frontend/lib/screens/ai_assistant_screen.dart

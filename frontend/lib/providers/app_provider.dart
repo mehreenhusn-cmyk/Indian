@@ -1027,9 +1027,12 @@ class AppProvider extends ChangeNotifier {
   /// ai_chat_store.py) - called once when the chat screen opens, so a
   /// previous conversation survives an app restart instead of starting
   /// blank every time.
-  Future<List<Map<String, dynamic>>> fetchAiHistory() async {
+  Future<List<Map<String, dynamic>>> fetchAiHistory({String? chatId}) async {
     try {
-      final res = await _getResilient(_u('/api/ai/history'));
+      final uri = chatId == null || chatId.isEmpty
+          ? _u('/api/ai/history')
+          : _u('/api/ai/history').replace(queryParameters: {'chat_id': chatId});
+      final res = await _getResilient(uri);
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body) as Map<String, dynamic>;
         return List<Map<String, dynamic>>.from(
@@ -1040,11 +1043,78 @@ class AppProvider extends ChangeNotifier {
     return [];
   }
 
-  /// "Clear chat" action on the AI Assistant screen - wipes the persisted
-  /// conversation on the backend too, not just the local list.
-  Future<bool> clearAiHistory() async {
+  /// Full multi-chat payload: messages + chat list + active id + mode.
+  Future<Map<String, dynamic>> fetchAiHistoryBundle({String? chatId}) async {
     try {
-      final res = await _postResilient(_u('/api/ai/history/clear'));
+      final uri = chatId == null || chatId.isEmpty
+          ? _u('/api/ai/history')
+          : _u('/api/ai/history').replace(queryParameters: {'chat_id': chatId});
+      final res = await _getResilient(uri);
+      if (res.statusCode == 200) {
+        return Map<String, dynamic>.from(jsonDecode(res.body) as Map);
+      }
+    } catch (_) {}
+    return {'messages': [], 'chats': [], 'active': null, 'mode': 'general'};
+  }
+
+  Future<bool> clearAiHistory({String? chatId}) async {
+    try {
+      final res = await _postResilient(
+        _u('/api/ai/history/clear'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'chat_id': chatId}),
+      );
+      return res.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<Map<String, dynamic>?> createAiChat({String mode = 'general', String title = ''}) async {
+    try {
+      final res = await _postResilient(
+        _u('/api/ai/chats'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'mode': mode, 'title': title}),
+      );
+      if (res.statusCode == 200) return Map<String, dynamic>.from(jsonDecode(res.body) as Map);
+    } catch (_) {}
+    return null;
+  }
+
+  Future<bool> setActiveAiChat(String chatId) async {
+    try {
+      final res = await _postResilient(
+        _u('/api/ai/chats/active'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'chat_id': chatId}),
+      );
+      return res.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> deleteAiChat(String chatId) async {
+    try {
+      final res = await _postResilient(
+        _u('/api/ai/chats/delete'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'chat_id': chatId}),
+      );
+      return res.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> renameAiChat(String chatId, String title) async {
+    try {
+      final res = await _postResilient(
+        _u('/api/ai/chats/rename'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'chat_id': chatId, 'title': title}),
+      );
       return res.statusCode == 200;
     } catch (_) {
       return false;
@@ -1601,12 +1671,19 @@ class AppProvider extends ChangeNotifier {
   /// history (so it has multi-turn context - this module itself stays
   /// stateless, see ai_assistant.py). Returns the reply text on success, or
   /// null with `error` set on failure so the chat screen can show it inline.
-  Future<String?> askAi(String message, List<Map<String, String>> history) async {
+  Future<String?> askAi(String message, List<Map<String, String>> history, {String? chatId, String? mode, String? imageB64}) async {
     try {
+      final body = <String, dynamic>{
+        'message': message,
+        'history': history,
+        if (chatId != null) 'chat_id': chatId,
+        if (mode != null) 'mode': mode,
+        if (imageB64 != null) 'image_b64': imageB64,
+      };
       final res = await _postResilient(
         _u('/api/ai/ask'),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'message': message, 'history': history}),
+        body: jsonEncode(body),
       );
       final data = jsonDecode(res.body) as Map<String, dynamic>;
       if (res.statusCode == 200 && data['ok'] == true) {

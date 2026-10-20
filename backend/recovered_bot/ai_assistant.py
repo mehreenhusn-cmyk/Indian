@@ -281,7 +281,29 @@ def _wants_audit_context(message):
     return any(w in low for w in _AUDIT_TRIGGER_WORDS)
 
 
+_HEALTH_TRIGGER_WORDS = (
+    "slow", "freeze", "frozen", "stall", "leak", "data usage", "gb", "lag",
+    "loading", "spinner", "stuck", "backend", "termux", "restart", "crash",
+    "स्लो", "फ्रीज", "लीक", "डेटा", "लैग", "लोडिंग", "अटक", "रिस्टार्ट",
+)
+
+
+def _wants_health_context(message):
+    low = (message or "").lower()
+    return any(w in low for w in _HEALTH_TRIGGER_WORDS)
+
+
+def _build_health_context():
+    """Live freezes / REST / data-leak hints for the AI assistant (Part A)."""
+    try:
+        from . import ai_health
+        return ai_health.plain_text()
+    except Exception:
+        return ""
+
+
 def _build_audit_context():
+
     """Compact text summary of trade_store.get_audit_summary() - only
     called when _wants_audit_context() says the user is asking for
     strategy/mistake analysis. Never raises; returns "" on any failure or
@@ -546,7 +568,50 @@ def _short_error(resp):
     return (resp.text or "")[:220]
 
 
+_IMG_PROVIDERS = ("openai", "anthropic", "gemini")      # providers whose chat API here can read a picture
+_IMG_MAX_B64 = 6_000_000                                 # ~4.5 MB picture
+
+
+def _img_mime(b64):
+    head = (b64 or "")[:12]
+    if head.startswith("iVBOR"):
+        return "image/png"
+    if head.startswith("UklGR"):
+        return "image/webp"
+    return "image/jpeg"
+
+
+def _clean_b64(b64):
+    b64 = (b64 or "").strip()
+    if b64.startswith("data:") and "," in b64:
+        b64 = b64.split(",", 1)[1]
+    return b64
+
+
+def _with_image(text, b64):
+    """Neutral message content: text + one picture. Each provider function turns it into its own format."""
+    return [{"type": "text", "text": text}, {"type": "owl_image", "mime": _img_mime(b64), "data": b64}]
+
+
+def _openai_messages(messages):
+    out = []
+    for m in messages:
+        c = m.get("content")
+        if isinstance(c, list):
+            parts = []
+            for x in c:
+                if x.get("type") == "owl_image":
+                    parts.append({"type": "image_url", "image_url": {"url": f"data:{x['mime']};base64,{x['data']}"}})
+                else:
+                    parts.append(x)
+            out.append({"role": m["role"], "content": parts})
+        else:
+            out.append(m)
+    return out
+
+
 def _call_openai(api_key, messages, model=None):
+    messages = _openai_messages(messages)
     model = model or _OPENAI_MODEL
     resp = requests.post(
         _OPENAI_URL,
@@ -590,10 +655,20 @@ def _anthropic_messages(messages):
         if m["role"] == "system":
             system += (m["content"] + "\n\n")
             continue
+        c = m["content"]
+        if isinstance(c, list):
+            c = [({"type": "image", "source": {"type": "base64", "media_type": x["mime"], "data": x["data"]}}
+                  if x.get("type") == "owl_image" else x) for x in c]
         if out and out[-1]["role"] == m["role"]:
-            out[-1]["content"] += "\n\n" + m["content"]
+            prev = out[-1]["content"]
+            if isinstance(prev, str) and isinstance(c, str):
+                out[-1]["content"] = prev + "\n\n" + c
+            else:
+                pl = prev if isinstance(prev, list) else [{"type": "text", "text": prev}]
+                cl = c if isinstance(c, list) else [{"type": "text", "text": c}]
+                out[-1]["content"] = pl + cl
         else:
-            out.append({"role": m["role"], "content": m["content"]})
+            out.append({"role": m["role"], "content": c})
     while out and out[0]["role"] != "user":
         out.pop(0)
     return system.strip(), out
@@ -641,7 +716,20 @@ def _gemini_contents(messages):
             system_text = m["content"] + "\n\n"
             continue
         role = "model" if m["role"] == "assistant" else "user"
-        text = (system_text + m["content"]) if role == "user" and system_text else m["content"]
+        c = m["content"]
+        if isinstance(c, list):
+            parts = []
+            for x in c:
+                if x.get("type") == "owl_image":
+                    parts.append({"inline_data": {"mime_type": x["mime"], "data": x["data"]}})
+                else:
+                    parts.append({"text": x.get("text", "")})
+            if role == "user" and system_text and parts and "text" in parts[0]:
+                parts[0]["text"] = system_text + parts[0]["text"]
+            system_text = ""
+            contents.append({"role": role, "parts": parts})
+            continue
+        text = (system_text + c) if role == "user" and system_text else c
         system_text = ""
         contents.append({"role": role, "parts": [{"text": text}]})
     return contents
@@ -750,20 +838,20 @@ def _call_gemini(api_key, messages, model=None):
                   f"(tried {', '.join(tried_unique)}). Please try again in a few seconds.")
 
 
-def ask(user_message, history=None):
+def ask(user_message, history=None, mode=None, image_b64=None):
     """Counts busy/idle, calls, errors and latency for the System Load card
     (telemetry.py); the actual work is in _ask_impl()."""
     t0 = telemetry.ai_begin()
     ok = False
     try:
-        result = _ask_impl(user_message, history)
+        result = _ask_impl(user_message, history, mode, image_b64)
         ok = bool(result.get("ok"))
         return result
     finally:
         telemetry.ai_end(t0, ok)
 
 
-def _ask_impl(user_message, history=None):
+def _ask_impl(user_message, history=None, mode=None, image_b64=None):
     """history: optional list of {"role": "user"|"assistant", "content": str}
     from earlier turns in this chat session (frontend keeps it, not us -
     this module is stateless). Returns {"ok": bool, "reply": str} or
@@ -787,16 +875,34 @@ def _ask_impl(user_message, history=None):
         pass
 
     context = _build_context()
+    try:
+        from . import ai_app_brief
+        context += "\n\n" + ai_app_brief.for_mode(mode)
+    except Exception:
+        pass
     if _wants_audit_context(user_message):
         audit_context = _build_audit_context()
         if audit_context:
             context += "\n\n" + audit_context
+    if _wants_health_context(user_message) or (mode or "").lower() == "backend":
+        health_context = _build_health_context()
+        if health_context:
+            context += "\n\n" + health_context
 
     messages = [{"role": "system", "content": _SYSTEM_PROMPT + "\n\n" + context}]
+
     for turn in (history or [])[-10:]:
         if turn.get("role") in ("user", "assistant") and turn.get("content"):
             messages.append({"role": turn["role"], "content": str(turn["content"])})
-    messages.append({"role": "user", "content": user_message})
+    img = _clean_b64(image_b64) if image_b64 else ""
+    if img:
+        if provider not in _IMG_PROVIDERS:
+            return {"ok": False, "error": f"The '{provider}' key cannot read pictures. Use an OpenAI, Claude or Gemini key to send screenshots."}
+        if len(img) > _IMG_MAX_B64:
+            return {"ok": False, "error": "That picture is too big. Send a smaller screenshot."}
+        messages.append({"role": "user", "content": _with_image(user_message, img)})
+    else:
+        messages.append({"role": "user", "content": user_message})
 
     try:
         if provider == "gemini":

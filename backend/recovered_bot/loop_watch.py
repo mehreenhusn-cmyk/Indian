@@ -8,6 +8,12 @@ work on the stuck server). This module does not change trading or data; it only 
   * a separate plain thread checks the heartbeat; if it is older than STALL_S it records the stack the
     loop is stuck in right now (file:line of the blocking call) and what the other threads are doing.
 
+Labels (so the Load Report / AI assistant can tell cause at a glance):
+  * OUR CODE BUSY  – watcher got a live stack from the event-loop thread while it was stuck
+                     (sync work or a long await holding the loop).
+  * PHONE PAUSED?  – no stack captured in time; Android may have frozen Termux (battery / Doze).
+                     Set Termux battery to Unrestricted and lock the app in Recents.
+
 Result: print("[STALL] ...") in ~/owl_backend.log and a small block in /api/system (System Load card).
 Read-only, never raises, cost ~0.
 """
@@ -25,8 +31,9 @@ _beat = 0.0              # perf_counter() of the last heartbeat
 _loop_tid = None
 _last_lag_ms = 0.0
 _lags = deque(maxlen=600)      # (wall ts, lag ms) of the last ~60 s
-_stalls = deque(maxlen=30)     # finished stalls: {"ts", "ms", "where"}
+_stalls = deque(maxlen=30)     # finished stalls: {"ts", "ms", "where", "cause"}
 _pending_where = None
+_pending_cause = None
 _last_dump = 0.0
 _started = False
 
@@ -40,7 +47,7 @@ def _short(frame, depth=4):
 
 
 async def _beat_task():
-    global _beat, _loop_tid, _last_lag_ms, _pending_where
+    global _beat, _loop_tid, _last_lag_ms, _pending_where, _pending_cause
     _loop_tid = threading.get_ident()
     last = time.perf_counter()
     while True:
@@ -52,13 +59,21 @@ async def _beat_task():
         _last_lag_ms = lag
         _lags.append((time.time(), lag))
         if lag >= STALL_S * 1000.0:
-            _stalls.append({"ts": time.time(), "ms": int(lag), "where": _pending_where or "(not captured)"})
-            print(f"[STALL] event loop was frozen {lag / 1000.0:.1f}s")
+            where = _pending_where or "(not captured)"
+            cause = _pending_cause or ("OUR CODE BUSY" if _pending_where else "PHONE PAUSED?")
+            _stalls.append({
+                "ts": time.time(),
+                "ms": int(lag),
+                "where": where,
+                "cause": cause,
+            })
+            print(f"[STALL] {cause} event loop was frozen {lag / 1000.0:.1f}s in: {where}")
             _pending_where = None
+            _pending_cause = None
 
 
 def _watch():
-    global _last_dump, _pending_where
+    global _last_dump, _pending_where, _pending_cause
     while True:
         time.sleep(0.5)
         try:
@@ -69,15 +84,21 @@ def _watch():
                 continue
             _last_dump = time.time()
             frames = sys._current_frames()
-            where = _short(frames.get(_loop_tid)) if _loop_tid in frames else "?"
+            if _loop_tid in frames:
+                where = _short(frames.get(_loop_tid))
+                cause = "OUR CODE BUSY"
+            else:
+                where = "(not captured)"
+                cause = "PHONE PAUSED?"
             _pending_where = where
+            _pending_cause = cause
             names = {t.ident: t.name for t in threading.enumerate()}
             others = []
             for tid, fr in frames.items():
                 if tid in (_loop_tid, threading.get_ident()):
                     continue
                 others.append(f"{names.get(tid, tid)}@{_short(fr, 1)}")
-            print(f"[STALL] loop blocked {age:.1f}s in: {where}")
+            print(f"[STALL] {cause} loop blocked {age:.1f}s in: {where}")
             print("[STALL] other threads: " + " | ".join(others[:8]))
         except Exception:
             pass
@@ -101,12 +122,19 @@ def snapshot():
         now = time.time()
         recent = [l for t, l in list(_lags) if now - t < 60]
         last = _stalls[-1] if _stalls else None
-        return {
+        out = {
             "loop_lag_ms": int(_last_lag_ms),
             "loop_lag_max_60s": int(max(recent)) if recent else 0,
             "stalls_10min": sum(1 for s in list(_stalls) if now - s["ts"] < 600),
-            "last_stall": ({"ago_s": int(now - last["ts"]), "ms": last["ms"], "where": last["where"]}
-                           if last else None),
+            "last_stall": None,
         }
+        if last:
+            out["last_stall"] = {
+                "ago_s": int(now - last["ts"]),
+                "ms": last["ms"],
+                "where": last.get("where", "?"),
+                "cause": last.get("cause", "PHONE PAUSED?" if last.get("where") in (None, "(not captured)") else "OUR CODE BUSY"),
+            }
+        return out
     except Exception:
         return {}

@@ -260,6 +260,15 @@ class _VisionNotebookViewState extends State<VisionNotebookView> {
     final pnl = _nd(x['pnl']);
     final win = pnl > 0;
     final feats = _nl(x['feat_text']).map((e) => e.toString()).toList();
+    final notes = <String>[
+      if ((x['sl_note'] ?? '').toString().isNotEmpty) 'Stop-loss: ${x['sl_note']}',
+      if ((x['trail_note'] ?? '').toString().isNotEmpty) 'Target / trail: ${x['trail_note']}',
+    ];
+    final im = _nm(x['indicator_summary']);
+    final inds = <String>[
+      for (final k in ['ema', 'sd', 'tsi', 'zscore'])
+        if ((im[k] ?? '').toString().isNotEmpty) im[k].toString(),
+    ];
     return _card(
       p,
       child: Column(
@@ -284,6 +293,15 @@ class _VisionNotebookViewState extends State<VisionNotebookView> {
           if (feats.isNotEmpty) ...[
             const SizedBox(height: 6),
             Text(feats.join('  ·  '), style: context.type.metadata.copyWith(fontSize: 10.5, height: 1.4)),
+          ],
+          if (notes.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            for (final n in notes)
+              Text(n, style: TextStyle(color: p.textPrimary, fontSize: 12, height: 1.35)),
+          ],
+          if (inds.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text('At entry: ${inds.join('  ·  ')}', style: context.type.metadata.copyWith(fontSize: 10.5, height: 1.4)),
           ],
         ],
       ),

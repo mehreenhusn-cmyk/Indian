@@ -28,6 +28,9 @@ dependencies:
   share_plus: ^10.1.4   # 7.x was compiled against Android 33 and broke the release build (needs 34+)
   path_provider: ^2.1.2
 
+  # AI Assistant screenshot attach
+  image_picker: ^1.0.7
+
   # Trade sounds (order filled / target hit / stop loss hit) - see lib/services/sound_service.dart
   audioplayers: ^6.1.0
   

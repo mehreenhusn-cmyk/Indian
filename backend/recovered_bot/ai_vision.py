@@ -253,7 +253,104 @@ def _levels(candles):
         for k in (1, 2, 3):
             lv[f"p{k}"] = mean + k * sd
             lv[f"m{k}"] = mean - k * sd
+    # Extra indicator snapshot for the AI prompt and the Results cards
+    try:
+        tsi, tsl, z, zsma = f["tsi"][i], f["tsl"][i], f["z"][i], f.get("zsma", [None] * n)[i]
+        lv["tsi"], lv["tsl"], lv["z"], lv["zsma"] = tsi, tsl, z, zsma
+    except Exception:
+        pass
     return f, e30, lv
+
+
+def _recent_context(candles, side):
+    """Plain-English context: recent pump/dump, stretch, structure vs this signal.
+    Stops the AI from BUY-ing right after a pump it never 'saw' in numbers."""
+    try:
+        if not candles or len(candles) < 30:
+            return ""
+        closes = [float(c["close"]) for c in candles]
+        highs = [float(c["high"]) for c in candles]
+        lows = [float(c["low"]) for c in candles]
+        n = len(closes)
+        last = closes[-1]
+        # Biggest move in last 20 candles (peak-to-trough)
+        win = 20
+        seg_h = max(highs[-win:])
+        seg_l = min(lows[-win:])
+        move_pct = (seg_h - seg_l) / seg_l * 100.0 if seg_l > 0 else 0.0
+        # Where is price now inside that range?
+        pos = (last - seg_l) / (seg_h - seg_l) if seg_h > seg_l else 0.5
+        # 5-candle impulse
+        impulse = (closes[-1] - closes[-6]) / closes[-6] * 100.0 if closes[-6] else 0.0
+        # Higher structure: last 50 vs previous 50 average
+        a_now = sum(closes[-50:]) / 50.0 if n >= 50 else last
+        a_prev = sum(closes[-100:-50]) / 50.0 if n >= 100 else a_now
+        trend = "higher-time structure UP" if a_now > a_prev * 1.005 else (
+            "higher-time structure DOWN" if a_now < a_prev * 0.995 else "higher-time structure FLAT")
+        bits = [f"Last {win} candles spanned about {move_pct:.1f}% (high {_fmt(seg_h)} / low {_fmt(seg_l)})."]
+        if move_pct >= 4.0:
+            if pos >= 0.75:
+                bits.append("Price is near the TOP of that recent range (after a pump or squeeze).")
+            elif pos <= 0.25:
+                bits.append("Price is near the BOTTOM of that recent range (after a dump or selloff).")
+            else:
+                bits.append("Price is mid-range after a large recent move.")
+        if abs(impulse) >= 1.5:
+            bits.append(f"Last 5 candles moved {impulse:+.1f}% (short impulse).")
+        bits.append(trend + ".")
+        # Alignment warning
+        if side == "BUY" and pos >= 0.8 and move_pct >= 4.0:
+            bits.append("WARNING for BUY: chasing near the top of a recent pump often dumps next.")
+        if side == "SELL" and pos <= 0.2 and move_pct >= 4.0:
+            bits.append("WARNING for SELL: shorting near the bottom of a recent dump often bounces.")
+        return " ".join(bits)
+    except Exception:
+        return ""
+
+
+def _indicator_summary(lv, side, feat=None):
+    """Short structured read of both indicator families for Results cards + AI."""
+    feat = feat or {}
+    out = {"ema": "", "sd": "", "tsi": "", "zscore": "", "align": ""}
+    try:
+        e30, e50 = lv.get("e30"), lv.get("e50")
+        if e30 is not None and e50 is not None:
+            if side == "BUY":
+                out["ema"] = "EMA30 above EMA50 (bull stack)" if e30 >= e50 else "EMA30 below EMA50 (against BUY)"
+            else:
+                out["ema"] = "EMA30 below EMA50 (bear stack)" if e30 <= e50 else "EMA30 above EMA50 (against SELL)"
+        mean, close, sd = lv.get("mean"), lv.get("close"), lv.get("sd")
+        if mean is not None and sd and close is not None and sd > 0:
+            zband = (close - mean) / sd
+            if abs(zband) >= 2:
+                out["sd"] = f"Stretched ~{zband:+.1f} SD from mean"
+            elif abs(zband) >= 1:
+                out["sd"] = f"Near 1 SD ({zband:+.1f})"
+            else:
+                out["sd"] = f"Inside 1 SD ({zband:+.1f})"
+        tsi, tsl = lv.get("tsi"), lv.get("tsl")
+        if tsi is not None and tsl is not None:
+            if tsl >= 0 and tsi >= tsl:
+                out["tsi"] = "TSI strong buy side (above signal, above 0)"
+            elif tsl >= 0:
+                out["tsi"] = "TSI above 0 but below signal (buying cooling)"
+            elif tsi <= tsl:
+                out["tsi"] = "TSI strong sell side (below signal, below 0)"
+            else:
+                out["tsi"] = "TSI below 0 but above signal (selling weak)"
+        z, zs = lv.get("z"), lv.get("zsma")
+        if z is not None:
+            if zs is not None:
+                out["zscore"] = f"Z={z:+.2f} vs Z-SMA={zs:+.2f} ({'above' if z >= zs else 'below'} average)"
+            else:
+                out["zscore"] = f"Z={z:+.2f}"
+        agrees = [k for k, v in (feat or {}).items() if v is True and k.endswith("_agrees")]
+        against = [k for k, v in (feat or {}).items() if v is False and k.endswith("_agrees")]
+        if agrees or against:
+            out["align"] = f"Agrees: {', '.join(agrees) or 'none'}; against: {', '.join(against) or 'none'}"
+    except Exception:
+        pass
+    return out
 
 
 def render_chart(symbol, candles, tf_label, side=None, marks=None, title_extra=""):
@@ -350,13 +447,15 @@ def render_chart(symbol, candles, tf_label, side=None, marks=None, title_extra="
         df = f["diff"][i]
         if df is None:
             continue
+        # Histogram bars first (opaque) so they stay visible under the light TSI fill.
         col = (165, 214, 167, 255) if df >= 0 else (239, 154, 154, 255)
         od.rectangle([sx(i) - step * 0.3, min(z0, gt(df)), sx(i) + step * 0.3, max(z0, gt(df))], fill=col)
     for i in range(max(lo + 1, 1), n):
         a, b, c2, d2 = f["tsi"][i - 1], f["tsl"][i - 1], f["tsi"][i], f["tsl"][i]
         if None in (a, b, c2, d2):
             continue
-        col = (76, 175, 80, 85) if (a + c2) >= (b + d2) else (239, 83, 80, 85)
+        # Lighter fill (was 85) so histogram bars stay readable for the AI and the owner.
+        col = (76, 175, 80, 40) if (a + c2) >= (b + d2) else (239, 83, 80, 40)
         od.polygon([(sx(i - 1), gt(a)), (sx(i), gt(c2)), (sx(i), gt(d2)), (sx(i - 1), gt(b))], fill=col)
 
     # ---- Z panel zones + area
@@ -850,7 +949,7 @@ def _lv_text(lv):
     return "; ".join(parts)
 
 
-def _signal_prompt(rec, lv, price):
+def _signal_prompt(rec, lv, price, recent_ctx=""):
     prev = ""
     if rec.get("reason") and rec.get("decision") == "WAIT":
         prev = f"\nEarlier you said WAIT: \"{rec['reason']}\" (waiting for: {rec.get('wait_for') or 'a better entry'}). Check whether that has happened now.\n"
@@ -859,9 +958,15 @@ def _signal_prompt(rec, lv, price):
         prev += _L.similar_block(rec["symbol"], rec["side"], rec.get("feat"))
     except Exception:
         pass
+    ctx = f"\nRecent market context (use this; do not ignore a prior pump/dump): {recent_ctx}\n" if recent_ctx else "\n"
+    ind = _indicator_summary(lv, rec.get("side") or "BUY", rec.get("feat"))
+    ind_line = "; ".join(f"{k}={v}" for k, v in ind.items() if v)
     return (f"A bot signal just fired.\nSymbol: {rec['symbol']}; timeframe {_tf_label(rec['tf_min'])}; signal: {rec['side']} "
             f"(the bot wants to go {_side_word(rec['side'])}); bot entry price {_fmt(rec.get('sig_price'))}; price now {_fmt(price)}.\n"
-            f"Numbers read from the same chart: {_lv_text(lv)}.{prev}\n"
+            f"Numbers read from the same chart: {_lv_text(lv)}.\n"
+            f"Indicator read (both families — EMA/SD and TSI/Z): {ind_line}.{ctx}{prev}\n"
+            "You MUST weigh BOTH indicator families (EMA+SD bands AND TSI+Z-score). Do not decide from EMA alone.\n"
+            "If price just pumped and is stretched at the top of the recent range, prefer SKIP or WAIT for BUY.\n"
             "Decide TAKE, SKIP or WAIT. TAKE = open the trade now. WAIT = the idea may work but the entry is not ready (say what you wait for; you will be asked again on the next candles). SKIP = do not trade.\n"
             "For TAKE give a stop (the price where the idea is wrong, beyond a recent swing or band) and a first target (the next level where price may stall). The target is NOT a fixed exit: you will manage the trade later from fresh charts.\n"
             "Answer with JSON only, in simple English:\n"
@@ -1077,12 +1182,16 @@ def _process_signal(rec):
             rec["feat"] = L.features(_f_, rec["side"])
         except Exception:
             pass
+        rec["indicator_summary"] = _indicator_summary(lv, rec["side"], rec.get("feat"))
+        recent_ctx = _recent_context(candles, rec["side"])
+        rec["recent_context"] = recent_ctx
     except ImportError:
         return _finish(rec, "error", None, "Pillow is missing on the backend. Run: pkg install python-pillow")
     except Exception as e:
         return _retry(rec, f"chart: {str(e)[:80]}")
     _count()
-    text, err = _call_ai(guide_text(sym, rec["side"]), _signal_prompt(rec, lv, price), png)
+    text, err = _call_ai(guide_text(sym, rec["side"]),
+                         _signal_prompt(rec, lv, price, recent_ctx=rec.get("recent_context") or ""), png)
     if err and str(err).startswith("quota:"):
         # No quota left on any key: the signal just WAITS (it is not an error and it does not use up its 3 tries).
         _uncount()
@@ -1335,6 +1444,20 @@ def _trade_view(t):
     return v
 
 
+def _indicator_use(decs):
+    """How often the AI's own checklist answered each indicator (both families). Plain counts, no opinion."""
+    judged = [d for d in decs if d.get("decision") in ("TAKE", "SKIP", "WAIT") and isinstance(d.get("checklist"), dict) and d.get("checklist")]
+    def has(d, k):
+        return len(str((d.get("checklist") or {}).get(k) or "").strip()) >= 3
+    out = {"n": len(judged), "ema": 0, "sd": 0, "tsi": 0, "zscore": 0, "both": 0}
+    for d in judged:
+        e, sd, t, z = has(d, "ema"), has(d, "sd_zone"), has(d, "tsi"), has(d, "zscore")
+        out["ema"] += e; out["sd"] += sd; out["tsi"] += t; out["zscore"] += z
+        if (e or sd) and (t or z):
+            out["both"] += 1
+    return out
+
+
 def snapshot(limit=80):
     _load()
     bm = _bot_outcomes()
@@ -1354,7 +1477,8 @@ def snapshot(limit=80):
     out_dec = []
     for d in reversed(decs[-limit:]):
         x = {k: d.get(k) for k in ("id", "signal_no", "symbol", "side", "status", "decision", "reason", "checklist", "stop", "target",
-                                   "sig_price", "sig_ist", "sig_time", "decided_at", "checks", "waits_left", "wait_for", "trade_id")}
+                                   "sig_price", "sig_ist", "sig_time", "decided_at", "checks", "waits_left", "wait_for", "trade_id",
+                                   "indicator_summary", "recent_context", "feat")}
         x["tf"] = _tf_label(d["tf_min"])
         no = d["signal_no"]
         x["bot"] = {"state": "closed", "pnl": bm["closed"][no]} if no in bm["closed"] else ({"state": "open"} if no in bm["open"] else None)
@@ -1390,6 +1514,7 @@ def snapshot(limit=80):
                     "bot_on_skipped": {"n": len(skip_bot), "net": sum(skip_bot),
                                        "wins": sum(1 for x in skip_bot if x > 0), "losses": sum(1 for x in skip_bot if x <= 0)}},
         "open": ov, "closed": [_trade_view(t) for t in reversed(closed[-40:])], "decisions": out_dec, "log": log,
+        "indicator_use": _indicator_use(decs),
     }
 
 

@@ -831,6 +831,20 @@ class _VisionTabScreenState extends State<VisionTabScreen> {
               const SizedBox(height: 8),
               Text(reason, maxLines: 2, overflow: TextOverflow.ellipsis, style: context.type.metadata.copyWith(color: p.textPrimary, height: 1.35)),
             ],
+            Builder(builder: (context) {
+              final ind = _m(r['indicator_summary']);
+              final bits = <String>[];
+              for (final k in ['ema', 'tsi', 'zscore', 'sd']) {
+                final v = (ind[k] ?? '').toString();
+                if (v.isNotEmpty) bits.add(v);
+              }
+              if (bits.isEmpty) return const SizedBox.shrink();
+              return Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(bits.take(2).join(' · '), maxLines: 1, overflow: TextOverflow.ellipsis,
+                    style: context.type.metadata.copyWith(fontSize: 11, color: p.textSecondary)),
+              );
+            }),
             if (extra.isNotEmpty) ...[
               const SizedBox(height: 4),
               Text(extra, style: context.type.metadata.copyWith(color: p.warning)),
@@ -887,12 +901,45 @@ class _VisionTabScreenState extends State<VisionTabScreen> {
             ),
           ),
           const SizedBox(height: AppSpacing.cardGap),
+          _indicatorUseCard(p, d),
+          const SizedBox(height: AppSpacing.cardGap),
           _section('CLOSED AI TRADES'),
           if (closed.isEmpty) _empty('No closed AI trades yet.'),
           for (final t in closed) ...[
             _closedRow(p, t, d),
             const SizedBox(height: 10),
           ],
+        ],
+      ),
+    );
+  }
+
+  Widget _indicatorUseCard(AppPalette p, Map<String, dynamic> d) {
+    final u = _m(d['indicator_use']);
+    final n = (_d(u['n']) ?? 0).toInt();
+    if (n == 0) {
+      return _VCard(
+        child: Text('Indicator check: no judged signal yet. After the first AI decision this shows if it reads both the EMA/SD chart and the TSI/Z-score panes.',
+            style: context.type.metadata.copyWith(height: 1.4)),
+      );
+    }
+    String pct(String k) => '${(((_d(u[k]) ?? 0) * 100) / n).round()}%';
+    final both = (((_d(u['both']) ?? 0) * 100) / n).round();
+    return _VCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _VLabel('DOES THE AI READ BOTH INDICATORS?'),
+          const SizedBox(height: 10),
+          Text('Of the last $n judged signals, the AI answered:', style: context.type.metadata.copyWith(color: p.textPrimary, height: 1.35)),
+          const SizedBox(height: 6),
+          Text('EMA ${pct('ema')}  ·  SD bands ${pct('sd')}  ·  TSI ${pct('tsi')}  ·  Z-score ${pct('zscore')}',
+              style: TextStyle(color: p.textPrimary, fontWeight: FontWeight.w700, fontSize: 13)),
+          const SizedBox(height: 6),
+          Text(both >= 80
+              ? 'Good: $both% of decisions used the chart AND the lower panes.'
+              : 'Only $both% of decisions used the chart AND the lower panes. Check the reasons on the Signals tab.',
+              style: context.type.metadata.copyWith(height: 1.35)),
         ],
       ),
     );
@@ -1059,6 +1106,34 @@ class _DetailSheet extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         if (reason.isNotEmpty) Text(reason, style: context.type.metadata.copyWith(color: p.textPrimary, fontSize: 14, height: 1.4)),
+        // Indicator summary (EMA/SD + TSI/Z) — both families, for the owner on chevron/detail
+        Builder(builder: (context) {
+          final ind = _m(dec?['indicator_summary']);
+          final ctx = (dec?['recent_context'] ?? '').toString();
+          if (ind.isEmpty && ctx.isEmpty) return const SizedBox.shrink();
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 12),
+              const _VLabel('INDICATORS AT ENTRY (BOTH FAMILIES)'),
+              const SizedBox(height: 6),
+              if (ind['ema'] != null && ind['ema'].toString().isNotEmpty)
+                _checkRow(context, 'ema', ind['ema'].toString()),
+              if (ind['sd'] != null && ind['sd'].toString().isNotEmpty)
+                _checkRow(context, 'sd', ind['sd'].toString()),
+              if (ind['tsi'] != null && ind['tsi'].toString().isNotEmpty)
+                _checkRow(context, 'tsi', ind['tsi'].toString()),
+              if (ind['zscore'] != null && ind['zscore'].toString().isNotEmpty)
+                _checkRow(context, 'zscore', ind['zscore'].toString()),
+              if (ind['align'] != null && ind['align'].toString().isNotEmpty)
+                _checkRow(context, 'align', ind['align'].toString()),
+              if (ctx.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text(ctx, style: context.type.metadata.copyWith(color: p.textPrimary, height: 1.35, fontSize: 12)),
+              ],
+            ],
+          );
+        }),
         const SizedBox(height: 14),
         Row(
           children: [

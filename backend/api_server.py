@@ -1316,17 +1316,29 @@ async def switch_exchange(payload: dict, _auth=Depends(require_api_token)):
 
 @app.post("/api/ai/ask")
 async def ai_ask(payload: dict):
-    """Called from the AI Assistant chat screen. payload = {"message": str,
-    "history": [{"role": "user"/"assistant", "content": str}, ...]}.
-    Also persists both sides of the turn to ai_chat_store so the
-    conversation survives an app restart (GET /api/ai/history restores it)."""
+    """AI Assistant chat. payload = {message, history?, chat_id?, mode?, image_b64?}.
+    Persists the turn into the active (or given) multi-chat thread."""
     message = (payload.get("message") or "").strip()
-    if not message:
+    image_b64 = payload.get("image_b64") or payload.get("image")
+    if not message and not image_b64:
         return {"ok": False, "error": "Empty message."}
+    shown = message or "(screenshot)"                 # what the chat history stores / shows: clean text, never the base64 or tags
+    if image_b64 and not message:
+        message = "Look at my screenshot. Comment on UI, layout, clarity and any trading-app UX issues, in simple English."
     history = payload.get("history") or []
-    result = await asyncio.to_thread(ai_assistant.ask, message, history)
+    chat_id = payload.get("chat_id")
+    mode = (payload.get("mode") or "").strip() or None
+    # Prefer history from store when chat_id given
+    if chat_id:
+        try:
+            history = await asyncio.to_thread(ai_chat_store.get_history, 40, chat_id)
+        except Exception:
+            pass
+    if image_b64 and not isinstance(image_b64, str):
+        image_b64 = None
+    result = await asyncio.to_thread(ai_assistant.ask, message, history, mode, image_b64)
     if result.get("ok"):
-        await asyncio.to_thread(ai_chat_store.append_turn, message, result.get("reply"))
+        await asyncio.to_thread(ai_chat_store.append_turn, ("[photo] " + shown) if image_b64 else shown, result.get("reply"), chat_id)
     return result
 
 
@@ -1979,17 +1991,58 @@ async def ai_digest_send():
 
 
 @app.get("/api/ai/history")
-async def ai_history():
-    """Called once when the AI Assistant chat screen opens, to restore the
-    conversation from the last app session instead of starting blank."""
-    return {"messages": ai_chat_store.get_history()}
+async def ai_history(chat_id: str = ""):
+    """Messages for one chat (or the active chat). Also returns multi-chat list."""
+    cid = chat_id or None
+    msgs = await asyncio.to_thread(ai_chat_store.get_history, 200, cid)
+    listing = await asyncio.to_thread(ai_chat_store.list_chats)
+    active = listing.get("active")
+    mode = await asyncio.to_thread(ai_chat_store.get_mode, cid or active)
+    return {"messages": msgs, "chats": listing.get("chats") or [], "active": active, "mode": mode}
 
 
 @app.post("/api/ai/history/clear")
-async def ai_history_clear():
-    """'Clear chat' action on the AI Assistant screen."""
-    await asyncio.to_thread(ai_chat_store.clear)
+async def ai_history_clear(payload: dict = None):
+    """Clear messages of one chat (body: {chat_id?}) or the active chat."""
+    payload = payload or {}
+    cid = payload.get("chat_id")
+    await asyncio.to_thread(ai_chat_store.clear, cid)
     return {"ok": True}
+
+
+@app.get("/api/ai/chats")
+async def ai_chats_list():
+    return await asyncio.to_thread(ai_chat_store.list_chats)
+
+
+@app.post("/api/ai/chats")
+async def ai_chats_create(payload: dict = None):
+    payload = payload or {}
+    return await asyncio.to_thread(
+        ai_chat_store.create_chat, payload.get("mode") or "general", payload.get("title") or ""
+    )
+
+
+@app.post("/api/ai/chats/rename")
+async def ai_chats_rename(payload: dict):
+    return await asyncio.to_thread(ai_chat_store.rename_chat, payload.get("chat_id"), payload.get("title") or "")
+
+
+@app.post("/api/ai/chats/delete")
+async def ai_chats_delete(payload: dict):
+    return await asyncio.to_thread(ai_chat_store.delete_chat, payload.get("chat_id"))
+
+
+@app.post("/api/ai/chats/active")
+async def ai_chats_active(payload: dict):
+    return await asyncio.to_thread(ai_chat_store.set_active, payload.get("chat_id"))
+
+
+@app.get("/api/ai/app_health")
+async def ai_app_health_report():
+    """Plain health report for the AI assistant / debugging (freezes, REST, data)."""
+    from recovered_bot import ai_health
+    return await asyncio.to_thread(ai_health.build_report, DATA_DIR)
 
 
 # -------------------------------------------------------------- websocket --

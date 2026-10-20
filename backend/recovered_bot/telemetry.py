@@ -44,7 +44,7 @@ _ai = {"busy": 0, "calls": 0, "errors": 0, "last_ts": None, "last_ms": None,
 
 # Bump on every backend change so the app (System Load card) can prove which
 # Python files are actually running - an old backend shows an old/missing tag.
-BUILD_TAG = "2026-10-04-final-v13"
+BUILD_TAG = "2026-10-20-partA"
 
 _cached = {}          # filled by the sampler thread
 _prev_cpu = None      # (wall, process_cpu)
@@ -245,8 +245,24 @@ def _sample_once():
         "feed": _feed_info(),
         "ts": time.time(),
     }
+    # Hint where mobile data may be going (18 GB/month was seen on Termux).
+    # REST top + poll rest_candle_calls are the main suspects; WS is usually free-ish.
+    try:
+        top_eps = [t["ep"] for t in snap["rest"].get("top", [])]
+        candle_heavy = any("klines" in e or "candles" in e or "/fapi/" in e for e in top_eps)
+        snap["data_hint"] = {
+            "rest_calls_last_min": snap["rest"]["per_min"],
+            "rest_candle_calls_total": poll["rest_candle_calls"],
+            "ws_candles": poll["ws_candles"],
+            "likely_heavy": "Binance candle REST" if candle_heavy or poll["rest_candle_calls"] > 200
+                            else ("REST top: " + ", ".join(top_eps[:3]) if top_eps else "unknown"),
+            "tip": "If Termux data is high, check rest.top + poll.rest_candle_calls; prefer WS over REST.",
+        }
+    except Exception:
+        snap["data_hint"] = {}
     snap["alerts"] = _alerts(snap)
     _cached = snap          # single reference swap: readers never see a half-built dict
+
 
 
 def _alerts(s):
@@ -275,7 +291,11 @@ def _alerts(s):
     _tick, _limit = (1000, 600) if _live else (250, 150)
     if s["broadcast"]["avg_ms"] > _limit:
         out.append({"level": "warn", "msg": f"Broadcast tick slow ({s['broadcast']['avg_ms']:.0f}ms of {_tick}ms)"})
+    rpm = s.get("rest", {}).get("per_min") or 0
+    if rpm >= 120:
+        out.append({"level": "warn", "msg": f"REST heavy ({rpm}/min) – check data_hint / top endpoints"})
     return out
+
 
 
 def _loop():
