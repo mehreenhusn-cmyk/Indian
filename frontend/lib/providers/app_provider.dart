@@ -271,6 +271,47 @@ class AppProvider extends ChangeNotifier {
     return null;
   }
 
+  // ---- AI keys: paste any key, the backend finds whose key it is and picks the model (GET/POST /api/ai/vkeys/*)
+  Future<Map<String, dynamic>?> fetchAiVKeys() async {
+    try {
+      final res = await http.get(_u('/api/ai/vkeys')).timeout(const Duration(seconds: 10));
+      if (res.statusCode == 200) return jsonDecode(res.body) as Map<String, dynamic>;
+    } catch (_) {}
+    return null;
+  }
+
+  /// sub: add | test | detect | clear. add/test/detect talk to the AI company, so they wait longer.
+  Future<Map<String, dynamic>?> postAiVKey(String sub, Map<String, dynamic> body) async {
+    try {
+      final res = await http
+          .post(_u('/api/ai/vkeys/$sub'), headers: {'Content-Type': 'application/json'}, body: jsonEncode(body))
+          .timeout(Duration(seconds: sub == 'clear' ? 15 : 60));
+      if (res.statusCode == 200) return jsonDecode(res.body) as Map<String, dynamic>;
+      return {'ok': false, 'state': 'error', 'message': 'The backend answered ${res.statusCode}. Update the backend zip first.'};
+    } catch (_) {}
+    return {'ok': false, 'state': 'error', 'message': 'The backend did not answer.'};
+  }
+
+  /// Load report (GET /api/load_report?hours=): meters + the main bottleneck for the last 1 / 4 / 24 h.
+  Future<Map<String, dynamic>?> fetchLoadReport(double hours) async {
+    try {
+      final res = await http.get(_u('/api/load_report?hours=$hours')).timeout(const Duration(seconds: 15));
+      if (res.statusCode == 200) return jsonDecode(res.body) as Map<String, dynamic>;
+    } catch (_) {}
+    return null;
+  }
+
+  Future<List<dynamic>> fetchLoadDaily() async {
+    try {
+      final res = await http.get(_u('/api/load_report/daily')).timeout(const Duration(seconds: 10));
+      if (res.statusCode == 200) {
+        final b = jsonDecode(res.body);
+        if (b is Map && b['days'] is List) return b['days'] as List;
+      }
+    } catch (_) {}
+    return const [];
+  }
+
   // ---- App-choice backup: theme + sound choices are copied to the phone's backend (owl_data), so a freshly installed app gets them back.
   static const _prefsRestoredKey = 'prefs_restored_v1';
   static const _syncKeys = ['theme_mode', 'voice_enabled', 'voice_entry', 'voice_exit', 'voice_fg_only'];

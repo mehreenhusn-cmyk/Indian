@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../providers/app_provider.dart';
 import '../theme/app_theme.dart';
+import 'load_report_sheet.dart';
 
 /// Left-swipe "Backend" panel: one glance tells you if the backend answers, which zip is live,
 /// how long it has been up, how often it restarted today, and the last problems from its log.
@@ -162,6 +163,16 @@ class _BackendStatusPanelState extends State<BackendStatusPanel> {
                     child: Text('$l', maxLines: 2, overflow: TextOverflow.ellipsis, style: t.metadata.copyWith(color: p.warning, fontSize: 10.5)),
                   )),
           ],
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () => showLoadReportSheet(context),
+              icon: const Icon(Icons.speed_rounded, size: 16),
+              label: const Text('LOAD REPORT  (1h / 4h / 24h)', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800)),
+              style: OutlinedButton.styleFrom(side: BorderSide(color: p.accent), foregroundColor: p.accent, padding: const EdgeInsets.symmetric(vertical: 8)),
+            ),
+          ),
         ],
       ),
     );

@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../services/sound_service.dart';
+import '../widgets/ai_keys_card.dart';
 import '../widgets/owl_route.dart';
 import '../widgets/settings_group.dart';
 import '../widgets/settings_input_field.dart';
@@ -1099,67 +1100,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 _receipt = null;
                               }),
                             ),
-                            Text('Provider', style: t.secondary.copyWith(color: p.textSecondary)),
-                            const SizedBox(height: 4),
-                            Row(
-                              children: [
-                                Expanded(child: _radio(p, t, 'OpenAI', 'openai', _aiProvider, (v) => _aiProvider = v)),
-                                Expanded(child: _radio(p, t, 'Gemini', 'gemini', _aiProvider, (v) => _aiProvider = v)),
-                                Expanded(child: _radio(p, t, 'Claude', 'anthropic', _aiProvider, (v) => _aiProvider = v)),
-                              ],
-                            ),
-                            _field('API Key', 'ai_api_key', isText: true, errors: errors,
-                                helper: 'One key, for the provider chosen above (Claude keys start with sk-ant-).'),
-                            _field(
-                              'Model (optional)',
-                              'ai_model',
-                              isText: true,
-                              errors: errors,
-                              helper: 'Leave empty = automatic. If a model name is retired (404), the backend '
-                                  'falls back to the newest working one by itself.',
-                            ),
-                            _field(
-                              'Backup provider (Vision AI)',
-                              'ai2_provider',
-                              isText: true,
-                              errors: errors,
-                              helper: 'Type mistral or groq (both have a free plan). Used only when the main key runs out of quota.',
-                            ),
-                            _field(
-                              'Backup key (Vision AI)',
-                              'ai2_api_key',
-                              isText: true,
-                              errors: errors,
-                              helper: 'Optional. Free key from console.mistral.ai or console.groq.com. The Vision AI switches to it by itself when the main key is out of quota.',
-                            ),
-                            _field(
-                              'Backup provider 2 (Vision AI)',
-                              'ai3_provider',
-                              isText: true,
-                              errors: errors,
-                              helper: 'Type mistral, groq, gemini or openrouter. Leave the key empty if unused.',
-                            ),
-                            _field(
-                              'Backup key 2 (Vision AI)',
-                              'ai3_api_key',
-                              isText: true,
-                              errors: errors,
-                              helper: 'Optional. Calls are shared between all keys, so no single key runs out early.',
-                            ),
-                            _field(
-                              'Backup provider 3 (Vision AI)',
-                              'ai4_provider',
-                              isText: true,
-                              errors: errors,
-                              helper: 'Type mistral, groq, gemini or openrouter. Leave the key empty if unused.',
-                            ),
-                            _field(
-                              'Backup key 3 (Vision AI)',
-                              'ai4_api_key',
-                              isText: true,
-                              errors: errors,
-                              helper: 'Optional. Calls are shared between all keys, so no single key runs out early.',
-                            ),
+                            const AiKeysCard(),
+                            const SizedBox(height: 10),
                             Padding(
                               padding: const EdgeInsets.only(bottom: 4),
                               child: OutlinedButton(

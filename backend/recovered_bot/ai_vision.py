@@ -48,6 +48,7 @@ _px = {}               # symbol -> (price, time)
 _calls = []            # times of AI calls in the last minute (rate limit)
 _day_calls = []        # times of AI calls in the last 24 h (daily cap = the owner's budget)
 _stat = {"error": "", "ok_at": 0.0, "pause_until": 0.0, "model": ""}
+_slot_err = {}         # slot -> last error text of that key (empty = last call worked)
 _mon = []              # AI call log for the "AI Calls" card: (time, slot, kind ok|quota|error, seconds)
 _started = False
 _botmap = {"t": 0.0, "closed": {}, "open": set()}
@@ -516,18 +517,56 @@ def _ai_key():
     return key, str(_cfg("ai_provider", "openai") or "openai"), str(_cfg("ai_model", "") or "").strip()
 
 
+_PFX = {"main": "ai", "backup": "ai2", "backup2": "ai3", "backup3": "ai4"}     # slot -> settings prefix
+
+
+def _fix_provider(key, prov):
+    """The key's own first letters win over a wrongly typed provider (e.g. an sk-or- OpenRouter key under 'openai')."""
+    try:
+        from . import ai_keyid
+        g, sure = ai_keyid.guess(key)
+        if g and sure:
+            return g
+    except Exception:
+        pass
+    return prov
+
+
+def _auto_model(pfx, prov):
+    """Model picked by 'Detect' for this slot (empty = none). Ignored if the provider changed since."""
+    if str(_cfg(f"{pfx}_auto_prov", "") or "") != prov:
+        return ""
+    return str(_cfg(f"{pfx}_auto_model", "") or "").strip()
+
+
 def _slots():
     out = []
     key, prov, model = _ai_key()
     if key:
-        out.append({"slot": "main", "key": key, "provider": prov, "model": model})
+        prov = _fix_provider(key, prov)
+        out.append({"slot": "main", "key": key, "provider": prov, "model": model, "auto": _auto_model("ai", prov)})
     for n, name in ((2, "backup"), (3, "backup2"), (4, "backup3")):
         k = str(_cfg(f"ai{n}_api_key", "") or "").strip()
         if k:
-            p = str(_cfg(f"ai{n}_provider", "mistral") or "mistral").strip().lower()
-            out.append({"slot": name, "key": k, "provider": p if p in _OAI_STYLE or p in ("gemini", "anthropic") else "mistral",
-                        "model": str(_cfg(f"ai{n}_model", "") or "").strip()})
+            p = _fix_provider(k, str(_cfg(f"ai{n}_provider", "mistral") or "mistral").strip().lower())
+            p = p if p in _OAI_STYLE or p in ("gemini", "anthropic") else "mistral"
+            out.append({"slot": name, "key": k, "provider": p, "model": str(_cfg(f"ai{n}_model", "") or "").strip(),
+                        "auto": _auto_model(f"ai{n}", p)})
     return out
+
+
+def _rediscover(sl):
+    """A model name came back 404 (retired). Ask the company which models exist, remember the best one. Returns it or ''."""
+    try:
+        from . import ai_keyid, settings_store
+        res = ai_keyid.inspect(sl["key"], sl["provider"], force=True)
+        m = res.get("model") or ""
+        if m:
+            pfx = _PFX.get(sl["slot"], "ai")
+            settings_store.update(**{f"{pfx}_auto_model": m, f"{pfx}_auto_prov": sl["provider"]})
+        return m
+    except Exception:
+        return ""
 
 
 def ready():
@@ -571,14 +610,15 @@ def _slot_paused_until(sl):
 
 
 def _slot_models(sl):
+    auto = sl.get("auto") or ""
     if sl["provider"] == "gemini":
         if sl["model"]:
             return [sl["model"]]
-        first = [_gem_ok["name"]] if _gem_ok["name"] else []
+        first = [auto] if auto else ([_gem_ok["name"]] if _gem_ok["name"] else [])
         return first + [m for m in _GEMINI_MODELS if m not in first]
     if sl["provider"] == "anthropic":
-        return [sl["model"] or _ANTHROPIC_MODEL]
-    return [sl["model"] or _OAI_STYLE.get(sl["provider"], _OAI_STYLE["openai"])[1]]
+        return [sl["model"] or auto or _ANTHROPIC_MODEL]
+    return [sl["model"] or auto or _OAI_STYLE.get(sl["provider"], _OAI_STYLE["openai"])[1]]
 
 
 def _try_gemini(sl, system, text, b64):
@@ -636,18 +676,28 @@ def _try_anthropic(sl, system, text, b64):
 
 def _try_oai(sl, system, text, b64):
     url, _dm = _OAI_STYLE.get(sl["provider"], _OAI_STYLE["openai"])
-    nm = _slot_models(sl)[0]
     user = [{"type": "text", "text": text}] + ([{"type": "image_url", "image_url": {"url": "data:image/png;base64," + b64}}] if b64 else [])
-    body = {"model": nm, "temperature": 0.2, "max_tokens": 900, "response_format": {"type": "json_object"},
-            "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}]}
-    r = requests.post(url, headers={"Authorization": f"Bearer {sl['key']}", "Content-Type": "application/json"}, json=body, timeout=60)
-    if r.status_code == 200:
-        return r.json()["choices"][0]["message"]["content"], None, nm
+    nm = _slot_models(sl)[0]
+    for attempt in (0, 1):
+        body = {"model": nm, "temperature": 0.2, "max_tokens": 900, "response_format": {"type": "json_object"},
+                "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}]}
+        r = requests.post(url, headers={"Authorization": f"Bearer {sl['key']}", "Content-Type": "application/json"}, json=body, timeout=60)
+        if r.status_code == 200:
+            return r.json()["choices"][0]["message"]["content"], None, nm
+        if r.status_code == 404 and not sl["model"] and attempt == 0:      # retired model name: ask the company for a live one, retry once
+            newm = _rediscover(sl)
+            if newm and newm != nm:
+                nm = newm
+                continue
+        break
     if r.status_code == 429:
         _pause[f"{sl['slot']}:{nm}"] = time.time() + _quota_wait(r)
     elif r.status_code in (401, 403):
         _pause[f"{sl['slot']}:{nm}"] = time.time() + 600
         return None, "AI key problem - " + _short(r), nm
+    elif r.status_code == 404:
+        _pause[f"{sl['slot']}:{nm}"] = time.time() + 1800                  # do not hammer a model that does not exist
+        return None, f"Model {nm} not found for this key. Open Settings > AI keys and press Detect.", nm
     return None, _short(r), nm
 
 
@@ -676,7 +726,7 @@ def monitor():
         mine = [x for x in rows if x[1] == sl["slot"]]
         ok = [x for x in mine if x[2] == "ok"]
         pu = _slot_paused_until(sl)
-        slots.append({"slot": sl["slot"], "provider": sl["provider"], "calls": len(mine), "ok": len(ok),
+        slots.append({"slot": sl["slot"], "provider": sl["provider"], "model": (_slot_models(sl) or [""])[0], "last_error": _slot_err.get(sl["slot"], ""), "calls": len(mine), "ok": len(ok),
                       "quota": sum(1 for x in mine if x[2] == "quota"), "errors": sum(1 for x in mine if x[2] == "error"),
                       "avg_s": round(sum(x[3] for x in ok) / len(ok), 1) if ok else None,
                       "state": "paused" if pu > 0 else "ready", "paused_until": pu})
@@ -720,6 +770,7 @@ def _call_ai(system, text, png=None):
                 _mon_add(sl["slot"], "ok" if (out is not None and str(out).strip()) else ("quota" if _slot_paused_until(sl) > 0 else "error"), time.time() - t0)
             except Exception:
                 pass
+            _slot_err[sl["slot"]] = "" if (out is not None and str(out).strip()) else ("" if _slot_paused_until(sl) > 0 and not err else str(err or "")[:200])
             if out is not None and str(out).strip():
                 _stat["model"] = (sl["slot"] + ": " if sl["slot"] != "main" else "") + (nm or sl["provider"])
                 _stat["error"] = ""

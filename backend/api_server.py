@@ -69,7 +69,15 @@ async def _ai_priority_touch(request, call_next):
             ai_priority.touch()
     except Exception:
         pass
-    return await call_next(request)
+    _t0 = time.perf_counter()
+    response = await call_next(request)
+    try:                                   # how long every answer took -> load_report.py (where is the bottleneck?)
+        if request.url.path.startswith("/api/"):
+            from recovered_bot import load_report
+            load_report.note_api(request.url.path, (time.perf_counter() - _t0) * 1000.0)
+    except Exception:
+        pass
+    return response
 
 
 # Set OWL_DATA_DIR (e.g. ~/owl_data) to keep settings/trades/positions OUTSIDE the
@@ -300,6 +308,8 @@ async def on_startup():
         try:
             from recovered_bot import loop_watch
             loop_watch.start()         # records WHERE the event loop froze (System Load card + log)
+            from recovered_bot import load_report
+            load_report.start(DATA_DIR)  # 30 s samples -> /api/load_report (1h / 4h / 24h report + daily summary)
         except Exception as e:
             print(f"[startup] loop_watch skipped: {e}")
         asyncio.create_task(_status_broadcaster())
@@ -731,6 +741,50 @@ async def get_ops():
     """Left-swipe Backend panel: which zip is live, uptime, restarts today, last problems (see ops_status.py)."""
     from recovered_bot import ops_status
     return await asyncio.to_thread(ops_status.snapshot, DATA_DIR)
+
+
+@app.get("/api/load_report")
+async def load_report_get(hours: float = 4.0):
+    """Where is the load? Meters + the main bottleneck for the last 1 / 4 / 24 h (see load_report.py)."""
+    from recovered_bot import load_report
+    return await asyncio.to_thread(load_report.build, hours)
+
+
+@app.get("/api/load_report/daily")
+async def load_report_daily():
+    from recovered_bot import load_report
+    return {"days": await asyncio.to_thread(load_report.daily_list)}
+
+
+# ---------------------------------------------------------------- AI keys: paste a key, the backend detects whose it is
+@app.get("/api/ai/vkeys")
+async def ai_vkeys_status():
+    from recovered_bot import ai_keys_api
+    return await asyncio.to_thread(ai_keys_api.status)
+
+
+@app.post("/api/ai/vkeys/add")
+async def ai_vkeys_add(payload: dict, _auth=Depends(require_api_token)):
+    from recovered_bot import ai_keys_api
+    return await asyncio.to_thread(ai_keys_api.add, payload.get("key", ""), payload.get("slot") or None)
+
+
+@app.post("/api/ai/vkeys/test")
+async def ai_vkeys_test(payload: dict, _auth=Depends(require_api_token)):
+    from recovered_bot import ai_keys_api
+    return await asyncio.to_thread(ai_keys_api.test, payload.get("slot", ""))
+
+
+@app.post("/api/ai/vkeys/detect")
+async def ai_vkeys_detect(payload: dict, _auth=Depends(require_api_token)):
+    from recovered_bot import ai_keys_api
+    return await asyncio.to_thread(ai_keys_api.detect, payload.get("slot", ""))
+
+
+@app.post("/api/ai/vkeys/clear")
+async def ai_vkeys_clear(payload: dict, _auth=Depends(require_api_token)):
+    from recovered_bot import ai_keys_api
+    return await asyncio.to_thread(ai_keys_api.clear, payload.get("slot", ""))
 
 
 @app.get("/api/app_prefs")

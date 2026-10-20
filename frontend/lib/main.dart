@@ -20,6 +20,7 @@ import 'widgets/live_ticker_bar.dart';
 import 'widgets/exit_confirm.dart';
 import 'widgets/owl_connection_banner.dart';
 import 'widgets/owl_welcome_overlay.dart';
+import 'services/jank_meter.dart';
 import 'services/market_mode.dart';
 import 'services/websocket_service.dart';
 import 'services/foreground_service.dart';
@@ -27,6 +28,7 @@ import 'theme/app_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  JankMeter.instance.start(); // counts slow frames for the Load report (Backend panel)
 
   // Safety net: if any widget fails to build, show the real error text on screen instead of a blank
   // screen, so the cause can be read (and sent) straight from the phone.
@@ -416,6 +418,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
         final requested = context.read<AppProvider>().consumeTabRequest();
         if (requested != null && requested != _currentIndex) {
           _saveScroll(_currentIndex);
+          JankMeter.instance.setTab(requested);
           setState(() => _currentIndex = requested);
         }
       });
@@ -537,6 +540,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
             return;
           }
           _saveScroll(_currentIndex);
+          JankMeter.instance.setTab(index);
           setState(() {
             _currentIndex = index;
           });

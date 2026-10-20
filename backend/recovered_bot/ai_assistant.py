@@ -563,6 +563,25 @@ def _call_openai(api_key, messages, model=None):
         return None, "OpenAI returned an unexpected response."
 
 
+_COMPAT_URL = {"groq": ("https://api.groq.com/openai/v1/chat/completions", "llama-3.3-70b-versatile"),
+               "mistral": ("https://api.mistral.ai/v1/chat/completions", "mistral-small-latest"),
+               "openrouter": ("https://openrouter.ai/api/v1/chat/completions", "meta-llama/llama-4-maverick:free")}
+
+
+def _call_compat(provider, api_key, messages, model=None):
+    """Chat through Groq / Mistral / OpenRouter (same message format as OpenAI)."""
+    url, dm = _COMPAT_URL[provider]
+    model = model or dm
+    resp = requests.post(url, headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+                         json={"model": model, "messages": messages, "max_tokens": 800}, timeout=30)
+    if resp.status_code != 200:
+        return None, f"{provider} error {resp.status_code} ({model}): {_short_error(resp)}"
+    try:
+        return resp.json()["choices"][0]["message"]["content"], None
+    except (KeyError, IndexError):
+        return None, f"{provider} returned an unexpected response."
+
+
 def _anthropic_messages(messages):
     """OpenAI-style list -> (system text, Claude messages). Claude wants the first turn from the user and strictly
     alternating roles, so same-role neighbours are merged and a leading assistant turn is dropped."""
@@ -757,6 +776,15 @@ def _ask_impl(user_message, history=None):
         return {"ok": False, "error": "No API key set - add one in Settings > AI Assistant."}
     provider = s.get("ai_provider", "openai")
     model = (s.get("ai_model") or "").strip() or None
+    try:                                              # the key's own first letters win over a wrongly chosen provider
+        from . import ai_keyid
+        g, sure = ai_keyid.guess(api_key)
+        if g and sure:
+            provider = g
+        if not model and s.get("ai_auto_prov") == provider and s.get("ai_auto_model"):
+            model = str(s.get("ai_auto_model"))
+    except Exception:
+        pass
 
     context = _build_context()
     if _wants_audit_context(user_message):
@@ -775,6 +803,8 @@ def _ask_impl(user_message, history=None):
             reply, err = _call_gemini(api_key, messages, model)
         elif provider == "anthropic":
             reply, err = _call_anthropic(api_key, messages, model)
+        elif provider in _COMPAT_URL:
+            reply, err = _call_compat(provider, api_key, messages, model)
         else:
             reply, err = _call_openai(api_key, messages, model)
     except requests.exceptions.RequestException as e:

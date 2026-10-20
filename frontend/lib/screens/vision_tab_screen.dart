@@ -352,7 +352,7 @@ class _VisionTabScreenState extends State<VisionTabScreen> {
                     Row(
                       children: [
                         Expanded(
-                          child: Text('${sl['slot'] == 'main' ? 'Main key' : sl['slot'] == 'backup' ? 'Backup key' : sl['slot'] == 'backup2' ? 'Backup key 2' : 'Backup key 3'} (${sl['provider'] ?? ''})',
+                          child: Text('${sl['slot'] == 'main' ? 'Main key' : sl['slot'] == 'backup' ? 'Backup key 1' : sl['slot'] == 'backup2' ? 'Backup key 2' : 'Backup key 3'}  ·  ${_provName((sl['provider'] ?? '').toString())}',
                               style: TextStyle(color: p.textPrimary, fontSize: 12.5, fontWeight: FontWeight.w800)),
                         ),
                         Text(sl['state'] == 'paused' ? 'OUT OF QUOTA' : 'READY',
@@ -366,6 +366,10 @@ class _VisionTabScreenState extends State<VisionTabScreen> {
                       '${sl['state'] == 'paused' && _hhmm(_d(sl['paused_until'])).isNotEmpty ? '  ·  back about ${_hhmm(_d(sl['paused_until']))}' : ''}',
                       style: context.type.metadata.copyWith(fontSize: 11, height: 1.35),
                     ),
+                    if ((sl['model'] ?? '').toString().isNotEmpty)
+                      Text('Model: ${sl['model']}', style: context.type.metadata.copyWith(fontSize: 10.5, height: 1.3)),
+                    if ((sl['last_error'] ?? '').toString().isNotEmpty)
+                      Text(_plainErr((sl['last_error'] ?? '').toString()), style: context.type.metadata.copyWith(fontSize: 10.5, height: 1.3, color: p.warning)),
                   ],
                 ),
               ),
@@ -394,6 +398,205 @@ class _VisionTabScreenState extends State<VisionTabScreen> {
       );
 
   EdgeInsets get _pad => const EdgeInsets.fromLTRB(AppSpacing.l, AppSpacing.s, AppSpacing.l, 96);
+
+  // ------------------------------------------------------------------ plain-words helpers (Live + Results)
+  static String _provName(String x) {
+    switch (x) {
+      case 'gemini':
+        return 'Gemini';
+      case 'anthropic':
+        return 'Claude';
+      case 'openai':
+        return 'OpenAI';
+      case 'groq':
+        return 'Groq';
+      case 'mistral':
+        return 'Mistral';
+      case 'openrouter':
+        return 'OpenRouter';
+    }
+    return x;
+  }
+
+  /// Turns a raw API error into one short sentence the owner can act on.
+  static String _plainErr(String e) {
+    final s = e.toLowerCase();
+    if (s.isEmpty) return '';
+    if (s.contains('404') || s.contains('not found')) return 'Model name not found. Open Settings > AI keys and press "Detect again".';
+    if (s.contains('401') || s.contains('403') || s.contains('key problem') || s.contains('incorrect api key')) return 'The key is not accepted. Create a new key and paste it again.';
+    if (s.contains('429') || s.contains('quota') || s.contains('rate')) return 'Out of free calls for now. It comes back by itself.';
+    if (s.contains('network') || s.contains('timed out')) return 'No internet for a moment.';
+    return e.length > 110 ? e.substring(0, 110) : e;
+  }
+
+  /// Wins, losses and the numbers a trader checks: profit factor (money won / money lost), average win, average loss.
+  Map<String, double> _stats(List closed) {
+    double gp = 0, gl = 0;
+    int w = 0, l = 0;
+    for (final x in closed) {
+      final v = _d(_m(x)['pnl']) ?? 0;
+      if (v >= 0) {
+        gp += v;
+        w++;
+      } else {
+        gl += -v;
+        l++;
+      }
+    }
+    return {
+      'gp': gp,
+      'gl': gl,
+      'w': w.toDouble(),
+      'l': l.toDouble(),
+      'pf': gl == 0 ? (gp > 0 ? 9.99 : 0.0) : gp / gl,
+      'avgW': w == 0 ? 0.0 : gp / w,
+      'avgL': l == 0 ? 0.0 : gl / l,
+    };
+  }
+
+  /// A labelled bar. [mark] draws a thin line (for example the 50% win-rate line or the break-even line).
+  Widget _meterBar(AppPalette p, String label, String value, double frac, Color c, String hint, {double? mark}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            Expanded(child: Text(label, style: TextStyle(color: p.textPrimary, fontSize: 12, fontWeight: FontWeight.w800))),
+            Text(value, style: TextStyle(color: c, fontSize: 12, fontWeight: FontWeight.w800)),
+          ]),
+          const SizedBox(height: 4),
+          SizedBox(
+            height: 7,
+            child: LayoutBuilder(builder: (ctx, cs) {
+              final w = cs.maxWidth;
+              final f = frac.clamp(0.0, 1.0).toDouble();
+              return Stack(children: [
+                Container(decoration: BoxDecoration(color: p.border, borderRadius: BorderRadius.circular(4))),
+                Container(width: w * f, decoration: BoxDecoration(color: c, borderRadius: BorderRadius.circular(4))),
+                if (mark != null)
+                  Positioned(left: w * mark.clamp(0.0, 1.0).toDouble() - 1, top: 0, bottom: 0, child: Container(width: 2, color: p.textPrimary.withOpacity(0.55))),
+              ]);
+            }),
+          ),
+          const SizedBox(height: 3),
+          Text(hint, style: context.type.metadata.copyWith(fontSize: 10.5, height: 1.3)),
+        ],
+      ),
+    );
+  }
+
+  /// One plain sentence: what happened in the AI account.
+  String _liveStory(Map<String, dynamic> s, Map<String, dynamic> d) {
+    final closedN = (_d(s['closed']) ?? 0).toInt();
+    final wins = (_d(s['wins']) ?? 0).toInt();
+    final net = _d(s['net']) ?? 0;
+    final unreal = _d(s['unrealized']) ?? 0;
+    final opens = _l(d['open']).length;
+    if (closedN == 0) {
+      return opens > 0
+          ? 'No AI trade has finished yet. $opens open now, so the P&L above is only their live value.'
+          : 'The AI has not taken a trade yet. It looks at every bot signal and only takes the ones it likes.';
+    }
+    final dir = net >= 0 ? 'up' : 'down';
+    final openText = opens > 0 ? '$opens still open, worth ${fmtSigned(unreal)} right now.' : 'Nothing is open now.';
+    return 'The AI account is $dir ${net.abs().toStringAsFixed(2)} USDT on $closedN finished trades (${wins} won, ${closedN - wins} lost). $openText';
+  }
+
+  List<Widget> _liveMeters(AppPalette p, Map<String, dynamic> s, Map<String, dynamic> d) {
+    final closed = _l(d['closed']);
+    final closedN = (_d(s['closed']) ?? 0).toInt();
+    if (closedN == 0) return const <Widget>[];
+    final win = _d(s['win_rate']) ?? 0;
+    final st = _stats(closed);
+    final pf = st['pf'] ?? 0;
+    final avgW = st['avgW'] ?? 0;
+    final avgL = st['avgL'] ?? 0;
+    final winC = win >= 55 ? p.profit : (win >= 45 ? p.warning : p.loss);
+    final pfC = pf >= 1.3 ? p.profit : (pf >= 1.0 ? p.warning : p.loss);
+    return <Widget>[
+      _meterBar(p, 'Win rate', '${win.toStringAsFixed(0)}%', win / 100.0, winC, 'Share of finished trades that made money. The thin line is 50%.', mark: 0.5),
+      _meterBar(p, 'Profit factor', pf.toStringAsFixed(2), pf / 3.0, pfC,
+          'Money won divided by money lost (last ${closed.length} trades). Above 1.0 = profitable. The thin line is 1.0.',
+          mark: 1.0 / 3.0),
+      Text(
+        'Average win +${avgW.toStringAsFixed(2)}  ·  average loss -${avgL.toStringAsFixed(2)} USDT'
+        '${avgL > 0 ? '  ·  win/loss size ${(avgW / avgL).toStringAsFixed(2)}x' : ''}',
+        style: context.type.metadata.copyWith(fontSize: 11, height: 1.35),
+      ),
+    ];
+  }
+
+  /// Results: one verdict (TOO EARLY / WEAK / OKAY / GOOD) with the reasons in plain words and a short technical line.
+  Widget _verdictCard(AppPalette p, Map<String, dynamic> d) {
+    final s = _m(d['summary']);
+    final taken = _m(s['bot_on_taken']);
+    final skipped = _m(s['bot_on_skipped']);
+    final st = _stats(_l(d['closed']));
+    final n = (_d(s['closed']) ?? 0).toInt();
+    final net = _d(s['net']) ?? 0;
+    final skipNet = _d(skipped['net']) ?? 0;
+    final skipN = (_d(skipped['n']) ?? 0).toInt();
+    final takenNet = _d(taken['net']) ?? 0;
+    final takenN = (_d(taken['n']) ?? 0).toInt();
+    final pf = st['pf'] ?? 0;
+    String title = 'TOO EARLY';
+    Color c = p.textMuted;
+    double frac = n / 20.0;
+    String meterValue = '$n of 20 trades';
+    String meterLabel = 'Data collected';
+    String meterHint = 'The verdict starts after 20 finished AI trades. 100+ is much more reliable.';
+    final lines = <String>[];
+    int points = 0;
+    if (n >= 20) {
+      points += net > 0 ? 1 : -1;
+      points += pf >= 1.2 ? 1 : (pf >= 1.0 ? 0 : -1);
+      if (skipN >= 5) points += skipNet < 0 ? 1 : -1;
+      if (takenN >= 5) points += (net / n) > (takenNet / takenN) ? 1 : -1;
+      if (points >= 3) {
+        title = 'GOOD';
+        c = p.profit;
+      } else if (points >= 1) {
+        title = 'OKAY';
+        c = p.warning;
+      } else {
+        title = 'WEAK';
+        c = p.loss;
+      }
+      frac = (points + 4) / 8.0;
+      meterLabel = 'AI score';
+      meterValue = title;
+      meterHint = 'Mixes profit, profit factor, skipped signals and AI vs bot per trade.';
+    }
+    lines.add('The AI made ${fmtSigned(net)} USDT on $n finished trades (profit factor ${pf.toStringAsFixed(2)}).');
+    if (skipN > 0) {
+      lines.add(skipNet < 0
+          ? 'Signals the AI skipped would have lost ${skipNet.abs().toStringAsFixed(2)} USDT for the bot. Skipping helped.'
+          : 'Signals the AI skipped made ${skipNet.toStringAsFixed(2)} USDT for the bot. Skipping cost profit.');
+    }
+    if (takenN > 0) {
+      lines.add('On the signals the AI took, the bot made ${fmtSigned(takenNet)} USDT and the AI made ${fmtSigned(net)} USDT.');
+    }
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.cardGap),
+      child: _VCard(
+        glow: n >= 20 ? c : null,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const _VLabel('IS THE AI HELPING?'),
+            const SizedBox(height: 6),
+            Text(title, style: TextStyle(color: c, fontSize: 26, fontWeight: FontWeight.w900)),
+            const SizedBox(height: 8),
+            _meterBar(p, meterLabel, meterValue, frac, c, meterHint),
+            for (final l in lines)
+              Padding(padding: const EdgeInsets.only(bottom: 4), child: Text(l, style: context.type.metadata.copyWith(color: p.textPrimary, height: 1.4, fontSize: 12))),
+            if (n >= 20) Text('Technical: score $points (range -4 to +4).', style: context.type.metadata.copyWith(fontSize: 10.5)),
+          ],
+        ),
+      ),
+    );
+  }
 
   // ------------------------------------------------------------------ Live
   Widget _liveTab(AppPalette p, Map<String, dynamic> d) {
@@ -436,6 +639,10 @@ class _VisionTabScreenState extends State<VisionTabScreen> {
                     Expanded(child: _VStat('OPEN', '${opens.length}', sub: 'AI trades now')),
                   ],
                 ),
+                const SizedBox(height: 12),
+                Text(_liveStory(s, d), style: context.type.metadata.copyWith(color: p.textPrimary, height: 1.4, fontSize: 12)),
+                const SizedBox(height: 12),
+                ..._liveMeters(p, s, d),
               ],
             ),
           ),
@@ -660,11 +867,12 @@ class _VisionTabScreenState extends State<VisionTabScreen> {
         padding: _pad,
         children: [
           _banner(p, d),
+          _verdictCard(p, d),
           _VCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const _VLabel('SCOREBOARD'),
+                const _VLabel('DETAILS: AI vs BOT'),
                 const SizedBox(height: 10),
                 _scoreRow(p, 'AI trades (its own exits)', '${(_d(s['closed']) ?? 0).toInt()} closed', net),
                 const Divider(height: 18),
