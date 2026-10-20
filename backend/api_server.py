@@ -926,6 +926,25 @@ async def vision_rule(payload: dict, _auth=Depends(require_api_token)):
     return ai_vision_lessons.set_rule(str(payload.get("id", "")), payload.get("action", ""))
 
 
+@app.get("/api/vision/pumpdump")
+async def vision_pumpdump(limit: int = 40):
+    """Pump/dump memory + playbook for the Vision AI (ai_pumpdump.py)."""
+    from recovered_bot import ai_pumpdump
+    return await asyncio.to_thread(ai_pumpdump.snapshot, max(1, min(int(limit), 100)))
+
+
+@app.post("/api/vision/pumpdump/seed")
+async def vision_pumpdump_seed(payload: dict, _auth=Depends(require_api_token)):
+    """Seed pump/dump history from the longest 15m history one call gives (~15 days) for one symbol."""
+    from recovered_bot import ai_pumpdump, exchange
+    symbol = str(payload.get("symbol") or "").upper().strip()
+    if not symbol:
+        return {"ok": False, "error": "symbol required"}
+    def _fetch(sym, tf):
+        return exchange.get_klines(sym, tf, ai_pumpdump.SEED_CANDLES, False, None, False)
+    return await asyncio.to_thread(ai_pumpdump.maybe_seed, symbol, _fetch, 15)
+
+
 @app.get("/api/alerts")
 def get_alerts():
     rows = status.get().get("alerts", [])

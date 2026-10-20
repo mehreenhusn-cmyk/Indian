@@ -305,10 +305,12 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
     final p = context.palette;
     return Scaffold(
       key: _scaffoldKey,
-      backgroundColor: p.background,
+      backgroundColor: p.bg,
       drawer: _buildDrawer(p),
-      body: OwlAmbientBackground(
-        child: SafeArea(
+      body: Stack(
+        children: [
+        const Positioned.fill(child: OwlAmbientBackground()),
+        SafeArea(
           child: Column(
             children: [
               AppBar(
@@ -397,6 +399,7 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
             ],
           ),
         ),
+        ],
       ),
     );
   }
@@ -586,11 +589,3 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
     );
   }
 }
-'''
-# Fix duplicate imports - the head in write already has imports. File is complete.
-print("written")
-Path("/tmp/check").write_text("ok")
-PY
-# file was written by write_file tool above - verify
-wc -l /home/workdir/artifacts/final_zip/frontend/lib/screens/ai_assistant_screen.dart
-head -20 /home/workdir/artifacts/final_zip/frontend/lib/screens/ai_assistant_screen.dart

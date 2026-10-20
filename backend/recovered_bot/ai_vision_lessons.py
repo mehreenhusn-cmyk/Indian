@@ -41,10 +41,15 @@ TAGS = {
     "z_sign_ok": "Z-score is above 0 for a BUY (below 0 for a SELL)",
     "stretched": "price is already beyond the 2nd SD band in the trade's direction",
     "choppy": "price crossed EMA50 3 or more times in the last 20 candles",
+    # new measured tags (pump/dump + Z-SMA richer use)
+    "zsma_slope_with": "Z-SMA is sloping in the trade's direction",
+    "z_cross_ok": "Z recently crossed Z-SMA in the trade's direction",
+    "flow_with": "the last candles (body / wick) show the trade's side in control",
+    "chasing_move": "price is already at the far end of a 4%+ move in the trade's direction (chasing a pump / dump)",
 }
 
 _lock = threading.RLock()
-_state = {"lessons": [], "rules": [], "last_digest": 0.0, "digest_seen": 0}
+_state = {"lessons": [], "rules": [], "skips": [], "last_digest": 0.0, "digest_seen": 0}
 _file = None
 _loaded = False
 _dirty = False
@@ -72,7 +77,7 @@ def _load():
                 from . import safe_io
                 d, _src = safe_io.read_json_safe(_file, "vision_lessons")
                 if isinstance(d, dict):
-                    for k in ("lessons", "rules"):
+                    for k in ("lessons", "rules", "skips"):
                         if isinstance(d.get(k), list):
                             _state[k] = d[k]
                     _state["last_digest"] = float(d.get("last_digest") or 0.0)
@@ -89,6 +94,7 @@ def _save():
         try:
             from . import safe_io
             _state["lessons"] = _state["lessons"][-KEEP_LESSONS:]
+            _state["skips"] = _state.get("skips", [])[-KEEP_LESSONS:]
             safe_io.write_json_atomic(_file, _state)
             _dirty = False
         except Exception as e:
@@ -151,6 +157,32 @@ def features(f, side):
                 cross += 1
             prev = s
         put("choppy", cross >= 3)
+        # Z-SMA slope + recent cross
+        if zs[i] is not None and i >= 5 and zs[i - 5] is not None:
+            put("zsma_slope_with", (zs[i] > zs[i - 5]) if buy else (zs[i] < zs[i - 5]))
+        if z[i] is not None and zs[i] is not None:
+            crossed_ok = False
+            for j in range(max(1, i - 5), i + 1):
+                if z[j] is None or zs[j] is None or z[j - 1] is None or zs[j - 1] is None:
+                    continue
+                if buy and z[j - 1] < zs[j - 1] and z[j] >= zs[j]:
+                    crossed_ok = True
+                if (not buy) and z[j - 1] > zs[j - 1] and z[j] <= zs[j]:
+                    crossed_ok = True
+            put("z_cross_ok", crossed_ok)
+        # recent pump/dump position
+        try:
+            highs = f.get("h") or []
+            lows = f.get("l") or []
+            if len(highs) > i and len(lows) > i and i >= 20:
+                seg_h = max(highs[i - 19:i + 1])
+                seg_l = min(lows[i - 19:i + 1])
+                if seg_h > seg_l and seg_l > 0:
+                    move = (seg_h - seg_l) / seg_l * 100.0
+                    pos = (c[i] - seg_l) / (seg_h - seg_l)
+                    put("chasing_move", move >= 4.0 and ((buy and pos >= 0.8) or ((not buy) and pos <= 0.2)))
+        except Exception:
+            pass
         return out
     except Exception:
         return {}
@@ -569,10 +601,11 @@ def snapshot(V):
     for x in lessons:
         x["feat_text"] = [TAGS[k] if v else "NOT: " + TAGS[k] for k, v in (x.get("feat") or {}).items() if k in TAGS][:8]
         x.pop("feat", None)
+    ss = skip_stats()
     return {"lessons": lessons, "rules": rules, "total": total, "min_trust": MIN_TRUST, "guide": guide(tr), "closed_n": len(tr),
             "next_rules_note": (f"{new} new lesson(s) since the last rule check; rules are checked about once a day after {DIGEST_MIN_NEW}+ new lessons."
                                 if total else "No closed AI trade yet, so the notebook is empty."),
-            "last_digest": last_digest}
+            "last_digest": last_digest, "skip_stats": ss}
 
 
 def set_rule(rule_id, action):
@@ -594,3 +627,114 @@ def set_rule(rule_id, action):
             return {"ok": False, "error": "rule not found"}
     _save()
     return {"ok": True}
+
+
+# ------------------------------------------------------------------ skip / wait hindsight
+def record_skip(dec):
+    """Remember a SKIP or expired WAIT so we can later check whether skipping was correct.
+    dec = decision record from ai_vision (must have symbol, side, sig_time, tf_min, reason, feat)."""
+    _load()
+    try:
+        with _lock:
+            sid = "s" + str(dec.get("id") or int(time.time() * 1000))
+            _state.setdefault("skips", []).append({
+                "id": sid,
+                "dec_id": dec.get("id"),
+                "symbol": dec.get("symbol"),
+                "side": dec.get("side"),
+                "tf_min": dec.get("tf_min") or 15,
+                "sig_time": dec.get("sig_time") or time.time(),
+                "reason": _txt(dec.get("reason"), 180),
+                "decision": dec.get("decision") or "SKIP",
+                "feat": dec.get("feat") or {},
+                "checked": False,
+                "hindsight": None,
+                "t": time.time(),
+            })
+        _save()
+        return True
+    except Exception as e:
+        print(f"[VisionLessons] record_skip: {e}")
+        return False
+
+
+def check_skip_hindsight(V, limit=20):
+    """For recent unchecked skips: look at price after the signal and mark whether skip was good.
+    Good skip = price moved against the side by >= 0.8% within ~8 bars (or never moved +0.8% for us).
+    Bad skip = price moved in our favour by >= 1.2% within ~8 bars (we missed a winner)."""
+    _load()
+    with _lock:
+        pending = [s for s in _state.get("skips", []) if not s.get("checked")][-limit:]
+    if not pending:
+        return 0
+    done = 0
+    for s in pending:
+        try:
+            tf = int(s.get("tf_min") or 15)
+            age_s = time.time() - float(s.get("sig_time") or 0)
+            # wait at least 8 bars after the signal
+            if age_s < tf * 60 * 8:
+                continue
+            candles = V._fetch(s.get("symbol"), tf)
+            if not candles or len(candles) < 30:
+                continue
+            # find candle closest to sig_time
+            sig_ts = float(s.get("sig_time") or 0) * 1000  # ms if needed
+            # candles timestamps are usually ms
+            idx = None
+            for i, c in enumerate(candles):
+                ts = float(c.get("timestamp") or 0)
+                if ts >= (s.get("sig_time") or 0) * (1000 if ts > 1e12 else 1) - tf * 60 * 1000:
+                    idx = i
+                    break
+            if idx is None:
+                idx = max(0, len(candles) - 12)
+            entry = float(candles[idx]["close"])
+            future = candles[idx + 1: idx + 9]
+            if len(future) < 4:
+                continue
+            side = str(s.get("side") or "").upper()
+            highs = [float(c["high"]) for c in future]
+            lows = [float(c["low"]) for c in future]
+            max_up = (max(highs) - entry) / entry * 100.0 if entry else 0
+            max_dn = (min(lows) - entry) / entry * 100.0 if entry else 0
+            if side == "BUY":
+                fav, against = max_up, abs(min(0, max_dn))
+            else:
+                fav, against = abs(min(0, max_dn)), max_up
+            if against >= 0.8 and fav < 1.0:
+                verdict = "good_skip"
+                note = f"price moved against by {against:.1f}% — skip looked correct"
+            elif fav >= 1.2:
+                verdict = "missed_winner"
+                note = f"price moved in favour by {fav:.1f}% — skip may have been wrong"
+            else:
+                verdict = "neutral"
+                note = f"small move (fav {fav:.1f}% / against {against:.1f}%)"
+            with _lock:
+                for x in _state.get("skips", []):
+                    if x.get("id") == s.get("id"):
+                        x["checked"] = True
+                        x["hindsight"] = {"verdict": verdict, "note": note, "fav": round(fav, 2), "against": round(against, 2)}
+                        break
+            done += 1
+        except Exception as e:
+            print(f"[VisionLessons] hindsight: {e}")
+    if done:
+        _save()
+    return done
+
+
+def skip_stats():
+    """Summary for the app / prompt."""
+    _load()
+    with _lock:
+        skips = list(_state.get("skips", []))
+    checked = [s for s in skips if s.get("checked") and s.get("hindsight")]
+    if not checked:
+        return {"n": len(skips), "checked": 0, "good": 0, "missed": 0, "neutral": 0, "text": "No skip hindsight yet."}
+    good = sum(1 for s in checked if (s["hindsight"] or {}).get("verdict") == "good_skip")
+    missed = sum(1 for s in checked if (s["hindsight"] or {}).get("verdict") == "missed_winner")
+    neutral = len(checked) - good - missed
+    text = f"Skip hindsight (n={len(checked)}): good skips {good}, missed winners {missed}, neutral {neutral}."
+    return {"n": len(skips), "checked": len(checked), "good": good, "missed": missed, "neutral": neutral, "text": text}

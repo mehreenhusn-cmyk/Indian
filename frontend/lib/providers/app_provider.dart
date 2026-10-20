@@ -984,6 +984,28 @@ class AppProvider extends ChangeNotifier {
     return '$baseUrl/api/vision/image/$id?live=${live ? 1 : 0}&t=$bucket';
   }
 
+  /// Pump/dump memory + playbook (GET /api/vision/pumpdump).
+  Future<Map<String, dynamic>?> fetchVisionPumpdump({int limit = 40}) async {
+    try {
+      final res = await http.get(_u('/api/vision/pumpdump?limit=$limit')).timeout(const Duration(seconds: 12));
+      if (res.statusCode == 200) return Map<String, dynamic>.from(jsonDecode(res.body) as Map);
+    } catch (_) {}
+    return null;
+  }
+
+  /// Seed pump/dump history from ~15 days of 15m candles for one symbol.
+  Future<Map<String, dynamic>?> seedVisionPumpdump(String symbol) async {
+    try {
+      final res = await http
+          .post(_u('/api/vision/pumpdump/seed'),
+              headers: {'Content-Type': 'application/json'},
+              body: jsonEncode({'symbol': symbol}))
+          .timeout(const Duration(seconds: 90));
+      if (res.statusCode == 200) return Map<String, dynamic>.from(jsonDecode(res.body) as Map);
+    } catch (_) {}
+    return null;
+  }
+
   /// AI Pick: TAKE / SKIP / WATCH on every bot signal + what the AI has proven (GET /api/ai/pick). Read-only.
   Future<Map<String, dynamic>?> fetchAiPick() => _getAiMap('/api/ai/pick', '');
 

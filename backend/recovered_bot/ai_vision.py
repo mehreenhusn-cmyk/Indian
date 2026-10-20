@@ -98,6 +98,11 @@ def guide_text(symbol=None, side=None):
             out += L.prompt_block(symbol, side)
     except Exception as e:
         print(f"[Vision] notebook: {e}")
+    try:                                                   # pump/dump memory + buyer/seller (measured, no AI)
+        from . import ai_pumpdump as PD
+        out += PD.prompt_block(symbol, side)
+    except Exception as e:
+        print(f"[Vision] pumpdump: {e}")
     return out
 
 
@@ -124,6 +129,8 @@ def init(path):
         os.makedirs(_img_dir, exist_ok=True)
         from . import ai_vision_lessons as L
         L.init(path)
+        from . import ai_pumpdump as PD
+        PD.init(path)
     except Exception as e:
         print(f"[Vision] init: {e}")
 
@@ -1182,8 +1189,30 @@ def _process_signal(rec):
             rec["feat"] = L.features(_f_, rec["side"])
         except Exception:
             pass
+        try:
+            from . import ai_pumpdump as PD
+            bs_text, bs_nums = PD.buyer_seller(candles)
+            rec["buyer_seller"] = bs_text
+            if bs_nums:
+                score = bs_nums.get("score", 0)
+                feat = rec.get("feat") or {}
+                if abs(score) >= 0.5:                       # clear read only; weak/mixed reads set no tag
+                    feat["flow_with"] = (score > 0) == (rec["side"] == "BUY")
+                    rec["feat"] = feat
+            zs = PD.zsma_read(_f_, rec["side"])
+            if zs:
+                rec["zsma_read"] = zs
+            # record pump/dump event opportunistically (15m preferred)
+            if int(tf) == 15:
+                PD.record_from_candles(sym, candles, 15)
+        except Exception as e:
+            print(f"[Vision] pumpdump tags: {e}")
         rec["indicator_summary"] = _indicator_summary(lv, rec["side"], rec.get("feat"))
         recent_ctx = _recent_context(candles, rec["side"])
+        if rec.get("buyer_seller"):
+            recent_ctx = (recent_ctx + " " + rec["buyer_seller"]).strip()
+        if rec.get("zsma_read"):
+            recent_ctx = (recent_ctx + " " + rec["zsma_read"]).strip()
         rec["recent_context"] = recent_ctx
     except ImportError:
         return _finish(rec, "error", None, "Pillow is missing on the backend. Run: pkg install python-pillow")
@@ -1232,11 +1261,21 @@ def _process_signal(rec):
     elif rec["decision"] == "WAIT":
         rec["waits_left"] = rec.get("waits_left", WAITS) - 1
         if rec["waits_left"] <= 0:
+            try:
+                from . import ai_vision_lessons as L
+                L.record_skip(rec)
+            except Exception:
+                pass
             return _finish(rec, "expired", "SKIP", "Waited several candles; the entry never became ready.")
         rec["status"] = "waiting"
         rec["last_bar"] = _bar_start(time.time(), tf)
     else:
         rec["status"] = "skipped"
+        try:
+            from . import ai_vision_lessons as L
+            L.record_skip(rec)
+        except Exception:
+            pass
     _mark()
 
 
@@ -1378,6 +1417,7 @@ def _lessons_job():
     try:
         import sys
         from . import ai_vision_lessons as L
+        L.check_skip_hindsight(sys.modules[__name__])
         return bool(L.next_job(sys.modules[__name__]))
     except Exception as e:
         _log(f"notebook: {str(e)[:100]}")

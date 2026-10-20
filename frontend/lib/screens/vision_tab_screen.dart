@@ -11,6 +11,7 @@ import '../widgets/owl_eye_dot.dart';
 import '../widgets/owl_pressable.dart';
 import '../widgets/owl_refresh.dart';
 import '../widgets/vision_notebook_view.dart';
+import '../widgets/vision_pumpdump_view.dart';
 
 /// The AI tab (Vision AI).
 ///   Live     - the AI's own virtual account: open trades with live P&L, stop and target, and what the AI says about them.
@@ -210,7 +211,7 @@ class _VisionTabScreenState extends State<VisionTabScreen> {
   }
 
   Widget _tabStrip(AppPalette p) {
-    const labels = ['Live', 'Signals', 'Results', 'Guide', 'Notebook'];
+    const labels = ['Live', 'Signals', 'Results', 'Guide', 'Notebook', 'Pump'];
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: AppSpacing.l),
       padding: const EdgeInsets.all(3),
@@ -258,6 +259,9 @@ class _VisionTabScreenState extends State<VisionTabScreen> {
   }
 
   Widget _body(AppPalette p) {
+    if (_tab == 5) {
+      return const VisionPumpdumpView();
+    }
     if (_tab == 4) {
       return const VisionNotebookView();
     }
