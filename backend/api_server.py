@@ -909,7 +909,7 @@ def vision_guide():
 @app.post("/api/vision/notes")
 async def vision_notes(payload: dict, _auth=Depends(require_api_token)):
     from recovered_bot import ai_vision
-    return ai_vision.set_notes(payload.get("notes", ""))
+    return await asyncio.to_thread(ai_vision.set_notes, payload.get("notes", ""))
 
 
 @app.get("/api/vision/lessons")
@@ -923,7 +923,7 @@ async def vision_lessons():
 async def vision_rule(payload: dict, _auth=Depends(require_api_token)):
     """Approve / delete / un-approve one proposed rule. Only approved rules are shown to the Vision AI."""
     from recovered_bot import ai_vision_lessons
-    return ai_vision_lessons.set_rule(str(payload.get("id", "")), payload.get("action", ""))
+    return await asyncio.to_thread(ai_vision_lessons.set_rule, str(payload.get("id", "")), payload.get("action", ""))
 
 
 @app.get("/api/vision/pumpdump")
@@ -1485,7 +1485,7 @@ async def doctor_summary_api():
         b = await _swr("scoreboard", 20.0, scoreboard.build, 5000)
         out = doctor_extra.summary(d, b)
         try:                                           # chips for the timeframe / coin filter
-            out["options"] = doctor_extra.options(trade_store.get_all_closed(5000, net=True))
+            out["options"] = doctor_extra.options(await asyncio.to_thread(trade_store.get_all_closed, 5000, True))   # file parse off the event loop
         except Exception:
             out["options"] = {"tfs": [], "coins": []}
         return out

@@ -1509,6 +1509,8 @@ class _DetailSheet extends StatelessWidget {
                 _checkRow(context, 'tsi', ind['tsi'].toString()),
               if (ind['zscore'] != null && ind['zscore'].toString().isNotEmpty)
                 _checkRow(context, 'zscore', ind['zscore'].toString()),
+              if (ind['histogram'] != null && ind['histogram'].toString().isNotEmpty)
+                _checkRow(context, 'histogram', ind['histogram'].toString()),
               if (ind['align'] != null && ind['align'].toString().isNotEmpty)
                 _checkRow(context, 'align', ind['align'].toString()),
               if (ctx.isNotEmpty) ...[

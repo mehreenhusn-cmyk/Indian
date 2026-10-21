@@ -61,6 +61,7 @@ refresh check and (indirectly) from the connection's own on_open.
 """
 import json
 import os
+import random
 import threading
 import time
 
@@ -758,7 +759,11 @@ def _binance_ws_loop(stop_event):
         _reconnect_count += 1
         status.update(ws_reconnect_count=_reconnect_count)
         _set_state("RECONNECTING", error="Binance WebSocket disconnected - reconnecting")
-        stop_event.wait(backoff)
+        if got_data[0]:
+            backoff = 1          # this connection worked, so the next drop is retried fast (before: the wait stayed at 30 s for ever)
+        wait_s = backoff * (0.8 + 0.4 * random.random())          # small random spread so retries never come in a burst
+        print(f"[market_ws] disconnected (Errno 103 / reset). One reconnect in {wait_s:.1f}s")
+        stop_event.wait(wait_s)
         backoff = min(backoff * 2, MAX_BACKOFF)
 
     _set_state("DISCONNECTED")

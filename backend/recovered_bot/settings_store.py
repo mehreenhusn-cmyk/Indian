@@ -91,6 +91,8 @@ _defaults = {
     "vision_max_calls_day": 200,  # AI calls per 24 h (your budget). 0 = no limit. New signals stop first, open-trade checks get 50% extra
     "vision_max_open": 8,         # AI virtual trades open at once
     "vision_review_candles": 4,   # an open AI trade is re-read every N closed candles (plus when its target is touched). 4 keeps free quotas alive; the hard stop is checked every tick anyway
+    "vision_own_daily_loss_cap": 15,   # AI own-scan: stop scanning for the day after this many USDT of net loss. 0 = NO daily loss limit
+    "vision_own_max_calls_hour": 12,   # AI own-scan: AI calls per hour. 0 = no limit
     "vision_max_risk_pct": 3.0,   # an AI stop further than this (% of price) is refused: the trade is skipped
     "vision_only_opened": True,   # judge only signals the bot really opened (False = every signal)
     "vision_notes": "",           # the owner's own notes about the indicators, added to the AI guide (edited in the app)

@@ -30,6 +30,15 @@ def _cfg(name, default):
         return default
 
 
+def _num(name, default):
+    """A number setting where 0 really means 0 (the old `x or default` turned 0 back into the default)."""
+    v = _cfg(name, default)
+    try:
+        return float(default if v is None or str(v).strip() == "" else v)
+    except (TypeError, ValueError):
+        return float(default)
+
+
 def enabled():
     return bool(_cfg("vision_own_enabled", False))
 
@@ -126,10 +135,10 @@ def tick(V):
             return False
     except Exception:
         pass
-    cap_h = int(float(_cfg("vision_own_max_calls_hour", 12) or 12))
+    cap_h = int(_num("vision_own_max_calls_hour", 12))        # 0 = no limit (before: 0 silently became 12)
     if cap_h > 0 and _hour_used() >= cap_h:
         return False
-    day_cap = float(_cfg("vision_own_daily_loss_cap", 15) or 15)
+    day_cap = _num("vision_own_daily_loss_cap", 15.0)         # 0 = no daily loss limit (before: 0 silently became 15)
     if day_cap > 0 and _own_day_net(V) <= -abs(day_cap):
         with _lock:
             _stats["err"] = "daily own loss cap reached"

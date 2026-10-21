@@ -75,6 +75,7 @@ TSI PANE (middle)
   light red = signal below zero and TSI above the signal (selling is weak; a bounce is possible);
   dark red = signal below zero and TSI below the signal (sellers strong).
 - Bars = TSI minus signal (the push). Ignore any reversal arrows.
+- A small HIST box in this pane (and the same numbers in the text you are given) shows the last 5 bars, oldest to newest, one trend word and one plain line. Growing = the push is getting stronger; Shrinking = the push is fading; Flipping up / Flipping down = the push just changed side; Flat = no clear push. Plain lines: Buyers coming in, Buyers leaving, Sellers coming in, Sellers leaving, Buyers taking over, Sellers taking over, No clear push. Use these numbers, do not guess the bars from the picture. When the note matters for your decision, say it in your reason (for example: skipped because the histogram is shrinking, buyers leaving).
 
 Z-SCORE PANE (bottom)
 - Green area = upside momentum. Red area = downside momentum. The black line = Z-SMA (200-candle average of Z).
@@ -397,6 +398,34 @@ def _indicator_summary(lv, side, feat=None):
     return out
 
 
+def hist_note(f, take=5):
+    """Plain read of the TSI histogram bars (TSI minus signal) - the same numbers the chart draws.
+    Returns {"vals", "word", "line", "text", "short"}. Words: Growing, Shrinking, Flipping up, Flipping down, Flat."""
+    raw = list((f or {}).get("diff") or [])[-take:]
+    if len(raw) < take or any(v is None for v in raw):
+        return {"vals": [], "word": "Unknown", "line": "Not enough bars", "short": "Not enough bars",
+                "text": "TSI histogram: not enough bars to read it."}
+    v = [float(x) for x in raw]
+    pos = v[-1] >= 0
+    if pos and (v[-2] < 0 or v[-3] < 0):
+        word, line = "Flipping up", "Buyers taking over"
+    elif (not pos) and (v[-2] >= 0 or v[-3] >= 0):
+        word, line = "Flipping down", "Sellers taking over"
+    else:
+        a = [abs(x) for x in v[-3:]]
+        who = "Buyers" if pos else "Sellers"
+        if a[0] < a[1] < a[2]:
+            word, line = "Growing", who + " coming in"
+        elif a[0] > a[1] > a[2]:
+            word, line = "Shrinking", who + " leaving"
+        else:
+            word, line = "Flat", "No clear push"
+    dec = 2 if max(abs(x) for x in v) < 1 else 1
+    nums = [f"{x:+.{dec}f}" for x in v]
+    return {"vals": [round(x, 3) for x in v], "word": word, "line": line, "short": f"{word} - {line} ({', '.join(nums)})",
+            "text": f"TSI histogram (last {take} closed bars, oldest to newest): {', '.join(nums)}. Trend: {word}. {line}."}
+
+
 def render_chart(symbol, candles, tf_label, side=None, marks=None, title_extra="", source=None):
     """PNG bytes of the chart the AI (and the owner) sees. marks: entry, sl, target, exit, bar_ts."""
     from PIL import Image, ImageDraw, ImageFont
@@ -629,6 +658,39 @@ def render_chart(symbol, candles, tf_label, side=None, marks=None, title_extra="
             y = gy(v)
             if PM[0] + 4 < y < PM[1] - 4:
                 d.text((x0 + 4, y - 14), name, fill=(110, 110, 110), font=f12)
+
+    # ---- TSI histogram note box (top-right of the TSI pane; moves to the bottom if bars or lines are there)
+    try:
+        hn = hist_note(f)
+        l1 = ("HIST  " + "  ".join(f"{x:+.{2 if max(abs(y) for y in hn['vals']) < 1 else 1}f}" for x in hn["vals"])) if hn["vals"] else "HIST  not enough bars"
+        l2 = f"{hn['word']} - {hn['line']}" if hn["vals"] else hn["line"]
+        bw_ = max(d.textlength(l1, font=f12), d.textlength(l2, font=f12)) + 14
+        bh_ = 36
+        bx1 = x1 - 6
+        bx0 = bx1 - bw_
+
+        def _hit(y0, y1):
+            for i in range(lo, n):
+                if sx(i) < bx0 - step or sx(i) > bx1 + step:
+                    continue
+                df_ = f["diff"][i]
+                if df_ is not None and max(min(z0, gt(df_)), y0) <= min(max(z0, gt(df_)), y1):
+                    return True
+                for val in (f["tsi"][i], f["tsl"][i]):
+                    if val is not None and y0 <= gt(val) <= y1:
+                        return True
+            return False
+        by0 = PT[0] + 4
+        if _hit(by0, by0 + bh_):
+            alt = PT[1] - bh_ - 4
+            if not _hit(alt, alt + bh_):
+                by0 = alt
+        d.rectangle([bx0, by0, bx1, by0 + bh_], fill=(255, 255, 255), outline=(120, 120, 120))
+        d.text((bx0 + 6, by0 + 3), l1, fill=(40, 40, 40), font=f12)
+        wc = (8, 120, 90) if hn["line"].startswith("Buyers") else ((200, 40, 55) if hn["line"].startswith("Sellers") else (100, 100, 100))
+        d.text((bx0 + 6, by0 + 19), l2, fill=wc, font=f12)
+    except Exception as e:
+        print(f"[Vision] hist box: {e}")
 
     # ---- time axis (IST) + titles
     for k in range(5):
@@ -1023,11 +1085,16 @@ def _signal_prompt(rec, lv, price, recent_ctx=""):
     ctx = f"\nRecent market context (use this; do not ignore a prior pump/dump): {recent_ctx}\n" if recent_ctx else "\n"
     ind = _indicator_summary(lv, rec.get("side") or "BUY", rec.get("feat"))
     ind_line = "; ".join(f"{k}={v}" for k, v in ind.items() if v)
-    return (f"A bot signal just fired.\nSymbol: {rec['symbol']}; timeframe {_tf_label(rec['tf_min'])}; signal: {rec['side']} "
+    own = str(rec.get("source") or "bot") == "own"
+    head = ("Your own scanner found this setup (the bot did not signal it). Goal: make profit with as few trades as possible. "
+            "Take only a clear, well-placed setup where BOTH indicator families agree; SKIP or WAIT on anything doubtful. "
+            "There is no daily loss limit on your own trades, so quality is the only filter.\n") if own else "A bot signal just fired.\n"
+    return (head + f"Symbol: {rec['symbol']}; timeframe {_tf_label(rec['tf_min'])}; signal: {rec['side']} "
             f"(the bot wants to go {_side_word(rec['side'])}); bot entry price {_fmt(rec.get('sig_price'))}; price now {_fmt(price)}.\n"
             f"Numbers read from the same chart: {_lv_text(lv)}.\n"
             f"Indicator read (both families — EMA/SD and TSI/Z): {ind_line}.{ctx}{prev}\n"
-            "You MUST weigh BOTH indicator families (EMA+SD bands AND TSI+Z-score). Do not decide from EMA alone.\n"
+            f"{(rec.get('tsi_hist_note') or {}).get('text', '')}\n"
+            "You MUST weigh BOTH indicator families (EMA+SD bands AND TSI+Z-score). Do not decide from EMA alone. When the TSI histogram note matters, name it in your reason.\n"
             "If price just pumped and is stretched at the top of the recent range, prefer SKIP or WAIT for BUY.\n"
             "Decide TAKE, SKIP or WAIT. TAKE = open the trade now. WAIT = the idea may work but the entry is not ready (say what you wait for; you will be asked again on the next candles). SKIP = do not trade.\n"
             "For TAKE give a stop (the price where the idea is wrong, beyond a recent swing or band) and a first target (the next level where price may stall). The target is NOT a fixed exit: you will manage the trade later from fresh charts.\n"
@@ -1036,12 +1103,13 @@ def _signal_prompt(rec, lv, price, recent_ctx=""):
             "Each checklist answer: at most 12 words.")
 
 
-def _review_prompt(tr, lv, price, why):
+def _review_prompt(tr, lv, price, why, hist_text=""):
     roi = _roi(tr["side"], tr["entry"], price, tr["lev"])
     return (f"You are managing an open virtual {_side_word(tr['side'])} trade.\nSymbol: {tr['symbol']}; timeframe {_tf_label(tr['tf_min'])}; entry {_fmt(tr['entry'])}; "
             f"price now {_fmt(price)}; current stop {_fmt(tr['sl'])}; current target {_fmt(tr.get('target'))}; ROI now {roi:+.1f}% (leverage {tr['lev']:g}x); "
             f"best ROI so far {tr.get('peak_roi', 0):+.1f}%.\nWhy you are asked now: {why}.\n"
             f"Numbers read from the chart: {_lv_text(lv)}.\n"
+            + (hist_text + " Use it: a shrinking push against the trade is a reason to exit or trail; say it in your reason.\n" if hist_text else "") +
             "The chart shows the entry, stop and target lines. Decide HOLD, PARTIAL, TRAIL or EXIT. EXIT when momentum fades, a divergence shows, price is stretched at a band, or the structure breaks. "
             "HOLD while the trend is intact. TRAIL = keep the whole trade and move the stop closer to price in the profit direction (put the level in new_stop; never further away). "
             f"PARTIAL = bank part of the trade (fraction 0.25 to 0.75) when price reaches a band or zone where trades often fade; allowed once per trade and only while the trade is in profit (partial already taken: {'yes' if tr.get('partial_done') else 'no'}). "
@@ -1254,6 +1322,7 @@ def _process_signal(rec):
     try:
         png = render_chart(sym, candles, _tf_label(tf), rec["side"], {"bar_ts": rec["bar_ts"], "source": rec.get("source") or "bot"}, source=rec.get("source") or "bot")
         _f_, _e, lv = _levels(candles)
+        rec["tsi_hist_note"] = hist_note(_f_)             # same bars the chart box shows; also goes into the AI prompt and the Results card
         try:                                               # measured tags for the learning notebook (plain arithmetic, no AI)
             from . import ai_vision_lessons as L
             rec["feat"] = L.features(_f_, rec["side"])
@@ -1281,6 +1350,8 @@ def _process_signal(rec):
         except Exception as e:
             print(f"[Vision] pumpdump tags: {e}")
         rec["indicator_summary"] = _indicator_summary(lv, rec["side"], rec.get("feat"))
+        if rec["tsi_hist_note"].get("vals"):
+            rec["indicator_summary"]["histogram"] = rec["tsi_hist_note"]["short"]
         recent_ctx = _recent_context(candles, rec["side"])
         if rec.get("buyer_seller"):
             recent_ctx = (recent_ctx + " " + rec["buyer_seller"]).strip()
@@ -1369,11 +1440,13 @@ def _review(tr, why):
         marks = {"entry": tr["entry"], "sl": tr["sl"], "target": tr.get("target"), "bar_ts": tr.get("bar_ts")}
         png = render_chart(sym, candles, _tf_label(tf), tr["side"], marks, source=tr.get("source") or "bot")
         _f_, _e, lv = _levels(candles)
+        hn = hist_note(_f_)
+        tr["tsi_hist_note"] = hn
     except Exception as e:
         tr["last_review_bar"] = _bar_start(time.time(), tf)
         return _log(f"review {sym}: {str(e)[:80]}")
     _count()
-    text, err = _call_ai(guide_text(sym, tr["side"]), _review_prompt(tr, lv, price, why), png)
+    text, err = _call_ai(guide_text(sym, tr["side"]), _review_prompt(tr, lv, price, why, hist_text=hn["text"] if hn.get("vals") else ""), png)
     tr["last_review_bar"] = _bar_start(time.time(), tf)
     if err and str(err).startswith("quota:"):
         _uncount()
@@ -1580,7 +1653,7 @@ def _trade_view(t):
     px = _live_price(t["symbol"]) if t["status"] == "open" else None
     v = {k: t.get(k) for k in ("id", "dec_id", "symbol", "side", "tf_min", "entry", "sl", "sl0", "target", "lev", "invest", "opened_at",
                               "status", "peak_roi", "exit", "exit_reason", "closed_at", "roi", "pnl", "notes", "last_checklist",
-                              "source", "partial_done", "partial_frac", "partial_pnl")}
+                              "source", "partial_done", "partial_frac", "partial_pnl", "tsi_hist_note")}
     if t["status"] == "open" and px:
         gross = _roi(t["side"], t["entry"], px, t["lev"])
         v["price"] = px
@@ -1729,7 +1802,7 @@ def snapshot(limit=80):
     for d in reversed(decs[-limit:]):
         x = {k: d.get(k) for k in ("id", "signal_no", "symbol", "side", "status", "decision", "reason", "checklist", "stop", "target",
                                    "sig_price", "sig_ist", "sig_time", "decided_at", "checks", "waits_left", "wait_for", "trade_id",
-                                   "indicator_summary", "recent_context", "feat", "source")}
+                                   "indicator_summary", "recent_context", "feat", "source", "tsi_hist_note")}
         if not x.get("source"):
             x["source"] = "bot"
         x["tf"] = _tf_label(d["tf_min"])
