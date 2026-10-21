@@ -26,7 +26,7 @@ import os
 AI_FILES = (
     "ai_stats.py", "ai_miner.py", "ai_assistant.py", "ai_ml.py", "ai_chat_store.py",
     "ai_data_logger.py", "ai_path_logger.py", "ai_sd_tracker.py", "ai_slope_tracker.py", "ai_ind_tracker.py", "ai_level_study.py", "ai_observer.py", "ai_digest.py", "ai_playbook.py", "ai_rules.py",
-    "ai_ind_features.py", "ai_shadow_lab.py", "ai_learning.py", "ai_ab_board.py", "ai_reading.py", "ai_desk.py", "ai_coach.py", "ai_pick.py", "ai_vision.py", "ai_vision_lessons.py", "ai_pumpdump.py", "ai_vision_own.py", "ai_vision_exits.py",
+    "ai_ind_features.py", "ai_shadow_lab.py", "ai_learning.py", "ai_ab_board.py", "ai_reading.py", "ai_desk.py", "ai_coach.py", "ai_pick.py", "ai_vision.py", "ai_vision_lessons.py", "ai_pumpdump.py", "ai_vision_own.py", "ai_vision_exits.py", "ai_vision_days.py",
 )
 CHAT_FILES = ("ai_assistant.py", "ai_chat_store.py", "ai_stats.py")   # what the chat AI can see
 _FORBIDDEN_NAMES = ("ai_book", "_health")

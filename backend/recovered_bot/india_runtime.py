@@ -76,6 +76,13 @@ class IndiaRuntime:
     def __init__(self, data_dir):
         self.dir = data_dir
         self.lock = threading.RLock()
+        # F0: last N call timings (s) for speed block — no broker, short lists
+        self._speed_hist = {"candles": [], "chain": [], "status": [], "paper": [],
+                            "candles_lock": [], "chain_lock": [], "status_lock": []}
+        self._ind_cache = {}  # (u, tf, last_t, last_c) -> (cs_pack, ics)
+        self._last_rate_limited = 0.0
+        self._opt_sub_syms = set()
+        self._poll_sec_saved = None
         self._stop_evt = threading.Event()      # wakes the market-closed sleep when Stop is pressed
         self.thread = None
         self.running = False
@@ -203,7 +210,21 @@ class IndiaRuntime:
                     self.running, self.finished = False, True
                     break
                 closed = live and india_chain.market_status(self.provider.now()) == "CLOSED" and not self.engine.open
+                # F5: when WS is healthy, prefer 2.0 s poll; restore saved value on REST / rate-limit
                 poll = float(self.settings["poll_sec"])
+                try:
+                    if self._poll_sec_saved is None:
+                        self._poll_sec_saved = poll
+                    live_ok = False
+                    if self.live is not None and hasattr(self.provider, "feed_mode"):
+                        live_ok = (self.provider.feed_mode() or {}).get("mode") == "WEBSOCKET"
+                    rate_hit = (time.time() - self._last_rate_limited) < 60
+                    if live_ok and not rate_hit:
+                        poll = min(poll, 2.0)
+                    elif self._poll_sec_saved is not None:
+                        poll = float(self._poll_sec_saved)
+                except Exception:
+                    pass
             if live:
                 self._keepalive()                             # outside the lock (may call the broker)
             if closed:
@@ -612,26 +633,33 @@ class IndiaRuntime:
         return t
 
     def chain(self, underlying, expiry=None, width=10):
+        t0 = time.time()
         timing = self._warm_chain(underlying, expiry, width)    # no lock held while waiting for the broker
+        lock_s = 0.0
+        out = None
         with self.lock:
+            lt0 = time.time()
             exp = date.fromisoformat(expiry) if expiry else None
             key = (str(underlying).upper(), expiry)
             try:
                 out = _ser(india_chain.build_chain(self.engine, underlying, exp, width))
                 out["timing"] = timing
                 self._chain_last[key] = out
-                return out
-            except india_broker.BrokerError as e:      # never a raw HTTP 500: show the last chain, or an empty one
+            except india_broker.BrokerError as e:
                 last = self._chain_last.get(key)
                 if last:
-                    return {**last, "stale": True, "error": str(e)[:160], "timing": timing}
-                u = str(underlying).upper()
-                return _ser({"underlying": u, "spot": 0.0, "atm": 0, "step": 0, "expiry": None,
-                             "trade_expiry": None, "expiries": [], "lot": None, "budget": 0.0, "rows": [],
-                             "has_oi": False, "pins": [], "day_mode": self.engine.day_mode,
-                             "default_mode": {"mode": "ITM", "depth": int(self.settings["itm_depth"])},
-                             "status": india_chain.market_status(self.provider.now()),
-                             "as_on": self.provider.now(), "stale": True, "error": str(e)[:160], "timing": timing})
+                    out = {**last, "stale": True, "error": str(e)[:160], "timing": timing}
+                else:
+                    u = str(underlying).upper()
+                    out = _ser({"underlying": u, "spot": 0.0, "atm": 0, "step": 0, "expiry": None,
+                                 "trade_expiry": None, "expiries": [], "lot": None, "budget": 0.0, "rows": [],
+                                 "has_oi": False, "pins": [], "day_mode": self.engine.day_mode,
+                                 "default_mode": {"mode": "ITM", "depth": int(self.settings["itm_depth"])},
+                                 "status": india_chain.market_status(self.provider.now()),
+                                 "as_on": self.provider.now(), "stale": True, "error": str(e)[:160], "timing": timing})
+            lock_s = time.time() - lt0
+        self._speed_push("chain", time.time() - t0, lock_s)
+        return out
 
     def set_pin(self, underlying, side, spec):
         with self.lock:
@@ -678,7 +706,9 @@ class IndiaRuntime:
                 india_reports.filter_trades(self.engine.closed, start, end, underlying))
 
     def status(self):
+        t0 = time.time()
         with self.lock:
+            lt0 = time.time()
             p = self.provider
             return _ser({
                 "running": self.running, "finished": self.finished,
@@ -717,41 +747,67 @@ class IndiaRuntime:
 
     def candles(self, underlying, limit=150, tf=None):
         """Chart data: closed candles + the forming one + indicator series + open-trade levels.
-        tf = chart timeframe (1/3/5/15) - independent of the timeframe the bot trades on.
-        Times are sent as IST text (lbl/day) and epoch seconds, so the app never converts time zones."""
+        Indicator compute runs OUTSIDE the runtime lock (copy under lock only for levels)."""
+        t0 = time.time()
         u = underlying.upper()
         if u not in ALL_UNDERLYINGS:
             raise ValueError("unknown underlying")
+        lock_s = 0.0
         with self.lock:                                   # short: only read the settings
+            lt0 = time.time()
             pv = self.provider
             tf = self._tf_ok(tf, default=int(self.settings["tf"]))
             bot_tf = int(self.settings["tf"])
-        warm = 250                                        # extra history so SD/EMA match the strategy
+            lock_s += time.time() - lt0
+        warm = 250
         err = None
-        try:                                              # the broker download runs OUTSIDE the lock, so a slow first load
-            cs = list(pv.get_candles(u, tf, limit + warm))    # of an index can not freeze the dashboard, the loop or other charts
+        try:
+            cs = list(pv.get_candles(u, tf, limit + warm))
             last = pv.get_forming_candle(u, tf)
-        except Exception as e:                            # live feed hiccup: show what we have
+        except Exception as e:
             err = f"{u} candles: {e}"[:200]
             cs, last = [], None
+        n_closed, forming = len(cs), False
+        if last and (not cs or last["t"] > cs[-1]["t"]):
+            cs.append(last)
+            forming = True
+        # F3: indicator pack outside lock; cache by last candle identity
+        cache_key = None
+        try:
+            if cs:
+                last_c = cs[-1]
+                cache_key = (u, tf, str(last_c.get("t")), float(last_c.get("c") or 0), n_closed, limit, forming)
+                hit = self._ind_cache.get(cache_key)
+                if hit is not None:
+                    cs, ics = hit
+                else:
+                    cs, ics = self._pack(cs, n_closed, limit)
+                    self._ind_cache[cache_key] = (cs, ics)
+                    # bound cache
+                    if len(self._ind_cache) > 32:
+                        self._ind_cache.pop(next(iter(self._ind_cache)))
+            else:
+                cs, ics = [], ind.compute([], 0, lookback=200)
+        except Exception as e:
+            err = err or f"indicators: {e}"[:160]
+            ics = {}
         with self.lock:
+            lt0 = time.time()
             if err:
                 self.broker_error = err
-            n_closed, forming = len(cs), False
-            if last and (not cs or last["t"] > cs[-1]["t"]):
-                cs.append(last)
-                forming = True
-            cs, ics = self._pack(cs, n_closed, limit)
             lv = [{"id": x["id"], "action": x["action"], "entry": x["entry_spot"], "sl": x["sl_spot"],
                    "tps": list(x["tps"]), "target": x.get("target"), "tp_hit": x.get("tp_hit", 0)}
                   for x in self.engine.open.values() if x["underlying"] == u]
             live = self.live is not None
-            out = {"underlying": u, "tf": tf, "bot_tf": bot_tf, "tf_choices": list(TF_CHOICES),
-                   "live": live, "forming": forming, "indicators": ics, "levels": lv,
-                   "feed_mode": (self.provider.feed_mode()["mode"] if live and hasattr(self.provider, "feed_mode") else None),
-                   "note": self._data_note(err),
-                   "candles": self._candle_rows(cs, ics)}
-            return out
+            feed_mode = (self.provider.feed_mode()["mode"] if live and hasattr(self.provider, "feed_mode") else None)
+            note = self._data_note(err)
+            lock_s += time.time() - lt0
+        out = {"underlying": u, "tf": tf, "bot_tf": bot_tf, "tf_choices": list(TF_CHOICES),
+               "live": live, "forming": forming, "indicators": ics, "levels": lv,
+               "feed_mode": feed_mode, "note": note,
+               "candles": self._candle_rows(cs, ics)}
+        self._speed_push("candles", time.time() - t0, lock_s)
+        return out
 
     def _data_note(self, err=None):
         """One plain sentence for the chart: where the prices come from and why they may be slow or missing."""
@@ -771,13 +827,68 @@ class IndiaRuntime:
         except Exception:
             return ""
 
-    def ticks(self):
+
+    def _speed_push(self, key, sec, lock_sec=None):
+        h = self._speed_hist.get(key)
+        if h is not None:
+            h.append(round(sec, 4))
+            del h[:-50]
+        if lock_sec is not None:
+            lk = self._speed_hist.get(key + "_lock")
+            if lk is not None:
+                lk.append(round(lock_sec, 4))
+                del lk[:-50]
+
+    def _speed_avg_max(self, key):
+        h = self._speed_hist.get(key) or []
+        if not h:
+            return None, None
+        return round(sum(h) / len(h), 4), round(max(h), 4)
+
+    def _speed_block(self, now=None):
+        """Cheap snapshot for /ticks speed line. No lock, no broker."""
+        now = now or time.time()
+        pv = self.provider
+        mode, state, n_sub, restarts = "DEMO", "ok", 0, 0
+        quote_ttl = today_ttl = None
+        last_quote_ms = None
+        try:
+            if self.live is not None and hasattr(pv, "feed_mode"):
+                fm = pv.feed_mode() or {}
+                mode = fm.get("mode") or "REST"
+                state = fm.get("state") or fm.get("note") or "ok"
+            feed = getattr(pv, "feed", None)
+            if feed is not None:
+                n_sub = len(getattr(feed, "symbols", None) or getattr(feed, "_symbols", None) or [])
+                restarts = int(getattr(feed, "restarts", 0) or getattr(feed, "ws_restarts", 0) or 0)
+            quote_ttl = getattr(pv, "quote_ttl", None)
+            today_ttl = getattr(pv, "today_ttl", None)
+            last_quote_ms = getattr(pv, "_last_quote_ms", None)
+        except Exception:
+            pass
+        poll = float(self.settings.get("poll_sec") or 5)
+        out = {
+            "mode": mode, "state": str(state)[:80], "n_sub": n_sub, "ws_restarts": restarts,
+            "quote_ttl": quote_ttl, "today_ttl": today_ttl, "poll_sec": poll,
+            "last_quote_ms": last_quote_ms, "opt_sub": len(self._opt_sub_syms),
+        }
+        for k in ("candles", "chain", "status", "paper"):
+            avg, mx = self._speed_avg_max(k)
+            out[k + "_avg_s"] = avg
+            out[k + "_max_s"] = mx
+            la, lm = self._speed_avg_max(k + "_lock")
+            out[k + "_lock_avg_s"] = la
+            out[k + "_lock_max_s"] = lm
+        return out
+
+    def ticks(self, opt=None):
         """Tiny live-price answer for the app (polled about once a second). NO runtime lock and NO broker call:
-        it only reads the price the WebSocket already pushed, so it is fast even when other calls are slow."""
+        it only reads the price the WebSocket already pushed, so it is fast even when other calls are slow.
+        opt: optional comma-list or list of option symbols (capped 40) to include in the answer."""
         now = time.time()
         pv = self.provider
         live = self.live is not None
-        spots, mode = {}, "DEMO"
+        spots, opts, mode = {}, {}, "DEMO"
         try:
             if live:
                 feed = getattr(pv, "feed", None)
@@ -785,18 +896,63 @@ class IndiaRuntime:
                 for u in ALL_UNDERLYINGS:
                     hit = None
                     try:
-                        with feed.lock:
-                            hit = feed.ticks.get(INDEX_SYM[u])
+                        if feed is not None:
+                            with feed.lock:
+                                hit = feed.ticks.get(INDEX_SYM[u])
                     except Exception:
                         hit = None
                     if hit:
                         spots[u] = {"lp": float(hit[1]["lp"]), "at": hit[0], "age_ms": int((now - hit[0]) * 1000), "src": "ws"}
-                    else:                                   # no pushed price yet: the last price the loop fetched (REST)
+                    else:
                         v = getattr(pv, "_last_spot", {}).get(u)
                         if v:
                             spots[u] = {"lp": float(v), "at": now, "age_ms": None, "src": "rest"}
                 fm = pv.feed_mode() if hasattr(pv, "feed_mode") else {}
                 mode = fm.get("mode") or "REST"
+                # F1: option symbols the app is watching
+                syms = []
+                if opt:
+                    if isinstance(opt, str):
+                        syms = [s.strip() for s in opt.split(",") if s.strip()]
+                    elif isinstance(opt, (list, tuple)):
+                        syms = [str(s).strip() for s in opt if str(s).strip()]
+                syms = syms[:40]
+                if syms and feed is not None and hasattr(feed, "subscribe"):
+                    try:
+                        new = [s for s in syms if s not in self._opt_sub_syms]
+                        if new:
+                            feed.subscribe(new)
+                            self._opt_sub_syms.update(new)
+                    except Exception:
+                        pass
+                for s in syms:
+                    hit = None
+                    try:
+                        if feed is not None:
+                            with feed.lock:
+                                hit = feed.ticks.get(s)
+                    except Exception:
+                        hit = None
+                    if hit:
+                        row = hit[1] if isinstance(hit[1], dict) else {"lp": hit[1]}
+                        lp = float(row.get("lp") or 0)
+                        chg = row.get("chg")
+                        opts[s] = {"lp": lp, "at": hit[0], "age_ms": int((now - hit[0]) * 1000),
+                                   "src": "ws", "chg": chg}
+                    else:
+                        # cached REST quote if any; never error
+                        q = None
+                        try:
+                            qc = getattr(pv, "_qcache", None) or {}
+                            if s in qc:
+                                q = qc[s][1] if isinstance(qc[s], (list, tuple)) else qc[s]
+                        except Exception:
+                            q = None
+                        if isinstance(q, dict) and q.get("lp") is not None:
+                            opts[s] = {"lp": float(q["lp"]), "at": now, "age_ms": None, "src": "rest",
+                                       "chg": q.get("chg")}
+                        else:
+                            opts[s] = None
             else:
                 for u in ALL_UNDERLYINGS:
                     try:
@@ -804,8 +960,10 @@ class IndiaRuntime:
                     except Exception:
                         pass
         except Exception as e:
-            return {"live": live, "mode": mode, "spots": spots, "now": now, "error": str(e)[:120]}
-        return {"live": live, "mode": mode, "spots": spots, "now": now}
+            return {"live": live, "mode": mode, "spots": spots, "opts": opts, "now": now,
+                    "speed": self._speed_block(now), "error": str(e)[:120]}
+        return {"live": live, "mode": mode, "spots": spots, "opts": opts, "now": now,
+                "speed": self._speed_block(now)}
 
     def _pack(self, cs, n_closed, limit):
         """Indicators over warm-up + shown candles, then trim the warm-up part."""

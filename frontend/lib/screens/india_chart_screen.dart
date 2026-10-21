@@ -103,6 +103,18 @@ class _IndiaChartScreenState extends State<IndiaChartScreen> {
     super.dispose();
   }
 
+  void _showSpeed() {
+    final d = IndiaTicks.instance.data.value;
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('India data speed'),
+        content: SingleChildScrollView(child: Text('${d['speed']}', style: const TextStyle(fontSize: 12))),
+        actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK'))],
+      ),
+    );
+  }
+
   /// A fresh price arrived (about once a second): move the newest candle with it, like a broker app. When the price already belongs to
   /// the NEXT candle, ask the backend for a full reload (it builds the new candle and the indicators).
   void _onTick() {
@@ -240,7 +252,8 @@ class _IndiaChartScreenState extends State<IndiaChartScreen> {
       builder: (ctx) => SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16),
-          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+          child: Column(
+            mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text('Bot trades on', style: IT.h(ctx)),
             const SizedBox(height: 4),
             Text('Only the bot changes. The chart keeps the timeframe you are viewing.', style: IT.small(ctx)),
@@ -341,6 +354,13 @@ class _IndiaChartScreenState extends State<IndiaChartScreen> {
         appBar: AppBar(
           titleSpacing: 0,
           title: Text('${_isOpt ? widget.optionTitle : _u}  ${_tf > 0 ? '${_tf}m' : ''}', style: IT.h(context).copyWith(fontSize: 16)),
+          bottom: PreferredSize(
+            preferredSize: const Size.fromHeight(18),
+            child: Padding(
+              padding: const EdgeInsets.only(left: 12, right: 12, bottom: 2),
+              child: Align(alignment: Alignment.centerLeft, child: IndiaSpeedLine(onTap: _showSpeed)),
+            ),
+          ),
           actions: [
             if (!_isOpt && _live && _livePx != null)
               Center(

@@ -1,3 +1,4 @@
+import '../services/india_ticks.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -45,7 +46,9 @@ class _IndiaPaperScreenState extends State<IndiaPaperScreen> {
     super.initState();
     _api = IndiaApi(context.read<AppProvider>().baseUrl);
     _refresh();
-    _timer = Timer.periodic(const Duration(seconds: 2), (_) => _refresh());
+    _timer = Timer.periodic(const Duration(seconds: 5), (_) => _refresh());
+    IndiaTicks.instance.start(_api);
+    IndiaTicks.instance.data.addListener(_onPosTicks);
     MarketMode.mode.addListener(_refresh); // coming back to India: refresh at once
     BackGuard.indiaGoHome = _backToDash;
   }
@@ -61,9 +64,33 @@ class _IndiaPaperScreenState extends State<IndiaPaperScreen> {
   @override
   void dispose() {
     _timer?.cancel();
+    IndiaTicks.instance.data.removeListener(_onPosTicks);
+    IndiaTicks.instance.stop();
     if (BackGuard.indiaGoHome == _backToDash) BackGuard.indiaGoHome = null;
     MarketMode.mode.removeListener(_refresh);
     super.dispose();
+  }
+
+  DateTime _lastPosPaint = DateTime.fromMillisecondsSinceEpoch(0);
+
+  /// Fresh option prices arrived: repaint the LTP numbers only (no reload, paper P&L math is not touched).
+  void _onPosTicks() {
+    if (!mounted || _positions.isEmpty) return;
+    final now = DateTime.now();
+    if (now.difference(_lastPosPaint).inMilliseconds < 400) return;
+    _lastPosPaint = now;
+    setState(() {});
+  }
+
+  /// Live option price for a position, else the last value from the status call.
+  num _livePremium(Map<String, dynamic> pos) {
+    final o = IndiaTicks.instance.data.value['opts'];
+    final sym = pos['symbol'];
+    if (o is Map && sym != null) {
+      final e = o['$sym'];
+      if (e is Map && e['lp'] is num && (e['lp'] as num) > 0) return e['lp'] as num;
+    }
+    return nd(pos['premium']);
   }
 
   Future<void> _refresh() async {
@@ -84,6 +111,12 @@ class _IndiaPaperScreenState extends State<IndiaPaperScreen> {
       setState(() {
         _st = st;
         _positions = (pos['positions'] as List?) ?? [];
+        final syms = <String>[];
+        for (final e in _positions) {
+          if (e is Map && e['symbol'] != null) syms.add('${e['symbol']}');
+        }
+        IndiaTicks.instance.setOptSymbols(syms);
+
         _error = null;
       });
     } catch (e) {
@@ -532,7 +565,7 @@ class _IndiaPaperScreenState extends State<IndiaPaperScreen> {
           Row(children: [
             IMetric('Qty', '${pos['qty']}'),
             IMetric('Avg ₹', num2(nd(pos['entry_premium']))),
-            IMetric('LTP ₹', num2(nd(pos['premium']))),
+            IMetric('LTP ₹', num2(nd(_livePremium(pos)))),
             IMetric('Spot', num2(nd(pos['spot']))),
           ]),
           const SizedBox(height: 8),

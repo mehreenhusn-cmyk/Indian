@@ -23,9 +23,9 @@ def make_router(require_api_token, data_dir):
         return {"positions": rt().positions()}
 
     @r.get("/ticks")
-    def ticks(_a=Depends(require_api_token)):
-        """Live index prices only (tiny, lock-free). The chart polls this about once a second."""
-        return rt().ticks()
+    def ticks(opt: Optional[str] = None, _a=Depends(require_api_token)):
+        """Live index + optional option LTPs (tiny, lock-free). opt=comma symbols, capped 40."""
+        return rt().ticks(opt=opt)
 
     @r.get("/candles")
     def candles(underlying: str = "NIFTY", limit: int = 150, tf: Optional[int] = None,

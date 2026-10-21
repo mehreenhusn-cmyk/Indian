@@ -1037,6 +1037,23 @@ class AppProvider extends ChangeNotifier {
     return null;
   }
 
+  Future<Map<String, dynamic>?> fetchVisionDay(int offset) async {
+    try {
+      final res = await http.get(_u('/api/vision/day?offset=$offset')).timeout(const Duration(seconds: 12));
+      if (res.statusCode == 200) return Map<String, dynamic>.from(jsonDecode(res.body) as Map);
+    } catch (_) {}
+    return null;
+  }
+
+  Future<Map<String, dynamic>?> fetchVisionDays({int n = 14}) async {
+    try {
+      final res = await http.get(_u('/api/vision/days?n=$n')).timeout(const Duration(seconds: 12));
+      if (res.statusCode == 200) return Map<String, dynamic>.from(jsonDecode(res.body) as Map);
+    } catch (_) {}
+    return null;
+  }
+
+
   /// AI Pick: TAKE / SKIP / WATCH on every bot signal + what the AI has proven (GET /api/ai/pick). Read-only.
   Future<Map<String, dynamic>?> fetchAiPick() => _getAiMap('/api/ai/pick', '');
 

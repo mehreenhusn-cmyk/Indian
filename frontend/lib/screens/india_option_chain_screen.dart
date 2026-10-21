@@ -1,3 +1,4 @@
+import '../services/india_ticks.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -34,18 +35,52 @@ class _IndiaChainTabState extends State<IndiaChainTab> {
   final GlobalKey _atmKey = GlobalKey();
   bool _centered = false; // scrolled to the ATM row once per index / expiry
 
+  DateTime _lastTickPaint = DateTime.fromMillisecondsSinceEpoch(0);
+
+  /// Fresh option prices arrived: repaint the price cells only (no chain reload).
+  void _onTickPrices() {
+    if (!mounted) return;
+    final now = DateTime.now();
+    if (now.difference(_lastTickPaint).inMilliseconds < 400) return;
+    _lastTickPaint = now;
+    setState(() {});
+  }
+
+  /// Live price for one option symbol from the fast feed, else the chain value.
+  num? _liveLtp(dynamic symbol, dynamic fallback) {
+    final o = IndiaTicks.instance.data.value['opts'];
+    if (o is Map && symbol != null) {
+      final e = o['$symbol'];
+      if (e is Map && e['lp'] is num && (e['lp'] as num) > 0) return e['lp'] as num;
+    }
+    return fallback is num ? fallback : null;
+  }
+
+  void _showSpeed() {
+    final d = IndiaTicks.instance.data.value;
+    showDialog(context: context, builder: (ctx) => AlertDialog(
+      title: const Text('India data speed'),
+      content: SingleChildScrollView(child: Text('${d['speed']}', style: const TextStyle(fontSize: 12))),
+      actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK'))],
+    ));
+  }
+
   @override
   void initState() {
     super.initState();
     _u = widget.unders.isNotEmpty ? widget.unders.first : 'NIFTY';
     _load();
-    _timer = Timer.periodic(const Duration(seconds: 2), (_) => _load());
+    _timer = Timer.periodic(const Duration(seconds: 5), (_) => _load());
+    IndiaTicks.instance.start(widget.api);
+    IndiaTicks.instance.data.addListener(_onTickPrices);
   }
 
   @override
   void dispose() {
     _scroll.dispose();
     _timer?.cancel();
+    IndiaTicks.instance.data.removeListener(_onTickPrices);
+    IndiaTicks.instance.stop();
     super.dispose();
   }
 
@@ -56,7 +91,21 @@ class _IndiaChainTabState extends State<IndiaChainTab> {
       final q = '/chain?underlying=$_u&width=12${_expiry != null ? '&expiry=$_expiry' : ''}';
       final ch = Map<String, dynamic>.from(await widget.api.get(q) as Map);
       if (mounted) {
+        // subscribe visible option symbols for fast LTP path
+        try {
+          final rows = (ch['rows'] as List?) ?? [];
+          final syms = <String>[];
+          for (final r in rows) {
+            if (r is Map) {
+              final ce = r['ce']; final pe = r['pe'];
+              if (ce is Map && ce['symbol'] != null) syms.add('${ce['symbol']}');
+              if (pe is Map && pe['symbol'] != null) syms.add('${pe['symbol']}');
+            }
+          }
+          IndiaTicks.instance.setOptSymbols(syms);
+        } catch (_) {}
         setState(() {
+
           _ch = ch;
           _error = null;
           _stale = ch['stale'] == true;
@@ -357,7 +406,7 @@ class _IndiaChainTabState extends State<IndiaChainTab> {
           child: Column(crossAxisAlignment: align, children: [
             Row(mainAxisSize: MainAxisSize.min, children: [
               if (pinned && side == 'CE') Icon(Icons.push_pin, size: 12, color: p.accent),
-              Text(c['ltp'] == null ? '—' : num2(nd(c['ltp'])), style: IT.h(context)),
+              Text(_liveLtp(c['symbol'], c['ltp']) == null ? '—' : num2(nd(_liveLtp(c['symbol'], c['ltp']))), style: IT.h(context)),
               if (pinned && side == 'PE') Icon(Icons.push_pin, size: 12, color: p.accent),
             ]),
             Text(

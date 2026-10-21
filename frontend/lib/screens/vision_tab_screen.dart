@@ -112,6 +112,11 @@ class _VisionTabScreenState extends State<VisionTabScreen> {
   final TextEditingController _notes = TextEditingController();
   bool _notesLoaded = false;
   bool _saving = false;
+  int _dayOffset = 0;
+  Map<String, dynamic>? _dayPayload;
+  bool _dayFailed = false;
+  int _timelineShow = 30;
+  List<dynamic>? _daysHistory;
 
   @override
   void initState() {
@@ -140,6 +145,29 @@ class _VisionTabScreenState extends State<VisionTabScreen> {
         _failed = true;
       }
     });
+    await _loadDay(_dayOffset);
+  }
+
+  Future<void> _loadDay(int offset) async {
+    final r = await context.read<AppProvider>().fetchVisionDay(offset);
+    if (!mounted) return;
+    setState(() {
+      _dayOffset = offset;
+      if (r != null) {
+        _dayPayload = r;
+        _dayFailed = false;
+        _timelineShow = 30;
+      } else {
+        _dayFailed = true;
+      }
+    });
+  }
+
+  Future<void> _loadDaysHistory() async {
+    if (_daysHistory != null) return;
+    final r = await context.read<AppProvider>().fetchVisionDays(n: 14);
+    if (!mounted || r == null) return;
+    setState(() => _daysHistory = (r['days'] is List) ? List.from(r['days'] as List) : []);
   }
 
   Future<void> _loadGuide() async {
@@ -630,10 +658,10 @@ class _VisionTabScreenState extends State<VisionTabScreen> {
 
   Widget _todayCard(AppPalette p, Map<String, dynamic> d) {
     final t = _m(d['today']);
-    if (t.isEmpty) {
-      // Old backend without the today block — hide, do not show an error.
-      return const SizedBox.shrink();
-    }
+    final y = _m(d['yesterday']);
+    final s = _m(d['summary']);
+    final allNet = _d(s['net']) ?? 0;
+    if (t.isEmpty) return const SizedBox.shrink();
     final signals = (_d(t['signals']) ?? 0).toInt();
     final taken = (_d(t['taken']) ?? 0).toInt();
     final skipped = (_d(t['skipped']) ?? 0).toInt();
@@ -642,28 +670,51 @@ class _VisionTabScreenState extends State<VisionTabScreen> {
     final openN = (_d(t['open']) ?? 0).toInt();
     final closedN = (_d(t['closed']) ?? 0).toInt();
     final net = _d(t['net']) ?? 0;
+    final unreal = _d(t['unrealized']) ?? 0;
+    // prefer live day payload unrealized if present
+    final daySum = _m(_dayPayload?['summary']);
+    final netToday = daySum.isNotEmpty ? (_d(daySum['net']) ?? net) : net;
+    final unrealToday = daySum.isNotEmpty ? (_d(daySum['unrealized']) ?? unreal) : unreal;
+    final winToday = daySum.isNotEmpty ? _d(daySum['win_rate']) : null;
+    final closedToday = daySum.isNotEmpty ? (_d(daySum['closed']) ?? closedN).toInt() : closedN;
+    final yNet = _d(y['net']);
+    final yClosed = (_d(y['closed']) ?? 0).toInt();
+    final totalToday = netToday + unrealToday;
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.cardGap),
       child: _VCard(
+        glow: totalToday >= 0 ? p.profit : p.loss,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text("What the AI did today", style: context.type.secondary.copyWith(fontWeight: FontWeight.w700)),
+            Text('TODAY (resets 5:30 AM IST)', style: context.type.secondary.copyWith(fontWeight: FontWeight.w700)),
+            const SizedBox(height: 4),
+            Text('Net after fees for this trading day only — not all-time.', style: context.type.metadata.copyWith(color: p.textMuted)),
+            const SizedBox(height: 8),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text('${fmtSigned(totalToday)} USDT', style: context.type.hero.copyWith(color: totalToday >= 0 ? p.profit : p.loss, fontSize: 32)),
+            ),
+            const SizedBox(height: 4),
+            Text('Closed ${fmtSigned(netToday)}  ·  Open ${fmtSigned(unrealToday)}  ·  $closedToday closed trades', style: context.type.metadata),
+            if (winToday != null) ...[
+              const SizedBox(height: 2),
+              Text('Win rate today ${winToday.toStringAsFixed(1)}%', style: context.type.metadata),
+            ],
             const SizedBox(height: 8),
             Text(
               signals == 0
-                  ? 'No bot signals for the AI yet today (day starts 5:30 AM IST).'
-                  : 'Bot signals today: $signals. AI TOOK $taken, SKIPPED $skipped, WAITING $waiting'
-                      '${notJudged > 0 ? ', NOT JUDGED $notJudged (AI busy, no quota or error)' : ''}.',
+                  ? 'No bot signals for the AI yet today.'
+                  : 'Signals today $signals → taken $taken / skipped $skipped / waiting $waiting'
+                      '${notJudged > 0 ? ' / not judged $notJudged' : ''}',
               style: context.type.metadata.copyWith(color: p.textPrimary, height: 1.35),
             ),
-            if (signals > 0) ...[
-              const SizedBox(height: 6),
-              Text(
-                'AI trades: $openN open, $closedN closed. Net after fees: ${net >= 0 ? '+' : ''}${net.toStringAsFixed(2)} USDT.',
-                style: context.type.metadata.copyWith(color: p.textSecondary, height: 1.35),
-              ),
-            ],
+            const SizedBox(height: 6),
+            Text(
+              'Yesterday: ${yNet == null ? '--' : fmtSigned(yNet)} (${yClosed} trades)   ·   All time: ${fmtSigned(allNet)}',
+              style: context.type.metadata.copyWith(color: p.textSecondary),
+            ),
           ],
         ),
       ),
@@ -690,35 +741,22 @@ class _VisionTabScreenState extends State<VisionTabScreen> {
           const VisionOwnScanLine(),
           _banner(p, d),
           _monitorCard(p, d),
+          // All-time summary kept compact (today is the hero above).
           _VCard(
-            glow: total >= 0 ? p.profit : p.loss,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const _VLabel('AI VIRTUAL ACCOUNT  ·  NET P&L'),
-                const SizedBox(height: 6),
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerLeft,
-                  child: Text('${fmtSigned(total)} USDT', style: context.type.hero.copyWith(color: total >= 0 ? p.profit : p.loss, fontSize: 32)),
-                ),
+                Text('All-time AI account', style: context.type.metadata.copyWith(fontWeight: FontWeight.w700)),
                 const SizedBox(height: 4),
-                Text('Closed ${fmtSigned(net)}  ·  Open ${fmtSigned(unreal)}  ·  after fees', style: context.type.metadata),
-                const SizedBox(height: 14),
-                Row(
-                  children: [
-                    Expanded(child: _VStat('WIN RATE', win == null ? '--' : '${win.toStringAsFixed(1)}%', sub: '${(_d(s['wins']) ?? 0).toInt()} of ${(_d(s['closed']) ?? 0).toInt()} closed')),
-                    Expanded(child: _VStat('PER TRADE', avg == null ? '--' : fmtSigned(avg, 3), sub: 'USDT average', color: avg == null ? null : (avg >= 0 ? p.profit : p.loss))),
-                    Expanded(child: _VStat('OPEN', '${opens.length}', sub: 'AI trades now')),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Text(_liveStory(s, d), style: context.type.metadata.copyWith(color: p.textPrimary, height: 1.4, fontSize: 12)),
-                const SizedBox(height: 12),
-                ..._liveMeters(p, s, d),
+                Text('Net ${fmtSigned(total)}  ·  win ${win == null ? '--' : '${win.toStringAsFixed(1)}%'}  ·  open ${opens.length}',
+                    style: context.type.metadata.copyWith(color: p.textSecondary)),
+                const SizedBox(height: 6),
+                Text(_liveStory(s, d), style: context.type.metadata.copyWith(color: p.textPrimary, height: 1.35, fontSize: 12)),
               ],
             ),
           ),
+          const SizedBox(height: AppSpacing.cardGap),
+          _dayTimelineSection(p),
           const SizedBox(height: AppSpacing.cardGap),
           _section('OPEN AI TRADES'),
           if (opens.isEmpty) _empty('No open AI trades.\nWhen the AI takes a bot signal it appears here with its stop, target and live P&L.'),
@@ -931,6 +969,185 @@ class _VisionTabScreenState extends State<VisionTabScreen> {
   }
 
   // ------------------------------------------------------------------ Results
+
+
+  Widget _dayTimelineSection(AppPalette p) {
+    final chips = <Widget>[];
+    final labels = ['Today', 'Yesterday'];
+    for (var i = 0; i < 7; i++) {
+      final label = i < 2 ? labels[i] : '-${i}d';
+      final selected = _dayOffset == i;
+      chips.add(Padding(
+        padding: const EdgeInsets.only(right: 6),
+        child: OWLPressable(
+          onTap: () => _loadDay(i),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: selected ? p.accent.withOpacity(0.18) : p.surfaceElevated,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: selected ? p.accent : p.border),
+            ),
+            child: Text(label, style: TextStyle(color: selected ? p.accent : p.textMuted, fontWeight: FontWeight.w600, fontSize: 12)),
+          ),
+        ),
+      ));
+    }
+    if (_dayFailed && _dayPayload == null) {
+      return _VCard(
+        child: Text('Day timeline needs a newer backend (/api/vision/day). Pull to refresh after updating.',
+            style: context.type.metadata.copyWith(color: p.warning)),
+      );
+    }
+    final rows = _l(_dayPayload?['rows']).map(_m).toList();
+    final note = (_dayPayload?['note'] ?? '').toString();
+    final show = rows.take(_timelineShow).toList();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Signal timeline', style: context.type.secondary.copyWith(fontWeight: FontWeight.w700)),
+        const SizedBox(height: 4),
+        Text('Each bot or own signal: what the bot did, what the AI decided, who was right.', style: context.type.metadata.copyWith(color: p.textMuted)),
+        const SizedBox(height: 8),
+        SingleChildScrollView(scrollDirection: Axis.horizontal, child: Row(children: chips)),
+        const SizedBox(height: 10),
+        if (rows.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: Text(note.isNotEmpty ? note : 'No signals on this day.', style: context.type.metadata.copyWith(color: p.textMuted)),
+          )
+        else ...[
+          for (final r in show) _timelineRow(p, r),
+          if (rows.length > _timelineShow)
+            OWLPressable(
+              onTap: () => setState(() => _timelineShow += 30),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Text('Show more (${rows.length - _timelineShow} left)', style: TextStyle(color: p.accent, fontWeight: FontWeight.w600)),
+              ),
+            ),
+        ],
+      ],
+    );
+  }
+
+  Widget _timelineRow(AppPalette p, Map<String, dynamic> r) {
+    final bot = _m(r['bot']);
+    final ai = _m(r['ai']);
+    final trade = _m(r['ai_trade']);
+    final own = (r['source'] ?? 'bot') == 'own';
+    final word = (ai['status_word'] ?? '').toString();
+    final delay = _d(ai['delay_s']);
+    String botChip;
+    if (bot['state'] == 'closed' && bot['pnl'] != null) {
+      botChip = 'BOT: opened, ${fmtSigned(_d(bot['pnl']) ?? 0)}';
+    } else if (bot['state'] == 'open') {
+      botChip = 'BOT: still open';
+    } else if (bot['state'] == 'none') {
+      botChip = 'BOT: no trade';
+    } else {
+      botChip = 'BOT: n/a';
+    }
+    String aiChip = 'AI: $word';
+    if (delay != null) {
+      aiChip += ' (${delay >= 60 ? '${(delay / 60).toStringAsFixed(0)} min' : '${delay.toStringAsFixed(0)}s'})';
+    }
+    if (trade['status'] == 'closed' && trade['pnl'] != null) {
+      aiChip = 'AI: $word ${fmtSigned(_d(trade['pnl']) ?? 0)}';
+    }
+    return OWLPressable(
+      onTap: () {
+        final id = (r['id'] ?? '').toString();
+        Map<String, dynamic>? dec;
+        for (final x in _l(_data?['decisions'])) {
+          final m = _m(x);
+          if (m['id'] == id) { dec = m; break; }
+        }
+        dec ??= {
+          'id': id,
+          'symbol': r['symbol'],
+          'side': r['side'],
+          'status': (word == 'TAKEN') ? 'taken' : 'skipped',
+          'reason': ai['reason'],
+          'sig_price': r['price'],
+        };
+        _openDetail(context, dec, trade.isEmpty ? null : trade);
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: p.surfaceElevated,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: p.border),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Text('${r['signal_ist'] ?? ''}', style: TextStyle(color: p.textMuted, fontSize: 12)),
+                const SizedBox(width: 8),
+                Expanded(child: Text('${r['symbol'] ?? ''}  ${r['side'] ?? ''}  ${_px(r['price'])}', style: TextStyle(color: p.textPrimary, fontWeight: FontWeight.w600, fontSize: 13))),
+                if (own)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(color: p.purple.withOpacity(0.15), borderRadius: BorderRadius.circular(4)),
+                    child: Text('OWN', style: TextStyle(color: p.purple, fontSize: 10, fontWeight: FontWeight.w700)),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text('$botChip   ·   $aiChip', style: TextStyle(color: p.textSecondary, fontSize: 12)),
+            if ((r['verdict'] ?? '').toString().isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text('${r['verdict']}', style: context.type.metadata.copyWith(color: p.textMuted, height: 1.3)),
+            ],
+            if ((ai['reason'] ?? '').toString().isNotEmpty)
+              Text('${ai['reason']}', style: context.type.metadata.copyWith(color: p.textSecondary, height: 1.3)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _dayHistoryTable(AppPalette p) {
+    _loadDaysHistory();
+    final days = (_daysHistory ?? []).map(_m).toList();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Day history', style: context.type.secondary.copyWith(fontWeight: FontWeight.w700)),
+        const SizedBox(height: 4),
+        Text('Last 14 trading days (5:30 AM IST). Tap a day to open its signal timeline on Live.', style: context.type.metadata.copyWith(color: p.textMuted)),
+        const SizedBox(height: 8),
+        if (days.isEmpty)
+          Text('No day history yet.', style: context.type.metadata.copyWith(color: p.textMuted))
+        else
+          for (var i = 0; i < days.length; i++)
+            OWLPressable(
+              onTap: () {
+                setState(() => _tab = 0);
+                _lastTab = 0;
+                _loadDay(i);
+              },
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                decoration: BoxDecoration(color: p.surfaceElevated, borderRadius: BorderRadius.circular(8), border: Border.all(color: p.border)),
+                child: Row(
+                  children: [
+                    SizedBox(width: 88, child: Text('${days[i]['date'] ?? ''}', style: TextStyle(color: p.textPrimary, fontSize: 12, fontWeight: FontWeight.w600))),
+                    Expanded(child: Text('sig ${days[i]['signals'] ?? 0}  took ${days[i]['taken'] ?? 0}  win ${days[i]['win_rate'] ?? '--'}%', style: TextStyle(color: p.textSecondary, fontSize: 11))),
+                    Text(fmtSigned(_d(days[i]['net']) ?? 0), style: TextStyle(color: (_d(days[i]['net']) ?? 0) >= 0 ? p.profit : p.loss, fontSize: 12, fontWeight: FontWeight.w700)),
+                  ],
+                ),
+              ),
+            ),
+      ],
+    );
+  }
+
   Widget _resultsTab(AppPalette p, Map<String, dynamic> d) {
     final s = _m(d['summary']);
     final taken = _m(s['bot_on_taken']);
@@ -954,6 +1171,8 @@ class _VisionTabScreenState extends State<VisionTabScreen> {
         padding: _pad,
         children: [
           const VisionCompareView(),
+          const SizedBox(height: 16),
+          _dayHistoryTable(p),
           const SizedBox(height: 16),
           _banner(p, d),
           _verdictCard(p, d),

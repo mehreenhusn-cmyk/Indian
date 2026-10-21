@@ -156,6 +156,12 @@ def init(path):
         PD.init(path)
         from . import ai_vision_exits as XE
         XE.init(path)
+        from . import ai_vision_days as VD
+        VD.init(path)
+        try:
+            VD.backfill(__import__('sys').modules[__name__])
+        except Exception as _e:
+            print(f'[Vision] days backfill: {_e}')
     except Exception as e:
         print(f"[Vision] init: {e}")
 
@@ -203,6 +209,12 @@ def _save(force=False):
             return
         try:
             from . import safe_io
+            try:
+                from . import ai_vision_days as VD
+                import sys
+                VD.rollup(sys.modules[__name__])
+            except Exception:
+                pass
             _state["dec"] = _state["dec"][-KEEP_DEC:]
             _state["trades"] = _state["trades"][-KEEP_TRADES:]
             safe_io.write_json_atomic(_file, _state)
@@ -1573,14 +1585,22 @@ def _indicator_use(decs):
 
 
 
-def _day0_ts():
-    """Same 5:30 AM IST trading-day boundary the app uses for Today P&L."""
+def _day0_ts(now=None):
+    """Same 5:30 AM IST trading-day boundary the app uses for Today P&L.
+    Optional now (unix epoch) lets tests plant times."""
+    if now is not None:
+        from datetime import datetime, timezone, timedelta
+        now = float(now)
+        ist = datetime.fromtimestamp(now, tz=timezone.utc) + timedelta(hours=5, minutes=30)
+        reset = ist.replace(hour=5, minute=30, second=0, microsecond=0)
+        if ist < reset:
+            reset = reset - timedelta(days=1)
+        return (reset - timedelta(hours=5, minutes=30)).timestamp()
     try:
         from . import trade_store
         return float(trade_store._trading_day_start_ts())
     except Exception:
         pass
-    # fallback: 5:30 IST without trade_store
     from datetime import datetime, timezone, timedelta
     ist = datetime.now(timezone.utc) + timedelta(hours=5, minutes=30)
     reset = ist.replace(hour=5, minute=30, second=0, microsecond=0)
@@ -1652,6 +1672,23 @@ def _today_block(trades, decs):
 
 
 
+
+def _yesterday_line(trades, decs):
+    """Small yesterday net for the Live hero sub-line."""
+    try:
+        from . import ai_vision_days as VD
+        import sys
+        row = VD.get_day_summary(sys.modules[__name__], 1)
+        return {"net": row.get("net"), "closed": row.get("closed"), "date": row.get("date")}
+    except Exception:
+        day0 = _day0_ts()
+        start, end = day0 - 86400, day0
+        closed = [t for t in trades if t.get("status") == "closed"
+                  and start <= float(t.get("opened_at") or 0) < end]
+        return {"net": round(sum(float(t.get("pnl") or 0) for t in closed), 2), "closed": len(closed), "date": None}
+
+
+
 def snapshot(limit=80):
     _load()
     bm = _bot_outcomes()
@@ -1712,6 +1749,7 @@ def snapshot(limit=80):
         "open": ov, "closed": [_trade_view(t) for t in reversed(closed[-40:])], "decisions": out_dec, "log": log,
         "indicator_use": _indicator_use(decs),
         "today": _today_block(trades, decs),
+        "yesterday": _yesterday_line(trades, decs),
     }
 
 

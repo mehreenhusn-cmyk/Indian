@@ -463,6 +463,22 @@ class FyersProvider(LiveProvider):
         except BrokerError:
             rows = []
         out = self._to_candles(rows)
+        # F4: always refresh the forming bucket from WS ticks so the newest bar moves ~1s
+        try:
+            tf_s = tf * 60
+            now = time.time()
+            k = int(now // tf_s) * tf_s
+            ticks = self._ticks.get(c["symbol"], [])
+            pxes = [px for ts, px in ticks if int(ts // tf_s) * tf_s == k]
+            if pxes:
+                forming = dict(t=datetime.fromtimestamp(k, tz=timezone.utc).astimezone(IST),
+                               o=pxes[0], h=max(pxes), l=min(pxes), c=pxes[-1], v=0.0)
+                if out and int(out[-1]["t"].timestamp()) == int(k):
+                    out[-1] = forming
+                elif not out or int(out[-1]["t"].timestamp()) < int(k):
+                    out.append(forming)
+        except Exception:
+            pass
         if len(out) >= 3:
             return out[-limit:], "REAL"
         # fallback: candles built from the premiums this app has polled

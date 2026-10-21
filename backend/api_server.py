@@ -961,6 +961,23 @@ async def vision_own_toggle(payload: dict, _auth=Depends(require_api_token)):
     return {"ok": True, "enabled": on}
 
 
+
+@app.get("/api/vision/day")
+async def vision_day(offset: int = 0):
+    """One trading day (5:30 AM IST): summary + signal timeline. offset=0 today, 1 yesterday."""
+    from recovered_bot import ai_vision, ai_vision_days
+    off = max(0, min(int(offset or 0), 60))
+    return await asyncio.to_thread(ai_vision_days.day_payload, ai_vision, off)
+
+
+@app.get("/api/vision/days")
+async def vision_days(n: int = 14):
+    """Last N trading-day summary rows (today live)."""
+    from recovered_bot import ai_vision, ai_vision_days
+    nn = max(1, min(int(n or 14), 60))
+    return {"days": await asyncio.to_thread(ai_vision_days.list_days, ai_vision, nn)}
+
+
 @app.get("/api/vision/exits")
 async def vision_exits():
     from recovered_bot import ai_vision_exits
