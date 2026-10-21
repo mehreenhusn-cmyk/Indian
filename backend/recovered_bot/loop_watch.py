@@ -24,7 +24,7 @@ import time
 import traceback
 from collections import deque
 
-STALL_S = 1.5            # loop silent for this long = a stall worth recording
+STALL_S = 0.8            # loop silent for this long = a stall worth recording
 _DUMP_EVERY_S = 15.0     # at most one stack dump per this many seconds (log stays readable)
 
 _beat = 0.0              # perf_counter() of the last heartbeat

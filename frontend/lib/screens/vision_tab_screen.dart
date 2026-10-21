@@ -113,6 +113,7 @@ class _VisionTabScreenState extends State<VisionTabScreen> {
   bool _notesLoaded = false;
   bool _saving = false;
   int _dayOffset = 0;
+  String _srcFilter = 'All';
   Map<String, dynamic>? _dayPayload;
   bool _dayFailed = false;
   int _timelineShow = 30;
@@ -712,6 +713,15 @@ class _VisionTabScreenState extends State<VisionTabScreen> {
             ),
             const SizedBox(height: 6),
             Text(
+              'From bot signals: ${fmtSigned(_d(daySum['net_bot_source']) ?? 0)} (${(_d(daySum['closed_bot']) ?? 0).toInt()} trades)',
+              style: context.type.metadata.copyWith(color: p.textSecondary),
+            ),
+            Text(
+              'From AI own scan: ${fmtSigned(_d(daySum['net_own_source']) ?? 0)} (${(_d(daySum['closed_own']) ?? 0).toInt()} trades)',
+              style: context.type.metadata.copyWith(color: p.textSecondary),
+            ),
+            const SizedBox(height: 4),
+            Text(
               'Yesterday: ${yNet == null ? '--' : fmtSigned(yNet)} (${yClosed} trades)   ·   All time: ${fmtSigned(allNet)}',
               style: context.type.metadata.copyWith(color: p.textSecondary),
             ),
@@ -999,7 +1009,9 @@ class _VisionTabScreenState extends State<VisionTabScreen> {
             style: context.type.metadata.copyWith(color: p.warning)),
       );
     }
-    final rows = _l(_dayPayload?['rows']).map(_m).toList();
+    var rows = _l(_dayPayload?['rows']).map(_m).toList();
+    if (_srcFilter == 'Bot') rows = rows.where((r) => (r['source'] ?? 'bot') != 'own').toList();
+    if (_srcFilter == 'Own') rows = rows.where((r) => (r['source'] ?? 'bot') == 'own').toList();
     final note = (_dayPayload?['note'] ?? '').toString();
     final show = rows.take(_timelineShow).toList();
     return Column(
@@ -1010,6 +1022,26 @@ class _VisionTabScreenState extends State<VisionTabScreen> {
         Text('Each bot or own signal: what the bot did, what the AI decided, who was right.', style: context.type.metadata.copyWith(color: p.textMuted)),
         const SizedBox(height: 8),
         SingleChildScrollView(scrollDirection: Axis.horizontal, child: Row(children: chips)),
+        const SizedBox(height: 8),
+        Row(children: [
+          for (final f in ['All', 'Bot', 'Own'])
+            Padding(
+              padding: const EdgeInsets.only(right: 6),
+              child: OWLPressable(
+                onTap: () => setState(() { _srcFilter = f; _timelineShow = 30; }),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: _srcFilter == f ? p.accent.withOpacity(0.18) : p.surfaceElevated,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: _srcFilter == f ? p.accent : p.border),
+                  ),
+                  child: Text(f == 'Bot' ? 'Bot signals' : (f == 'Own' ? 'AI own' : 'All'),
+                      style: TextStyle(color: _srcFilter == f ? p.accent : p.textMuted, fontWeight: FontWeight.w600, fontSize: 12)),
+                ),
+              ),
+            ),
+        ]),
         const SizedBox(height: 10),
         if (rows.isEmpty)
           Padding(
@@ -1089,12 +1121,14 @@ class _VisionTabScreenState extends State<VisionTabScreen> {
                 Text('${r['signal_ist'] ?? ''}', style: TextStyle(color: p.textMuted, fontSize: 12)),
                 const SizedBox(width: 8),
                 Expanded(child: Text('${r['symbol'] ?? ''}  ${r['side'] ?? ''}  ${_px(r['price'])}', style: TextStyle(color: p.textPrimary, fontWeight: FontWeight.w600, fontSize: 13))),
-                if (own)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(color: p.purple.withOpacity(0.15), borderRadius: BorderRadius.circular(4)),
-                    child: Text('OWN', style: TextStyle(color: p.purple, fontSize: 10, fontWeight: FontWeight.w700)),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: own ? p.purple.withOpacity(0.15) : p.textMuted.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(4),
                   ),
+                  child: Text(own ? 'AI OWN' : 'BOT', style: TextStyle(color: own ? p.purple : p.textMuted, fontSize: 10, fontWeight: FontWeight.w700)),
+                ),
               ],
             ),
             const SizedBox(height: 4),

@@ -408,11 +408,18 @@ def timeline(V, offset=0, limit=200, now=None):
                 reason = str(tr.get("exit_reason") or "").lower()
                 status_word = "STOPPED" if "stop" in reason else "EXITED"
             ai_trade = {
+                "id": tr.get("id"),
                 "status": tr.get("status"),
+                "side": tr.get("side"),
+                "entry": tr.get("entry"),
+                "sl": tr.get("sl"),
+                "target": tr.get("target"),
+                "exit": tr.get("exit"),
                 "pnl": tr.get("pnl"),
                 "exit_reason": tr.get("exit_reason"),
                 "partial": bool(tr.get("partial_done")),
                 "partial_pnl": tr.get("partial_pnl"),
+                "source": tr.get("source") or "bot",
             }
 
         sig_t = float(d.get("sig_time") or 0)

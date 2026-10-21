@@ -168,6 +168,43 @@ class IndiaRuntime:
         self.runner._last.clear()
 
     # ------------------------------------------------------------ loop ---
+
+    def prewarm_indexes(self):
+        """Background warm of index candles + first chain. Outside lock, rate-limit aware."""
+        def work():
+            try:
+                p = self.provider
+                if not getattr(p, "is_live", False):
+                    return
+                unders = ["NIFTY", "BANKNIFTY", "FINNIFTY"]
+                tfs = [1, 5, 15]
+                calls = 0
+                cap = 20  # stay under Fyers 50/min
+                for u in unders:
+                    for tf in tfs:
+                        if calls >= cap:
+                            return
+                        try:
+                            p.get_candles(u, tf, 400)
+                            calls += 1
+                            time.sleep(0.35)
+                        except Exception:
+                            pass
+                    if calls >= cap:
+                        return
+                    try:
+                        self.chain(u, width=8)
+                        calls += 1
+                        time.sleep(0.35)
+                    except Exception:
+                        pass
+            except Exception as e:
+                try:
+                    log.exception("prewarm_indexes: %s", e)
+                except Exception:
+                    pass
+        threading.Thread(target=work, name="india-prewarm", daemon=True).start()
+
     def _prewarm(self, positions=(), unders=(), candles=False):
         """Network fetches done OUTSIDE self.lock. They only fill the provider cache (own lock), so the code that
         runs under self.lock later reads warm data and returns fast. Same calls the engine/runner make -> same data.
@@ -530,6 +567,10 @@ class IndiaRuntime:
             if not (self.thread and self.thread.is_alive()):
                 self.thread = threading.Thread(target=self._loop, daemon=True, name="india_paper")
                 self.thread.start()
+        try:
+            self.prewarm_indexes()          # background thread, runs outside the lock
+        except Exception:
+            pass
 
     def stop(self):
         with self.lock:
@@ -1024,6 +1065,35 @@ class IndiaRuntime:
             forming = bool(cs) and cs[-1]["t"] + timedelta(minutes=tf) > pv.now()
             n_closed = len(cs) - (1 if forming else 0)
             cs, ics = self._pack(cs, n_closed, limit)
+            # Option Z-SMA 200 rarely starts (few candles). Overlay the underlying INDEX Z-SMA on the same axis.
+            try:
+                sp = list(pv.get_candles(c["underlying"], tf, limit + warm))
+                last_i = pv.get_forming_candle(c["underlying"], tf)
+                if last_i and (not sp or last_i["t"] > sp[-1]["t"]):
+                    sp.append(last_i)
+                sp, i_ics = self._pack(sp, len(sp), limit)
+                # map index zsma by timestamp onto option candle times
+                idx_map = {}
+                zlist = (i_ics.get("z") or {}).get("zsma") or (i_ics.get("z") or {}).get("sma2") or []
+                # indicators structure may use different keys - also try raw
+                if not zlist and isinstance(i_ics.get("z"), dict):
+                    for kk, vv in i_ics["z"].items():
+                        if "sma" in str(kk).lower() and isinstance(vv, list):
+                            zlist = vv
+                            break
+                for j, row in enumerate(sp[-len(zlist):] if zlist else []):
+                    if j < len(zlist) and zlist[j] is not None:
+                        idx_map[row["t"]] = zlist[j]
+                # Prefer attaching parallel array same length as shown candles
+                opt_rows = self._candle_rows(cs, ics)
+                zsma_index = []
+                for row in (cs[-len(opt_rows):] if opt_rows else []):
+                    zsma_index.append(idx_map.get(row["t"]))
+                if "z" not in ics or not isinstance(ics["z"], dict):
+                    ics["z"] = dict(ics.get("z") or {})
+                ics["z"]["zsma_index"] = zsma_index
+            except Exception as _e:
+                pass
             return {"key": key, "underlying": c["underlying"], "strike": c["strike"], "type": c["type"],
                     "expiry": c["expiry"].isoformat(), "tf": tf, "bot_tf": int(self.settings["tf"]),
                     "tf_choices": list(TF_CHOICES), "live": self.live is not None, "forming": forming,

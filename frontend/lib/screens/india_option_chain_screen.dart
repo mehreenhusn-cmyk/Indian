@@ -24,6 +24,10 @@ class IndiaChainTab extends StatefulWidget {
 
 class _IndiaChainTabState extends State<IndiaChainTab> {
   Timer? _timer;
+  static final Map<String, Map<String, dynamic>> _chainCache = {};
+  DateTime? _loadStarted;
+  bool _slowLoad = false;
+
   bool _busy = false;
   String? _error;
   bool _stale = false; // Fyers limit: the chain on screen is the last good one
@@ -69,8 +73,17 @@ class _IndiaChainTabState extends State<IndiaChainTab> {
   void initState() {
     super.initState();
     _u = widget.unders.isNotEmpty ? widget.unders.first : 'NIFTY';
+    _loadStarted = DateTime.now();
+    _ch = _chainCache['$_u|$_expiry'];      // show the last chain at once, refresh in the background
     _load();
     _timer = Timer.periodic(const Duration(seconds: 5), (_) => _load());
+    // Refresh spinner text after 8s without a full rebuild storm
+    Timer.periodic(const Duration(seconds: 2), (tm) {
+      if (!mounted) { tm.cancel(); return; }
+      if (_ch == null && _loadStarted != null && DateTime.now().difference(_loadStarted!).inSeconds >= 8 && !_slowLoad) {
+        setState(() => _slowLoad = true);
+      }
+    });
     IndiaTicks.instance.start(widget.api);
     IndiaTicks.instance.data.addListener(_onTickPrices);
   }
@@ -107,8 +120,11 @@ class _IndiaChainTabState extends State<IndiaChainTab> {
         setState(() {
 
           _ch = ch;
+          _chainCache['$_u|$_expiry'] = Map<String, dynamic>.from(ch);
+          if (_chainCache.length > 12) _chainCache.remove(_chainCache.keys.first);
           _error = null;
           _stale = ch['stale'] == true;
+          _slowLoad = false;
           _note = '${ch['error'] ?? ''}';
         });
         if (!_centered) _centerOnSpot();
@@ -219,7 +235,15 @@ class _IndiaChainTabState extends State<IndiaChainTab> {
                   setState(() {
                     _u = v;
                     _expiry = null;
-                    _ch = null;
+                    final cacheKey = '$_u|$_expiry';
+                    final cached = _chainCache[cacheKey];
+                    if (cached != null) {
+                      _ch = cached;
+                    } else {
+                      _ch = null;
+                      _loadStarted = DateTime.now();
+                      _slowLoad = false;
+                    }
                     _centered = false;
                   });
                   _load();
@@ -251,7 +275,29 @@ class _IndiaChainTabState extends State<IndiaChainTab> {
           controller: _scroll,
           padding: const EdgeInsets.fromLTRB(AppSpacing.l, 0, AppSpacing.l, AppSpacing.l),
           children: [
-            if (ch == null && _error == null) const Center(child: Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator())),
+            if (ch == null && _error == null)
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const CircularProgressIndicator(),
+                      const SizedBox(height: 12),
+                      Text(
+                        (_loadStarted != null && DateTime.now().difference(_loadStarted!).inSeconds >= 8)
+                            ? 'Still loading. The broker is slow. Retrying.'
+                            : 'Loading $_u chain...',
+                        textAlign: TextAlign.center,
+                      ),
+                      if (_loadStarted != null && DateTime.now().difference(_loadStarted!).inSeconds >= 8) ...[
+                        const SizedBox(height: 8),
+                        TextButton(onPressed: _load, child: const Text('Retry')),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
             if (parts != null) ...parts[1],
           ],
         ),

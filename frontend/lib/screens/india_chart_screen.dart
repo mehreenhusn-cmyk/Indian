@@ -56,6 +56,10 @@ class _IndiaChartScreenState extends State<IndiaChartScreen> {
   Set<String> _on = {..._kAllInd};
   SmSettings _sm = SmSettings.defaults(); // your Special Master (TSI + Z-score) settings, same as the crypto chart
   SpecialMasterData? _smData;
+  static final Map<String, Map<String, dynamic>> _candleCache = {};
+  bool _updating = false;
+
+  List<double?> _zsmaIndex = const []; // option chart: underlying index Z-SMA 200
   List<_C>? _smFor;
   String _smKey = '';
   String _source = '', _optErr = '', _feedMode = '', _note = '';
@@ -184,13 +188,24 @@ class _IndiaChartScreenState extends State<IndiaChartScreen> {
       if (!mounted) return;
       if (reqU != _u || (reqTf != _tf && reqTf != 0)) return; // the answer is for the index / timeframe you just left: drop it
       final cs = ((d['candles'] as List?) ?? []).map((e) => _C.from(Map<String, dynamic>.from(e as Map))).toList();
-      final ser = _Ser.from(Map<String, dynamic>.from((d['indicators'] as Map?) ?? {}));
+      final indMap = Map<String, dynamic>.from((d['indicators'] as Map?) ?? {});
+      final ser = _Ser.from(indMap);
+      final zMap = Map<String, dynamic>.from((indMap['z'] as Map?) ?? {});
+      final rawIdx = zMap['zsma_index'];
+      final idxList = <double?>[];
+      if (rawIdx is List) {
+        for (final v in rawIdx) {
+          idxList.add(v == null ? null : (v is num ? v.toDouble() : double.tryParse('$v')));
+        }
+      }
+
       if (!mounted) return;
       setState(() {
         final grew = cs.length - _c.length;
         if (_shift > 0.5 && grew > 0 && _c.isNotEmpty) _shift += grew; // keep the view still while you look back
         _c = cs;
         _s = ser;
+        _zsmaIndex = idxList;
         _levels = ((d['levels'] as List?) ?? []).map((e) => Map<String, dynamic>.from(e as Map)).toList();
         _tf = nd(d['tf']).toInt();
         _botTf = nd(d['bot_tf']).toInt();
@@ -334,8 +349,19 @@ class _IndiaChartScreenState extends State<IndiaChartScreen> {
     if (_c.length < 60 || (!_sm.tsiOn && !_sm.zOn)) return null;
     final key = _sm.computeKey;
     if (!identical(_smFor, _c) || _smKey != key || _smData == null) {
-      _smData = SpecialMasterData.compute(_c.map((e) => e.c).toList(),
+      var data = SpecialMasterData.compute(_c.map((e) => e.c).toList(),
           st: _sm, o: _c.map((e) => e.o).toList(), h: _c.map((e) => e.h).toList(), l: _c.map((e) => e.l).toList());
+      // Option charts rarely have 400 candles: use underlying index Z-SMA when the backend sent it.
+      if (_isOpt && _zsmaIndex.isNotEmpty) {
+        final n = data.n;
+        final idx = List<double?>.generate(n, (i) {
+          final j = _zsmaIndex.length - n + i;
+          return (j >= 0 && j < _zsmaIndex.length) ? _zsmaIndex[j] : null;
+        });
+        data = SpecialMasterData(data.z, data.zO, data.zH, data.zL, data.zSma1, idx, data.ucl, data.lcl,
+            data.tsi, data.tsl, data.diff, data.warn, data.barTint, data.cross);
+      }
+      _smData = data;
       _smFor = _c;
       _smKey = key;
     }
@@ -484,7 +510,9 @@ class _IndiaChartScreenState extends State<IndiaChartScreen> {
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           const CircularProgressIndicator(),
           const SizedBox(height: 12),
-          Text('Loading ${_isOpt ? 'option' : _u} candles... the first open of an index can take a few seconds.',
+          Text(_updating
+              ? 'Updating ${_isOpt ? 'option' : _u}...'
+              : 'Loading ${_isOpt ? 'option' : _u} candles... the first open of an index can take a few seconds.',
               textAlign: TextAlign.center, style: IT.small(context)),
         ]),
       );

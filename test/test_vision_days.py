@@ -146,10 +146,53 @@ def test_dart_has_old_backend_note():
     print("dart old-backend note OK")
 
 
+def test_timeline_trade_fields_and_title():
+    """Timeline ai_trade carries entry/sl/target/id for the detail sheet."""
+    import tempfile, time
+    from recovered_bot import ai_vision as V
+    from recovered_bot import ai_vision_days as VD
+    with tempfile.TemporaryDirectory() as td:
+        V.init(td)
+        VD.init(td)
+        V._loaded = True
+        VD._loaded = True
+        now = time.time()
+        day0 = VD.day0_ts(now)
+        with V._lock:
+            V._state["dec"] = [{
+                "id": "s99", "signal_no": 99, "symbol": "MEWUSDT", "side": "BUY",
+                "status": "taken", "sig_time": day0 + 100, "decided_at": day0 + 120,
+                "source": "own", "sig_price": 0.01, "reason": "ok",
+            }]
+            V._state["trades"] = [{
+                "id": "vo99", "dec_id": "s99", "symbol": "MEWUSDT", "side": "BUY",
+                "status": "closed", "entry": 0.01, "sl": 0.009, "target": 0.012,
+                "exit": 0.008, "opened_at": day0 + 120, "closed_at": day0 + 500,
+                "pnl": -18.99, "roi": -10, "source": "own", "exit_reason": "stop",
+            }]
+        rows, _ = VD.timeline(V, 0, 50, day0 + 1000)
+        assert rows, "expected timeline rows"
+        r = rows[0]
+        at = r["ai_trade"]
+        assert at["id"] == "vo99"
+        assert at["entry"] == 0.01
+        assert at["sl"] == 0.009
+        assert at["target"] == 0.012
+        assert at["source"] == "own"
+        # chart title source-aware
+        import inspect
+        src = inspect.getsource(V.render_chart)
+        assert "AI own signal" in src and "bot signal" in src
+        print("timeline trade fields + title OK")
+
+
 if __name__ == "__main__":
     test_day_boundary()
     test_rollup_idempotent_and_verdicts()
     test_today_yesterday_split()
     test_missing_store_no_crash()
     test_dart_has_old_backend_note()
+    test_timeline_trade_fields_and_title()
     print("\nALL test_vision_days passed")
+
+

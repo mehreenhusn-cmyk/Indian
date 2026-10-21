@@ -626,8 +626,8 @@ class SpecialMasterPainter extends CustomPainter {
     if (st.b('zSma')) {
       if (st.b('sma1')) _drawRuns(canvas, d.zSma1, y, line(_vis(st.c('cSma1')), 1.0), i0, i1);
       if (st.b('sma2')) {
-        _drawRuns(canvas, d.zSma2, y, line(_vis(st.c('cSma2')), 1.0), i0, i1);
-        // Honest note when history is too short for Z-SMA 200 (needs ~400 candles).
+        // Thicker than Z so the average is easy to see; _vis makes black -> white in dark mode.
+        _drawRuns(canvas, d.zSma2, y, line(_vis(st.c('cSma2')), 2.0), i0, i1);
         int ok = 0, tot = 0;
         for (int i = i0; i <= i1 && i < d.zSma2.length; i++) {
           tot++;

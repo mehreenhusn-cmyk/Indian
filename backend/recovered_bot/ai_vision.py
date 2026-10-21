@@ -397,7 +397,7 @@ def _indicator_summary(lv, side, feat=None):
     return out
 
 
-def render_chart(symbol, candles, tf_label, side=None, marks=None, title_extra=""):
+def render_chart(symbol, candles, tf_label, side=None, marks=None, title_extra="", source=None):
     """PNG bytes of the chart the AI (and the owner) sees. marks: entry, sl, target, exit, bar_ts."""
     from PIL import Image, ImageDraw, ImageFont
     marks = marks or {}
@@ -566,7 +566,13 @@ def render_chart(symbol, candles, tf_label, side=None, marks=None, title_extra="
     # Z lines
     zc = [None if v is None else max(-ZR, min(ZR, v)) for v in f["z"]]
     poly(zc, gz, (60, 60, 60), 1)
-    poly([None if v is None else max(-ZR, min(ZR, v)) for v in f["zsma"]], gz, (0, 0, 0), 3)
+    zsma_draw = [None if v is None else max(-ZR, min(ZR, v)) for v in f.get("zsma") or []]
+    poly(zsma_draw, gz, (0, 0, 0), 4)  # thicker than Z so the average line stands out
+    # label at the right end of the last non-None Z-SMA point
+    for _i in range(n - 1, lo - 1, -1):
+        if _i < len(zsma_draw) and zsma_draw[_i] is not None:
+            d.text((min(sx(_i) + 4, x1 - 70), gz(zsma_draw[_i]) - 10), "Z-SMA 200", fill=(0, 0, 0), font=f12)
+            break
 
     # ---- marks (entry / stop / target / exit)
     def hline(v, col, label, dashed=True):
@@ -628,7 +634,11 @@ def render_chart(symbol, candles, tf_label, side=None, marks=None, title_extra="
     for k in range(5):
         i = lo + int((nb - 1) * k / 4.0)
         d.text((max(2, sx(i) - 28), PZ[1] + 8), _ist(f["t"][i] / 1000.0)[-5:], fill=(90, 90, 90), font=f12)
-    sig = f"  |  bot signal: {_side_word(side)}" if side else ""
+    src = (source or (marks or {}).get("source") or "bot")
+    if side:
+        sig = f"  |  AI own signal: {_side_word(side)}" if src == "own" else f"  |  bot signal: {_side_word(side)}"
+    else:
+        sig = ""
     d.text((x0, 10), f"{symbol}   {tf_label}{sig}", fill=(20, 20, 20), font=f18)
     d.text((x0, 34), "Green line EMA30  |  Red line EMA50  |  curved bands = SD 1/2/3 (dark = mean/1SD)" + (f"   {title_extra}" if title_extra else ""), fill=(100, 100, 100), font=f12)
     d.text((x0 + 4, PT[0] + 4), "TSI: grey = value, thick = signal line (4 colours)", fill=(100, 100, 100), font=f12)
@@ -640,6 +650,7 @@ def render_chart(symbol, candles, tf_label, side=None, marks=None, title_extra="
         d.text((x0 + 4, PZ[0] + 4), znote, fill=(180, 100, 40), font=f12)
     else:
         d.text((x0 + 4, PZ[0] + 4), "Z-SCORE: green/red area, black line = Z-SMA 200", fill=(100, 100, 100), font=f12)
+        d.text((x0 + 4, PZ[0] + 18), "Black Z-SMA 200 = average Z (support from above / resistance from below)", fill=(90, 90, 90), font=f12)
     d.text((x1 - 120, 10), _ist(f["t"][-1] / 1000.0) + " IST", fill=(100, 100, 100), font=f12)
 
     buf = io.BytesIO()
@@ -1241,7 +1252,7 @@ def _process_signal(rec):
     price = _live_price(sym) or candles[-1]["close"]
     rec["bar_ts"] = candles[-1]["timestamp"]
     try:
-        png = render_chart(sym, candles, _tf_label(tf), rec["side"], {"bar_ts": rec["bar_ts"]})
+        png = render_chart(sym, candles, _tf_label(tf), rec["side"], {"bar_ts": rec["bar_ts"], "source": rec.get("source") or "bot"}, source=rec.get("source") or "bot")
         _f_, _e, lv = _levels(candles)
         try:                                               # measured tags for the learning notebook (plain arithmetic, no AI)
             from . import ai_vision_lessons as L
@@ -1356,7 +1367,7 @@ def _review(tr, why):
         candles = _fetch(sym, tf)
         price = _live_price(sym) or candles[-1]["close"]
         marks = {"entry": tr["entry"], "sl": tr["sl"], "target": tr.get("target"), "bar_ts": tr.get("bar_ts")}
-        png = render_chart(sym, candles, _tf_label(tf), tr["side"], marks)
+        png = render_chart(sym, candles, _tf_label(tf), tr["side"], marks, source=tr.get("source") or "bot")
         _f_, _e, lv = _levels(candles)
     except Exception as e:
         tr["last_review_bar"] = _bar_start(time.time(), tf)
@@ -1778,7 +1789,7 @@ def image_bytes(item_id, live=False):
         marks.update(entry=tr["entry"], sl=tr["sl"], target=tr.get("target"), exit=tr.get("exit"))
     elif dec and dec.get("stop"):
         marks.update(sl=dec.get("stop"), target=dec.get("target"))
-    return render_chart(src["symbol"], candles, _tf_label(src["tf_min"]), src["side"], marks)
+    return render_chart(src["symbol"], candles, _tf_label(src["tf_min"]), src["side"], marks, source=src.get("source") or "bot")
 
 
 def set_notes(text):
