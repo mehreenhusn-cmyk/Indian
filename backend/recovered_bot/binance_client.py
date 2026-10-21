@@ -248,17 +248,86 @@ def get_price(symbol):
     return float(data["price"])
 
 
-def get_klines(symbol, granularity_min=None, limit=250, fast=False):
+# ---- ONE SHARED CANDLE STORE ----------------------------------------------
+# Many parts of the backend ask for the same coin's candles. Before, each one called Binance on its own
+# (~128 REST calls a minute). Now the rows are kept here and shared:
+#   closed_only=True  (signals, trade management): the closed candles cannot change until the forming
+#                     candle closes, so the stored rows are reused until then - no matter who asks.
+#   closed_only=False (chart display with the live forming candle): reused for only a few seconds.
+# Never raises from the cache itself; on any doubt it just asks Binance like before.
+import threading as _threading
+
+_KLINE_LIVE_TTL_S = 3.0
+_KLINE_MAX_KEYS = 400
+_kline_cache = {}                       # (symbol, interval) -> {"rows": [...], "at": epoch_s}
+_kline_lock = _threading.Lock()
+_kline_stats = {"hits": 0, "misses": 0}
+
+
+def kline_cache_stats():
+    with _kline_lock:
+        d = dict(_kline_stats)
+        d["keys"] = len(_kline_cache)
+    n = d["hits"] + d["misses"]
+    d["hit_pct"] = round(100.0 * d["hits"] / n, 1) if n else None
+    return d
+
+
+def _kline_now_ms():
+    return time.time() * 1000.0 + _time_offset_ms
+
+
+def _kline_cached(key, limit, closed_only, interval_ms):
+    with _kline_lock:
+        e = _kline_cache.get(key)
+    if not e or len(e["rows"]) < limit:
+        return None
+    rows = e["rows"]
+    if closed_only:
+        # valid until the last stored (forming) candle has closed
+        if _kline_now_ms() < int(rows[-1][0]) + interval_ms:
+            return rows[-limit:]
+        return None
+    if time.time() - e["at"] < _KLINE_LIVE_TTL_S:
+        return rows[-limit:]
+    return None
+
+
+def get_klines(symbol, granularity_min=None, limit=250, fast=False, closed_only=False):
     """Oldest-first candles, same dict shape as kucoin_client.get_klines().
     Binance returns up to 1500 rows per call - no pagination needed for any
-    limit this app actually uses."""
+    limit this app actually uses. Rows come from the shared candle store when they are still valid."""
     granularity_min = granularity_min or GRANULARITY_MIN
     interval = _interval_str(granularity_min)
     limit = max(1, min(int(limit), 1500))
+    key = (symbol, interval)
+    interval_ms = int(granularity_min) * 60000
 
-    data = _get("/fapi/v1/klines", {
-        "symbol": symbol, "interval": interval, "limit": limit,
-    }, fast=fast)
+    data = None
+    try:
+        data = _kline_cached(key, limit, closed_only, interval_ms)
+    except Exception:
+        data = None
+    if data is not None:
+        with _kline_lock:
+            _kline_stats["hits"] += 1
+    else:
+        with _kline_lock:
+            _kline_stats["misses"] += 1
+        # fetch a little more than asked so a later, slightly bigger request is still a hit
+        want = min(1500, max(limit, 300))
+        data = _get("/fapi/v1/klines", {
+            "symbol": symbol, "interval": interval, "limit": want,
+        }, fast=fast)
+        try:
+            with _kline_lock:
+                if len(_kline_cache) >= _KLINE_MAX_KEYS:
+                    for k in sorted(_kline_cache, key=lambda k: _kline_cache[k]["at"])[:50]:
+                        _kline_cache.pop(k, None)
+                _kline_cache[key] = {"rows": data, "at": time.time()}
+        except Exception:
+            pass
+        data = data[-limit:]
 
     candles = []
     for row in data:

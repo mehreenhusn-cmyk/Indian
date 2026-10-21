@@ -175,11 +175,23 @@ def tighten_stop_only(tr, new_stop):
             if new_stop <= cur:
                 return False
             tr["sl"] = new_stop
+            _trail(tr)
             return True
         else:
             if new_stop >= cur and cur > 0:
                 return False
             tr["sl"] = new_stop
+            _trail(tr)
             return True
     except Exception:
         return False
+
+
+def _trail(tr):
+    try:
+        import time as _t
+        tl = tr.setdefault("trail", [])
+        tl.append({"t": _t.time(), "kind": "stop", "sl": tr.get("sl"), "price": None})
+        del tl[:-40]
+    except Exception:
+        pass

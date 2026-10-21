@@ -144,7 +144,7 @@ def test_no_regressions_of_earlier_fixes():
     assert 'feat["flow_with"]' in py and "buyers_control" not in py, "side-relative flow_with tag was reverted"
     dart = open(os.path.join(root, "frontend", "lib", "screens", "vision_tab_screen.dart"), encoding="utf-8").read()
     assert "double _dragDx" in dart, "_dragDx used but not declared (build breaker)"
-    assert "'Pump']" in dart and "Pump/Dump" not in dart, "tab label must stay 'Pump' (6 tabs must fit)"
+    assert "['Pump', 6]" in dart and "Pump/Dump" not in dart, "tab label must stay 'Pump' (label stays short)"
     print("regression guard OK")
 
 

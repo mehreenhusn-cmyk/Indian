@@ -12,7 +12,7 @@ import os
 import re
 import time
 
-BUILD = "2026-10-21-roundH"
+BUILD = "2026-10-22-part3b"
 _T0 = time.time()
 _HOME = os.path.expanduser("~")
 _MARK = os.path.join(_HOME, ".owl_last_zip")

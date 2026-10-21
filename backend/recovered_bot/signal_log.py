@@ -72,7 +72,7 @@ def record(signal, symbol, opened, skip_reason=None):
         "tp4": signal.tp4,
         "signal_time": signal.signal_time,      # UTC, "%Y-%m-%d %H:%M:%S"
         "ist_time_str": ist_dt.strftime("%d %b, %I:%M %p"),
-        "date_str": ist_dt.strftime("%Y-%m-%d"),  # IST calendar date, for date-grouping
+        "date_str": utc_dt.strftime("%Y-%m-%d"),  # trading day: 5:30 AM IST = 00:00 UTC, so the UTC date is the day
         "recorded_at": time.time(),             # wall-clock, for the "Live" (<10min) window
         "opened": opened,
         "skip_reason": skip_reason,

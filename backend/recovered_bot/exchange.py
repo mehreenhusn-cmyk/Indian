@@ -190,7 +190,8 @@ def get_klines(symbol, granularity_min=None, limit=250, fast=False, tf=None, inc
     never be turned on anywhere a signal decision gets made."""
     resolved = resolve_timeframe(tf if tf is not None else granularity_min)
     fetch_limit = max(1, min(int(limit) + 1, 1500))
-    candles = _data_module().get_klines(symbol, granularity_min=resolved, limit=fetch_limit, fast=fast)
+    candles = _data_module().get_klines(symbol, granularity_min=resolved, limit=fetch_limit, fast=fast,
+                                        closed_only=not include_forming)
     if not include_forming:
         candles = _enforce_closed_candles(candles, resolved)
     if len(candles) > limit:

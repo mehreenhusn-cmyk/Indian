@@ -1045,6 +1045,24 @@ class AppProvider extends ChangeNotifier {
     return null;
   }
 
+  /// One trading day for the AI Own part: scanned coins with the reason, taken, margin used, profit (GET /api/vision/day_view).
+  Future<Map<String, dynamic>?> fetchVisionDayView(int offset) async {
+    try {
+      final res = await http.get(_u('/api/vision/day_view?offset=$offset')).timeout(const Duration(seconds: 12));
+      if (res.statusCode == 200) return Map<String, dynamic>.from(jsonDecode(res.body) as Map);
+    } catch (_) {}
+    return null;
+  }
+
+  /// Short "use it this way" digest of closed AI trades + pump/dump memory (GET /api/vision/notebook_digest).
+  Future<Map<String, dynamic>?> fetchVisionNotebookDigest() async {
+    try {
+      final res = await http.get(_u('/api/vision/notebook_digest')).timeout(const Duration(seconds: 12));
+      if (res.statusCode == 200) return Map<String, dynamic>.from(jsonDecode(res.body) as Map);
+    } catch (_) {}
+    return null;
+  }
+
   Future<Map<String, dynamic>?> fetchVisionDays({int n = 14}) async {
     try {
       final res = await http.get(_u('/api/vision/days?n=$n')).timeout(const Duration(seconds: 12));

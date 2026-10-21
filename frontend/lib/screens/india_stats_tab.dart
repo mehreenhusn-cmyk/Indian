@@ -7,6 +7,7 @@ import '../services/india_api.dart';
 import '../theme/app_theme.dart';
 import '../widgets/india_ui.dart';
 import '../widgets/owl_route.dart';
+import '../config_flags.dart';
 import 'strategy_doctor_screen.dart';
 
 /// India "Stats" page: how the paper bot is doing, in a few big numbers.
@@ -134,7 +135,7 @@ class _IndiaStatsTabState extends State<IndiaStatsTab> {
             _exitCard(context, s['by_exit']),
           ],
           const SizedBox(height: 12),
-          _doctorCard(context),
+          if (kShowStrategyDoctor) _doctorCard(context),
         ],
       ),
     );

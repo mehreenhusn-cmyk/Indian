@@ -95,3 +95,27 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+def test_v2():
+    """v2: 10 values, TSI/signal position, 'not a buy yet' when TSI is still below 0."""
+    from recovered_bot import ai_vision as V
+    f = {"diff": [-15.3, -14, -13, -12.5, -11.9, -11.2, -10.9, -10.7, -10.5, -10.3],
+         "tsi": [-20, -12.3], "tsl": [-18, -9.1]}
+    n = V.hist_note(f)
+    assert n["word"] == "Shrinking" and len(n["vals10"]) == 10 and len(n["vals"]) == 5, n
+    assert "Not a buy yet" in n["ctx"] and "below 0" in n["pos"], n
+    assert "never a reason to buy" in n["text"] and "-12.3" in n["text"], n
+    f2 = dict(f, tsi=[1, 5.0], tsl=[1, 4.0], diff=[4, 3.5, 3, 2.5, 2, 1.8, 1.5, 1.2, 0.9, 0.6])
+    n2 = V.hist_note(f2)
+    assert "Not a sell yet" in n2["ctx"], n2
+    # no TSI lines: still works
+    n3 = V.hist_note({"diff": [1, 2, 3, 4, 5]})
+    assert n3["pos"] == "" and n3["word"] == "Growing", n3
+    # chart still renders with the bigger box
+    png = V.render_chart("TESTUSDT", _candles(), "5m")
+    assert png and png[:4] == b"\x89PNG", "no png"
+    print("PASS test_v2")
+
+
+if __name__ == "__main__":
+    test_v2()

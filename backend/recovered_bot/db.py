@@ -280,7 +280,7 @@ def record_signal(signal, symbol, opened, skip_reason=None, bot="b1"):
                 signal_key, getattr(signal, "signal_no", None), symbol, signal.action,
                 signal.entry_price, signal.stop_loss,
                 signal.tp1, signal.tp2, signal.tp3, signal.tp4,
-                signal.signal_time, ist_dt.strftime("%d %b, %I:%M %p"), ist_dt.strftime("%Y-%m-%d"),
+                signal.signal_time, ist_dt.strftime("%d %b, %I:%M %p"), (ist_dt - timedelta(hours=5, minutes=30)).strftime("%Y-%m-%d"),
                 time.time(), 1 if opened else 0, skip_reason, _tf, _lev, _mode,
                 "b2" if str(bot or "b1").lower() == "b2" else "b1",
             ),

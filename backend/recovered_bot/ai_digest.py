@@ -29,9 +29,9 @@ def _ist(ts):
 
 def build_digest(day=None):
     """Text for the IST day `day` (a date; default today), or "" if no trade closed that day."""
-    day = day or (datetime.now(timezone.utc) + IST).date()
+    day = day or datetime.now(timezone.utc).date()      # trading day = 5:30 AM IST = 00:00 UTC
     rows = [t for t in trade_store.get_all_closed(800)
-            if t.get("closed_at_ts") and _ist(_f(t["closed_at_ts"])).date() == day]
+            if t.get("closed_at_ts") and datetime.fromtimestamp(_f(t["closed_at_ts"]), timezone.utc).date() == day]
     if not rows:
         return ""
     net = sum(_f(t.get("pnl_usdt")) for t in rows)

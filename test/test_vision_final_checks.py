@@ -60,7 +60,7 @@ def test_regression_guards():
     for f in ("ai_vision_own.py", "ai_vision_exits.py", "ai_pumpdump.py"):
         assert f in guard, f"{f} not in the ai_guard read-only list"
     tab = _read("frontend", "lib", "screens", "vision_tab_screen.dart")
-    assert "double _dragDx" in tab and "'Pump']" in tab and "Pump/Dump" not in tab
+    assert "double _dragDx" in tab and "['Pump', 6]" in tab and "Pump/Dump" not in tab
     assert "VisionCompareView(" in tab and "VisionOwnScanLine(" in tab
     assert "notJudged" in tab, "NOT JUDGED part of the today card was lost"
     assert V.CANDLES >= 600
@@ -173,6 +173,7 @@ class _Env:
 def _reset_own():
     OWN._hour_calls[:] = []
     OWN._last_bar.clear()
+    OWN._DUE.clear()
     OWN._idx = 0
     for k in ("scanned", "passed", "asked", "took", "skipped"):
         OWN._stats[k] = 0
@@ -215,13 +216,14 @@ def test_own_scanner_rules():
             with V._lock:
                 tr = V._state["trades"][0]
             assert tr["source"] == "own" and tr["id"].startswith("vo"), tr
-            # same coin again, same bar: skipped (no double ask)
+            # same coin again, same bar: skipped (no double ask). The scan now goes on to the next coin in the same pass.
             OWN._idx = 0
-            assert OWN.tick(V) is False and calls == ["AAAUSDT"], calls
-            # next coin works
             assert OWN.tick(V) is True and calls == ["AAAUSDT", "BBBUSDT"], calls
+            # whole watchlist done for this candle: nothing more to ask
+            assert OWN.tick(V) is False and calls == ["AAAUSDT", "BBBUSDT"], calls
             # hourly cap of 2 reached
             OWN._last_bar.clear()
+            OWN._DUE.clear()
             OWN._idx = 0
             with V._lock:
                 for t in V._state["trades"]:

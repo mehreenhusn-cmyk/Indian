@@ -10,9 +10,10 @@ import '../widgets/owl_skeleton.dart';
 import '../widgets/owl_refresh.dart';
 import '../theme/app_theme.dart';
 
-/// IST calendar date 'YYYY-MM-DD' for "now" minus N days.
+/// Trading-day date 'YYYY-MM-DD' for "now" minus N days. A day runs 5:30 AM IST to 5:30 AM IST = 00:00 UTC,
+/// so the UTC date is the trading day (same as the Dashboard Today ring).
 String _istDay(int daysBack) {
-  final d = DateTime.now().toUtc().add(const Duration(hours: 5, minutes: 30)).subtract(Duration(days: daysBack));
+  final d = DateTime.now().toUtc().subtract(Duration(days: daysBack));
   return '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 }
 

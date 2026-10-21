@@ -469,6 +469,36 @@ def _restart_line(s):
         return ""
 
 
+def _build_vision_context():
+    """Short, read-only snapshot of the Vision AI so the assistant can answer Vision questions with real numbers.
+    Bot signals judged by the AI vs the AI's own paper trades. Never raises."""
+    try:
+        from . import ai_vision, ai_vision_own
+        c = ai_vision_own.compare(ai_vision)
+        try:
+            day = ai_vision._today_block(
+                [dict(t) for t in ai_vision._state["trades"]], [dict(d) for d in ai_vision._state["dec"]])
+        except Exception:
+            day = {}
+
+        def blk(name, b):
+            wr = "n/a" if b.get("win_rate") is None else f"{b['win_rate']}%"
+            return (f"{name}: {b.get('closed', 0)} closed ({b.get('open', 0)} open), win rate {wr}, net {b.get('net', 0)} USDT, "
+                    f"BUY net {b['buy']['net']} ({b['buy']['n']}), SELL net {b['sell']['net']} ({b['sell']['n']})"
+                    + (" - small sample, do not trust yet" if b.get("small_sample") else ""))
+        lines = ["[VISION AI SNAPSHOT - paper trades only; day = 5:30 AM IST to 5:30 AM IST]",
+                 blk("Bot signals judged by the AI (take/skip)", c.get("bot", {})),
+                 blk("AI Own (AI scans and trades by itself)", c.get("own", {})),
+                 f"AI Own scanner is {'ON' if c.get('own_enabled') else 'OFF'}."]
+        if day:
+            lines.append(f"Today (bot signals only): {day.get('signals', 0)} signals, taken {day.get('taken', 0)}, "
+                         f"skipped {day.get('skipped', 0)}, waiting {day.get('waiting', 0)}, net {day.get('net', 0)} USDT. "
+                         "AI Own today is counted separately.")
+        return "\n".join(lines)
+    except Exception:
+        return ""
+
+
 def _build_context():
     """A compact text snapshot of current bot state, appended to every
     request so the assistant can answer 'what's open right now' style
@@ -884,6 +914,9 @@ def _ask_impl(user_message, history=None, mode=None, image_b64=None):
         audit_context = _build_audit_context()
         if audit_context:
             context += "\n\n" + audit_context
+    vision_context = _build_vision_context()
+    if vision_context:
+        context += "\n\n" + vision_context
     if _wants_health_context(user_message) or (mode or "").lower() == "backend":
         health_context = _build_health_context()
         if health_context:

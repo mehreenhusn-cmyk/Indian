@@ -39,7 +39,7 @@ TICK_S = 3.0
 WAITS = 3              # a WAIT is looked at again on up to 3 more candles
 
 _lock = threading.RLock()
-_state = {"dec": [], "trades": [], "since": 0.0, "log": []}
+_state = {"dec": [], "trades": [], "since": 0.0, "log": [], "scan": []}   # "scan" = AI Own scan log, one row per coin per candle
 _loaded = False
 _dirty = False
 _file = None
@@ -56,7 +56,7 @@ _gem_ok = {"name": None}
 _last_save = [0.0]
 
 _GEMINI_MODELS = ["gemini-flash-lite-latest", "gemini-flash-latest"]   # old gemini-2.5 / 2.0 names removed (retired); a 404 suggestion is added on the fly
-_ANTHROPIC_MODEL = "claude-haiku-4-5-20251001"
+_ANTHROPIC_MODEL = "claude-haiku-5-5"        # cheap model for chart reading; old default was claude-haiku-4-5-20251001
 _OPENAI_MODEL = "gpt-4o-mini"
 
 
@@ -75,7 +75,7 @@ TSI PANE (middle)
   light red = signal below zero and TSI above the signal (selling is weak; a bounce is possible);
   dark red = signal below zero and TSI below the signal (sellers strong).
 - Bars = TSI minus signal (the push). Ignore any reversal arrows.
-- A small HIST box in this pane (and the same numbers in the text you are given) shows the last 5 bars, oldest to newest, one trend word and one plain line. Growing = the push is getting stronger; Shrinking = the push is fading; Flipping up / Flipping down = the push just changed side; Flat = no clear push. Plain lines: Buyers coming in, Buyers leaving, Sellers coming in, Sellers leaving, Buyers taking over, Sellers taking over, No clear push. Use these numbers, do not guess the bars from the picture. When the note matters for your decision, say it in your reason (for example: skipped because the histogram is shrinking, buyers leaving).
+- A small HIST box in this pane (and the same numbers in the text you are given) shows the last 5 bars, oldest to newest, one trend word and one plain line. Growing = the push is getting stronger; Shrinking = the push is fading; Flipping up / Flipping down = the push just changed side; Flat = no clear push. Plain lines: Buyers coming in, Buyers leaving, Sellers coming in, Sellers leaving, Buyers taking over, Sellers taking over, No clear push. The box can also show the last 10 bars (red below 0, green above 0) and where TSI and its signal line sit against zero. IMPORTANT: a shrinking histogram alone is never a reason to buy or sell. If TSI and the signal line are still below 0, sellers are still in control, so do not buy early just because the bars are shrinking; check Z-score, EMA and SD levels yourself first. Use these numbers, do not guess the bars from the picture. When the note matters for your decision, say it in your reason (for example: skipped because the histogram is shrinking, buyers leaving).
 
 Z-SCORE PANE (bottom)
 - Green area = upside momentum. Red area = downside momentum. The black line = Z-SMA (200-candle average of Z).
@@ -190,7 +190,7 @@ def _load():
                 from . import safe_io
                 d, _src = safe_io.read_json_safe(_file, "ai_vision")
                 if isinstance(d, dict):
-                    for k in ("dec", "trades", "log"):
+                    for k in ("dec", "trades", "log", "scan"):
                         if isinstance(d.get(k), list):
                             _state[k] = d[k]
                     _state["since"] = float(d.get("since") or 0.0)
@@ -218,6 +218,7 @@ def _save(force=False):
                 pass
             _state["dec"] = _state["dec"][-KEEP_DEC:]
             _state["trades"] = _state["trades"][-KEEP_TRADES:]
+            _state["scan"] = _state.get("scan", [])[-600:]
             safe_io.write_json_atomic(_file, _state)
             _dirty = False
             _last_save[0] = time.time()
@@ -398,6 +399,13 @@ def _indicator_summary(lv, side, feat=None):
     return out
 
 
+def _last_num(arr):
+    for x in reversed(list(arr or [])):
+        if x is not None:
+            return float(x)
+    return None
+
+
 def hist_note(f, take=5):
     """Plain read of the TSI histogram bars (TSI minus signal) - the same numbers the chart draws.
     Returns {"vals", "word", "line", "text", "short"}. Words: Growing, Shrinking, Flipping up, Flipping down, Flat."""
@@ -422,8 +430,49 @@ def hist_note(f, take=5):
             word, line = "Flat", "No clear push"
     dec = 2 if max(abs(x) for x in v) < 1 else 1
     nums = [f"{x:+.{dec}f}" for x in v]
-    return {"vals": [round(x, 3) for x in v], "word": word, "line": line, "short": f"{word} - {line} ({', '.join(nums)})",
-            "text": f"TSI histogram (last {take} closed bars, oldest to newest): {', '.join(nums)}. Trend: {word}. {line}."}
+    # v2: the last 10 bars (two rows of 5 in the box), where TSI and its signal line sit against zero,
+    # and a plain line that says what the bars mean in that place. A shrinking bar alone is never a buy.
+    all10 = [x for x in list((f or {}).get("diff") or [])[-10:] if x is not None]
+    v10 = [round(float(x), 3) for x in all10] if len(all10) >= take else [round(x, 3) for x in v]
+    tsi = _last_num((f or {}).get("tsi"))
+    tsl = _last_num((f or {}).get("tsl"))
+    pos_txt, ctx, ctx_short = "", "", ""
+    if tsi is not None and tsl is not None:
+        d2 = 2 if max(abs(tsi), abs(tsl)) < 1 else 1
+        if tsi < 0 and tsl < 0:
+            side = "both below 0 (sellers' side)"
+        elif tsi > 0 and tsl > 0:
+            side = "both above 0 (buyers' side)"
+        else:
+            side = "on different sides of 0 (mixed)"
+        pos_txt = f"TSI {tsi:+.{d2}f}, signal line {tsl:+.{d2}f}: {side}."
+        below, above = tsi < 0 and tsl < 0, tsi > 0 and tsl > 0
+        if word == "Shrinking" and below:
+            ctx = "Sellers still in control but weakening. Not a buy yet: wait for the histogram above 0."
+            ctx_short = "Sellers weakening - not a buy yet"
+        elif word == "Shrinking" and above:
+            ctx = "Buyers still in control but weakening. Not a sell yet: wait for the histogram below 0."
+            ctx_short = "Buyers weakening - not a sell yet"
+        elif word == "Flipping up" and not above:
+            ctx = "Histogram just turned up but TSI and signal are not above 0 yet. Early: wait for them to cross above 0."
+            ctx_short = "Turned up - TSI still not above 0"
+        elif word == "Flipping down" and not below:
+            ctx = "Histogram just turned down but TSI and signal are not below 0 yet. Early: wait for them to cross below 0."
+            ctx_short = "Turned down - TSI still not below 0"
+        elif word == "Growing" and below:
+            ctx = "Sellers in control and getting stronger. Not a buy."
+            ctx_short = "Sellers getting stronger"
+        elif word == "Growing" and above:
+            ctx = "Buyers in control and getting stronger. Not a sell."
+            ctx_short = "Buyers getting stronger"
+    if not ctx_short:
+        ctx_short = line
+    n10 = [f"{x:+.{dec}f}" for x in v10]
+    text = (f"TSI histogram (last {len(v10)} closed bars, oldest to newest): {', '.join(n10)}. Trend: {word}. {line}."
+            + (f" {pos_txt}" if pos_txt else "") + (f" {ctx}" if ctx else "")
+            + " A shrinking histogram alone is never a reason to buy or sell: also check Z-score, EMA and SD levels.")
+    return {"vals": [round(x, 3) for x in v], "vals10": v10, "word": word, "line": line, "ctx": ctx, "ctx_short": ctx_short,
+            "pos": pos_txt, "short": f"{word} - {line} ({', '.join(nums)})", "text": text}
 
 
 def render_chart(symbol, candles, tf_label, side=None, marks=None, title_extra="", source=None):
@@ -475,6 +524,11 @@ def render_chart(symbol, candles, tf_label, side=None, marks=None, title_extra="
         v = _f(marks.get(k))
         if v:
             pmax, pmin = max(pmax, v), min(pmin, v)
+    for _e in (marks.get("trail") or []):
+        for _k in ("sl", "price"):
+            v = _f(_e.get(_k))
+            if v:
+                pmax, pmin = max(pmax, v), min(pmin, v)
     cands = []
     if lv.get("mean") is not None and lv.get("sd"):
         cands = [lv["p1"], lv["m1"], lv["p2"], lv["m2"], lv["mean"]]
@@ -627,6 +681,37 @@ def render_chart(symbol, candles, tf_label, side=None, marks=None, title_extra="
     hline(marks.get("sl"), (242, 54, 69), "STOP")
     hline(marks.get("target"), (8, 153, 129), "TARGET")
     hline(marks.get("exit"), (255, 152, 0), "EXIT", False)
+    # ---- stop-trail (steps) and profit points (banked part), only when the trade has them
+    try:
+        trail = [e for e in (marks.get("trail") or []) if isinstance(e, dict)]
+        if trail:
+            def _bar(ts_s):
+                jj = lo
+                for i in range(lo, n):
+                    if f["t"][i] / 1000.0 <= ts_s:
+                        jj = i
+                return jj
+            stops = [e for e in trail if e.get("kind") == "stop" and _f(e.get("sl"))]
+            prev_x, prev_y = None, None
+            if stops and _f(marks.get("sl0")) and marks.get("opened_at"):
+                stops = [{"t": marks["opened_at"], "kind": "stop", "sl": marks["sl0"]}] + stops
+            for e in stops:
+                xx, yy = sx(_bar(float(e["t"]))), gy(_f(e["sl"]))
+                if prev_y is not None:
+                    d.line([prev_x, prev_y, xx, prev_y], fill=(255, 112, 67), width=2)
+                    d.line([xx, prev_y, xx, yy], fill=(255, 112, 67), width=2)
+                d.ellipse([xx - 4, yy - 4, xx + 4, yy + 4], fill=(255, 112, 67))
+                prev_x, prev_y = xx, yy
+            if prev_y is not None:
+                d.line([prev_x, prev_y, x1, prev_y], fill=(255, 112, 67), width=2)
+                d.text((max(x0 + 2, prev_x - 70), prev_y - 16), "STOP TRAIL", fill=(230, 81, 0), font=f12)
+            for e in trail:
+                if e.get("kind") == "partial" and _f(e.get("price")):
+                    xx, yy = sx(_bar(float(e["t"]))), gy(_f(e["price"]))
+                    d.polygon([(xx, yy - 9), (xx - 8, yy + 6), (xx + 8, yy + 6)], fill=(0, 150, 136))
+                    d.text((xx + 10, yy - 8), "PROFIT BANKED", fill=(0, 105, 92), font=f12)
+    except Exception:
+        pass
     bts = marks.get("bar_ts")
     if bts:
         j = None
@@ -662,10 +747,17 @@ def render_chart(symbol, candles, tf_label, side=None, marks=None, title_extra="
     # ---- TSI histogram note box (top-right of the TSI pane; moves to the bottom if bars or lines are there)
     try:
         hn = hist_note(f)
-        l1 = ("HIST  " + "  ".join(f"{x:+.{2 if max(abs(y) for y in hn['vals']) < 1 else 1}f}" for x in hn["vals"])) if hn["vals"] else "HIST  not enough bars"
-        l2 = f"{hn['word']} - {hn['line']}" if hn["vals"] else hn["line"]
-        bw_ = max(d.textlength(l1, font=f12), d.textlength(l2, font=f12)) + 14
-        bh_ = 36
+        v10 = hn.get("vals10") or hn["vals"]
+        dec_ = (2 if max(abs(y) for y in v10) < 1 else 1) if v10 else 1
+        rows = [v10[:-5], v10[-5:]] if len(v10) >= 10 else [v10]
+        rows = [r for r in rows if r]
+        l3 = f"{hn['word']} - {hn['line']}" if hn["vals"] else hn["line"]
+        l4 = hn.get("ctx_short") or ""
+        lines_w = [d.textlength("HIST  " + "  ".join(f"{x:+.{dec_}f}" for x in r), font=f12) for r in rows]
+        bw_ = max(lines_w + [d.textlength(l3, font=f12), d.textlength(l4, font=f12)]) + 14
+        rh = 15
+        nrow = len(rows) + 1 + (1 if l4 and l4 != hn["line"] else 0)
+        bh_ = nrow * rh + 6
         bx1 = x1 - 6
         bx0 = bx1 - bw_
 
@@ -686,9 +778,25 @@ def render_chart(symbol, candles, tf_label, side=None, marks=None, title_extra="
             if not _hit(alt, alt + bh_):
                 by0 = alt
         d.rectangle([bx0, by0, bx1, by0 + bh_], fill=(255, 255, 255), outline=(120, 120, 120))
-        d.text((bx0 + 6, by0 + 3), l1, fill=(40, 40, 40), font=f12)
+        y = by0 + 3
+        if not v10:
+            d.text((bx0 + 6, y), "HIST  not enough bars", fill=(40, 40, 40), font=f12)
+            y += rh
+        for ri, r in enumerate(rows):
+            xx = bx0 + 6
+            lab = "HIST  " if ri == 0 else "      "
+            d.text((xx, y), lab, fill=(40, 40, 40), font=f12)
+            xx += d.textlength(lab, font=f12)
+            for x_ in r:
+                t_ = f"{x_:+.{dec_}f}  "
+                d.text((xx, y), t_, fill=((8, 120, 90) if x_ >= 0 else (200, 40, 55)), font=f12)
+                xx += d.textlength(t_, font=f12)
+            y += rh
         wc = (8, 120, 90) if hn["line"].startswith("Buyers") else ((200, 40, 55) if hn["line"].startswith("Sellers") else (100, 100, 100))
-        d.text((bx0 + 6, by0 + 19), l2, fill=wc, font=f12)
+        d.text((bx0 + 6, y), l3, fill=wc, font=f12)
+        y += rh
+        if l4 and l4 != hn["line"]:
+            d.text((bx0 + 6, y), l4, fill=(90, 90, 90), font=f12)
     except Exception as e:
         print(f"[Vision] hist box: {e}")
 
@@ -884,9 +992,13 @@ def _try_gemini(sl, system, text, b64):
 def _try_anthropic(sl, system, text, b64):
     nm = _slot_models(sl)[0]
     content = ([{"type": "image", "source": {"type": "base64", "media_type": "image/png", "data": b64}}] if b64 else []) + [{"type": "text", "text": text}]
-    r = requests.post("https://api.anthropic.com/v1/messages",
-                      headers={"x-api-key": sl["key"], "anthropic-version": "2023-06-01", "content-type": "application/json"},
-                      json={"model": nm, "max_tokens": 900, "temperature": 0.2, "system": system, "messages": [{"role": "user", "content": content}]}, timeout=60)
+    hdr = {"x-api-key": sl["key"], "anthropic-version": "2023-06-01", "content-type": "application/json"}
+    body = {"model": nm, "max_tokens": 900, "temperature": 0.2, "system": system, "messages": [{"role": "user", "content": content}]}
+    r = requests.post("https://api.anthropic.com/v1/messages", headers=hdr, json=body, timeout=60)
+    if r.status_code == 400 and "temperature" in (r.text or "").lower():
+        # Newer models may refuse the temperature setting: send once more without it.
+        body.pop("temperature", None)
+        r = requests.post("https://api.anthropic.com/v1/messages", headers=hdr, json=body, timeout=60)
     if r.status_code == 200:
         return "".join(b.get("text", "") for b in r.json().get("content", []) if b.get("type") == "text"), None, nm
     if r.status_code == 429:
@@ -1088,7 +1200,8 @@ def _signal_prompt(rec, lv, price, recent_ctx=""):
     own = str(rec.get("source") or "bot") == "own"
     head = ("Your own scanner found this setup (the bot did not signal it). Goal: make profit with as few trades as possible. "
             "Take only a clear, well-placed setup where BOTH indicator families agree; SKIP or WAIT on anything doubtful. "
-            "There is no daily loss limit on your own trades, so quality is the only filter.\n") if own else "A bot signal just fired.\n"
+            "There is no daily loss limit on your own trades, so quality is the only filter. "
+            "Your reason MUST name the price level (an SD band, EMA or swing high/low) and the indicator that supports it, for example: 'bounce from -2SD, TSI above its signal'.\n") if own else "A bot signal just fired.\n"
     return (head + f"Symbol: {rec['symbol']}; timeframe {_tf_label(rec['tf_min'])}; signal: {rec['side']} "
             f"(the bot wants to go {_side_word(rec['side'])}); bot entry price {_fmt(rec.get('sig_price'))}; price now {_fmt(price)}.\n"
             f"Numbers read from the same chart: {_lv_text(lv)}.\n"
@@ -1471,6 +1584,7 @@ def _review(tr, why):
         moved = []
         if ns and ((side == "BUY" and tr["sl"] < ns < price * 0.9995) or (side == "SELL" and tr["sl"] > ns > price * 1.0005)):
             tr["sl"] = ns
+            log_trail(tr, "stop", price)
             moved.append(f"stop to {_fmt(ns)}")
         if nt and ((side == "BUY" and nt > price) or (side == "SELL" and nt < price)):
             tr["target"] = nt
@@ -1485,6 +1599,8 @@ def _review(tr, why):
                     from . import ai_vision_exits as XE
                     frac = _f(out.get("fraction")) or 0.5
                     done = XE.apply_partial(tr, price, frac)
+                    if done is not None:
+                        log_trail(tr, "partial", price)
             except Exception:
                 done = None
             if done is None:
@@ -1649,11 +1765,22 @@ def _closed_shown(closed):
     return [t for t in closed if id(t) in keep]
 
 
+def log_trail(tr, kind, price=None):
+    """Remember each stop move / banked profit so the live chart can draw the stop-trail and profit points."""
+    try:
+        tl = tr.setdefault("trail", [])
+        tl.append({"t": time.time(), "kind": kind, "sl": tr.get("sl"), "price": price})
+        if len(tl) > 40:
+            del tl[:-40]
+    except Exception:
+        pass
+
+
 def _trade_view(t):
     px = _live_price(t["symbol"]) if t["status"] == "open" else None
     v = {k: t.get(k) for k in ("id", "dec_id", "symbol", "side", "tf_min", "entry", "sl", "sl0", "target", "lev", "invest", "opened_at",
                               "status", "peak_roi", "exit", "exit_reason", "closed_at", "roi", "pnl", "notes", "last_checklist",
-                              "source", "partial_done", "partial_frac", "partial_pnl", "tsi_hist_note")}
+                              "source", "partial_done", "partial_frac", "partial_pnl", "tsi_hist_note", "trail")}
     if t["status"] == "open" and px:
         gross = _roi(t["side"], t["entry"], px, t["lev"])
         v["price"] = px
@@ -1868,7 +1995,8 @@ def image_bytes(item_id, live=False):
         return None
     marks = {"bar_ts": (tr or dec).get("bar_ts")}
     if tr:
-        marks.update(entry=tr["entry"], sl=tr["sl"], target=tr.get("target"), exit=tr.get("exit"))
+        marks.update(entry=tr["entry"], sl=tr["sl"], target=tr.get("target"), exit=tr.get("exit"),
+                     trail=tr.get("trail"), sl0=tr.get("sl0"), opened_at=tr.get("opened_at"))
     elif dec and dec.get("stop"):
         marks.update(sl=dec.get("stop"), target=dec.get("target"))
     return render_chart(src["symbol"], candles, _tf_label(src["tf_min"]), src["side"], marks, source=src.get("source") or "bot")

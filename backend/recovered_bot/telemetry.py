@@ -44,7 +44,7 @@ _ai = {"busy": 0, "calls": 0, "errors": 0, "last_ts": None, "last_ms": None,
 
 # Bump on every backend change so the app (System Load card) can prove which
 # Python files are actually running - an old backend shows an old/missing tag.
-BUILD_TAG = "2026-10-21-roundH"
+BUILD_TAG = "2026-10-22-part3b"
 
 _cached = {}          # filled by the sampler thread
 _prev_cpu = None      # (wall, process_cpu)

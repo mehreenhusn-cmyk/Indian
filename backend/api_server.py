@@ -233,11 +233,12 @@ async def on_startup():
             ai_path_logger.init(os.path.join(DATA_DIR, "ai"))
         except Exception as e:
             print(f"[startup] ai_path_logger init skipped: {e}")
-        try:                               # Strategy Doctor: price after each exit (record only)
-            from recovered_bot import ai_post_exit
-            ai_post_exit.init(os.path.join(DATA_DIR, "ai"))
-        except Exception as e:
-            print(f"[startup] ai_post_exit init skipped: {e}")
+        if settings_store.get("doctor_enabled", False):
+            try:                           # Strategy Doctor: price after each exit (record only)
+                from recovered_bot import ai_post_exit
+                ai_post_exit.init(os.path.join(DATA_DIR, "ai"))
+            except Exception as e:
+                print(f"[startup] ai_post_exit init skipped: {e}")
         try:                               # the Vision AI: chart picture on every bot signal, own virtual account (own thread)
             from recovered_bot import ai_vision
             ai_vision.init(os.path.join(DATA_DIR, "ai"))
@@ -950,6 +951,21 @@ async def vision_compare():
     """Bot signals vs AI-own paper stats + own-scan counters."""
     from recovered_bot import ai_vision, ai_vision_own
     return await asyncio.to_thread(ai_vision_own.compare, ai_vision)
+
+
+@app.get("/api/vision/day_view")
+async def vision_day_view(offset: int = 0):
+    """One trading day (5:30 AM IST to 5:30 AM IST) for the Vision tab: bot signals with what the AI decided,
+    and what AI Own scanned, took, margin used and profit. Read-only."""
+    from recovered_bot import ai_vision, ai_vision_own
+    return await asyncio.to_thread(ai_vision_own.day_view, ai_vision, max(0, min(int(offset), 60)))
+
+
+@app.get("/api/vision/notebook_digest")
+async def vision_notebook_digest():
+    """Short 'use it this way' digest: AI trade counts + pump/dump memory, with small-sample warnings. Read-only."""
+    from recovered_bot import ai_vision, ai_notebook_digest
+    return await asyncio.to_thread(ai_notebook_digest.build, ai_vision)
 
 
 @app.post("/api/vision/own")

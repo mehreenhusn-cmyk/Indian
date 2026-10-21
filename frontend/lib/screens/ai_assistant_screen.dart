@@ -131,6 +131,12 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
     _scrollToBottom();
   }
 
+  /// Close the chat drawer only when it is really open. (Before, a mode chip started a new chat and then
+  /// popped the whole screen, which threw you back to the Dashboard.)
+  void _closeDrawerIfOpen() {
+    if (mounted && _scaffoldKey.currentState?.isDrawerOpen == true) Navigator.of(context).pop();
+  }
+
   Future<void> _newChat(String mode) async {
     final provider = Provider.of<AppProvider>(context, listen: false);
     final created = await provider.createAiChat(mode: mode);
@@ -144,7 +150,7 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
       _pendingImageB64 = null;
     });
     await _loadBundle(chatId: _chatId);
-    if (mounted) Navigator.of(context).maybePop(); // close drawer
+    _closeDrawerIfOpen();
   }
 
   Future<void> _switchChat(String id) async {
@@ -152,7 +158,7 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
     await provider.setActiveAiChat(id);
     setState(() => _loadingHistory = true);
     await _loadBundle(chatId: id);
-    if (mounted) Navigator.of(context).maybePop();
+    _closeDrawerIfOpen();
   }
 
   Future<void> _deleteChat(String id) async {

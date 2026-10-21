@@ -39,5 +39,5 @@ assert o.prefs_merge(d, {"theme_mode": "light", "evil": "x", "voice_enabled": Tr
     "voice_enabled": True,
 }
 assert o.prefs_get(d)["theme_mode"] == "light"
-assert s.get("build", "").startswith("2026-10-21")
+assert s.get("build", "").startswith("2026-10-22")
 print("PASS test_ops_status")

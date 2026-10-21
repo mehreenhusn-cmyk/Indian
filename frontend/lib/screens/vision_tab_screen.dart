@@ -13,6 +13,7 @@ import '../widgets/owl_refresh.dart';
 import '../widgets/vision_notebook_view.dart';
 import '../widgets/vision_pumpdump_view.dart';
 import '../widgets/vision_compare_view.dart';
+import '../widgets/vision_digest_view.dart';
 
 /// The AI tab (Vision AI).
 ///   Live     - the AI's own virtual account: open trades with live P&L, stop and target, and what the AI says about them.
@@ -114,6 +115,7 @@ class _VisionTabScreenState extends State<VisionTabScreen> {
   bool _saving = false;
   int _dayOffset = 0;
   Map<String, dynamic>? _dayPayload;
+  Map<String, dynamic>? _dayView;
   bool _dayFailed = false;
   int _timelineShow = 30;
   List<dynamic>? _daysHistory;
@@ -150,7 +152,9 @@ class _VisionTabScreenState extends State<VisionTabScreen> {
 
   Future<void> _loadDay(int offset) async {
     final r = await context.read<AppProvider>().fetchVisionDay(offset);
+    final dv = await context.read<AppProvider>().fetchVisionDayView(offset);
     if (!mounted) return;
+    if (dv != null) _dayView = dv;
     setState(() {
       _dayOffset = offset;
       if (r != null) {
@@ -246,8 +250,11 @@ class _VisionTabScreenState extends State<VisionTabScreen> {
                   final goRight = _dragDx > 56 || v > 400;    // previous tab
                   _dragDx = 0;
                   if (!goLeft && !goRight) return;
-                  // 0 Live, 1 Signals, 2 AI Own, 3 Results, 4 Guide, 5 Notebook, 6 Pump
-                  final next = goLeft ? (_tab + 1).clamp(0, 6) : (_tab - 1).clamp(0, 6);
+                  // order on screen: Live, Signals, AI Own, Results, Digest, Notebook, Guide, Pump
+                  const order = [0, 1, 2, 3, 7, 5, 4, 6];
+                  final at = order.indexOf(_tab);
+                  final to = goLeft ? (at + 1).clamp(0, order.length - 1) : (at - 1).clamp(0, order.length - 1);
+                  final next = order[to];
                   if (next == _tab) return;
                   setState(() {
                     _tab = next;
@@ -263,55 +270,103 @@ class _VisionTabScreenState extends State<VisionTabScreen> {
     );
   }
 
+  // Three main tabs: Bot + AI | AI Own | More. Inside Bot + AI and More a small chip row picks the page.
+  // Page numbers (_tab): 0 Live, 1 Signals, 2 AI Own, 3 Results, 4 Guide, 5 Notebook, 6 Pump, 7 Digest.
+  int get _group => (_tab <= 1) ? 0 : (_tab == 2 ? 1 : 2);
+
+  void _goTab(int i) {
+    AppHaptics.light();
+    setState(() {
+      _tab = i;
+      _lastTab = i;
+    });
+    if (i == 4) _loadGuide();
+  }
+
   Widget _tabStrip(AppPalette p) {
-    const labels = ['Live', 'Signals', 'AI Own', 'Results', 'Guide', 'Notebook', 'Pump'];
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: AppSpacing.l),
-      padding: const EdgeInsets.all(3),
-      decoration: BoxDecoration(
-        color: p.surfaceHigher,
-        borderRadius: BorderRadius.circular(AppSpacing.radiusMedium),
-        border: Border.all(color: p.border, width: 0.6),
-      ),
-      child: Row(
-        children: [
-          for (var i = 0; i < labels.length; i++)
-            Expanded(
-              child: OWLPressable(
-                pressedScale: 0.97,
-                onTap: () {
-                  AppHaptics.light();
-                  setState(() {
-                    _tab = i;
-                    _lastTab = i;
-                  });
-                  if (i == 4) _loadGuide();
-                },
-                child: AnimatedContainer(
-                  duration: AppMotion.base,
-                  padding: const EdgeInsets.symmetric(vertical: 9),
-                  decoration: BoxDecoration(
-                    color: _tab == i ? p.accent.withOpacity(0.16) : Colors.transparent,
-                    borderRadius: BorderRadius.circular(AppSpacing.radiusSmall + 1),
-                  ),
-                  alignment: Alignment.center,
-                  child: Text(
-                    labels[i],
-                    style: TextStyle(
-                      fontSize: labels[i] == 'AI Own' ? 11.0 : 12.5,
-                      fontWeight: _tab == i ? FontWeight.w800 : FontWeight.w500,
-                      color: _tab == i ? p.accent : p.textMuted,
+    const labels = ['Bot + AI', 'AI Own', 'More'];
+    const firstPage = [0, 2, 3];
+    final List<List<Object>> subs = _group == 0
+        ? const [['Live', 0], ['Signals', 1]]
+        : (_group == 2 ? const [['Results', 3], ['Digest', 7], ['Notebook', 5], ['Guide', 4], ['Pump', 6]] : const <List<Object>>[]);
+    return Column(
+      children: [
+        Container(
+          margin: const EdgeInsets.symmetric(horizontal: AppSpacing.l),
+          padding: const EdgeInsets.all(3),
+          decoration: BoxDecoration(
+            color: p.surfaceHigher,
+            borderRadius: BorderRadius.circular(AppSpacing.radiusMedium),
+            border: Border.all(color: p.border, width: 0.6),
+          ),
+          child: Row(
+            children: [
+              for (var i = 0; i < labels.length; i++)
+                Expanded(
+                  child: OWLPressable(
+                    pressedScale: 0.97,
+                    onTap: () {
+                      if (_group != i) _goTab(firstPage[i]);
+                    },
+                    child: AnimatedContainer(
+                      duration: AppMotion.base,
+                      padding: const EdgeInsets.symmetric(vertical: 9),
+                      decoration: BoxDecoration(
+                        color: _group == i ? p.accent.withOpacity(0.16) : Colors.transparent,
+                        borderRadius: BorderRadius.circular(AppSpacing.radiusSmall + 1),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        labels[i],
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: _group == i ? FontWeight.w800 : FontWeight.w500,
+                          color: _group == i ? p.accent : p.textMuted,
+                        ),
+                      ),
                     ),
                   ),
                 ),
+            ],
+          ),
+        ),
+        if (subs.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(AppSpacing.l, 8, AppSpacing.l, 0),
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  for (final sp in subs)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: OWLPressable(
+                        pressedScale: 0.97,
+                        onTap: () => _goTab(sp[1] as int),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                          decoration: BoxDecoration(
+                            color: _tab == sp[1] ? p.accent.withOpacity(0.16) : p.surfaceHigher,
+                            borderRadius: BorderRadius.circular(AppSpacing.radiusPill),
+                            border: Border.all(color: _tab == sp[1] ? p.accent.withOpacity(0.5) : p.border, width: 0.8),
+                          ),
+                          child: Text(sp[0] as String,
+                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: _tab == sp[1] ? p.accent : p.textMuted)),
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ),
-        ],
-      ),
+          ),
+      ],
     );
   }
 
   Widget _body(AppPalette p) {
+    if (_tab == 7) {
+      return const VisionDigestView();
+    }
     if (_tab == 6) {
       return const VisionPumpdumpView();
     }
@@ -901,6 +956,8 @@ class _VisionTabScreenState extends State<VisionTabScreen> {
             ),
           ),
           const SizedBox(height: AppSpacing.cardGap),
+          _ownScanSection(p),
+          const SizedBox(height: AppSpacing.cardGap),
           Text('Open own positions', style: context.type.secondary.copyWith(fontWeight: FontWeight.w700)),
           const SizedBox(height: 4),
           Text('Live paper positions from the own scan.', style: context.type.metadata.copyWith(color: p.textMuted)),
@@ -925,6 +982,82 @@ class _VisionTabScreenState extends State<VisionTabScreen> {
           Text('Bot vs own — same data as the compare endpoint.', style: context.type.metadata.copyWith(color: p.textMuted)),
         ],
       ),
+    );
+  }
+
+  String _scanWord(String r) {
+    switch (r) {
+      case 'taken':
+        return 'TAKEN';
+      case 'skipped':
+      case 'expired':
+        return 'SKIPPED';
+      case 'bot_fired':
+        return 'BOT FIRED';
+      case 'error':
+        return 'ERROR';
+      default:
+        return 'NO SETUP';
+    }
+  }
+
+  /// What AI Own looked at today (5:30 AM IST day): every coin with its result and the plain reason.
+  Widget _ownScanSection(AppPalette p) {
+    final own = _m(_dayView?['own']);
+    if (own.isEmpty) {
+      return _VCard(
+        child: Text('AI Own scan list needs the newest backend (/api/vision/day_view). Pull to refresh after updating.',
+            style: context.type.metadata.copyWith(color: p.warning)),
+      );
+    }
+    final rows = _l(own['scan_rows']).map(_m).toList();
+    final blocked = (own['blocked'] ?? '').toString();
+    final shown = rows.take(40).toList();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Scanned today', style: context.type.secondary.copyWith(fontWeight: FontWeight.w700)),
+        const SizedBox(height: 4),
+        Text(
+          '${(_d(own['scanned']) ?? 0).toInt()} coin checks  ·  ${(_d(own['trades']) ?? 0).toInt()} taken  ·  '
+          'margin used ${(_d(own['margin']) ?? 0).toStringAsFixed(2)} USDT  ·  profit ${fmtSigned(_d(own['net']) ?? 0)} USDT',
+          style: context.type.metadata.copyWith(color: p.textSecondary, height: 1.35),
+        ),
+        if (blocked.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text('AI call blocked: $blocked', style: context.type.metadata.copyWith(color: p.warning)),
+          ),
+        const SizedBox(height: 8),
+        if (shown.isEmpty) _empty('No coin checked yet today.'),
+        for (final r in shown)
+          Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(color: p.surfaceElevated, borderRadius: BorderRadius.circular(10), border: Border.all(color: p.border)),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(children: [
+                  Text(_hm(r['t']), style: TextStyle(color: p.textMuted, fontSize: 12)),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text('${r['symbol'] ?? ''}  ${r['tf'] ?? ''}  ${r['side'] ?? ''}', style: TextStyle(color: p.textPrimary, fontWeight: FontWeight.w600, fontSize: 13))),
+                  _Pill(text: _scanWord((r['result'] ?? '').toString()), color: (r['result'] == 'taken') ? p.profit : (r['result'] == 'error' ? p.loss : p.textSecondary)),
+                ]),
+                if ((r['why'] ?? '').toString().isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text('${r['why']}', style: context.type.metadata.copyWith(color: p.textPrimary, height: 1.3)),
+                ],
+                if ((r['level'] ?? '').toString().isNotEmpty)
+                  Text('${r['level']}', style: context.type.metadata.copyWith(fontSize: 11, color: p.textSecondary, height: 1.3)),
+                if ((r['ind'] ?? '').toString().isNotEmpty)
+                  Text('${r['ind']}', style: context.type.metadata.copyWith(fontSize: 11, color: p.textSecondary, height: 1.3)),
+              ],
+            ),
+          ),
+        if (rows.length > shown.length)
+          Text('${rows.length - shown.length} older checks not shown.', style: context.type.metadata),
+      ],
     );
   }
 

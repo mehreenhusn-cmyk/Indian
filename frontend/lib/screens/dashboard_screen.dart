@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import '../providers/app_provider.dart';
+import '../config_flags.dart';
 import 'strategy_doctor_screen.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/dashboard_cockpit.dart';
@@ -208,7 +209,7 @@ class DashboardScreen extends StatelessWidget {
                   const SystemLoadCard(),
 
                   // Strategy Doctor - which entries lose / win (read-only, see strategy_doctor_screen.dart)
-                  const StrategyDoctorCard(),
+                  if (kShowStrategyDoctor) const StrategyDoctorCard(),
 
                   // AI Insights - win rate by SD zone / session / EMA / volume
                   // plus MFE/MAE, straight from ai_stats.py (see

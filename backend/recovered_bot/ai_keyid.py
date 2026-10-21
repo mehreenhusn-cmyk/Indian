@@ -19,7 +19,7 @@ NAMES = {"gemini": "Google Gemini", "anthropic": "Claude (Anthropic)", "openai":
          "mistral": "Mistral", "openrouter": "OpenRouter"}
 _OAI_BASE = {"openai": "https://api.openai.com/v1", "groq": "https://api.groq.com/openai/v1",
              "mistral": "https://api.mistral.ai/v1", "openrouter": "https://openrouter.ai/api/v1"}
-_FALLBACK = {"gemini": "gemini-flash-lite-latest", "anthropic": "claude-haiku-4-5-20251001", "openai": "gpt-4o-mini",
+_FALLBACK = {"gemini": "gemini-flash-lite-latest", "anthropic": "claude-haiku-5-5", "openai": "gpt-4o-mini",
              "mistral": "mistral-small-latest", "groq": "meta-llama/llama-4-scout-17b-16e-instruct",
              "openrouter": "meta-llama/llama-4-maverick:free"}
 _PROBE_ORDER = ("mistral", "openai", "groq", "openrouter", "gemini", "anthropic")   # for keys with no known prefix
