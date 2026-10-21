@@ -33,7 +33,7 @@ from . import ai_ind_features as F
 KEEP_DEC = 400
 KEEP_TRADES = 400
 KEEP_IMG = 100
-CANDLES = 450          # enough for Z-score (200) + its 200-candle average
+CANDLES = 600          # VIEW(90) + ~400 for Z-SMA200 + margin; Binance limit 1500
 VIEW = 90              # candles drawn
 TICK_S = 3.0
 WAITS = 3              # a WAIT is looked at again on up to 3 more candles
@@ -78,9 +78,15 @@ TSI PANE (middle)
 
 Z-SCORE PANE (bottom)
 - Green area = upside momentum. Red area = downside momentum. The black line = Z-SMA (200-candle average of Z).
-- Z above the black line = strong momentum. If the area is green but the black line is above it, the black line can act like resistance.
+- The black line is the average level of Z. It can act as SUPPORT when Z falls onto it from above, and as RESISTANCE when Z rises up to it from below. This is a clue, not a rule.
+- Z above the black line = momentum above its own average; Z below = below average.
 - Shaded zones: inside 1 sigma, 1-2 sigma, 2-3 sigma. The further out, the more stretched.
-- Divergence: price makes a new high while Z falls (or the reverse) can show weakness. But markets sometimes just move sideways, so divergence is a clue, not a rule.
+- Divergence: price makes a new high while Z falls (or the reverse) can show weakness. Clue, not a rule.
+
+HOW THE TWO SCRIPTS FIT TOGETHER
+- Script 1 (main chart): EMA30 green / EMA50 red + SD bands = where price is and how stretched.
+- Script 2 (TSI + Z + Z-SMA): the push behind the move. Check that BOTH agree with the trade's side before TAKE.
+- If Script 1 looks fine but Script 2 disagrees (or the reverse), prefer WAIT or SKIP.
 
 The empty space on the right of the picture is the future: nothing is known there. Use it to think about where price may go.
 
@@ -103,6 +109,23 @@ def guide_text(symbol=None, side=None):
         out += PD.prompt_block(symbol, side)
     except Exception as e:
         print(f"[Vision] pumpdump: {e}")
+    try:
+        from . import ai_vision_exits as XE
+        out += XE.prompt_block()
+    except Exception as e:
+        print(f"[Vision] exits: {e}")
+    try:
+        from . import ai_level_study as LS
+        if hasattr(LS, "headline"):
+            h = LS.headline()
+            if h:
+                out += f"\n\nLEVEL STUDY (read-only peek, n in text): {h}"
+        elif hasattr(LS, "snapshot"):
+            snap = LS.snapshot()
+            if isinstance(snap, dict) and snap.get("headline"):
+                out += f"\n\nLEVEL STUDY (read-only peek): {snap['headline']}"
+    except Exception:
+        pass
     return out
 
 
@@ -131,6 +154,8 @@ def init(path):
         L.init(path)
         from . import ai_pumpdump as PD
         PD.init(path)
+        from . import ai_vision_exits as XE
+        XE.init(path)
     except Exception as e:
         print(f"[Vision] init: {e}")
 
@@ -595,7 +620,14 @@ def render_chart(symbol, candles, tf_label, side=None, marks=None, title_extra="
     d.text((x0, 10), f"{symbol}   {tf_label}{sig}", fill=(20, 20, 20), font=f18)
     d.text((x0, 34), "Green line EMA30  |  Red line EMA50  |  curved bands = SD 1/2/3 (dark = mean/1SD)" + (f"   {title_extra}" if title_extra else ""), fill=(100, 100, 100), font=f12)
     d.text((x0 + 4, PT[0] + 4), "TSI: grey = value, thick = signal line (4 colours)", fill=(100, 100, 100), font=f12)
-    d.text((x0 + 4, PZ[0] + 4), "Z-SCORE: green/red area, black line = Z-SMA 200", fill=(100, 100, 100), font=f12)
+    zsma_vals = f.get("zsma") or []
+    view_start = max(0, n - VIEW)
+    zsma_ok = sum(1 for j in range(view_start, n) if j < len(zsma_vals) and zsma_vals[j] is not None)
+    if zsma_ok < (n - view_start):
+        znote = f"Z-SMA needs ~400 candles: only {zsma_ok}/{n - view_start} bars in view have it"
+        d.text((x0 + 4, PZ[0] + 4), znote, fill=(180, 100, 40), font=f12)
+    else:
+        d.text((x0 + 4, PZ[0] + 4), "Z-SCORE: green/red area, black line = Z-SMA 200", fill=(100, 100, 100), font=f12)
     d.text((x1 - 120, 10), _ist(f["t"][-1] / 1000.0) + " IST", fill=(100, 100, 100), font=f12)
 
     buf = io.BytesIO()
@@ -987,10 +1019,12 @@ def _review_prompt(tr, lv, price, why):
             f"price now {_fmt(price)}; current stop {_fmt(tr['sl'])}; current target {_fmt(tr.get('target'))}; ROI now {roi:+.1f}% (leverage {tr['lev']:g}x); "
             f"best ROI so far {tr.get('peak_roi', 0):+.1f}%.\nWhy you are asked now: {why}.\n"
             f"Numbers read from the chart: {_lv_text(lv)}.\n"
-            "The chart shows the entry, stop and target lines. Decide HOLD or EXIT. EXIT when momentum fades, a divergence shows, price is stretched at a band, or the structure breaks. "
-            "HOLD while the trend is intact; you may move the stop closer in the profit direction (never further away) and move the target further if price keeps going. There is no fixed take-profit.\n"
+            "The chart shows the entry, stop and target lines. Decide HOLD, PARTIAL, TRAIL or EXIT. EXIT when momentum fades, a divergence shows, price is stretched at a band, or the structure breaks. "
+            "HOLD while the trend is intact. TRAIL = keep the whole trade and move the stop closer to price in the profit direction (put the level in new_stop; never further away). "
+            f"PARTIAL = bank part of the trade (fraction 0.25 to 0.75) when price reaches a band or zone where trades often fade; allowed once per trade and only while the trade is in profit (partial already taken: {'yes' if tr.get('partial_done') else 'no'}). "
+            "You may also move the target further if price keeps going. There is no fixed take-profit.\n"
             "Answer with JSON only, in simple English:\n"
-            '{"action":"HOLD|EXIT","reason":"one short sentence","new_stop":number or null,"new_target":number or null,"checklist":{"momentum":"","divergence":"","bands":"","ema":""}}\n'
+            '{"action":"HOLD|PARTIAL|TRAIL|EXIT","fraction":number or null,"reason":"one short sentence","new_stop":number or null,"new_target":number or null,"checklist":{"momentum":"","divergence":"","bands":"","ema":""}}\n'
             "Each checklist answer: at most 12 words.")
 
 
@@ -1087,10 +1121,13 @@ def _validate_take(side, price, stop, target, lv):
 def _open_trade(rec, price, stop, target):
     lev = _f(rec.get("lev"), 0) or _f(_cfg("leverage", 1), 1) or 1
     cur = _bar_start(time.time(), rec["tf_min"])
-    tr = {"id": "v" + str(rec["signal_no"]), "dec_id": rec["id"], "symbol": rec["symbol"], "side": rec["side"], "tf_min": rec["tf_min"],
+    src = rec.get("source") or "bot"
+    tid = ("vo" + str(rec["signal_no"])) if src == "own" else ("v" + str(rec["signal_no"]))
+    tr = {"id": tid, "dec_id": rec["id"], "symbol": rec["symbol"], "side": rec["side"], "tf_min": rec["tf_min"],
           "entry": price, "sl": stop, "sl0": stop, "target": target, "lev": lev,
           "invest": float(_f(_cfg("invest_amount", 10.0), 10.0)), "fee_roi": float(_f(_cfg("fee_roi_pct", 1.0), 1.0)),
-          "opened_at": time.time(), "status": "open", "peak_roi": 0.0, "last_review_bar": cur, "tgt_bar": 0, "notes": [], "bar_ts": rec.get("bar_ts")}
+          "opened_at": time.time(), "status": "open", "peak_roi": 0.0, "last_review_bar": cur, "tgt_bar": 0, "notes": [], "bar_ts": rec.get("bar_ts"),
+          "source": src, "partial_done": False, "partial_frac": 0.0, "partial_pnl": 0.0}
     _note(tr, f"Opened {_side_word(rec['side'])} at {_fmt(price)}. Stop {_fmt(stop)}, target {_fmt(target)}. {rec.get('reason', '')}")
     with _lock:
         _state["trades"].append(tr)
@@ -1105,9 +1142,18 @@ def _close_trade(tr, price, reason):
             return
         gross = _roi(tr["side"], tr["entry"], price, tr["lev"])
         net = gross - tr["fee_roi"]
-        tr.update(status="closed", exit=price, exit_reason=reason, closed_at=time.time(), roi=net, pnl=tr["invest"] * net / 100.0)
+        leg_invest = float(tr.get("invest") or 10)
+        leg_pnl = leg_invest * net / 100.0
+        part = float(tr.get("partial_pnl") or 0)
+        tr.update(status="closed", exit=price, exit_reason=reason, closed_at=time.time(), roi=net,
+                  pnl=round(leg_pnl + part, 4))
         _note(tr, f"Closed at {_fmt(price)}: {reason}. Result {tr['pnl']:+.2f} USDT after fees.")
         _mark()
+        try:
+            from . import ai_vision_exits as XE
+            XE.record_closed(tr)
+        except Exception:
+            pass
 
 
 def _bar_start(now, tf_min):
@@ -1137,6 +1183,7 @@ def _scan_signals():
             _state["dec"].append({"id": "s" + str(no), "signal_no": no, "symbol": r["symbol"], "side": side, "tf_min": tfm,
                                   "sig_price": r.get("entry_price"), "sig_time": r.get("recorded_at"), "sig_ist": r.get("ist_time_str"),
                                   "lev": r.get("leverage"), "status": "queued", "decision": None, "reason": "", "checklist": {},
+                                  "source": "bot",
                                   "checks": 0, "waits_left": WAITS, "last_bar": 0, "bar_ts": None})
             known.add(no)
             _mark()
@@ -1196,9 +1243,12 @@ def _process_signal(rec):
             if bs_nums:
                 score = bs_nums.get("score", 0)
                 feat = rec.get("feat") or {}
-                if abs(score) >= 0.5:                       # clear read only; weak/mixed reads set no tag
-                    feat["flow_with"] = (score > 0) == (rec["side"] == "BUY")
-                    rec["feat"] = feat
+                buy = str(rec.get("side") or "").upper() == "BUY"
+                if score >= 0.5:
+                    feat["flow_with"] = buy  # buyers favor BUY
+                elif score <= -0.5:
+                    feat["flow_with"] = (not buy)  # sellers favor SELL
+                rec["feat"] = feat
             zs = PD.zsma_read(_f_, rec["side"])
             if zs:
                 rec["zsma_read"] = zs
@@ -1331,7 +1381,23 @@ def _review(tr, why):
             moved.append(f"target to {_fmt(nt)}")
         tr["last_checklist"] = _clean_check(out.get("checklist"))
         act = str(out.get("action", "HOLD")).upper()
-        txt = f"{'EXIT' if act == 'EXIT' else 'HOLD'}: {_short_txt(out.get('reason'))}" + (f" (moved {', '.join(moved)})" if moved else "")
+        if act == "PARTIAL":
+            done = None
+            try:
+                gross_now = _roi(side, tr["entry"], price, tr["lev"])
+                if gross_now - float(tr.get("fee_roi") or 0) > 0:          # only while in profit after fees
+                    from . import ai_vision_exits as XE
+                    frac = _f(out.get("fraction")) or 0.5
+                    done = XE.apply_partial(tr, price, frac)
+            except Exception:
+                done = None
+            if done is None:
+                act = "HOLD"
+                moved.append("partial refused (already taken, bad size, or not in profit)")
+            else:
+                moved.append(f"banked {int(round(tr.get('partial_frac', 0) * 100))}% at {_fmt(price)} ({done:+.2f} USDT)")
+        word = act if act in ("EXIT", "PARTIAL") else ("TRAIL" if (act == "TRAIL" and any(m.startswith("stop") for m in moved)) else "HOLD")
+        txt = f"{word}: {_short_txt(out.get('reason'))}" + (f" (moved {', '.join(moved)})" if moved else "")
         _note(tr, txt)
         _mark()
     if act == "EXIT":
@@ -1434,6 +1500,13 @@ def _step():
         return False
     job = _next_job()
     if not job:
+        try:
+            import sys
+            from . import ai_vision_own as OWN
+            if OWN.tick(sys.modules[__name__]):
+                return True
+        except Exception as e:
+            _log(f"own-scan: {str(e)[:100]}")
         return _lessons_job()
     kind, obj, why = job
     cap = int(_f(_cfg("vision_max_calls_day", 200), 200))
@@ -1474,7 +1547,8 @@ def start():
 def _trade_view(t):
     px = _live_price(t["symbol"]) if t["status"] == "open" else None
     v = {k: t.get(k) for k in ("id", "dec_id", "symbol", "side", "tf_min", "entry", "sl", "sl0", "target", "lev", "invest", "opened_at",
-                              "status", "peak_roi", "exit", "exit_reason", "closed_at", "roi", "pnl", "notes", "last_checklist")}
+                              "status", "peak_roi", "exit", "exit_reason", "closed_at", "roi", "pnl", "notes", "last_checklist",
+                              "source", "partial_done", "partial_frac", "partial_pnl")}
     if t["status"] == "open" and px:
         gross = _roi(t["side"], t["entry"], px, t["lev"])
         v["price"] = px
@@ -1498,6 +1572,86 @@ def _indicator_use(decs):
     return out
 
 
+
+def _day0_ts():
+    """Same 5:30 AM IST trading-day boundary the app uses for Today P&L."""
+    try:
+        from . import trade_store
+        return float(trade_store._trading_day_start_ts())
+    except Exception:
+        pass
+    # fallback: 5:30 IST without trade_store
+    from datetime import datetime, timezone, timedelta
+    ist = datetime.now(timezone.utc) + timedelta(hours=5, minutes=30)
+    reset = ist.replace(hour=5, minute=30, second=0, microsecond=0)
+    if ist < reset:
+        reset = reset - timedelta(days=1)
+    return (reset - timedelta(hours=5, minutes=30)).timestamp()
+
+
+def _today_block(trades, decs):
+    """Counts for the Live 'what the AI did today' card. Status words are fixed.
+    taken + skipped + waiting + queued + not_judged == signals (must add up)."""
+    day0 = _day0_ts()
+    decs = [d for d in decs if (d.get("source") or "bot") == "bot"]        # the card is about BOT signals; own-scan numbers live in /api/vision/compare
+    trades = [t for t in trades if (t.get("source") or "bot") == "bot"]
+    today_decs = [d for d in decs if float(d.get("sig_time") or d.get("decided_at") or 0) >= day0]
+    # status word per signal
+    taken = skipped = waiting = queued = not_judged = 0
+    words = []
+    for d in today_decs:
+        st = str(d.get("status") or "")
+        if st == "taken":
+            taken += 1
+            words.append("TAKEN")
+        elif st in ("waiting",):
+            waiting += 1
+            words.append("WAITING")
+        elif st == "queued":
+            queued += 1
+            words.append("WAITING")  # still in line counts as waiting for the card
+        elif st in ("late", "error"):
+            # the AI never judged it (busy, no quota, failed) - NOT an AI skip
+            not_judged += 1
+            words.append("NOT JUDGED")
+        else:
+            # skipped, expired
+            skipped += 1
+            words.append("SKIPPED")
+    signals = len(today_decs)
+    # open / closed AI trades that belong to today (opened today or still open from today)
+    today_trades = [t for t in trades if float(t.get("opened_at") or 0) >= day0]
+    open_n = sum(1 for t in today_trades if t.get("status") == "open")
+    closed_today = [t for t in today_trades if t.get("status") == "closed"]
+    closed_n = len(closed_today)
+    net = round(sum(float(t.get("pnl") or 0) for t in closed_today), 2)
+    exited = stopped = 0
+    for t in closed_today:
+        reason = str(t.get("exit_reason") or "").lower()
+        if "stop" in reason:
+            stopped += 1
+        else:
+            exited += 1
+    # integrity: taken+skipped+waiting+queued == signals
+    return {
+        "day0": day0,
+        "signals": signals,
+        "taken": taken,
+        "skipped": skipped,
+        "waiting": waiting,
+        "queued": queued,
+        "not_judged": not_judged,
+        "open": open_n,
+        "closed": closed_n,
+        "net": net,
+        "exited": exited,
+        "stopped": stopped,
+        "words": {"TAKEN": taken, "SKIPPED": skipped, "WAITING": waiting + queued, "NOT JUDGED": not_judged,
+                  "EXITED": exited, "STOPPED": stopped},
+    }
+
+
+
 def snapshot(limit=80):
     _load()
     bm = _bot_outcomes()
@@ -1518,7 +1672,9 @@ def snapshot(limit=80):
     for d in reversed(decs[-limit:]):
         x = {k: d.get(k) for k in ("id", "signal_no", "symbol", "side", "status", "decision", "reason", "checklist", "stop", "target",
                                    "sig_price", "sig_ist", "sig_time", "decided_at", "checks", "waits_left", "wait_for", "trade_id",
-                                   "indicator_summary", "recent_context", "feat")}
+                                   "indicator_summary", "recent_context", "feat", "source")}
+        if not x.get("source"):
+            x["source"] = "bot"
         x["tf"] = _tf_label(d["tf_min"])
         no = d["signal_no"]
         x["bot"] = {"state": "closed", "pnl": bm["closed"][no]} if no in bm["closed"] else ({"state": "open"} if no in bm["open"] else None)
@@ -1555,6 +1711,7 @@ def snapshot(limit=80):
                                        "wins": sum(1 for x in skip_bot if x > 0), "losses": sum(1 for x in skip_bot if x <= 0)}},
         "open": ov, "closed": [_trade_view(t) for t in reversed(closed[-40:])], "decisions": out_dec, "log": log,
         "indicator_use": _indicator_use(decs),
+        "today": _today_block(trades, decs),
     }
 
 

@@ -553,16 +553,33 @@ def snapshot(limit=40):
         log = list(_state.get("log") or [])[-20:]
     # playbook summary lines
     playbook = []
+    plain = []
     by = stats.get("by_kind") or {}
     for kind, label in (("pump", "After a pump"), ("dump", "After a dump")):
         d = by.get(kind) or {}
-        n = d.get("n") or 0
+        n = int(d.get("n") or 0)
+        rev = int(d.get("reverse", 0))
+        cont = int(d.get("continue", 0))
+        side = int(d.get("sideways", 0))
+        def _pct(x):
+            return round(100.0 * x / n) if n else 0
+        if n <= 0:
+            plain.append(f"{label}: no events yet.")
+        elif kind == "pump":
+            s = (f"After a pump: {_pct(rev)}% dumped (reversed), {_pct(cont)}% continued, "
+                 f"{_pct(side)}% sideways (n={n} events).")
+            if n < MIN_EVENTS_NOTE:
+                s += " SMALL SAMPLE - do not trust yet."
+            plain.append(s)
+        else:
+            s = (f"After a dump: {_pct(rev)}% bounced (reversed), {_pct(cont)}% continued, "
+                 f"{_pct(side)}% sideways (n={n} events).")
+            if n < MIN_EVENTS_NOTE:
+                s += " SMALL SAMPLE - do not trust yet."
+            plain.append(s)
         if n < 3:
             playbook.append(f"{label}: too few events yet (n={n}).")
             continue
-        rev = d.get("reverse", 0)
-        cont = d.get("continue", 0)
-        side = d.get("sideways", 0)
         top = max(("reverse", rev), ("continue", cont), ("sideways", side), key=lambda x: x[1])
         small = " SMALL SAMPLE - do not trust yet." if n < MIN_EVENTS_NOTE else ""
         playbook.append(
@@ -583,6 +600,7 @@ def snapshot(limit=40):
         "events": events,
         "stats": stats,
         "playbook": playbook,
+        "plain": plain,
         "log": log,
         "last_seed": _state.get("last_seed") or 0,
         "total": len(_state.get("events") or []),

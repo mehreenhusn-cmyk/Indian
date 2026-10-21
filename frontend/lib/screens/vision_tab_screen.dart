@@ -12,6 +12,7 @@ import '../widgets/owl_pressable.dart';
 import '../widgets/owl_refresh.dart';
 import '../widgets/vision_notebook_view.dart';
 import '../widgets/vision_pumpdump_view.dart';
+import '../widgets/vision_compare_view.dart';
 
 /// The AI tab (Vision AI).
 ///   Live     - the AI's own virtual account: open trades with live P&L, stop and target, and what the AI says about them.
@@ -102,6 +103,7 @@ class VisionTabScreen extends StatefulWidget {
 class _VisionTabScreenState extends State<VisionTabScreen> {
   static int _lastTab = 0;
   int _tab = _lastTab;
+  double _dragDx = 0;
   String _filter = 'All';
   Map<String, dynamic>? _data;
   Map<String, dynamic>? _guide;
@@ -203,7 +205,29 @@ class _VisionTabScreenState extends State<VisionTabScreen> {
             ),
             _tabStrip(p),
             const SizedBox(height: AppSpacing.s),
-            Expanded(child: _body(p)),
+            Expanded(
+              child: GestureDetector(
+                // Swipe only changes tabs. Vertical scroll and chart pinch stay free
+                // because we only react to mostly-horizontal drags above a threshold.
+                behavior: HitTestBehavior.translucent,
+                onHorizontalDragStart: (_) => _dragDx = 0,
+                onHorizontalDragUpdate: (d) => _dragDx += d.delta.dx,
+                onHorizontalDragEnd: (d) {
+                  final v = d.primaryVelocity ?? 0;
+                  final goLeft = _dragDx < -56 || v < -400;   // next tab
+                  final goRight = _dragDx > 56 || v > 400;    // previous tab
+                  _dragDx = 0;
+                  if (!goLeft && !goRight) return;
+                  final next = goLeft ? (_tab + 1).clamp(0, 5) : (_tab - 1).clamp(0, 5);
+                  if (next == _tab) return;
+                  setState(() {
+                    _tab = next;
+                    _lastTab = next;
+                  });
+                },
+                child: _body(p),
+              ),
+            ),
           ],
         ),
       ),
@@ -603,6 +627,49 @@ class _VisionTabScreenState extends State<VisionTabScreen> {
   }
 
   // ------------------------------------------------------------------ Live
+
+  Widget _todayCard(AppPalette p, Map<String, dynamic> d) {
+    final t = _m(d['today']);
+    if (t.isEmpty) {
+      // Old backend without the today block — hide, do not show an error.
+      return const SizedBox.shrink();
+    }
+    final signals = (_d(t['signals']) ?? 0).toInt();
+    final taken = (_d(t['taken']) ?? 0).toInt();
+    final skipped = (_d(t['skipped']) ?? 0).toInt();
+    final waiting = (_d(t['waiting']) ?? 0).toInt() + (_d(t['queued']) ?? 0).toInt();
+    final notJudged = (_d(t['not_judged']) ?? 0).toInt();
+    final openN = (_d(t['open']) ?? 0).toInt();
+    final closedN = (_d(t['closed']) ?? 0).toInt();
+    final net = _d(t['net']) ?? 0;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.cardGap),
+      child: _VCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text("What the AI did today", style: context.type.secondary.copyWith(fontWeight: FontWeight.w700)),
+            const SizedBox(height: 8),
+            Text(
+              signals == 0
+                  ? 'No bot signals for the AI yet today (day starts 5:30 AM IST).'
+                  : 'Bot signals today: $signals. AI TOOK $taken, SKIPPED $skipped, WAITING $waiting'
+                      '${notJudged > 0 ? ', NOT JUDGED $notJudged (AI busy, no quota or error)' : ''}.',
+              style: context.type.metadata.copyWith(color: p.textPrimary, height: 1.35),
+            ),
+            if (signals > 0) ...[
+              const SizedBox(height: 6),
+              Text(
+                'AI trades: $openN open, $closedN closed. Net after fees: ${net >= 0 ? '+' : ''}${net.toStringAsFixed(2)} USDT.',
+                style: context.type.metadata.copyWith(color: p.textSecondary, height: 1.35),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _liveTab(AppPalette p, Map<String, dynamic> d) {
     final s = _m(d['summary']);
     final net = _d(s['net']) ?? 0;
@@ -619,6 +686,8 @@ class _VisionTabScreenState extends State<VisionTabScreen> {
         physics: owlPullPhysics,
         padding: _pad,
         children: [
+          _todayCard(p, d),
+          const VisionOwnScanLine(),
           _banner(p, d),
           _monitorCard(p, d),
           _VCard(
@@ -884,6 +953,8 @@ class _VisionTabScreenState extends State<VisionTabScreen> {
         physics: owlPullPhysics,
         padding: _pad,
         children: [
+          const VisionCompareView(),
+          const SizedBox(height: 16),
           _banner(p, d),
           _verdictCard(p, d),
           _VCard(

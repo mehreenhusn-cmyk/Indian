@@ -945,6 +945,28 @@ async def vision_pumpdump_seed(payload: dict, _auth=Depends(require_api_token)):
     return await asyncio.to_thread(ai_pumpdump.maybe_seed, symbol, _fetch, 15)
 
 
+@app.get("/api/vision/compare")
+async def vision_compare():
+    """Bot signals vs AI-own paper stats + own-scan counters."""
+    from recovered_bot import ai_vision, ai_vision_own
+    return await asyncio.to_thread(ai_vision_own.compare, ai_vision)
+
+
+@app.post("/api/vision/own")
+async def vision_own_toggle(payload: dict, _auth=Depends(require_api_token)):
+    """Enable / disable the Vision own scanner (paper only)."""
+    from recovered_bot import settings_store
+    on = bool(payload.get("enabled"))
+    settings_store.update(vision_own_enabled=on)
+    return {"ok": True, "enabled": on}
+
+
+@app.get("/api/vision/exits")
+async def vision_exits():
+    from recovered_bot import ai_vision_exits
+    return await asyncio.to_thread(ai_vision_exits.snapshot)
+
+
 @app.get("/api/alerts")
 def get_alerts():
     rows = status.get().get("alerts", [])

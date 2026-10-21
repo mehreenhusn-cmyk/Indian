@@ -625,7 +625,19 @@ class SpecialMasterPainter extends CustomPainter {
       ..style = PaintingStyle.stroke;
     if (st.b('zSma')) {
       if (st.b('sma1')) _drawRuns(canvas, d.zSma1, y, line(_vis(st.c('cSma1')), 1.0), i0, i1);
-      if (st.b('sma2')) _drawRuns(canvas, d.zSma2, y, line(_vis(st.c('cSma2')), 1.0), i0, i1);
+      if (st.b('sma2')) {
+        _drawRuns(canvas, d.zSma2, y, line(_vis(st.c('cSma2')), 1.0), i0, i1);
+        // Honest note when history is too short for Z-SMA 200 (needs ~400 candles).
+        int ok = 0, tot = 0;
+        for (int i = i0; i <= i1 && i < d.zSma2.length; i++) {
+          tot++;
+          if (d.zSma2[i] != null) ok++;
+        }
+        if (tot > 0 && ok < tot) {
+          _text(canvas, 'Z-SMA 200 starts after ~400 candles ($ok/$tot in view)',
+              Offset(r.left + 4, r.top + 14), _ink.withOpacity(0.7));
+        }
+      }
     }
     if (st.b('uclLcl')) {
       _drawRuns(canvas, d.ucl, y, line(st.c('cUcl'), 1.0), i0, i1);

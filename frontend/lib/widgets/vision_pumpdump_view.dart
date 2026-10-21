@@ -111,10 +111,12 @@ class _VisionPumpdumpViewState extends State<VisionPumpdumpView> {
       );
     }
     final playbook = _l(_data['playbook']).map((e) => e.toString()).toList();
+    final plain = _l(_data['plain']).map((e) => e.toString()).toList();
     final events = _l(_data['events']).map(_m).toList();
     final stats = _m(_data['stats']);
     final total = _data['total'] ?? events.length;
     final by = _m(stats['by_kind']);
+    final empty = events.isEmpty;
 
     return OWLRefresh(
       onRefresh: _load,
@@ -123,24 +125,91 @@ class _VisionPumpdumpViewState extends State<VisionPumpdumpView> {
         children: [
           _header(p, total),
           const SizedBox(height: 12),
-          _playbookCard(p, playbook),
-          const SizedBox(height: 12),
-          _statsRow(p, by),
-          const SizedBox(height: 12),
-          _seedRow(p),
-          const SizedBox(height: 16),
-          Text('Recent events', style: TextStyle(color: p.textSecondary, fontWeight: FontWeight.w600)),
-          const SizedBox(height: 8),
-          if (events.isEmpty)
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Text(
-                'No pump/dump events yet. Seed from ~15 days of 15m candles, or wait for live signals on 15m.',
-                style: TextStyle(color: p.textMuted),
-              ),
-            )
-          else
+          if (plain.isNotEmpty) ...[
+            _plainCard(p, plain),
+            const SizedBox(height: 12),
+          ],
+          if (empty) ...[
+            _emptySeedCard(p),
+            const SizedBox(height: 12),
+          ] else ...[
+            _playbookCard(p, playbook),
+            const SizedBox(height: 12),
+            _statsRow(p, by),
+            const SizedBox(height: 12),
+            _seedRow(p),
+            const SizedBox(height: 16),
+            Text('Recent events', style: TextStyle(color: p.textSecondary, fontWeight: FontWeight.w600)),
+            const SizedBox(height: 8),
             ...events.take(30).map((e) => _eventCard(p, e)),
+          ],
+        ],
+      ),
+    );
+  }
+
+
+  Widget _plainCard(AppPalette p, List<String> lines) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: p.surfaceElevated,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: p.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('In plain words', style: TextStyle(color: p.textPrimary, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 8),
+          for (final line in lines)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Text(line, style: TextStyle(color: p.textSecondary, height: 1.35, fontSize: 13)),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _emptySeedCard(AppPalette p) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: p.surfaceElevated,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: p.accent.withOpacity(0.5)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('No pump/dump events yet', style: TextStyle(color: p.textPrimary, fontWeight: FontWeight.w700, fontSize: 15)),
+          const SizedBox(height: 6),
+          Text(
+            'Seed from ~15 days of 15m candles to learn what usually happens after a pump or dump. Or wait for live 15m signals.',
+            style: TextStyle(color: p.textMuted, height: 1.35, fontSize: 13),
+          ),
+          const SizedBox(height: 14),
+          Text('Seed now', style: TextStyle(color: p.accent, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'BNBUSDT'].map((s) {
+              return OWLPressable(
+                onTap: _loading ? null : () => _seed(s),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: p.accent.withOpacity(0.18),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: p.accent.withOpacity(0.5)),
+                  ),
+                  child: Text(s, style: TextStyle(color: p.accent, fontWeight: FontWeight.w700, fontSize: 13)),
+                ),
+              );
+            }).toList(),
+          ),
         ],
       ),
     );

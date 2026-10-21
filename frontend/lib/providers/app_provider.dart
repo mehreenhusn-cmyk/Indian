@@ -1006,6 +1006,37 @@ class AppProvider extends ChangeNotifier {
     return null;
   }
 
+  /// Bot signals vs AI-own paper stats (GET /api/vision/compare).
+  Future<Map<String, dynamic>?> fetchVisionCompare() async {
+    try {
+      final res = await http.get(_u('/api/vision/compare')).timeout(const Duration(seconds: 12));
+      if (res.statusCode == 200) return Map<String, dynamic>.from(jsonDecode(res.body) as Map);
+    } catch (_) {}
+    return null;
+  }
+
+  /// Switch the Vision own scanner on / off (paper only).
+  Future<bool> setVisionOwnEnabled(bool enabled) async {
+    try {
+      final res = await http
+          .post(_u('/api/vision/own'),
+              headers: {'Content-Type': 'application/json'},
+              body: jsonEncode({'enabled': enabled}))
+          .timeout(const Duration(seconds: 10));
+      return res.statusCode == 200;
+    } catch (_) {}
+    return false;
+  }
+
+  /// Where Vision trades peaked and what the exits did (GET /api/vision/exits).
+  Future<Map<String, dynamic>?> fetchVisionExits() async {
+    try {
+      final res = await http.get(_u('/api/vision/exits')).timeout(const Duration(seconds: 12));
+      if (res.statusCode == 200) return Map<String, dynamic>.from(jsonDecode(res.body) as Map);
+    } catch (_) {}
+    return null;
+  }
+
   /// AI Pick: TAKE / SKIP / WATCH on every bot signal + what the AI has proven (GET /api/ai/pick). Read-only.
   Future<Map<String, dynamic>?> fetchAiPick() => _getAiMap('/api/ai/pick', '');
 

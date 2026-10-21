@@ -45,6 +45,8 @@ TAGS = {
     "zsma_slope_with": "Z-SMA is sloping in the trade's direction",
     "z_cross_ok": "Z recently crossed Z-SMA in the trade's direction",
     "flow_with": "the last candles (body / wick) show the trade's side in control",
+    "zsma_near": "Z is close to its Z-SMA at the signal candle (the black line can act as support / resistance)",
+    "zsma_bounce_with": "Z touched its Z-SMA from the trade's favourable side in the last 8 candles and moved with the trade",
     "chasing_move": "price is already at the far end of a 4%+ move in the trade's direction (chasing a pump / dump)",
 }
 
@@ -170,6 +172,17 @@ def features(f, side):
                 if (not buy) and z[j - 1] > zs[j - 1] and z[j] <= zs[j]:
                     crossed_ok = True
             put("z_cross_ok", crossed_ok)
+            # the black Z-SMA line as support / resistance for Z (side-relative)
+            put("zsma_near", abs(z[i] - zs[i]) <= 0.25)
+            bounce = False
+            for j in range(max(1, i - 8), i):
+                if None in (z[j], zs[j], z[j - 1], zs[j - 1], z[i], zs[i]):
+                    continue
+                if buy and z[j - 1] > zs[j - 1] and z[j] <= zs[j] + 0.1 and z[i] > zs[i] and z[i] > z[j] + 0.05:
+                    bounce = True        # Z came down onto the line from above and moved back up (support held)
+                if (not buy) and z[j - 1] < zs[j - 1] and z[j] >= zs[j] - 0.1 and z[i] < zs[i] and z[i] < z[j] - 0.05:
+                    bounce = True        # Z came up onto the line from below and moved back down (resistance held)
+            put("zsma_bounce_with", bounce)
         # recent pump/dump position
         try:
             highs = f.get("h") or []
@@ -279,6 +292,8 @@ def _closed_with_feat(V):
         decs = {d["id"]: d for d in V._state["dec"]}
         for t in V._state["trades"]:
             if t.get("status") == "closed" and t.get("pnl") is not None:
+                if (t.get("source") or "bot") != "bot":      # own-scan trades are a different population: rules are proven on bot signals only
+                    continue
                 d = decs.get(t.get("dec_id")) or {}
                 out.append({"feat": d.get("feat"), "pnl": float(t["pnl"]), "closed_at": t.get("closed_at") or 0})
     return out
@@ -364,6 +379,7 @@ def _write_one(V, tr):
                                   "roi": round(float(tr.get("roi") or 0), 1), "text": lesson, "kind": kind or "noise", "auto": auto,
                                   "sl_note": sl_note, "trail_note": trail_note,
                                   "feat": feat, "indicator_summary": ind if isinstance(ind, dict) else {},
+                                  "source": tr.get("source") or "bot",
                                   "t": time.time(), "closed_at": tr.get("closed_at") or 0})
     _save()
     return True
