@@ -1054,6 +1054,15 @@ class AppProvider extends ChangeNotifier {
     return null;
   }
 
+  /// Bot vs Bot + AI vs AI Own after fees, and confirmed tag combinations (GET /api/vision/evidence). Read-only.
+  Future<Map<String, dynamic>?> fetchVisionEvidence() async {
+    try {
+      final res = await http.get(_u('/api/vision/evidence')).timeout(const Duration(seconds: 15));
+      if (res.statusCode == 200) return Map<String, dynamic>.from(jsonDecode(res.body) as Map);
+    } catch (_) {}
+    return null;
+  }
+
   /// Short "use it this way" digest of closed AI trades + pump/dump memory (GET /api/vision/notebook_digest).
   Future<Map<String, dynamic>?> fetchVisionNotebookDigest() async {
     try {

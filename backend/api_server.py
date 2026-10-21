@@ -961,6 +961,13 @@ async def vision_day_view(offset: int = 0):
     return await asyncio.to_thread(ai_vision_own.day_view, ai_vision, max(0, min(int(offset), 60)))
 
 
+@app.get("/api/vision/evidence")
+async def vision_evidence(force: int = 0):
+    """Bot vs Bot + AI vs AI Own after fees, plus tag combinations confirmed on the older 60% and the newer 40%. Read-only."""
+    from recovered_bot import ai_vision, ai_evidence
+    return await asyncio.to_thread(ai_evidence.snapshot, ai_vision, bool(force))
+
+
 @app.get("/api/vision/notebook_digest")
 async def vision_notebook_digest():
     """Short 'use it this way' digest: AI trade counts + pump/dump memory, with small-sample warnings. Read-only."""

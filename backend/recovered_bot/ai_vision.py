@@ -1199,7 +1199,7 @@ def _signal_prompt(rec, lv, price, recent_ctx=""):
     ind_line = "; ".join(f"{k}={v}" for k, v in ind.items() if v)
     own = str(rec.get("source") or "bot") == "own"
     head = ("Your own scanner found this setup (the bot did not signal it). Goal: make profit with as few trades as possible. "
-            "Take only a clear, well-placed setup where BOTH indicator families agree; SKIP or WAIT on anything doubtful. "
+            "Take only a clear, well-placed setup; SKIP or WAIT on anything doubtful. Read BOTH indicator families as evidence, but agreement is a hint, not a rule: one family can be weak on a good continuation, and everything agreeing can still be a late entry far out in the SD bands. Judge the place and the regime, not a vote count. "
             "There is no daily loss limit on your own trades, so quality is the only filter. "
             "Your reason MUST name the price level (an SD band, EMA or swing high/low) and the indicator that supports it, for example: 'bounce from -2SD, TSI above its signal'.\n") if own else "A bot signal just fired.\n"
     return (head + f"Symbol: {rec['symbol']}; timeframe {_tf_label(rec['tf_min'])}; signal: {rec['side']} "
@@ -1439,6 +1439,11 @@ def _process_signal(rec):
         try:                                               # measured tags for the learning notebook (plain arithmetic, no AI)
             from . import ai_vision_lessons as L
             rec["feat"] = L.features(_f_, rec["side"])
+        except Exception:
+            pass
+        try:                                               # richer measured tags for the evidence engine (SD zone/shape, Z vs price, TSI, regime)
+            from . import ai_evidence as EV
+            rec["tags2"] = EV.extra_tags(_f_, rec["side"])
         except Exception:
             pass
         try:
@@ -1929,7 +1934,7 @@ def snapshot(limit=80):
     for d in reversed(decs[-limit:]):
         x = {k: d.get(k) for k in ("id", "signal_no", "symbol", "side", "status", "decision", "reason", "checklist", "stop", "target",
                                    "sig_price", "sig_ist", "sig_time", "decided_at", "checks", "waits_left", "wait_for", "trade_id",
-                                   "indicator_summary", "recent_context", "feat", "source", "tsi_hist_note")}
+                                   "indicator_summary", "recent_context", "feat", "tags2", "source", "tsi_hist_note")}
         if not x.get("source"):
             x["source"] = "bot"
         x["tf"] = _tf_label(d["tf_min"])

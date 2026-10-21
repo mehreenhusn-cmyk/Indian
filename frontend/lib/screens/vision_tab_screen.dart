@@ -14,6 +14,7 @@ import '../widgets/vision_notebook_view.dart';
 import '../widgets/vision_pumpdump_view.dart';
 import '../widgets/vision_compare_view.dart';
 import '../widgets/vision_digest_view.dart';
+import '../widgets/vision_evidence_view.dart';
 
 /// The AI tab (Vision AI).
 ///   Live     - the AI's own virtual account: open trades with live P&L, stop and target, and what the AI says about them.
@@ -251,7 +252,7 @@ class _VisionTabScreenState extends State<VisionTabScreen> {
                   _dragDx = 0;
                   if (!goLeft && !goRight) return;
                   // order on screen: Live, Signals, AI Own, Results, Digest, Notebook, Guide, Pump
-                  const order = [0, 1, 2, 3, 7, 5, 4, 6];
+                  const order = [0, 1, 2, 3, 8, 7, 5, 4, 6];
                   final at = order.indexOf(_tab);
                   final to = goLeft ? (at + 1).clamp(0, order.length - 1) : (at - 1).clamp(0, order.length - 1);
                   final next = order[to];
@@ -288,7 +289,7 @@ class _VisionTabScreenState extends State<VisionTabScreen> {
     const firstPage = [0, 2, 3];
     final List<List<Object>> subs = _group == 0
         ? const [['Live', 0], ['Signals', 1]]
-        : (_group == 2 ? const [['Results', 3], ['Digest', 7], ['Notebook', 5], ['Guide', 4], ['Pump', 6]] : const <List<Object>>[]);
+        : (_group == 2 ? const [['Results', 3], ['Evidence', 8], ['Digest', 7], ['Notebook', 5], ['Guide', 4], ['Pump', 6]] : const <List<Object>>[]);
     return Column(
       children: [
         Container(
@@ -364,6 +365,9 @@ class _VisionTabScreenState extends State<VisionTabScreen> {
   }
 
   Widget _body(AppPalette p) {
+    if (_tab == 8) {
+      return const VisionEvidenceView();
+    }
     if (_tab == 7) {
       return const VisionDigestView();
     }
