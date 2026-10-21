@@ -963,11 +963,15 @@ async def vision_own_toggle(payload: dict, _auth=Depends(require_api_token)):
 
 
 @app.get("/api/vision/day")
-async def vision_day(offset: int = 0):
-    """One trading day (5:30 AM IST): summary + signal timeline. offset=0 today, 1 yesterday."""
+async def vision_day(offset: int = 0, source: str = "all"):
+    """One trading day (5:30 AM IST): summary + signal timeline. offset=0 today, 1 yesterday.
+    source=all|bot|own filters timeline rows (summary still includes both)."""
     from recovered_bot import ai_vision, ai_vision_days
     off = max(0, min(int(offset or 0), 60))
-    return await asyncio.to_thread(ai_vision_days.day_payload, ai_vision, off)
+    src = (source or "all").strip().lower()
+    if src not in ("all", "bot", "own"):
+        src = "all"
+    return await asyncio.to_thread(ai_vision_days.day_payload, ai_vision, off, None, src)
 
 
 @app.get("/api/vision/days")

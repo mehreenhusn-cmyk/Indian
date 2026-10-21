@@ -370,12 +370,18 @@ def _verdict(d, bot_info, ai_trade):
     return ""
 
 
-def timeline(V, offset=0, limit=200, now=None):
-    """Signal rows newest first for one trading day."""
+def timeline(V, offset=0, limit=200, now=None, source=None):
+    """Signal rows newest first for one trading day.
+    source: None/'all' = everything, 'bot' = bot signals only, 'own' = AI own only."""
     _load()
     offset = max(0, min(int(offset), 60))
     limit = max(1, min(int(limit), 200))
     now = time.time() if now is None else float(now)
+    src_filter = (source or "").strip().lower() or None
+    if src_filter not in (None, "bot", "own", "all"):
+        src_filter = None
+    if src_filter == "all":
+        src_filter = None
     start, end = day_window(offset, now)
     bm = V._bot_outcomes()
     with V._lock:
@@ -383,6 +389,10 @@ def timeline(V, offset=0, limit=200, now=None):
         trades = [dict(t) for t in V._state.get("trades") or []]
     tv = {t.get("dec_id"): t for t in trades}
     day_decs = [d for d in decs if start <= float(d.get("sig_time") or d.get("decided_at") or 0) < end]
+    if src_filter == "bot":
+        day_decs = [d for d in day_decs if (d.get("source") or "bot") != "own"]
+    elif src_filter == "own":
+        day_decs = [d for d in day_decs if (d.get("source") or "bot") == "own"]
     day_decs.sort(key=lambda d: float(d.get("sig_time") or 0), reverse=True)
 
     rows = []
@@ -457,8 +467,9 @@ def timeline(V, offset=0, limit=200, now=None):
     return rows, note
 
 
-def day_payload(V, offset=0, now=None):
+def day_payload(V, offset=0, now=None, source=None):
     summary = get_day_summary(V, offset, now)
-    rows, note = timeline(V, offset, 200, now)
+    rows, note = timeline(V, offset, 200, now, source=source)
     return {"offset": int(offset), "summary": summary, "rows": rows, "note": note,
+            "source": (source or "all"),
             "bot_map_note": "Bot results cover Bot 1 only; Bot 2 numbers its signals separately."}

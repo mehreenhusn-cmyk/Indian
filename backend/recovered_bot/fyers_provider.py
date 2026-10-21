@@ -172,6 +172,11 @@ class FyersProvider(LiveProvider):
         """Called regularly by the runtime: renew the token when the trading session has rolled over."""
         if self.use_ws and self.client.token:
             self.feed.check(market_open_now(), self.client.token)      # watchdog: restarts a dead/silent socket
+            # Keep index symbols subscribed even after a silent restart.
+            try:
+                self.feed.subscribe(INDEX_SYM.values())
+            except Exception:
+                pass
         now = time.time()
         if not force and now - self._last_check < 30:
             return
@@ -180,6 +185,8 @@ class FyersProvider(LiveProvider):
             return
         if force or self.token_session != self._session_of(datetime.now(IST)) or not self.client.token:
             self._renew()
+            if self.use_ws and self.client.token:
+                self._start_feed()
 
     def auth_info(self):
         """For the app: when must the browser login be done again?"""
@@ -226,20 +233,29 @@ class FyersProvider(LiveProvider):
     def _start_feed(self):
         if not self.use_ws or not self.client.token:
             return
+        # Index symbols must be on the socket as soon as the live session starts (not when a screen asks).
         self.feed.subscribe(INDEX_SYM.values())
         self.feed.start(self.client.app_id, self.client.token)
+        # Re-assert subscription after start so a restart cannot drop the three indexes.
+        self.feed.subscribe(INDEX_SYM.values())
 
     def feed_mode(self):
         """For the app badge: where do the prices come from right now?"""
         i = self.feed.info()
-        healthy = self.feed.healthy()
+        healthy = self.feed.healthy(max_age=30.0)
+        # Connected with symbols subscribed, even before the first tick arrives, still counts as WS
+        # (healthy needs a recent tick; early after connect that is unfair and showed REST).
+        connecting_ok = i["connected"] and (i.get("symbols") or 0) > 0 and i.get("age") is None   # only while waiting for the FIRST tick
         waiting = i["connected"] and not market_open_now()
         if healthy:
             note = "WebSocket live"
+        elif connecting_ok and market_open_now():
+            note = "WebSocket connected - waiting for first tick"
+            healthy = True
         elif waiting:
             note = "WebSocket connected - waiting for market"
         elif i["state"] == "unavailable":
-            note = i["error"]
+            note = i["error"] or "Fyers WebSocket library missing"
         else:
             note = "WebSocket not live - using REST (" + (i["error"] or i["state"]) + ")"
         return {"mode": "WEBSOCKET" if (healthy or waiting) else "REST", "ws_state": i["state"],

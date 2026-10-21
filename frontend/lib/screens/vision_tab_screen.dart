@@ -113,7 +113,6 @@ class _VisionTabScreenState extends State<VisionTabScreen> {
   bool _notesLoaded = false;
   bool _saving = false;
   int _dayOffset = 0;
-  String _srcFilter = 'All';
   Map<String, dynamic>? _dayPayload;
   bool _dayFailed = false;
   int _timelineShow = 30;
@@ -247,7 +246,8 @@ class _VisionTabScreenState extends State<VisionTabScreen> {
                   final goRight = _dragDx > 56 || v > 400;    // previous tab
                   _dragDx = 0;
                   if (!goLeft && !goRight) return;
-                  final next = goLeft ? (_tab + 1).clamp(0, 5) : (_tab - 1).clamp(0, 5);
+                  // 0 Live, 1 Signals, 2 AI Own, 3 Results, 4 Guide, 5 Notebook, 6 Pump
+                  final next = goLeft ? (_tab + 1).clamp(0, 6) : (_tab - 1).clamp(0, 6);
                   if (next == _tab) return;
                   setState(() {
                     _tab = next;
@@ -264,7 +264,7 @@ class _VisionTabScreenState extends State<VisionTabScreen> {
   }
 
   Widget _tabStrip(AppPalette p) {
-    const labels = ['Live', 'Signals', 'Results', 'Guide', 'Notebook', 'Pump'];
+    const labels = ['Live', 'Signals', 'AI Own', 'Results', 'Guide', 'Notebook', 'Pump'];
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: AppSpacing.l),
       padding: const EdgeInsets.all(3),
@@ -285,7 +285,7 @@ class _VisionTabScreenState extends State<VisionTabScreen> {
                     _tab = i;
                     _lastTab = i;
                   });
-                  if (i == 3) _loadGuide();
+                  if (i == 4) _loadGuide();
                 },
                 child: AnimatedContainer(
                   duration: AppMotion.base,
@@ -298,7 +298,7 @@ class _VisionTabScreenState extends State<VisionTabScreen> {
                   child: Text(
                     labels[i],
                     style: TextStyle(
-                      fontSize: 12.5,
+                      fontSize: labels[i] == 'AI Own' ? 11.0 : 12.5,
                       fontWeight: _tab == i ? FontWeight.w800 : FontWeight.w500,
                       color: _tab == i ? p.accent : p.textMuted,
                     ),
@@ -312,13 +312,13 @@ class _VisionTabScreenState extends State<VisionTabScreen> {
   }
 
   Widget _body(AppPalette p) {
-    if (_tab == 5) {
+    if (_tab == 6) {
       return const VisionPumpdumpView();
     }
-    if (_tab == 4) {
+    if (_tab == 5) {
       return const VisionNotebookView();
     }
-    if (_tab == 3) {
+    if (_tab == 4) {
       _loadGuide();
       return _guideTab(p);
     }
@@ -341,6 +341,8 @@ class _VisionTabScreenState extends State<VisionTabScreen> {
       case 1:
         return _signalsTab(p, d);
       case 2:
+        return _aiOwnTab(p, d);
+      case 3:
         return _resultsTab(p, d);
       default:
         return _liveTab(p, d);
@@ -720,6 +722,10 @@ class _VisionTabScreenState extends State<VisionTabScreen> {
               'From AI own scan: ${fmtSigned(_d(daySum['net_own_source']) ?? 0)} (${(_d(daySum['closed_own']) ?? 0).toInt()} trades)',
               style: context.type.metadata.copyWith(color: p.textSecondary),
             ),
+            Text(
+              'see AI Own tab',
+              style: context.type.metadata.copyWith(color: p.accent, fontWeight: FontWeight.w600),
+            ),
             const SizedBox(height: 4),
             Text(
               'Yesterday: ${yNet == null ? '--' : fmtSigned(yNet)} (${yClosed} trades)   ·   All time: ${fmtSigned(allNet)}',
@@ -738,8 +744,9 @@ class _VisionTabScreenState extends State<VisionTabScreen> {
     final total = net + unreal;
     final win = _d(s['win_rate']);
     final avg = _d(s['avg']);
-    final opens = _l(d['open']).map(_m).toList();
-    final waiting = _l(d['decisions']).map(_m).where((x) => x['status'] == 'waiting').toList();
+    // Live tab: bot-source only. Own trades are in the AI Own tab.
+    final opens = _l(d['open']).map(_m).where((t) => (t['source'] ?? 'bot') != 'own').toList();
+    final waiting = _l(d['decisions']).map(_m).where((x) => x['status'] == 'waiting' && (x['source'] ?? 'bot') != 'own').toList();
     final queued = (_d(s['queued']) ?? 0).toInt();
     return OWLRefresh(
       onRefresh: _load,
@@ -748,7 +755,10 @@ class _VisionTabScreenState extends State<VisionTabScreen> {
         padding: _pad,
         children: [
           _todayCard(p, d),
-          const VisionOwnScanLine(),
+          VisionOwnScanLine(
+            showSwitch: false,
+            onOpenOwnTab: () => setState(() { _tab = 2; _lastTab = 2; }),
+          ),
           _banner(p, d),
           _monitorCard(p, d),
           // All-time summary kept compact (today is the hero above).
@@ -853,8 +863,73 @@ class _VisionTabScreenState extends State<VisionTabScreen> {
   }
 
   // ------------------------------------------------------------------ Signals
+  Widget _aiOwnTab(AppPalette p, Map<String, dynamic> d) {
+    final opens = _l(d['open']).map(_m).where((t) => (t['source'] ?? 'bot') == 'own').toList();
+    final closed = _l(d['closed']).map(_m).where((t) => (t['source'] ?? 'bot') == 'own').toList();
+    final daySum = _m(_dayPayload?['summary']);
+    final netOwn = _d(daySum['net_own_source']) ?? 0;
+    final closedOwn = (_d(daySum['closed_own']) ?? 0).toInt();
+    final openOwn = opens.length;
+    double wins = 0;
+    for (final t in closed) {
+      if ((_d(t['pnl']) ?? 0) > 0) wins += 1;
+    }
+    final winRate = closed.isEmpty ? null : (100.0 * wins / closed.length);
+    return OWLRefresh(
+      onRefresh: _load,
+      child: ListView(
+        physics: owlPullPhysics,
+        padding: _pad,
+        children: [
+          VisionOwnScanLine(showSwitch: true),
+          Text('Own scan switch and status. Paper only. Default is OFF.', style: context.type.metadata.copyWith(color: p.textMuted)),
+          const SizedBox(height: AppSpacing.cardGap),
+          _VCard(
+            glow: netOwn >= 0 ? p.profit : p.loss,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('TODAY — AI own trades', style: context.type.secondary.copyWith(fontWeight: FontWeight.w700)),
+                const SizedBox(height: 4),
+                Text('Only trades the AI took by itself. Not mixed with bot signals.', style: context.type.metadata.copyWith(color: p.textMuted)),
+                const SizedBox(height: 8),
+                Text('${fmtSigned(netOwn)} USDT', style: context.type.hero.copyWith(color: netOwn >= 0 ? p.profit : p.loss, fontSize: 28)),
+                const SizedBox(height: 4),
+                Text('$closedOwn closed  ·  $openOwn open now${winRate == null ? '' : '  ·  win ${winRate.toStringAsFixed(0)}%'}',
+                    style: context.type.metadata),
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.cardGap),
+          Text('Open own positions', style: context.type.secondary.copyWith(fontWeight: FontWeight.w700)),
+          const SizedBox(height: 4),
+          Text('Live paper positions from the own scan.', style: context.type.metadata.copyWith(color: p.textMuted)),
+          const SizedBox(height: 8),
+          if (opens.isEmpty) _empty('No open own trades.'),
+          for (final t in opens) ...[
+            _tradeCard(p, t, d),
+            const SizedBox(height: 8),
+          ],
+          const SizedBox(height: AppSpacing.cardGap),
+          Text('Closed own trades', style: context.type.secondary.copyWith(fontWeight: FontWeight.w700)),
+          const SizedBox(height: 4),
+          Text('Newest first. Tap a row for entry, stop, target, chart.', style: context.type.metadata.copyWith(color: p.textMuted)),
+          const SizedBox(height: 8),
+          if (closed.isEmpty) _empty('No closed own trades yet.'),
+          for (final t in closed) ...[
+            _tradeCard(p, t, d),
+            const SizedBox(height: 8),
+          ],
+          const SizedBox(height: AppSpacing.cardGap),
+          const VisionCompareView(),
+          Text('Bot vs own — same data as the compare endpoint.', style: context.type.metadata.copyWith(color: p.textMuted)),
+        ],
+      ),
+    );
+  }
+
   Widget _signalsTab(AppPalette p, Map<String, dynamic> d) {
-    var rows = _l(d['decisions']).map(_m).toList();
+    var rows = _l(d['decisions']).map(_m).where((x) => (x['source'] ?? 'bot') != 'own').toList();
     if (_filter == 'Taken') rows = rows.where((x) => x['status'] == 'taken').toList();
     if (_filter == 'Skipped') rows = rows.where((x) => x['status'] == 'skipped' || x['status'] == 'expired').toList();
     if (_filter == 'Waiting') rows = rows.where((x) => x['status'] == 'waiting' || x['status'] == 'queued').toList();
@@ -1010,8 +1085,8 @@ class _VisionTabScreenState extends State<VisionTabScreen> {
       );
     }
     var rows = _l(_dayPayload?['rows']).map(_m).toList();
-    if (_srcFilter == 'Bot') rows = rows.where((r) => (r['source'] ?? 'bot') != 'own').toList();
-    if (_srcFilter == 'Own') rows = rows.where((r) => (r['source'] ?? 'bot') == 'own').toList();
+    // Live timeline: BOT signals only (own trades live in the AI Own tab).
+    rows = rows.where((r) => (r['source'] ?? 'bot') != 'own').toList();
     final note = (_dayPayload?['note'] ?? '').toString();
     final show = rows.take(_timelineShow).toList();
     return Column(
@@ -1019,29 +1094,10 @@ class _VisionTabScreenState extends State<VisionTabScreen> {
       children: [
         Text('Signal timeline', style: context.type.secondary.copyWith(fontWeight: FontWeight.w700)),
         const SizedBox(height: 4),
-        Text('Each bot or own signal: what the bot did, what the AI decided, who was right.', style: context.type.metadata.copyWith(color: p.textMuted)),
+        Text('Bot signals only. AI own trades are in the AI Own tab.', style: context.type.metadata.copyWith(color: p.textMuted)),
         const SizedBox(height: 8),
         SingleChildScrollView(scrollDirection: Axis.horizontal, child: Row(children: chips)),
         const SizedBox(height: 8),
-        Row(children: [
-          for (final f in ['All', 'Bot', 'Own'])
-            Padding(
-              padding: const EdgeInsets.only(right: 6),
-              child: OWLPressable(
-                onTap: () => setState(() { _srcFilter = f; _timelineShow = 30; }),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: _srcFilter == f ? p.accent.withOpacity(0.18) : p.surfaceElevated,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: _srcFilter == f ? p.accent : p.border),
-                  ),
-                  child: Text(f == 'Bot' ? 'Bot signals' : (f == 'Own' ? 'AI own' : 'All'),
-                      style: TextStyle(color: _srcFilter == f ? p.accent : p.textMuted, fontWeight: FontWeight.w600, fontSize: 12)),
-                ),
-              ),
-            ),
-        ]),
         const SizedBox(height: 10),
         if (rows.isEmpty)
           Padding(

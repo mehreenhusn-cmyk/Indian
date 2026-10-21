@@ -81,10 +81,47 @@ class _IndiaChartScreenState extends State<IndiaChartScreen> {
   DateTime? _updated; // last time the backend answered
   Timer? _clock;
 
+  String get _cacheKey {
+    final tf = _tf > 0 ? _tf : 0;
+    if (_isOpt) return 'opt:${widget.optionKey}:$tf';
+    return 'idx:$_u:$tf';
+  }
+
+  void _paintFromCache() {
+    final hit = _candleCache[_cacheKey];
+    if (hit == null) return;
+    try {
+      final cs = ((hit['candles'] as List?) ?? []).map((e) => _C.from(Map<String, dynamic>.from(e as Map))).toList();
+      if (cs.length < 2) return;
+      final indMap = Map<String, dynamic>.from((hit['indicators'] as Map?) ?? {});
+      final ser = _Ser.from(indMap);
+      final zMap = Map<String, dynamic>.from((indMap['z'] as Map?) ?? {});
+      final rawIdx = zMap['zsma_index'];
+      final idxList = <double?>[];
+      if (rawIdx is List) {
+        for (final v in rawIdx) {
+          idxList.add(v == null ? null : (v is num ? v.toDouble() : double.tryParse('$v')));
+        }
+      }
+      _c = cs;
+      _s = ser;
+      _zsmaIndex = idxList;
+      _levels = ((hit['levels'] as List?) ?? []).map((e) => Map<String, dynamic>.from(e as Map)).toList();
+      if (hit['tf'] != null) _tf = nd(hit['tf']).toInt();
+      if (hit['bot_tf'] != null) _botTf = nd(hit['bot_tf']).toInt();
+      _live = hit['live'] == true;
+      _source = '${hit['source'] ?? ''}';
+      if (_c.isNotEmpty) _livePx = _c.last.c;
+      _loaded = true;
+      _updating = true;
+    } catch (_) {}
+  }
+
   @override
   void initState() {
     super.initState();
     _loadPrefs();
+    _paintFromCache(); // paint cached candles at once, then refresh in the background
     _load();
     _timer = Timer.periodic(const Duration(seconds: 3), (_) => _load());
     if (!_isOpt) {
@@ -177,6 +214,10 @@ class _IndiaChartScreenState extends State<IndiaChartScreen> {
       return;
     }
     _busy = true;
+    final hadCache = _loaded && _c.length >= 2;
+    if (hadCache && mounted) {
+      setState(() => _updating = true);
+    }
     final reqU = _u, reqTf = _tf;
     try {
       final tfq = reqTf > 0 ? '&tf=$reqTf' : '';
@@ -197,6 +238,18 @@ class _IndiaChartScreenState extends State<IndiaChartScreen> {
         for (final v in rawIdx) {
           idxList.add(v == null ? null : (v is num ? v.toDouble() : double.tryParse('$v')));
         }
+      }
+
+      // Cache for instant open next time (max 8 entries).
+      final key = _isOpt ? 'opt:${widget.optionKey}:${nd(d['tf']).toInt()}' : 'idx:$reqU:${nd(d['tf']).toInt()}';
+      _candleCache[key] = d;
+      if (reqTf == 0) {
+        // A fresh open does not know its timeframe yet (_tf == 0): keep the same data under the "default" key too,
+        // so the next open finds it at once.
+        _candleCache[_isOpt ? 'opt:${widget.optionKey}:0' : 'idx:$reqU:0'] = d;
+      }
+      while (_candleCache.length > 8) {
+        _candleCache.remove(_candleCache.keys.first);
       }
 
       if (!mounted) return;
@@ -220,11 +273,13 @@ class _IndiaChartScreenState extends State<IndiaChartScreen> {
         _updated = DateTime.now();
         _error = '';
         _loaded = true;
+        _updating = false;
       });
     } catch (e) {
       if (mounted) setState(() {
         _error = 'Could not load candles: ${friendlyError(e)} (showing last candles)';
         _loaded = true;
+        _updating = false;
       });
     } finally {
       _busy = false;
@@ -244,7 +299,10 @@ class _IndiaChartScreenState extends State<IndiaChartScreen> {
       _loaded = false;
       _shift = 0;
       _cross = null;
+      _updating = false;
     });
+    _paintFromCache();
+    if (_loaded && mounted) setState(() {});
     _load();
   }
 
@@ -257,7 +315,10 @@ class _IndiaChartScreenState extends State<IndiaChartScreen> {
       _loaded = false;
       _shift = 0;
       _cross = null;
+      _updating = false;
     });
+    _paintFromCache();
+    if (_loaded && mounted) setState(() {});
     _load();
   }
 
@@ -438,6 +499,8 @@ class _IndiaChartScreenState extends State<IndiaChartScreen> {
                 Padding(padding: const EdgeInsets.only(top: 4), child: Text(_optErr, style: IT.small(context).copyWith(color: p.warning))),
               if (_error.isNotEmpty)
                 Padding(padding: const EdgeInsets.only(top: 4), child: SelectableText(_error, style: IT.small(context).copyWith(color: p.loss))),
+              if (_updating && _loaded)
+                Padding(padding: const EdgeInsets.only(top: 4), child: Text('Updating...', style: IT.small(context).copyWith(color: p.textMuted))),
               if (!_isOpt && _note.isNotEmpty)
                 Padding(padding: const EdgeInsets.only(top: 4), child: Text(_note, style: IT.small(context))),
             ]),
@@ -625,6 +688,7 @@ class _IndiaChartScreenState extends State<IndiaChartScreen> {
                       plotW: plotW,
                       light: true,
                       markIdx: mark,
+                      indexZsma: _isOpt && _zsmaIndex.isNotEmpty,
                     ),
                   ),
                 ),

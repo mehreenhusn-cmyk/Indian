@@ -286,6 +286,8 @@ class SpecialMasterPainter extends CustomPainter {
   final double plotW;
   final bool light;
   final int? markIdx; // candle under the crosshair, null = newest candle
+  /// When true the Z-SMA 2 series is the underlying index overlay (option chart).
+  final bool indexZsma;
 
   SpecialMasterPainter(this.d,
       {required this.st,
@@ -293,7 +295,8 @@ class SpecialMasterPainter extends CustomPainter {
       required this.rightBlank,
       required this.plotW,
       required this.light,
-      this.markIdx});
+      this.markIdx,
+      this.indexZsma = false});
 
   Color get _ink => light ? const Color(0xFF10141C) : Colors.white;
   Color get _grid => (light ? Colors.black : Colors.white).withOpacity(0.10);
@@ -628,14 +631,18 @@ class SpecialMasterPainter extends CustomPainter {
       if (st.b('sma2')) {
         // Thicker than Z so the average is easy to see; _vis makes black -> white in dark mode.
         _drawRuns(canvas, d.zSma2, y, line(_vis(st.c('cSma2')), 2.0), i0, i1);
-        int ok = 0, tot = 0;
-        for (int i = i0; i <= i1 && i < d.zSma2.length; i++) {
-          tot++;
-          if (d.zSma2[i] != null) ok++;
-        }
-        if (tot > 0 && ok < tot) {
-          _text(canvas, 'Z-SMA 200 starts after ~400 candles ($ok/$tot in view)',
-              Offset(r.left + 4, r.top + 14), _ink.withOpacity(0.7));
+        if (indexZsma) {
+          _text(canvas, 'Z-SMA 200 (index)', Offset(r.left + 4, r.top + 14), _ink.withOpacity(0.85));
+        } else {
+          int ok = 0, tot = 0;
+          for (int i = i0; i <= i1 && i < d.zSma2.length; i++) {
+            tot++;
+            if (d.zSma2[i] != null) ok++;
+          }
+          if (tot > 0 && ok < tot) {
+            _text(canvas, 'Z-SMA 200 starts after ~400 candles ($ok/$tot in view)',
+                Offset(r.left + 4, r.top + 14), _ink.withOpacity(0.7));
+          }
         }
       }
     }
@@ -663,5 +670,6 @@ class SpecialMasterPainter extends CustomPainter {
       old.rightBlank != rightBlank ||
       old.plotW != plotW ||
       old.light != light ||
-      old.markIdx != markIdx;
+      old.markIdx != markIdx ||
+      old.indexZsma != indexZsma;
 }

@@ -55,7 +55,7 @@ def test_prewarm_indexes_cap_and_no_lock():
     rt.lock = threading.RLock()
     rt.provider = FakeProv()
     chains = []
-    rt.chain = lambda u, expiry=None, width=10: chains.append(u)
+    rt._warm_chain = lambda u, expiry, width: chains.append(u)
     R.time.sleep, real_sleep = (lambda x: None), R.time.sleep
     try:
         done = threading.Event()
@@ -85,8 +85,59 @@ def test_start_runs_thread_inside_lock():
     print("start() OK")
 
 
+
+
+def test_ticks_indexes_and_opt_chg_no_lock():
+    """ticks() returns spots for three indexes from a fake feed without taking rt.lock, and includes chg for options."""
+    from recovered_bot import india_runtime as R
+    import time
+    now = time.time()
+    class Feed:
+        lock = __import__("threading").RLock()
+        ticks = {
+            "NSE:NIFTY50-INDEX": (now, {"lp": 22850.0, "ch": -10.0}),
+            "NSE:NIFTYBANK-INDEX": (now, {"lp": 48000.0, "ch": 5.0}),
+            "NSE:FINNIFTY-INDEX": (now, {"lp": 21000.0, "ch": 1.0}),
+            "NSE:NIFTY25OCT22800CE": (now, {"lp": 40.5, "ch": -2.3}),
+        }
+        wanted = list(ticks.keys())
+        restarts = 0
+        def subscribe(self, symbols):
+            pass
+        def get(self, symbol, max_age=6.0):
+            return None
+    class Prov:
+        is_live = True
+        feed = Feed()
+        _last_spot = {}
+        _qcache = {}
+        def feed_mode(self):
+            return {"mode": "WEBSOCKET", "state": "connected", "note": "WebSocket live"}
+    rt = R.IndiaRuntime.__new__(R.IndiaRuntime)
+    rt.lock = __import__("threading").RLock()
+    rt.provider = Prov()
+    rt.live = object()
+    rt.settings = {"poll_sec": 5}
+    rt._opt_sub_syms = set()
+    rt._speed_hist = {"candles": [], "chain": [], "status": [], "paper": [],
+                      "candles_lock": [], "chain_lock": [], "status_lock": []}
+    # Hold the lock: ticks must still return without blocking.
+    with rt.lock:
+        out = rt.ticks(opt="NSE:NIFTY25OCT22800CE")
+    assert out["mode"] == "WEBSOCKET", out
+    for u in ("NIFTY", "BANKNIFTY", "FINNIFTY"):
+        assert u in out["spots"], out["spots"]
+        assert out["spots"][u]["lp"] > 0
+        assert out["spots"][u]["src"] == "ws"
+    opt = out["opts"].get("NSE:NIFTY25OCT22800CE")
+    assert opt is not None and opt["lp"] == 40.5, opt
+    assert opt.get("chg") == -2.3, opt
+    print("ticks indexes+chg OK")
+
+
 if __name__ == "__main__":
     test_prewarm_no_lock_and_cap()
     test_prewarm_indexes_cap_and_no_lock()
     test_start_runs_thread_inside_lock()
+    test_ticks_indexes_and_opt_chg_no_lock()
     print("ALL test_india_prewarm passed")

@@ -1567,6 +1567,15 @@ def start():
 
 
 # ------------------------------------------------------------------ read side (the app)
+def _closed_shown(closed):
+    """Last 40 closed BOT trades plus last 40 closed AI OWN trades, kept in time order,
+    so the AI Own tab never goes empty when many bot trades close."""
+    bot = [t for t in closed if (t.get("source") or "bot") != "own"][-40:]
+    own = [t for t in closed if (t.get("source") or "bot") == "own"][-40:]
+    keep = {id(t) for t in bot + own}
+    return [t for t in closed if id(t) in keep]
+
+
 def _trade_view(t):
     px = _live_price(t["symbol"]) if t["status"] == "open" else None
     v = {k: t.get(k) for k in ("id", "dec_id", "symbol", "side", "tf_min", "entry", "sl", "sl0", "target", "lev", "invest", "opened_at",
@@ -1757,7 +1766,7 @@ def snapshot(limit=80):
                     "bot_on_taken": {"n": len(taken_bot), "net": sum(taken_bot)},
                     "bot_on_skipped": {"n": len(skip_bot), "net": sum(skip_bot),
                                        "wins": sum(1 for x in skip_bot if x > 0), "losses": sum(1 for x in skip_bot if x <= 0)}},
-        "open": ov, "closed": [_trade_view(t) for t in reversed(closed[-40:])], "decisions": out_dec, "log": log,
+        "open": ov, "closed": [_trade_view(t) for t in reversed(_closed_shown(closed))], "decisions": out_dec, "log": log,
         "indicator_use": _indicator_use(decs),
         "today": _today_block(trades, decs),
         "yesterday": _yesterday_line(trades, decs),

@@ -83,6 +83,8 @@ class IndiaRuntime:
         self._last_rate_limited = 0.0
         self._opt_sub_syms = set()
         self._poll_sec_saved = None
+        self._last_mkt_status = None            # track CLOSED -> OPEN for once-per-day prewarm
+        self._prewarm_open_day = None           # date string when we last prewarmed at market open
         self._stop_evt = threading.Event()      # wakes the market-closed sleep when Stop is pressed
         self.thread = None
         self.running = False
@@ -193,7 +195,7 @@ class IndiaRuntime:
                     if calls >= cap:
                         return
                     try:
-                        self.chain(u, width=8)
+                        self._warm_chain(u, None, 8)      # fills the provider cache only: never takes self.lock
                         calls += 1
                         time.sleep(0.35)
                     except Exception:
@@ -264,6 +266,17 @@ class IndiaRuntime:
                     pass
             if live:
                 self._keepalive()                             # outside the lock (may call the broker)
+                # Once per day when market flips to OPEN, pre-warm index candles (outside lock).
+                try:
+                    st = india_chain.market_status(self.provider.now())
+                    day = self.provider.now().date().isoformat()
+                    if st == "OPEN" and (self._last_mkt_status != "OPEN" or self._prewarm_open_day != day):
+                        if self._prewarm_open_day != day:
+                            self._prewarm_open_day = day
+                            self.prewarm_indexes()
+                    self._last_mkt_status = st
+                except Exception:
+                    pass
             if closed:
                 self._stop_evt.wait(min(30.0, max(5.0, poll)))   # market closed: sleep WITHOUT the lock; Stop wakes it
                 continue
@@ -900,7 +913,7 @@ class IndiaRuntime:
                 state = fm.get("state") or fm.get("note") or "ok"
             feed = getattr(pv, "feed", None)
             if feed is not None:
-                n_sub = len(getattr(feed, "symbols", None) or getattr(feed, "_symbols", None) or [])
+                n_sub = len(getattr(feed, "wanted", None) or getattr(feed, "symbols", None) or [])
                 restarts = int(getattr(feed, "restarts", 0) or getattr(feed, "ws_restarts", 0) or 0)
             quote_ttl = getattr(pv, "quote_ttl", None)
             today_ttl = getattr(pv, "today_ttl", None)
@@ -977,7 +990,10 @@ class IndiaRuntime:
                     if hit:
                         row = hit[1] if isinstance(hit[1], dict) else {"lp": hit[1]}
                         lp = float(row.get("lp") or 0)
+                        # Fyers WS uses "ch"; REST cache may use "chg"
                         chg = row.get("chg")
+                        if chg is None:
+                            chg = row.get("ch")
                         opts[s] = {"lp": lp, "at": hit[0], "age_ms": int((now - hit[0]) * 1000),
                                    "src": "ws", "chg": chg}
                     else:
@@ -990,8 +1006,11 @@ class IndiaRuntime:
                         except Exception:
                             q = None
                         if isinstance(q, dict) and q.get("lp") is not None:
+                            chg = q.get("chg")
+                            if chg is None:
+                                chg = q.get("ch")
                             opts[s] = {"lp": float(q["lp"]), "at": now, "age_ms": None, "src": "rest",
-                                       "chg": q.get("chg")}
+                                       "chg": chg}
                         else:
                             opts[s] = None
             else:
@@ -1028,10 +1047,14 @@ class IndiaRuntime:
                  "date": c["t"].astimezone(IST).date().isoformat()} for i, c in enumerate(cs)]
 
     def option_candles(self, key, limit=200, tf=None):
-        """Chart of one option contract (key from the chain) with the same indicators as the index chart."""
+        """Chart of one option contract (key from the chain) with the same indicators as the index chart.
+        Contract lookup is under the lock; candle/index reads are outside so the index overlay does not
+        trigger a cold broker call while holding self.lock."""
         with self.lock:
             pv = self.provider
             tf = self._tf_ok(tf, default=int(self.settings["tf"]))
+            bot_tf = int(self.settings["tf"])
+            live = self.live is not None
             c = None
             for u in ALL_UNDERLYINGS:
                 try:
@@ -1042,63 +1065,66 @@ class IndiaRuntime:
                     break
             if c is None:
                 raise ValueError("contract not found - open the chain again")
-            warm, source, err = 250, "MODEL", ""
-            if hasattr(pv, "get_option_candles"):
-                try:
-                    cs, source = pv.get_option_candles(c, tf, limit + warm)
-                except Exception as e:
-                    cs, err = [], str(e)[:200]
-            else:                                   # demo / Tradebulls: premium modelled from the index candles
-                sp = list(pv.get_candles(c["underlying"], tf, limit + warm))
-                last = pv.get_forming_candle(c["underlying"], tf)
-                if last and (not sp or last["t"] > sp[-1]["t"]):
-                    sp.append(last)
-
-                def px(spot, t):
-                    exp = datetime.combine(c["expiry"], datetime.min.time().replace(hour=15, minute=30), IST)
-                    yrs = max((exp - t).total_seconds(), 60) / (365 * 86400)
-                    return india_pricing.bs_price(spot, c["strike"], yrs, 0.15, c["type"])
-                cs = []
-                for k in sp:
-                    vals = [px(k[f], k["t"]) for f in ("o", "h", "l", "c")]
-                    cs.append(dict(t=k["t"], o=vals[0], h=max(vals), l=min(vals), c=vals[3], v=0))
-            forming = bool(cs) and cs[-1]["t"] + timedelta(minutes=tf) > pv.now()
-            n_closed = len(cs) - (1 if forming else 0)
-            cs, ics = self._pack(cs, n_closed, limit)
-            # Option Z-SMA 200 rarely starts (few candles). Overlay the underlying INDEX Z-SMA on the same axis.
+            # snapshot fields used after the lock is released
+            und = c["underlying"]
+            strike = c["strike"]
+            ctype = c["type"]
+            expiry = c["expiry"]
+            c_snap = dict(c)
+        warm, source, err = 250, "MODEL", ""
+        if hasattr(pv, "get_option_candles"):
             try:
-                sp = list(pv.get_candles(c["underlying"], tf, limit + warm))
-                last_i = pv.get_forming_candle(c["underlying"], tf)
-                if last_i and (not sp or last_i["t"] > sp[-1]["t"]):
-                    sp.append(last_i)
-                sp, i_ics = self._pack(sp, len(sp), limit)
-                # map index zsma by timestamp onto option candle times
-                idx_map = {}
-                zlist = (i_ics.get("z") or {}).get("zsma") or (i_ics.get("z") or {}).get("sma2") or []
-                # indicators structure may use different keys - also try raw
-                if not zlist and isinstance(i_ics.get("z"), dict):
-                    for kk, vv in i_ics["z"].items():
-                        if "sma" in str(kk).lower() and isinstance(vv, list):
-                            zlist = vv
-                            break
-                for j, row in enumerate(sp[-len(zlist):] if zlist else []):
-                    if j < len(zlist) and zlist[j] is not None:
-                        idx_map[row["t"]] = zlist[j]
-                # Prefer attaching parallel array same length as shown candles
-                opt_rows = self._candle_rows(cs, ics)
-                zsma_index = []
-                for row in (cs[-len(opt_rows):] if opt_rows else []):
-                    zsma_index.append(idx_map.get(row["t"]))
-                if "z" not in ics or not isinstance(ics["z"], dict):
-                    ics["z"] = dict(ics.get("z") or {})
-                ics["z"]["zsma_index"] = zsma_index
-            except Exception as _e:
-                pass
-            return {"key": key, "underlying": c["underlying"], "strike": c["strike"], "type": c["type"],
-                    "expiry": c["expiry"].isoformat(), "tf": tf, "bot_tf": int(self.settings["tf"]),
-                    "tf_choices": list(TF_CHOICES), "live": self.live is not None, "forming": forming,
-                    "source": source, "error": err, "indicators": ics, "levels": [],
-                    "candles": self._candle_rows(cs, ics)}
+                cs, source = pv.get_option_candles(c_snap, tf, limit + warm)
+            except Exception as e:
+                cs, err = [], str(e)[:200]
+        else:
+            sp = list(pv.get_candles(und, tf, limit + warm))
+            last = pv.get_forming_candle(und, tf)
+            if last and (not sp or last["t"] > sp[-1]["t"]):
+                sp.append(last)
+
+            def px(spot, t):
+                exp = datetime.combine(expiry, datetime.min.time().replace(hour=15, minute=30), IST)
+                yrs = max((exp - t).total_seconds(), 60) / (365 * 86400)
+                return india_pricing.bs_price(spot, strike, yrs, 0.15, ctype)
+            cs = []
+            for k in sp:
+                vals = [px(k[f], k["t"]) for f in ("o", "h", "l", "c")]
+                cs.append(dict(t=k["t"], o=vals[0], h=max(vals), l=min(vals), c=vals[3], v=0))
+        forming = bool(cs) and cs[-1]["t"] + timedelta(minutes=tf) > pv.now()
+        n_closed = len(cs) - (1 if forming else 0)
+        cs, ics = self._pack(cs, n_closed, limit)
+        # Index Z-SMA overlay (provider cache only; no new broker call under the runtime lock).
+        try:
+            sp = list(pv.get_candles(und, tf, limit + warm))
+            last_i = pv.get_forming_candle(und, tf)
+            if last_i and (not sp or last_i["t"] > sp[-1]["t"]):
+                sp.append(last_i)
+            sp, i_ics = self._pack(sp, len(sp), limit)
+            idx_map = {}
+            zlist = (i_ics.get("z") or {}).get("zsma") or (i_ics.get("z") or {}).get("sma2") or []
+            if not zlist and isinstance(i_ics.get("z"), dict):
+                for kk, vv in i_ics["z"].items():
+                    if "sma" in str(kk).lower() and isinstance(vv, list):
+                        zlist = vv
+                        break
+            for j, row in enumerate(sp[-len(zlist):] if zlist else []):
+                if j < len(zlist) and zlist[j] is not None:
+                    idx_map[row["t"]] = zlist[j]
+            opt_rows = self._candle_rows(cs, ics)
+            zsma_index = []
+            for row in (cs[-len(opt_rows):] if opt_rows else []):
+                zsma_index.append(idx_map.get(row["t"]))
+            if "z" not in ics or not isinstance(ics["z"], dict):
+                ics["z"] = dict(ics.get("z") or {})
+            ics["z"]["zsma_index"] = zsma_index
+        except Exception:
+            pass
+        return {"key": key, "underlying": und, "strike": strike, "type": ctype,
+                "expiry": expiry.isoformat(), "tf": tf, "bot_tf": bot_tf,
+                "tf_choices": list(TF_CHOICES), "live": live, "forming": forming,
+                "source": source, "error": err, "indicators": ics, "levels": [],
+                "candles": self._candle_rows(cs, ics)}
 
     def positions(self):
         with self.lock:

@@ -60,6 +60,16 @@ class _IndiaChainTabState extends State<IndiaChainTab> {
     return fallback is num ? fallback : null;
   }
 
+  /// Live change for one option from the tick feed, else the chain value. OI stays from the chain.
+  num? _liveChg(dynamic symbol, dynamic fallback) {
+    final o = IndiaTicks.instance.data.value['opts'];
+    if (o is Map && symbol != null) {
+      final e = o['$symbol'];
+      if (e is Map && e['chg'] is num) return e['chg'] as num;
+    }
+    return fallback is num ? fallback : null;
+  }
+
   void _showSpeed() {
     final d = IndiaTicks.instance.data.value;
     showDialog(context: context, builder: (ctx) => AlertDialog(
@@ -428,7 +438,8 @@ class _IndiaChainTabState extends State<IndiaChainTab> {
     final itm = c['itm'] == true;
     final pinned = c['pinned'] == true;
     final afford = c['affordable'] == true;
-    final chg = c['chg'] == null ? null : nd(c['chg']);
+    final chgRaw = _liveChg(c['symbol'], c['chg']);
+    final chg = chgRaw == null ? null : nd(chgRaw);
     final align = side == 'CE' ? CrossAxisAlignment.start : CrossAxisAlignment.end;
     return InkWell(
       onTap: () {

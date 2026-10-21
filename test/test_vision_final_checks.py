@@ -61,7 +61,7 @@ def test_regression_guards():
         assert f in guard, f"{f} not in the ai_guard read-only list"
     tab = _read("frontend", "lib", "screens", "vision_tab_screen.dart")
     assert "double _dragDx" in tab and "'Pump']" in tab and "Pump/Dump" not in tab
-    assert "VisionCompareView()" in tab and "VisionOwnScanLine()" in tab
+    assert "VisionCompareView(" in tab and "VisionOwnScanLine(" in tab
     assert "notJudged" in tab, "NOT JUDGED part of the today card was lost"
     assert V.CANDLES >= 600
     print("regression guards OK")

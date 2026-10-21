@@ -1644,17 +1644,30 @@ class _CandleChartSheetContentState extends State<_CandleChartSheetContent>
           },
           onDoubleTap: _resetView,
           child: ClipRect(
-            child: CustomPaint(
-              size: Size.infinite,
-              painter: SpecialMasterPainter(
-                data,
-                st: _smSet,
-                slot: _slot,
-                rightBlank: _rightBlank,
-                plotW: _plotW,
-                light: _chartLight(context),
-                markIdx: mark,
-              ),
+            child: Stack(
+              children: [
+                CustomPaint(
+                  size: Size.infinite,
+                  painter: SpecialMasterPainter(
+                    data,
+                    st: _smSet,
+                    slot: _slot,
+                    rightBlank: _rightBlank,
+                    plotW: _plotW,
+                    light: _chartLight(context),
+                    markIdx: mark,
+                  ),
+                ),
+                if (!_smSet.b('zSma') || !_smSet.b('sma2'))
+                  Positioned(
+                    left: 8,
+                    top: 8,
+                    child: Text(
+                      'Z-SMA line is off. Turn it on in the chart settings.',
+                      style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                    ),
+                  ),
+              ],
             ),
           ),
         ),

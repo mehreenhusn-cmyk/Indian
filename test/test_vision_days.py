@@ -186,6 +186,43 @@ def test_timeline_trade_fields_and_title():
         print("timeline trade fields + title OK")
 
 
+def test_source_filter_bot_own_total():
+    """own-only filter returns only own rows; bot-only only bot; counts add up."""
+    with tempfile.TemporaryDirectory() as td:
+        V.init(td)
+        VD.init(td)
+        V._loaded = True
+        VD._loaded = True
+        day0 = VD.day0_ts(_ist_ts(2026, 10, 21, 12, 0))
+        base = day0 + 3600
+        with V._lock:
+            V._state["dec"] = [
+                {"id": "b1", "signal_no": 1, "symbol": "BTCUSDT", "side": "BUY", "status": "taken",
+                 "sig_time": base, "decided_at": base + 10, "source": "bot", "sig_price": 100},
+                {"id": "b2", "signal_no": 2, "symbol": "ETHUSDT", "side": "BUY", "status": "skipped",
+                 "sig_time": base + 30, "decided_at": base + 40, "source": "bot", "sig_price": 50},
+                {"id": "o1", "signal_no": 101, "symbol": "SOLUSDT", "side": "SELL", "status": "taken",
+                 "sig_time": base + 60, "decided_at": base + 70, "source": "own", "sig_price": 20},
+                {"id": "o2", "signal_no": 102, "symbol": "XRPUSDT", "side": "BUY", "status": "taken",
+                 "sig_time": base + 90, "decided_at": base + 100, "source": "own", "sig_price": 1},
+            ]
+            V._state["trades"] = []
+        V._botmap = {"t": time.time(), "closed": {}, "open": set()}
+        now = base + 500
+        all_rows, _ = VD.timeline(V, 0, 50, now, source=None)
+        bot_rows, _ = VD.timeline(V, 0, 50, now, source="bot")
+        own_rows, _ = VD.timeline(V, 0, 50, now, source="own")
+        assert len(all_rows) == 4, len(all_rows)
+        assert len(bot_rows) == 2, len(bot_rows)
+        assert len(own_rows) == 2, len(own_rows)
+        assert all((r.get("source") or "bot") != "own" for r in bot_rows)
+        assert all((r.get("source") or "bot") == "own" for r in own_rows)
+        assert len(bot_rows) + len(own_rows) == len(all_rows)
+        payload = VD.day_payload(V, 0, now, source="own")
+        assert all((r.get("source") or "bot") == "own" for r in payload["rows"])
+        print("source filter OK", len(bot_rows), len(own_rows), len(all_rows))
+
+
 if __name__ == "__main__":
     test_day_boundary()
     test_rollup_idempotent_and_verdicts()
@@ -193,6 +230,7 @@ if __name__ == "__main__":
     test_missing_store_no_crash()
     test_dart_has_old_backend_note()
     test_timeline_trade_fields_and_title()
+    test_source_filter_bot_own_total()
     print("\nALL test_vision_days passed")
 
 

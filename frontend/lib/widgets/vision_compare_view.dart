@@ -167,7 +167,10 @@ class _VisionCompareViewState extends State<VisionCompareView> {
 
 /// One line + switch for the Live tab: is the AI own scan on, and what did it do.
 class VisionOwnScanLine extends StatefulWidget {
-  const VisionOwnScanLine({super.key});
+  /// When false, only status text (no switch). Switch lives on the AI Own tab so two switches cannot disagree.
+  final bool showSwitch;
+  final VoidCallback? onOpenOwnTab;
+  const VisionOwnScanLine({super.key, this.showSwitch = true, this.onOpenOwnTab});
 
   @override
   State<VisionOwnScanLine> createState() => _VisionOwnScanLineState();
@@ -211,6 +214,9 @@ class _VisionOwnScanLineState extends State<VisionOwnScanLine> {
     final scan = _m(d['own_scan']);
     final on = d['own_enabled'] == true;
     final err = (scan['err'] ?? '').toString();
+    final status = on
+        ? 'AI own scan: ON. Scanned ${scan['scanned'] ?? 0}, asked AI ${scan['asked'] ?? 0}, took ${scan['took'] ?? 0}${err.isNotEmpty ? ' ($err)' : ''}'
+        : 'AI own scan: OFF (paper only, uses AI quota)';
     return Container(
       margin: const EdgeInsets.only(bottom: AppSpacing.s),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
@@ -222,14 +228,16 @@ class _VisionOwnScanLineState extends State<VisionOwnScanLine> {
       child: Row(
         children: [
           Expanded(
-            child: Text(
-              on
-                  ? 'AI own scan: ON. Scanned ${scan['scanned'] ?? 0}, asked AI ${scan['asked'] ?? 0}, took ${scan['took'] ?? 0}${err.isNotEmpty ? ' ($err)' : ''}'
-                  : 'AI own scan: OFF (paper only, uses AI quota)',
-              style: TextStyle(color: p.textPrimary, fontWeight: FontWeight.w600, fontSize: 12.5),
+            child: GestureDetector(
+              onTap: widget.showSwitch ? null : widget.onOpenOwnTab,
+              child: Text(
+                widget.showSwitch ? status : '$status  ·  see AI Own tab',
+                style: TextStyle(color: p.textPrimary, fontWeight: FontWeight.w600, fontSize: 12.5),
+              ),
             ),
           ),
-          Switch(value: on, onChanged: _toggle, activeColor: p.accent),
+          if (widget.showSwitch)
+            Switch(value: on, onChanged: _toggle, activeColor: p.accent),
         ],
       ),
     );
