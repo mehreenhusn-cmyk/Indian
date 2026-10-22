@@ -166,6 +166,14 @@ try:
 except Exception as _e:
     print(f"[startup] india paper routes skipped: {_e}")
 
+# Ping Lab (paper-only, read-only) - only READS the snapshot written by ping_worker.py.
+# Wrapped so a broken ping file can never stop the main backend from starting.
+try:
+    from recovered_bot.ping_api import make_router as _ping_make_router
+    app.include_router(_ping_make_router())
+except Exception as _e:
+    print(f"[startup] ping routes skipped: {_e}")
+
 
 _bot_thread_started = False
 _bot_thread_lock = threading.Lock()

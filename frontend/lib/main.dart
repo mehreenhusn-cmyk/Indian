@@ -13,6 +13,7 @@ import 'screens/vision_tab_screen.dart';
 import 'screens/alerts_screen.dart';
 import 'screens/india_paper_screen.dart';
 import 'screens/settings_screen.dart';
+import 'screens/ping_tab_screen.dart';
 import 'widgets/bottom_nav_bar.dart';
 import 'widgets/owl_ambient_background.dart';
 import 'widgets/owl_drawer.dart';
@@ -295,7 +296,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   // already on scrolls it back to the top. Screens are NOT kept alive in the
   // background (that would slow the app); we only remember the scroll
   // positions of the long lists and put them back when you return.
-  final List<GlobalKey> _tabKeys = List.generate(7, (_) => GlobalKey());
+  final List<GlobalKey> _tabKeys = List.generate(8, (_) => GlobalKey());
   final Map<int, List<double>> _scrollMemo = {};
 
   /// The big vertical lists of one tab, in tree order.
@@ -399,6 +400,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     const VisionTabScreen(),
     const AlertsScreen(),
     const SettingsScreen(),
+    const PingTabScreen(),
   ];
 
   @override

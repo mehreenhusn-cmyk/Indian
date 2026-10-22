@@ -24,16 +24,18 @@ class BottomNavBar extends StatelessWidget {
     Icons.auto_awesome_rounded,
     Icons.notifications_none_rounded,
     Icons.settings_rounded,
+    Icons.bolt_rounded,
   ];
 
   static const List<String> _labels = [
     'Dash',
     'Market',
     'Pos',
-    'Signals',
+    'Sig',
     'AI',
-    'Alerts',
-    'Settings',
+    'Alert',
+    'Set',
+    'Ping',
   ];
 
   @override
@@ -74,8 +76,8 @@ class BottomNavBar extends StatelessWidget {
       onTap: () => onTap(index),
       child: AnimatedContainer(
         duration: AppMotion.base,
-        margin: const EdgeInsets.symmetric(horizontal: 1),
-        padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs + 2),
+        margin: const EdgeInsets.symmetric(horizontal: 0),
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs + 1),
         decoration: BoxDecoration(
           color: selected ? p.accent.withOpacity(0.10) : Colors.transparent,
           borderRadius: BorderRadius.circular(AppSpacing.radiusSmall),
@@ -87,7 +89,7 @@ class BottomNavBar extends StatelessWidget {
               scale: selected ? 1.14 : 1.0,
               duration: AppMotion.base,
               curve: Curves.easeOutBack,
-              child: Icon(_icons[index], size: 21, color: color),
+              child: Icon(_icons[index], size: 18, color: color),
             ),
             const SizedBox(height: 3),
             Text(
@@ -95,7 +97,7 @@ class BottomNavBar extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.clip,
               style: AppTypography.metadata.copyWith(
-                fontSize: 9.5,
+                fontSize: 8.5,
                 color: color,
                 fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
               ),
