@@ -18,6 +18,8 @@ SL_MAX_PCT = 1.2
 TP_FRACTIONS = (0.25, 0.25, 0.25, 0.25)  # TP1..TP4
 TIME_STOP_MIN = 30
 TRADES_CAP = 1000
+EMA_READY_FAST = 30   # closed 1m candles needed before EMA30 is trusted
+EMA_READY_SLOW = 50   # closed 1m candles needed before EMA50 is trusted
 VARIANTS = ("A", "B", "C")  # A=EMA30, B=EMA50, C=ping only
 
 
@@ -108,15 +110,15 @@ class PingBot:
         # EMA filter
         close = cs.price
         if variant == "A":
-            if cs.ema30 is None:
-                return
+            if cs.ema30 is None or cs.n_closes < EMA_READY_FAST:
+                return  # EMA30 not warmed up yet
             if side == "LONG" and not (close > cs.ema30):
                 return
             if side == "SHORT" and not (close < cs.ema30):
                 return
         elif variant == "B":
-            if cs.ema50 is None:
-                return
+            if cs.ema50 is None or cs.n_closes < EMA_READY_SLOW:
+                return  # EMA50 not warmed up yet
             if side == "LONG" and not (close > cs.ema50):
                 return
             if side == "SHORT" and not (close < cs.ema50):

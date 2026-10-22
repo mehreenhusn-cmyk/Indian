@@ -16,6 +16,26 @@ RADAR_TICK_SEC = 60
 RADAR_REFLAG_SEC = 15 * 60  # a coin can be flagged again after this long
 
 
+def parse_mini_ticker(t):
+    """One item of !miniTicker@arr -> (symbol, quote_vol_24h, close, change_pct) or None.
+
+    miniTicker has NO price-change-percent field (only c, o, h, l, v, q), so the
+    24h change is computed from open (o) and close (c).
+    """
+    try:
+        sym = (t.get("s") or "").upper()
+        if not sym.endswith("USDT"):
+            return None
+        c = float(t.get("c"))
+        o = float(t.get("o"))
+        qv = float(t.get("q"))
+    except (TypeError, ValueError, AttributeError):
+        return None
+    if o <= 0 or c <= 0:
+        return None
+    return sym, qv, c, (c - o) / o * 100.0
+
+
 class PingRadar:
     def __init__(self):
         self._vol_hist = defaultdict(lambda: deque(maxlen=RADAR_MEDIAN_WINDOW + 1))

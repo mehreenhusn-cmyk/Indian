@@ -35,7 +35,7 @@ class CoinState:
         "ema30", "ema50", "close_hist",
         "recent_total", "recent_vol_pct", "recent_net",
         "price", "quote_vol_24h", "in_watchlist",
-        "last_candle_ts", "high_hist", "low_hist", "open_hist",
+        "last_candle_ts", "high_hist", "low_hist", "open_hist", "n_closes",
     )
 
     def __init__(self, symbol):
@@ -64,6 +64,7 @@ class CoinState:
         self.high_hist = deque(maxlen=15)
         self.low_hist = deque(maxlen=15)
         self.open_hist = deque(maxlen=15)
+        self.n_closes = 0  # closed 1m candles seen (live + history); EMA is only trusted after 30 / 50
 
 
 class PingEngine:
@@ -99,6 +100,7 @@ class PingEngine:
         else:
             cs.recent_vol_pct = 0.0
 
+        cs.n_closes += 1
         cs.close_hist.append(close)
         try:
             cs.high_hist.append(float(high) if high is not None else close)
@@ -176,6 +178,41 @@ class PingEngine:
         }
         self._events.append(event)
         return event
+
+    def seed_history(self, symbol, rows, now=None):
+        """Fill EMA / baseline from REST 1m klines BEFORE live candles arrive.
+
+        rows = Binance /fapi/v1/klines rows: [openT, o, h, l, c, v, closeT, quoteVol,
+        trades, takerBuyBase, takerBuyQuote, ...]. Registers NO pings (history only).
+        Returns the number of candles used. Does nothing if live candles already exist.
+        """
+        cs = self.get(symbol)
+        if cs.n_closes > 0:
+            return 0
+        now = now if now is not None else time.time()
+        used = 0
+        for r in rows or []:
+            try:
+                close_ts = int(r[6]) / 1000.0
+                o, h, l, c = float(r[1]), float(r[2]), float(r[3]), float(r[4])
+                total = float(r[7])
+                tb = float(r[10])
+            except (TypeError, ValueError, IndexError):
+                continue
+            if close_ts > now or c <= 0:
+                continue  # candle still open
+            cs.n_closes += 1
+            cs.close_hist.append(c)
+            cs.high_hist.append(h)
+            cs.low_hist.append(l)
+            cs.open_hist.append(o)
+            cs.ema30 = _ema_update(cs.ema30, c, EMA_FAST)
+            cs.ema50 = _ema_update(cs.ema50, c, EMA_SLOW)
+            cs.net_hist.append(abs(2.0 * tb - total))
+            cs.price = c
+            cs.last_candle_ts = close_ts
+            used += 1
+        return used
 
     def _prune_old(self, cs, now):
         cutoff = now - 3600

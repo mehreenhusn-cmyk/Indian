@@ -17,17 +17,23 @@ from recovered_bot.ping_store import (
     write_state, append_event, state_path,
     write_trades, read_trades, write_lead, read_lead,
 )
-from recovered_bot.ping_radar import PingRadar
-from recovered_bot.ping_collector import PingCollector
+from recovered_bot.ping_radar import PingRadar, parse_mini_ticker
+from recovered_bot.ping_collector import PingCollector, log, NO_DATA_SEC
 from recovered_bot.ping_engine import PingEngine
 from recovered_bot.ping_bot import PingBot
 from recovered_bot.ping_tracker import PingTracker
 from recovered_bot.ping_signal_bridge import SignalBridge, POLL_SEC
 
 # ---- constants (starting guesses) ----
-BUILD_TAG = "2026-10-22-ping-p1"
+BUILD_TAG = "2026-10-23-ping-r2"
 SNAPSHOT_SEC = 2.0
-RADAR_WS = "wss://fstream.binance.com/ws/!miniTicker@arr"
+# Old /ws and /stream URLs were retired by Binance on 2026-04-23: they open but send nothing.
+# miniTicker lives under /market. Try the raw path first, then the combined-stream form.
+RADAR_URLS = (
+    "wss://fstream.binance.com/market/ws/!miniTicker@arr",
+    "wss://fstream.binance.com/market/stream?streams=!miniTicker@arr",
+)
+HEARTBEAT_SEC = 60.0
 RECONNECT_BASE_SEC = 1.0
 RECONNECT_MAX_SEC = 60.0
 
@@ -42,6 +48,8 @@ class Worker:
         # Read-only link to the live bot's signals (owl.db) and closed trades.
         self.bridge = SignalBridge(self.tracker, os.path.dirname(os.path.dirname(state_path())))
         self.ws_state = "INIT"
+        self.radar_msgs = 0
+        self.radar_url_idx = 0
         self.last_msg_ts = 0.0
         self.started_ts = time.time()
         self._stop = False
@@ -58,6 +66,9 @@ class Worker:
             "ws_state": self.collector.ws_state if self.collector.ws_state != "INIT" else self.ws_state,
             "last_msg_age_sec": round(age, 2) if age is not None else None,
             "candidate_count": len(self.collector.candidates),
+            "radar_msgs": self.radar_msgs,
+            "radar_coins": len(self.radar.all_symbols()),
+            "kline_msgs": self.collector.msgs,
             "uptime_sec": round(time.time() - self.started_ts, 1),
             "signal_link": self.bridge.status,
             "state_path": state_path(),
@@ -95,30 +106,40 @@ class Worker:
         import websockets
         backoff = RECONNECT_BASE_SEC
         while not self._stop:
+            url = RADAR_URLS[self.radar_url_idx % len(RADAR_URLS)]
             try:
                 self.ws_state = "CONNECTING"
                 async with websockets.connect(
-                    RADAR_WS, ping_interval=20, ping_timeout=20, max_size=2**23
+                    url, ping_interval=20, ping_timeout=20, max_size=2**23
                 ) as ws:
                     self.ws_state = "LIVE"
-                    backoff = RECONNECT_BASE_SEC
-                    async for raw in ws:
-                        if self._stop:
-                            break
+                    log(f"radar connected: {url}")
+                    first = True
+                    while not self._stop:
+                        try:
+                            raw = await asyncio.wait_for(ws.recv(), timeout=NO_DATA_SEC)
+                        except asyncio.TimeoutError:
+                            raise RuntimeError(f"radar socket open but no data for {NO_DATA_SEC:.0f}s")
                         self.last_msg_ts = time.time()
+                        self.radar_msgs += 1
                         try:
                             arr = json.loads(raw)
                         except Exception:
                             continue
+                        if isinstance(arr, dict):      # combined-stream wrapper
+                            arr = arr.get("data")
                         if not isinstance(arr, list):
                             continue
+                        backoff = RECONNECT_BASE_SEC
+                        if first:
+                            first = False
+                            log(f"radar first data: {len(arr)} coins")
                         for t in arr:
-                            sym = (t.get("s") or "").upper()
-                            if not sym.endswith("USDT"):
+                            parsed = parse_mini_ticker(t)
+                            if parsed is None:
                                 continue
-                            self.radar.on_ticker(
-                                sym, t.get("q", 0), t.get("c", 0), change_pct=t.get("P"),
-                            )
+                            sym, qv, px, chg = parsed
+                            self.radar.on_ticker(sym, qv, px, change_pct=chg)
                         newly = self.radar.maybe_evaluate()
                         gainers, losers = self.radar.top_bottom_by_change(10)
                         self.collector.update_candidates(newly, gainers, losers)
@@ -126,8 +147,18 @@ class Worker:
                 raise
             except Exception as e:
                 self.ws_state = f"RECONNECTING:{e}"
+                log(f"radar problem: {e} (retry in {backoff:.0f}s, next url)")
+                self.radar_url_idx += 1
                 await asyncio.sleep(backoff)
                 backoff = min(RECONNECT_MAX_SEC, backoff * 2)
+
+    async def heartbeat_loop(self):
+        while not self._stop:
+            await asyncio.sleep(HEARTBEAT_SEC)
+            h = self.health()
+            log(f"alive | radar msgs={self.radar_msgs} coins={len(self.radar.all_symbols())} "
+                f"| candidates={h['candidate_count']} kline msgs={self.collector.msgs} "
+                f"| state={h['ws_state']}")
 
     async def bot_loop(self):
         while not self._stop:
@@ -158,19 +189,26 @@ class Worker:
         snap_t = asyncio.create_task(self.snapshot_loop())
         coll_t = asyncio.create_task(self.collector.run(on_health=None))
         bot_t = asyncio.create_task(self.bot_loop())
+        hb_t = asyncio.create_task(self.heartbeat_loop())
         try:
-            await asyncio.gather(radar_t, snap_t, coll_t, bot_t)
+            await asyncio.gather(radar_t, snap_t, coll_t, bot_t, hb_t)
         except asyncio.CancelledError:
             pass
         finally:
             self._stop = True
             self.collector.stop()
-            for t in (radar_t, snap_t, coll_t, bot_t):
+            for t in (radar_t, snap_t, coll_t, bot_t, hb_t):
                 t.cancel()
             print("[ping_worker] stopped")
 
 
 def main():
+    # Same DNS fallback the main backend uses (some ISPs block Binance DNS).
+    try:
+        from recovered_bot.dns_fallback import ensure_dns_fallback
+        ensure_dns_fallback()
+    except Exception as e:
+        print(f"[ping_worker] dns fallback not active: {e}")
     w = Worker()
     try:
         asyncio.run(w.run())

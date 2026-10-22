@@ -14,9 +14,34 @@ CAND_QUIET_MIN = 15
 KLINE_BATCH = 20
 RESUB_CHECK_SEC = 5.0     # how often to compare wanted vs subscribed coins
 RESUB_MIN_SEC = 30.0      # never reconnect more often than this
-WS_BASE = "wss://fstream.binance.com"
+# Binance split the futures WebSocket (notice 2026-03-06, old URLs retired 2026-04-23):
+# kline and miniTicker live ONLY under /market. The old /stream and /ws opened but sent nothing.
+WS_BASE = "wss://fstream.binance.com/market"
 RECONNECT_BASE_SEC = 1.0
 RECONNECT_MAX_SEC = 60.0
+NO_DATA_SEC = 30.0          # open socket with no message this long -> reconnect
+REST_KLINES = "https://fapi.binance.com/fapi/v1/klines"
+SEED_LIMIT = 100            # 1m candles of history per coin (EMA30/EMA50 + baseline)
+SEED_CONCURRENCY = 5
+SEED_TOTAL_SEC = 25.0       # never hold the live stream longer than this for history
+SEED_RETRY_SEC = 300.0      # a coin whose history failed is retried after this long
+
+
+def log(msg):
+    print(f"[ping {time.strftime('%H:%M:%S')}] {msg}", flush=True)
+
+
+def build_stream_url(symbols):
+    streams = "/".join(f"{s.lower()}@kline_1m" for s in symbols)
+    return f"{WS_BASE}/stream?streams={streams}"
+
+
+def fetch_klines(symbol, limit=SEED_LIMIT, timeout=8):
+    """REST 1m klines (blocking - call through asyncio.to_thread)."""
+    import requests
+    r = requests.get(REST_KLINES, params={"symbol": symbol, "interval": "1m", "limit": limit}, timeout=timeout)
+    r.raise_for_status()
+    return r.json()
 
 
 class PingCollector:
@@ -29,6 +54,9 @@ class PingCollector:
         self.ws_state = "INIT"
         self.last_msg_ts = 0.0
         self._subs = set()
+        self._seeded = set()
+        self._seed_try = {}
+        self.msgs = 0
 
     def update_candidates(self, newly_flagged, gainers, losers, now=None):
         now = now if now is not None else time.time()
@@ -98,6 +126,12 @@ class PingCollector:
                 continue
             batches = _chunk(sorted(desired), KLINE_BATCH)
             try:
+                await self._seed_missing(sorted(desired))
+            except asyncio.CancelledError:
+                raise
+            except Exception as e:
+                log(f"history seed problem (continuing without): {e}")
+            try:
                 self.ws_state = "CONNECTING"
                 await self._run_batches(batches, on_health)
                 backoff = RECONNECT_BASE_SEC
@@ -105,10 +139,38 @@ class PingCollector:
                 raise
             except Exception as e:
                 self.ws_state = f"RECONNECTING:{e}"
+                log(f"kline stream problem: {e} (retry in {backoff:.0f}s)")
                 if on_health:
                     on_health()
                 await asyncio.sleep(backoff)
                 backoff = min(RECONNECT_MAX_SEC, backoff * 2)
+
+    async def _seed_missing(self, symbols):
+        """Pre-fill EMA / baseline for coins we have no history for (before subscribing)."""
+        now = time.time()
+        todo = [x for x in symbols
+                if x not in self._seeded and now - self._seed_try.get(x, 0.0) >= SEED_RETRY_SEC]
+        if not todo:
+            return
+        sem = asyncio.Semaphore(SEED_CONCURRENCY)
+
+        async def one(sym):
+            async with sem:
+                self._seed_try[sym] = time.time()
+                try:
+                    rows = await asyncio.to_thread(fetch_klines, sym)
+                    n = self.engine.seed_history(sym, rows)
+                    self._seeded.add(sym)
+                    return n
+                except Exception as e:
+                    log(f"history for {sym} failed: {e}")
+                    return 0
+
+        try:
+            res = await asyncio.wait_for(asyncio.gather(*(one(x) for x in todo)), timeout=SEED_TOTAL_SEC)
+            log(f"history seeded for {sum(1 for r in res if r)}/{len(todo)} coins")
+        except asyncio.TimeoutError:
+            log("history seed timed out - starting live stream anyway")
 
     async def _run_batches(self, batches, on_health):
         subscribed = set()
@@ -139,15 +201,18 @@ class PingCollector:
 
     async def _one_batch(self, symbols, on_health):
         import websockets
-        streams = "/".join(f"{s.lower()}@kline_1m" for s in symbols)
-        url = f"{WS_BASE}/stream?streams={streams}"
+        url = build_stream_url(symbols)
         async with websockets.connect(url, ping_interval=20, ping_timeout=20, max_size=2**22) as ws:
             self.ws_state = "LIVE"
             self._subs |= set(symbols)
-            async for raw in ws:
-                if self._stop:
-                    break
+            log(f"kline stream connected ({len(symbols)} coins)")
+            while not self._stop:
+                try:
+                    raw = await asyncio.wait_for(ws.recv(), timeout=NO_DATA_SEC)
+                except asyncio.TimeoutError:
+                    raise RuntimeError(f"no kline data for {NO_DATA_SEC:.0f}s")
                 self.last_msg_ts = time.time()
+                self.msgs += 1
                 try:
                     msg = json.loads(raw)
                 except Exception:
