@@ -637,6 +637,14 @@ def _display_status(skip=()):
     else:
         data["stats_mode"] = "paper"
         data["live_wallet"] = None
+        # "Signals today" must survive an app reinstall / backend restart: the in-memory number starts at 0 after a restart,
+        # so count the signals saved in the database since today's crypto day start (05:30 IST = 00:00 UTC) and show the larger one.
+        try:
+            n = db.count_signals_today("PAPER", trade_store._trading_day_start_ts())
+            data = dict(data)
+            data["signals_today"] = max(int(data.get("signals_today") or 0), int(n))
+        except Exception:
+            pass
 
     positions = data.get("open_positions") or []
     # AI badge (advice only): flag open paper trades that match a CONFIRMED AVOID

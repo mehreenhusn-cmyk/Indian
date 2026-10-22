@@ -38,6 +38,14 @@ _last_dump = 0.0
 _started = False
 
 
+def _is_idle(fr):
+    """True when the loop thread is parked in the selector (epoll/select) = waiting for events, running none of our code."""
+    try:
+        return fr is not None and fr.f_code.co_name == "select" and fr.f_code.co_filename.endswith("selectors.py")
+    except Exception:
+        return False
+
+
 def _short(frame, depth=4):
     try:
         st = traceback.extract_stack(frame)[-depth:]
@@ -85,8 +93,12 @@ def _watch():
             _last_dump = time.time()
             frames = sys._current_frames()
             if _loop_tid in frames:
-                where = _short(frames.get(_loop_tid))
-                cause = "OUR CODE BUSY"
+                fr = frames.get(_loop_tid)
+                where = _short(fr)
+                # If the loop is sitting in the selector (epoll/select) it is IDLE, waiting for events: none of our code is running.
+                # Then the loop was not woken on time = the phone / OS paused or starved Termux, not our code.
+                idle = _is_idle(fr)
+                cause = "PHONE PAUSED?" if idle else "OUR CODE BUSY"
             else:
                 where = "(not captured)"
                 cause = "PHONE PAUSED?"
