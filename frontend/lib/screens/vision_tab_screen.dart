@@ -15,6 +15,7 @@ import '../widgets/vision_pumpdump_view.dart';
 import '../widgets/vision_compare_view.dart';
 import '../widgets/vision_digest_view.dart';
 import '../widgets/vision_evidence_view.dart';
+import '../widgets/vision_lab_view.dart';
 
 /// The AI tab (Vision AI).
 ///   Live     - the AI's own virtual account: open trades with live P&L, stop and target, and what the AI says about them.
@@ -252,7 +253,7 @@ class _VisionTabScreenState extends State<VisionTabScreen> {
                   _dragDx = 0;
                   if (!goLeft && !goRight) return;
                   // order on screen: Live, Signals, AI Own, Results, Digest, Notebook, Guide, Pump
-                  const order = [0, 1, 2, 3, 8, 7, 5, 4, 6];
+                  const order = [0, 1, 2, 9, 3, 8, 7, 5, 4, 6];
                   final at = order.indexOf(_tab);
                   final to = goLeft ? (at + 1).clamp(0, order.length - 1) : (at - 1).clamp(0, order.length - 1);
                   final next = order[to];
@@ -272,7 +273,7 @@ class _VisionTabScreenState extends State<VisionTabScreen> {
   }
 
   // Three main tabs: Bot + AI | AI Own | More. Inside Bot + AI and More a small chip row picks the page.
-  // Page numbers (_tab): 0 Live, 1 Signals, 2 AI Own, 3 Results, 4 Guide, 5 Notebook, 6 Pump, 7 Digest.
+  // Page numbers (_tab): 0 Live, 1 Signals, 2 AI Own, 3 Results, 4 Guide, 5 Notebook, 6 Pump, 7 Digest, 8 Evidence, 9 Lab.
   int get _group => (_tab <= 1) ? 0 : (_tab == 2 ? 1 : 2);
 
   void _goTab(int i) {
@@ -286,10 +287,10 @@ class _VisionTabScreenState extends State<VisionTabScreen> {
 
   Widget _tabStrip(AppPalette p) {
     const labels = ['Bot + AI', 'AI Own', 'More'];
-    const firstPage = [0, 2, 3];
+    const firstPage = [0, 2, 9];
     final List<List<Object>> subs = _group == 0
         ? const [['Live', 0], ['Signals', 1]]
-        : (_group == 2 ? const [['Results', 3], ['Evidence', 8], ['Digest', 7], ['Notebook', 5], ['Guide', 4], ['Pump', 6]] : const <List<Object>>[]);
+        : (_group == 2 ? const [['Lab', 9], ['Results', 3], ['Evidence', 8], ['Digest', 7], ['Notebook', 5], ['Guide', 4], ['Pump', 6]] : const <List<Object>>[]);
     return Column(
       children: [
         Container(
@@ -365,6 +366,9 @@ class _VisionTabScreenState extends State<VisionTabScreen> {
   }
 
   Widget _body(AppPalette p) {
+    if (_tab == 9) {
+      return const VisionLabView();
+    }
     if (_tab == 8) {
       return const VisionEvidenceView();
     }

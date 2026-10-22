@@ -181,6 +181,13 @@ def _log_scan(V, row):
 
 def _blocked_reason(V):
     """Why the scanner may not ask the AI right now, or ''. The scan itself still reads the coins."""
+    try:                                                      # paper capital manager: daily target / loss lock
+        from . import ai_capital as CAP
+        why = CAP.lock_reason(V)
+        if why:
+            return why
+    except Exception:
+        pass
     try:
         if V.quota_resume_at() > time.time():
             return "AI quota is paused"
@@ -267,6 +274,13 @@ def tick(V):
                         sum(1 for k in ("slope_with", "tsi_agrees", "z_agrees") if last_tags.get(k) is True) or not last_tags:
                     last_tags, last_side = tags, side
             if not chosen:
+                try:                                          # keep a sample of the rejected coins: their shadow outcome shows what the scan missed
+                    from . import ai_candidates as AC, ai_evidence as EV
+                    if AC.sample_ok(symbol, bar_ts):
+                        AC.add("own_scan", symbol, last_side, tf, bar_ts, candles[-1]["close"], candles,
+                               AC.tokens_from(EV.extra_tags(feat, last_side, candles), last_tags), "rejected")
+                except Exception:
+                    pass
                 _log_scan(V, {"symbol": symbol, "tf": tf_label, "bar_ts": bar_ts, "result": "no_setup", "side": last_side,
                               "why": "No setup: fewer than 2 of 3 indicators agree" + (", and price is stretched" if last_tags.get("stretched") else "") + ".",
                               "level": level, "ind": _ind_reason(last_tags, last_side)})

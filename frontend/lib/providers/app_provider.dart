@@ -1054,6 +1054,15 @@ class AppProvider extends ChangeNotifier {
     return null;
   }
 
+  /// Paper capital status, candidates (stage + grade) and shadow results per source (GET /api/vision/lab). Read-only.
+  Future<Map<String, dynamic>?> fetchVisionLab() async {
+    try {
+      final res = await http.get(_u('/api/vision/lab?limit=40')).timeout(const Duration(seconds: 15));
+      if (res.statusCode == 200) return Map<String, dynamic>.from(jsonDecode(res.body) as Map);
+    } catch (_) {}
+    return null;
+  }
+
   /// Bot vs Bot + AI vs AI Own after fees, and confirmed tag combinations (GET /api/vision/evidence). Read-only.
   Future<Map<String, dynamic>?> fetchVisionEvidence() async {
     try {

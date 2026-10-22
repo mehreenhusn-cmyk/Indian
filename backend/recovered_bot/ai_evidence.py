@@ -35,7 +35,7 @@ def _at(a, i):
 
 
 # ------------------------------------------------------------------ measured tags
-def extra_tags(f, side):
+def extra_tags(f, side, candles=None):
     """f = ai_ind_features.build(candles) arrays at the last closed candle. -> {tag: word}. Missing = unknown."""
     try:
         i = f["n"] - 1
@@ -93,6 +93,19 @@ def extra_tags(f, side):
             ei = _at(e50, i)
             reg = "TRENDING" if (ei is not None and e5 is not None and dr * (ei - e5) > 0) else "MIXED"
         out["regime"] = reg
+        try:                                                  # volume vs the last 20 candles, and the 200-candle trend (a cheap higher-timeframe view)
+            if candles and len(candles) > 22:
+                vs = [_f(x.get("volume")) for x in candles[-21:]]
+                base = sum(vs[:-1]) / 20.0
+                if base > 0:
+                    r = vs[-1] / base
+                    out["volume"] = "high" if r > 1.5 else "low" if r < 0.7 else "normal"
+            cs = f["c"][-200:]
+            if len(cs) >= 150 and ci is not None:
+                m200 = sum(cs) / len(cs)
+                out["trend200"] = "with" if dr * (ci - m200) > 0 else "against"
+        except Exception:
+            pass
         return out
     except Exception:
         return {}

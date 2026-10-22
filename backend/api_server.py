@@ -968,6 +968,16 @@ async def vision_evidence(force: int = 0):
     return await asyncio.to_thread(ai_evidence.snapshot, ai_vision, bool(force))
 
 
+@app.get("/api/vision/lab")
+async def vision_lab(limit: int = 40):
+    """Paper capital status, candidate list (WATCH / READY / TAKEN / REJECTED with grade), shadow results per source. Read-only."""
+    from recovered_bot import ai_vision, ai_capital, ai_candidates
+    def _go():
+        return {"ok": True, "capital": ai_capital.status(ai_vision), "candidates": ai_candidates.recent(ai_vision, max(5, min(limit, 100))),
+                "shadow": ai_candidates.counts(), "note": "Paper only. Shadow result = stop 1.5 ATR, target 2R, after fees, filled in from the candles later."}
+    return await asyncio.to_thread(_go)
+
+
 @app.get("/api/vision/notebook_digest")
 async def vision_notebook_digest():
     """Short 'use it this way' digest: AI trade counts + pump/dump memory, with small-sample warnings. Read-only."""

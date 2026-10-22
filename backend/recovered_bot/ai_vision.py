@@ -23,6 +23,7 @@ import json
 import math
 import os
 import re
+import sys
 import threading
 import time
 
@@ -159,6 +160,10 @@ def init(path):
         XE.init(path)
         from . import ai_vision_days as VD
         VD.init(path)
+        from . import ai_candidates as AC
+        AC.init(path)
+        from . import ai_capital as CAP
+        CAP.init(path)
         try:
             VD.backfill(__import__('sys').modules[__name__])
         except Exception as _e:
@@ -1443,7 +1448,16 @@ def _process_signal(rec):
             pass
         try:                                               # richer measured tags for the evidence engine (SD zone/shape, Z vs price, TSI, regime)
             from . import ai_evidence as EV
-            rec["tags2"] = EV.extra_tags(_f_, rec["side"])
+            rec["tags2"] = EV.extra_tags(_f_, rec["side"], candles)
+        except Exception:
+            pass
+        try:                                               # remember this candidate (once) and grade it from what the data has proven
+            from . import ai_candidates as AC, ai_grader as GR
+            tk = AC.tokens_from(rec.get("tags2"), rec.get("feat"))
+            if not rec.get("cand_id"):
+                rec["cand_id"] = AC.add(rec.get("source") or "bot", sym, rec["side"], tf, rec["bar_ts"], price, candles, tk, "signal", rec.get("id"))
+            g = GR.grade(tk)
+            rec["grade"], rec["grade_why"] = g["grade"], g["why"]
         except Exception:
             pass
         try:
@@ -1518,7 +1532,26 @@ def _process_signal(rec):
         if bad:
             return _finish(rec, "skipped", "SKIP", f"The AI said TAKE but {bad}.")
         rec["stop"], rec["target"] = stop, target
-        _open_trade(rec, price, stop, target)
+        invest = None
+        try:                                               # paper capital manager: grade, daily target / loss lock, max open, risk sizing (AI Own trades only)
+            from . import ai_capital as CAP
+            ok, why, invest, wait = CAP.gate(sys.modules[__name__], rec, price, stop, rec.get("grade"))
+        except Exception:
+            ok, why, invest, wait = True, "", None, False
+        if not ok:
+            rec["gate_note"] = why
+            if wait:
+                rec["waits_left"] = rec.get("waits_left", WAITS) - 1
+                if rec["waits_left"] > 0:
+                    rec["status"], rec["last_bar"] = "waiting", _bar_start(time.time(), tf)
+                    _mark()
+                    return
+            return _finish(rec, "skipped", "SKIP", why)
+        tr_new = _open_trade(rec, price, stop, target)
+        if invest and tr_new is not None:
+            with _lock:
+                tr_new["invest"] = float(invest)
+                tr_new["risk_usdt"] = round(float(_f(_cfg("vision_cap_risk", 2.0), 2.0)) / (2.0 if rec.get("grade") == "U" else 1.0), 2)
         rec["status"] = "taken"
     elif rec["decision"] == "WAIT":
         rec["waits_left"] = rec.get("waits_left", WAITS) - 1
@@ -1724,6 +1757,12 @@ def _step():
                 return True
         except Exception as e:
             _log(f"own-scan: {str(e)[:100]}")
+        try:                                               # fill in shadow outcomes for candidates that are due (light, a few coins per call)
+            from . import ai_candidates as AC
+            if AC.resolve_some(sys.modules[__name__]):
+                return True
+        except Exception as e:
+            _log(f"candidates: {str(e)[:100]}")
         return _lessons_job()
     kind, obj, why = job
     cap = int(_f(_cfg("vision_max_calls_day", 200), 200))
@@ -1934,7 +1973,7 @@ def snapshot(limit=80):
     for d in reversed(decs[-limit:]):
         x = {k: d.get(k) for k in ("id", "signal_no", "symbol", "side", "status", "decision", "reason", "checklist", "stop", "target",
                                    "sig_price", "sig_ist", "sig_time", "decided_at", "checks", "waits_left", "wait_for", "trade_id",
-                                   "indicator_summary", "recent_context", "feat", "tags2", "source", "tsi_hist_note")}
+                                   "indicator_summary", "recent_context", "feat", "tags2", "grade", "grade_why", "gate_note", "source", "tsi_hist_note")}
         if not x.get("source"):
             x["source"] = "bot"
         x["tf"] = _tf_label(d["tf_min"])
