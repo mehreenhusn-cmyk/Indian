@@ -408,6 +408,58 @@ def compare(V):
     return out
 
 
+def own_summary(V, own_scan, own_tr):
+    """One plain-English answer to 'what is AI Own doing today?'. Read-only; every number comes from today's scan rows and trades."""
+    res = {}
+    for r in own_scan:
+        k = r.get("result") or "no_setup"
+        res[k] = res.get(k, 0) + 1
+    asked = res.get("taken", 0) + res.get("skipped", 0) + res.get("expired", 0)
+    reasons = {}
+    for r in own_scan:
+        if r.get("result") == "taken":
+            continue
+        w = str(r.get("why") or "").strip()
+        if w:
+            w = w[:70]
+            reasons[w] = reasons.get(w, 0) + 1
+    top = [{"why": k, "n": n} for k, n in sorted(reasons.items(), key=lambda kv: -kv[1])[:4]]
+    on = enabled()
+    try:
+        blocked = _blocked_reason(V)
+    except Exception:
+        blocked = ""
+    cap_h = int(_num("vision_own_max_calls_hour", 12))
+    used = _hour_used()
+    closed = [t for t in own_tr if t.get("status") == "closed"]
+    wins = sum(1 for t in closed if float(t.get("pnl") or 0) > 0)
+    cap = {}
+    try:
+        from . import ai_capital as CAP
+        cap = CAP.status(V) or {}
+    except Exception:
+        pass
+    if not on:
+        state, line = "off", "AI Own is OFF. Switch it on above to let the AI scan coins by itself (paper only)."
+    elif blocked:
+        state, line = "paused", f"AI Own is ON but not asking the AI right now: {blocked}."
+    elif not own_scan:
+        state, line = "waiting", "AI Own is ON. No coin checked yet today - it checks on each closed candle."
+    elif not own_tr:
+        state, line = "looking", (f"AI Own is ON and looking. {len(own_scan)} coin checks today, the AI was asked {asked} time(s), "
+                                  f"nothing worth taking yet (0 trades). That is normal on a choppy day.")
+    else:
+        state, line = "trading", f"AI Own is ON and took {len(own_tr)} paper trade(s) today."
+    return {"state": state, "line": line, "enabled": on, "blocked": blocked,
+            "checked": len(own_scan), "asked_ai": asked, "taken": res.get("taken", 0), "skipped": res.get("skipped", 0) + res.get("expired", 0),
+            "no_setup": res.get("no_setup", 0) + res.get("none", 0), "errors": res.get("error", 0), "bot_fired": res.get("bot_fired", 0),
+            "hour_calls": used, "hour_limit": cap_h, "hour_next_min": (int(_hour_resume_in() // 60) + 1) if (cap_h > 0 and used >= cap_h) else 0,
+            "open": sum(1 for t in own_tr if t.get("status") == "open"), "closed": len(closed), "wins": wins,
+            "net": round(sum(float(t.get("pnl") or 0) for t in closed), 2),
+            "top_reasons": top,
+            "capital_state": cap.get("state"), "capital_net": cap.get("net"), "capital_target": cap.get("target"), "capital_loss_limit": cap.get("loss_limit")}
+
+
 def day_view(V, offset=0):
     """Everything the Vision tab needs for one trading day (5:30 AM IST to 5:30 AM IST), read-only.
     offset 0 = today, 1 = yesterday ..."""
@@ -456,5 +508,5 @@ def day_view(V, offset=0):
                 "net": net(own_tr), "margin": margin(own_tr),
                 "scan_rows": sorted(own_scan, key=lambda r: r.get("t") or 0, reverse=True)[:200],
                 "trade_ids": [t.get("id") for t in sorted(own_tr, key=lambda x: float(x.get("opened_at") or 0), reverse=True)][:100],
-                "enabled": enabled(), "blocked": scan_stats().get("err", "")},
+                "enabled": enabled(), "blocked": scan_stats().get("err", ""), "summary": own_summary(V, own_scan, own_tr)},
     }

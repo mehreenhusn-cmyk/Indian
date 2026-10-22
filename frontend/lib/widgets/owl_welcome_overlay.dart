@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'owl_load_sequence.dart';
@@ -33,6 +35,10 @@ class OwlWelcomeOverlay extends StatefulWidget {
   /// false when main.dart had to fall back to an in-memory store (the time of the last splash is then lost on every restart).
   static bool storeIsPersistent = true;
 
+  /// Change this text when you ship a new app build: the welcome screen then shows once on the first start of that build
+  /// (new install or update), and after that once every 12 hours.
+  static const String buildId = '2026-10-22-part9';
+
   static const _prefsKey = 'owl_welcome_last_shown_ms';
   static const Duration _maxDuration = Duration(seconds: 40);
 
@@ -60,21 +66,57 @@ class _OwlWelcomeOverlayState extends State<OwlWelcomeOverlay> with TickerProvid
     );
     _fade = CurvedAnimation(parent: _entrance, curve: Curves.easeOutCubic);
 
-    final lastShown = widget.prefs.getInt(OwlWelcomeOverlay._prefsKey) ?? 0;
-    final now = DateTime.now().millisecondsSinceEpoch;
-    if (OwlWelcomeOverlay.storeIsPersistent && now - lastShown >= widget.gate.inMilliseconds) {
-      _showSplash = true;
-      widget.prefs.setInt(OwlWelcomeOverlay._prefsKey, now);
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        _entrance.forward();
-      });
-      // Guard against an accidental tap while the screen fades in.
-      _tapEnable = Timer(const Duration(milliseconds: 1400), () {
-        if (mounted) setState(() => _canDismiss = true);
-      });
-      _autoDismiss = Timer(OwlWelcomeOverlay._maxDuration, _dismiss);
+    _decide();
+  }
+
+  // The time of the last welcome is saved in a small FILE in the app's own folder (the settings plugin is not reliable on this phone).
+  // File content: "<milliseconds>|<build id>". No file = fresh install = show. Other build id = new version = show. Older than 12 h = show.
+  Future<File?> _stampFile() async {
+    try {
+      final dir = await getApplicationSupportDirectory();
+      return File('${dir.path}/owl_welcome_stamp.txt');
+    } catch (_) {
+      return null;
     }
+  }
+
+  Future<void> _decide() async {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    var lastShown = 0;
+    var build = '';
+    final f = await _stampFile();
+    try {
+      if (f != null && await f.exists()) {
+        final parts = (await f.readAsString()).trim().split('|');
+        lastShown = int.tryParse(parts.first) ?? 0;
+        build = parts.length > 1 ? parts[1] : '';
+      }
+    } catch (_) {}
+    if (lastShown == 0) {
+      // file missing or unreadable: fall back to the settings value if that works on this phone
+      try {
+        lastShown = widget.prefs.getInt(OwlWelcomeOverlay._prefsKey) ?? 0;
+      } catch (_) {}
+    }
+    final fresh = lastShown == 0 || build != OwlWelcomeOverlay.buildId || now - lastShown >= widget.gate.inMilliseconds;
+    if (!fresh || !mounted) return;
+    try {
+      await f?.writeAsString('$now|${OwlWelcomeOverlay.buildId}');
+    } catch (_) {}
+    try {
+      widget.prefs.setInt(OwlWelcomeOverlay._prefsKey, now);
+    } catch (_) {}
+    if (!mounted) return;
+    setState(() => _showSplash = true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _entrance.forward();
+    });
+    // Guard against an accidental tap while the screen fades in.
+    _tapEnable = Timer(const Duration(milliseconds: 1400), () {
+      if (mounted) setState(() => _canDismiss = true);
+    });
+    _autoDismiss = Timer(OwlWelcomeOverlay._maxDuration, _dismiss);
   }
 
   void _dismiss() {

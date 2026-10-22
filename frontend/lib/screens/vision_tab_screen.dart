@@ -926,6 +926,57 @@ class _VisionTabScreenState extends State<VisionTabScreen> {
   }
 
   // ------------------------------------------------------------------ Signals
+  /// Plain answer at the top of AI Own: is it working, what did it check, did it take trades, and if not, why.
+  Widget _ownSummaryCard(AppPalette p) {
+    final sm = _m(_m(_dayView?['own'])['summary']);
+    if (sm.isEmpty) return const SizedBox.shrink();
+    int n(String k) => (_d(sm[k]) ?? 0).toInt();
+    final state = (sm['state'] ?? '').toString();
+    final col = state == 'trading' ? p.profit : (state == 'paused' || state == 'off') ? p.warning : p.textPrimary;
+    final reasons = _l(sm['top_reasons']).map(_m).toList();
+    final net = _d(sm['net']) ?? 0;
+    Widget stat(String label, String value, {Color? c}) => Expanded(
+          child: Column(children: [
+            Text(value, style: context.type.secondary.copyWith(fontWeight: FontWeight.w800, fontSize: 18, color: c ?? p.textPrimary)),
+            const SizedBox(height: 2),
+            Text(label, style: context.type.metadata.copyWith(fontSize: 11), textAlign: TextAlign.center),
+          ]),
+        );
+    return _VCard(
+      glow: col,
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text('AI OWN - what is it doing?', style: context.type.secondary.copyWith(fontWeight: FontWeight.w700)),
+        const SizedBox(height: 6),
+        Text('${sm['line'] ?? ''}', style: context.type.metadata.copyWith(color: col, height: 1.35, fontWeight: FontWeight.w600)),
+        const SizedBox(height: 10),
+        Row(children: [
+          stat('coins checked', '${n('checked')}'),
+          stat('AI asked', '${n('asked_ai')}'),
+          stat('taken', '${n('taken')}', c: n('taken') > 0 ? p.profit : null),
+          stat('AI said skip', '${n('skipped')}'),
+          stat('no setup', '${n('no_setup')}'),
+        ]),
+        const SizedBox(height: 10),
+        Text(
+          'Open now ${n('open')}  -  closed ${n('closed')} (won ${n('wins')})  -  profit ${fmtSigned(net)} USDT\n'
+          'AI calls this hour ${n('hour_calls')} of ${n('hour_limit') == 0 ? 'no limit' : n('hour_limit')}'
+          '${n('hour_next_min') > 0 ? '  -  next slot in ${n('hour_next_min')} min' : ''}',
+          style: context.type.metadata.copyWith(height: 1.4),
+        ),
+        if (n('errors') > 0)
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text('${n('errors')} check(s) failed (AI error). See the scan list below.', style: context.type.metadata.copyWith(color: p.loss)),
+          ),
+        if (reasons.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Text('Why it did not trade (most common):', style: context.type.metadata.copyWith(fontWeight: FontWeight.w700)),
+          for (final r in reasons) Text('${r['n']}x  ${r['why']}', style: context.type.metadata.copyWith(height: 1.3)),
+        ],
+      ]),
+    );
+  }
+
   Widget _aiOwnTab(AppPalette p, Map<String, dynamic> d) {
     final opens = _l(d['open']).map(_m).where((t) => (t['source'] ?? 'bot') == 'own').toList();
     final closed = _l(d['closed']).map(_m).where((t) => (t['source'] ?? 'bot') == 'own').toList();
@@ -946,6 +997,8 @@ class _VisionTabScreenState extends State<VisionTabScreen> {
         children: [
           VisionOwnScanLine(showSwitch: true),
           Text('Own scan switch and status. Paper only. Default is OFF.', style: context.type.metadata.copyWith(color: p.textMuted)),
+          const SizedBox(height: AppSpacing.cardGap),
+          _ownSummaryCard(p),
           const SizedBox(height: AppSpacing.cardGap),
           _VCard(
             glow: netOwn >= 0 ? p.profit : p.loss,

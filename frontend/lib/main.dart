@@ -75,9 +75,7 @@ Future<SharedPreferences?> _openPrefs() async {
     return await SharedPreferences.getInstance();
   } catch (e) {
     debugPrint('SharedPreferences plugin failed, using in-memory settings: $e');
-    // Nothing can be remembered in this mode, so the 12-hour splash gate cannot work either:
-    // tell the splash to stay away instead of showing on every launch.
-    OwlWelcomeOverlay.storeIsPersistent = false;
+    // The welcome screen keeps its own time stamp in a file, so it does not depend on this store.
   }
   try {
     SharedPreferences.setMockInitialValues(<String, Object>{});
