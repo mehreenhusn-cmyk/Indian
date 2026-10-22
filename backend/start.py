@@ -17,6 +17,16 @@ class _QuietWsDrop(logging.Filter):
 
 logging.getLogger("asyncio").addFilter(_QuietWsDrop())
 
+# WebSocket compression (permessage-deflate) squeezes every 1-second message on the same thread as everything else. The app and the
+# backend are on the same phone / Wi-Fi, so it saves almost nothing and costs CPU. Only passed when this uvicorn version knows it.
+_EXTRA = {}
+try:
+    import inspect
+    if "ws_per_message_deflate" in inspect.signature(uvicorn.Config.__init__).parameters:
+        _EXTRA["ws_per_message_deflate"] = False
+except Exception:
+    pass
+
 if __name__ == "__main__":
     print("🦉 OWL Terminal Backend Starting...")
     uvicorn.run(
@@ -34,4 +44,5 @@ if __name__ == "__main__":
         ws_ping_interval=30,
         ws_ping_timeout=60,
         timeout_keep_alive=30,
+        **_EXTRA,
     )

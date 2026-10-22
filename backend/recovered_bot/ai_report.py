@@ -318,3 +318,133 @@ def build_text():
     parts.append(_settings())
     parts.append(_csv())
     return "\n\n".join(parts) + "\n"
+
+
+# ---------------------------------------------------------------- Part 8: whole-app report (Settings > Download report)
+APP_ABOUT = """ABOUT THE APP AND WHAT THE OWNER WANTS (read this first)
+- App: OWL TERMINAL (Flutter phone app + FastAPI backend running on the same Android phone in Termux). Crypto bot on Binance futures top gainers/losers
+  (paper mode by default) and an India options PAPER terminal (Fyers data). He is not a coder and wants plain-English answers.
+- Bot strategy: closed-candle EMA50 cross with SD-band targets (see the strategy sections). The bot itself is NOT changed by the AI parts.
+- Vision AI: reads the chart picture (EMA30/50, SD bands, TSI, Z-score) and says TAKE / SKIP / WAIT on every bot signal (Bot + AI tab);
+  AI Own scans the watchlist by itself and trades on paper only; the Lab collects every candidate with a later shadow result; a paper capital manager
+  has a daily target lock and a daily loss lock. Everything learns by COUNTING results, never by the AI's opinion.
+- His goals: fewer useless trades in chop, profit after fees, a smooth fast app (no lag, no disconnects), and an AI he can trust before any real money.
+- Please answer in simple English, use only the numbers in this file, and say 'too few data' when the sample is small.
+"""
+
+
+def _safe(fn, label):
+    try:
+        return fn()
+    except Exception as e:
+        return f"{label}: not available ({type(e).__name__})"
+
+
+def _app_dashboard():
+    import sys
+    A = sys.modules.get("api_server") or sys.modules.get("__main__")   # the RUNNING server module; never import a second copy
+    if A is None or not hasattr(A, "_display_status"):
+        raise RuntimeError("server module not loaded")
+    d = A._display_status()
+    L = ["DASHBOARD AND POSITIONS"]
+    for k in ("mode", "trading_mode", "paper_mode", "timeframe", "leverage", "balance", "equity", "today_pnl", "open_pnl", "connected", "feed_status"):
+        if k in d and isinstance(d[k], (str, int, float, bool)):
+            L.append(f"  {k} = {d[k]}")
+    pos = d.get("open_positions") or []
+    L.append(f"  open positions: {len(pos)}")
+    for p in pos[:25]:
+        L.append("    " + ", ".join(f"{k}={p.get(k)}" for k in ("symbol", "side", "timeframe", "entry_price", "pnl_usdt", "roi_pct", "status") if k in p))
+    return "\n".join(L)
+
+
+def _app_signals():
+    from . import db
+    rows = db.get_recent_signals(60, bot="b1")
+    L = [f"SIGNALS (latest {len(rows)}, newest first)"]
+    for r in rows[:60]:
+        L.append("  " + ", ".join(f"{k}={r.get(k)}" for k in ("created_at", "symbol", "action", "timeframe", "entry_price", "status", "result") if k in r))
+    return "\n".join(L)
+
+
+def _app_alerts():
+    from . import status
+    rows = status.get().get("alerts", []) or []
+    L = [f"ALERTS (latest {min(len(rows), 40)} of {len(rows)})"]
+    for a in rows[:40]:
+        L.append("  " + (str(a)[:200]))
+    return "\n".join(L)
+
+
+def _app_vision():
+    from . import ai_vision, ai_capital, ai_candidates
+    L = ["AI VISION, AI OWN, CAPITAL AND LAB"]
+    cap = ai_capital.status(ai_vision)
+    L.append("  paper capital: " + ", ".join(f"{k}={v}" for k, v in cap.items() if isinstance(v, (str, int, float, bool)) or v is None))
+    L.append("  shadow results (per source): " + str(ai_candidates.counts())[:900])
+    cand = ai_candidates.recent(ai_vision, 25)
+    L.append(f"  latest candidates ({len(cand)}):")
+    for c in cand:
+        L.append("    " + ", ".join(f"{k}={c.get(k)}" for k in ("symbol", "side", "stage", "grade", "source", "reason", "result") if k in c)[:260])
+    try:
+        from . import ai_evidence
+        ev = ai_evidence.snapshot(ai_vision)
+        L.append("  evidence (bot vs AI after fees, confirmed patterns): " + str(ev)[:1500])
+    except Exception:
+        pass
+    return "\n".join(L)
+
+
+def _app_backend():
+    from . import load_report, ops_status
+    L = ["BACKEND HEALTH AND ERRORS"]
+    snap = ops_status.snapshot("")
+    for k in ("build", "uptime_s", "restarts_today", "crash_loops"):
+        L.append(f"  {k} = {snap.get(k)}")
+    for pr in (snap.get("problems") or [])[:8]:
+        L.append("  problem: " + str(pr))
+    L.append(load_report._text(load_report.build(4.0)))
+    return "\n".join(L)
+
+
+APP_KNOWN = """KNOWN PROBLEMS AND THEIR FIXES (as of this build)
+- Splash/welcome screen should show once per 12 h: if the phone's settings store fails it used to show every launch (fixed in part 7).
+- AI Own stopped after 12 checks in one minute because of the hourly limit: checks are now spread over the hour (part 6); raise vision_own_max_calls_hour to about 15 if needed.
+- Freezes: Android can pause Termux. Set battery to Unrestricted for Termux and run termux-wake-lock. websocket compression is off (part 6).
+- India price delay: the app used to ask for prices every 0.8 s; prices are now pushed over a websocket (part 7), REST remains the fallback.
+- Fyers: save the PIN once so the daily login renews itself; browser login is needed about every 15 days (a Telegram reminder is sent 2 days before).
+- Tags and grades need a few hundred resolved trades before they mean anything; 'U' = unproven.
+"""
+
+
+def build_app_text():
+    parts = [f"OWL TERMINAL - FULL APP REPORT - made {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}", "", APP_ABOUT, STRATEGY, INDICATORS,
+             _safe(_app_dashboard, "DASHBOARD"), _safe(_app_signals, "SIGNALS"), _safe(_app_alerts, "ALERTS"),
+             _safe(_app_vision, "AI VISION / OWN / CAPITAL / LAB"), _safe(_app_backend, "BACKEND HEALTH"),
+             _safe(_leak_section, "LEAKAGE SUMMARY"), _safe(_settings, "SETTINGS"), APP_KNOWN]
+    return "\n\n".join(parts) + "\n"
+
+
+def save_app_to_downloads():
+    """Same as save_to_downloads but writes the whole-app report (owl_app_report_<date>.txt)."""
+    import os
+    text = build_app_text()
+    name = "owl_app_report_" + datetime.now().strftime("%Y%m%d_%H%M") + ".txt"
+    for d in _download_dirs():
+        try:
+            if os.path.isdir(d) and os.access(d, os.W_OK):
+                path = os.path.join(d, name)
+                with open(path, "w", encoding="utf-8") as f:
+                    f.write(text)
+                return {"ok": True, "path": path, "bytes": len(text.encode("utf-8")), "hint": ""}
+        except Exception:
+            continue
+    try:
+        base = os.environ.get("OWL_DATA_DIR") or os.path.expanduser("~/owl_data")
+        os.makedirs(base, exist_ok=True)
+        path = os.path.join(base, name)
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(text)
+    except Exception:
+        path = ""
+    return {"ok": False, "path": path, "bytes": len(text.encode("utf-8")),
+            "hint": "Phone Download folder is not reachable from Termux. Run  termux-setup-storage  once in Termux, allow storage, then press the button again."}

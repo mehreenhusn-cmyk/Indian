@@ -6,6 +6,7 @@ import '../providers/app_provider.dart';
 import '../services/sound_service.dart';
 import '../widgets/ai_keys_card.dart';
 import '../widgets/owl_route.dart';
+import '../widgets/report_download_card.dart';
 import '../widgets/settings_group.dart';
 import '../widgets/settings_input_field.dart';
 import 'ai_assistant_screen.dart';
@@ -1125,6 +1126,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         const SizedBox(height: AppSpacing.s),
                         const SettingsHeading('App'),
                         _appearanceCard(context),
+                        const ReportDownloadCard(),
                         // ---- Section A: Backend Connection ----
                         SettingsGroup(
                           icon: Icons.dns_outlined,

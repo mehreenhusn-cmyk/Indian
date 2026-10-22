@@ -1577,6 +1577,27 @@ async def report_save():
         return {"ok": False, "path": "", "bytes": 0, "hint": f"Report failed: {type(e).__name__}: {e}"}
 
 
+@app.get("/api/report/app")
+async def app_report():
+    """Whole-app report text (ai_report.build_app_text): what the app is, dashboard, signals, alerts, AI, backend health, settings (no keys), known problems."""
+    from fastapi.responses import PlainTextResponse
+    try:
+        from recovered_bot import ai_report
+        txt = await asyncio.to_thread(ai_report.build_app_text)
+    except Exception as e:
+        txt = f"Report failed: {type(e).__name__}: {e}"
+    return PlainTextResponse(txt, headers={"Content-Disposition": 'attachment; filename="owl_app_report.txt"'})
+
+
+@app.get("/api/report/app_save")
+async def app_report_save():
+    try:
+        from recovered_bot import ai_report
+        return await asyncio.to_thread(ai_report.save_app_to_downloads)
+    except Exception as e:
+        return {"ok": False, "path": "", "bytes": 0, "hint": f"Report failed: {type(e).__name__}: {e}"}
+
+
 @app.get("/api/report")
 async def full_report():
     """ONE downloadable text file (ai_report.py): strategy, indicators, settings (no secrets), Doctor summary, Filter Lab results and the
@@ -2264,11 +2285,13 @@ async def _status_broadcaster():
             data.pop("watchlist", None)
         else:
             _last_broadcast_watchlist = wl
+        _t1 = time.perf_counter()
         _msg = _dumps({"type": "update", "data": data})
+        _dumps_ms = (time.perf_counter() - _t1) * 1000.0      # how long the JSON text takes to build (shows in the load report)
         _build_ms = (time.perf_counter() - _t0) * 1000.0
         _n, _dropped = await manager.broadcast(_msg)
         telemetry.record_broadcast((time.perf_counter() - _t0) * 1000.0, len(_msg), _n,
-                                   build_ms=_build_ms, dropped=_dropped)
+                                   build_ms=_build_ms, dropped=_dropped, dumps_ms=_dumps_ms)
 
 
 def _dumps(obj):

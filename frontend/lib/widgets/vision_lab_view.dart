@@ -189,7 +189,8 @@ class _VisionLabViewState extends State<VisionLabView> {
     final grade = (c['grade'] ?? '').toString();
     final sh = _m(c['shadow']);
     final stageCol = stage == 'TAKEN' ? p.profit : (stage == 'READY' ? p.accent : (stage == 'WATCH' ? p.warning : p.textSecondary));
-    final why = (c['gate_note'] ?? '').toString().isNotEmpty ? c['gate_note'] : ((c['grade_why'] ?? '').toString().isNotEmpty ? c['grade_why'] : c['reason']);
+    final aiSaid = (c['reason'] ?? '').toString();
+    final why = (c['gate_note'] ?? '').toString().isNotEmpty ? c['gate_note'] : (c['grade_why'] ?? '');
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(10),
@@ -206,9 +207,13 @@ class _VisionLabViewState extends State<VisionLabView> {
               _pill(stage, stageCol),
             ],
           ),
-          if ('$why'.isNotEmpty) ...[
+          if (aiSaid.isNotEmpty) ...[
             const SizedBox(height: 4),
-            Text('$why', style: context.type.metadata.copyWith(color: p.textPrimary, height: 1.3, fontSize: 11.5)),
+            Text('AI said: $aiSaid', style: context.type.metadata.copyWith(color: p.textPrimary, height: 1.3, fontSize: 11.5)),
+          ],
+          if ('$why'.isNotEmpty) ...[
+            const SizedBox(height: 3),
+            Text('$why', style: context.type.metadata.copyWith(color: p.textSecondary, height: 1.3, fontSize: 11)),
           ],
           if (sh.containsKey('r'))
             Padding(

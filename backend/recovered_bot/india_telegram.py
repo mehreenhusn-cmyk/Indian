@@ -265,7 +265,7 @@ class IndiaTelegram:
         try:
             tmp = self._state_path + ".tmp"
             with open(tmp, "w") as f:
-                json.dump({"count": self.state["count"], "sent": self.state["sent"][-200:]}, f)
+                json.dump({"count": self.state["count"], "sent": self.state["sent"][-200:], "login_remind_day": self.state.get("login_remind_day", "")}, f)
             os.replace(tmp, self._state_path)
         except Exception:
             log.exception("save india telegram state")
@@ -280,9 +280,35 @@ class IndiaTelegram:
                 log.exception("india telegram watcher")
                 time.sleep(2.0)
 
+    def remind_login(self, now=None):
+        """Once a day, when the Fyers browser login is due in 2 days or less, send ONE Telegram reminder. Never raises."""
+        try:
+            who = self.rt.live or getattr(self.rt, "login_ok", None)
+            info = who.auth_info() if who is not None and hasattr(who, "auth_info") else None
+            left = (info or {}).get("refresh_days_left")
+            if left is None or left > 2:
+                return False
+            now = (now or datetime.now(IST)).astimezone(IST)
+            day = now.date().isoformat()
+            if self.state.get("login_remind_day") == day or now.hour < 8:
+                return False
+            token, chat = self._creds()
+            if not token or not chat:
+                return False
+            when = "today" if left <= 0 else f"in {left} day(s)"
+            ok, _ = self._post(f"\u23f0 Owl Terminal - Fyers login due {when}.\nOpen the app > India > broker card > get the login link and paste a new auth code. "
+                               f"Until then the daily auto-login keeps working.", token, chat, "reminder")
+            if ok:
+                self.state["login_remind_day"] = day
+                self._save_state()
+            return ok
+        except Exception:
+            return False
+
     def tick(self, now=None):
         """One watcher step (also called directly by the tests). Returns the list of cards it sent."""
         sent = []
+        self.remind_login(now)
         live = self.rt.live
         if not self.enabled:
             self.note = "Off"

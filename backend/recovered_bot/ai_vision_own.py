@@ -50,9 +50,32 @@ def _hour_used():
         return len(_hour_calls)
 
 
+_last_ask = [0.0]
+
+
 def _mark_call():
     with _lock:
         _hour_calls.append(time.time())
+        _last_ask[0] = time.time()
+
+
+def _slot_wait(now=None):
+    """Seconds until the next AI Own check may start. The hourly limit is spread evenly (limit 12/hour = one check per 5 min)
+    instead of being used up in the first minute and then idling for the rest of the hour."""
+    cap_h = int(_num("vision_own_max_calls_hour", 12))
+    if cap_h <= 0:
+        return 0.0
+    now = time.time() if now is None else now
+    with _lock:
+        last = _last_ask[0]
+    return max(0.0, last + 3600.0 / cap_h - now) if last else 0.0
+
+
+def _hour_resume_in(now=None):
+    now = time.time() if now is None else now
+    with _lock:
+        ts = sorted(t for t in _hour_calls if now - t < 3600)
+    return max(0.0, ts[0] + 3600.0 - now) if ts else 0.0
 
 
 def _next_own_ids():
@@ -195,7 +218,7 @@ def _blocked_reason(V):
         pass
     cap_h = int(_num("vision_own_max_calls_hour", 12))        # 0 = no limit
     if cap_h > 0 and _hour_used() >= cap_h:
-        return f"Hour call limit reached ({cap_h})"
+        return f"Hour call limit reached ({cap_h}). Next slot in {int(_hour_resume_in() // 60) + 1} min"
     day_cap = _num("vision_own_daily_loss_cap", 15.0)         # 0 = no daily loss limit
     if day_cap > 0 and _own_day_net(V) <= -abs(day_cap):
         return "daily own loss cap reached"
@@ -215,6 +238,11 @@ def tick(V):
         _stats["err"] = blocked
     if blocked:
         return False                       # nothing is marked as scanned, so the coins are read once the block ends
+    wait = _slot_wait()
+    if wait > 0:                           # spread the checks over the hour; nothing is marked as scanned meanwhile
+        with _lock:
+            _stats["err"] = f"Next AI check in {int(wait // 60)} min {int(wait % 60)} s (limit spread over the hour)"
+        return False
 
     syms = _watchlist()
     if not syms:

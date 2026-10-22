@@ -32,7 +32,7 @@ _rest_total = 0
 
 # WS broadcaster (api_server): cost of one 250ms tick.
 _bc = {"ticks": 0, "ema_ms": 0.0, "max_ms": 0.0, "bytes": 0, "clients": 0,
-       "dropped": 0, "build_ms": 0.0}
+       "dropped": 0, "build_ms": 0.0, "dumps_ms": 0.0, "dumps_max": 0.0}
 
 # Candle poll loop (app.py).
 _poll = {"cycles": 0, "last_ms": 0.0, "fetched": 0, "skipped": 0,
@@ -44,7 +44,7 @@ _ai = {"busy": 0, "calls": 0, "errors": 0, "last_ts": None, "last_ms": None,
 
 # Bump on every backend change so the app (System Load card) can prove which
 # Python files are actually running - an old backend shows an old/missing tag.
-BUILD_TAG = "2026-10-22-part5b"
+BUILD_TAG = "2026-10-22-part8"
 
 _cached = {}          # filled by the sampler thread
 _prev_cpu = None      # (wall, process_cpu)
@@ -64,7 +64,7 @@ def record_rest(url):
         pass
 
 
-def record_broadcast(total_ms, nbytes, clients, build_ms=0.0, dropped=0):
+def record_broadcast(total_ms, nbytes, clients, build_ms=0.0, dropped=0, dumps_ms=0.0):
     try:
         with _lock:
             _bc["ticks"] += 1
@@ -72,6 +72,9 @@ def record_broadcast(total_ms, nbytes, clients, build_ms=0.0, dropped=0):
             _bc["build_ms"] = build_ms if _bc["ticks"] == 1 else _bc["build_ms"] * 0.9 + build_ms * 0.1
             if total_ms > _bc["max_ms"]:
                 _bc["max_ms"] = total_ms
+            _bc["dumps_ms"] = dumps_ms if _bc["ticks"] == 1 else _bc["dumps_ms"] * 0.9 + dumps_ms * 0.1
+            if dumps_ms > _bc["dumps_max"]:
+                _bc["dumps_max"] = dumps_ms
             _bc["bytes"] = nbytes
             _bc["clients"] = clients
             _bc["dropped"] += dropped
@@ -216,6 +219,7 @@ def _sample_once():
     with _lock:
         bc = dict(_bc)
         _bc["max_ms"] = 0.0      # max is per sample window (~3s)
+        _bc["dumps_max"] = 0.0
         poll = dict(_poll)
         ai = dict(_ai)
 
@@ -233,6 +237,7 @@ def _sample_once():
                  "top": [{"ep": k, "n": v} for k, v in top]},
         "broadcast": {"avg_ms": round(bc["ema_ms"], 2), "max_ms": round(bc["max_ms"], 2),
                       "build_ms": round(bc["build_ms"], 2), "bytes": bc["bytes"],
+                      "dumps_ms": round(bc["dumps_ms"], 2), "dumps_max_ms": round(bc["dumps_max"], 2),
                       "clients": bc["clients"], "ticks": bc["ticks"], "dropped": bc["dropped"]},
         "poll": {"cycle_ms": round(poll["last_ms"], 1), "cycles": poll["cycles"],
                  "fetched": poll["fetched"], "skipped_ws": poll["skipped"],

@@ -39,6 +39,7 @@ class _OwlLoadSequenceState extends State<OwlLoadSequence> with SingleTickerProv
 
   static const Color _white = Color(0xFFFFFFFF);
   static const Color _grey = Color(0xFF8A8A8A);
+  static const Color _accent = Color(0xFF19E3C2); // teal accent for OK marks and the finished line
 
   late final OwlKeyClicker _clicker;
   late final AnimationController _blink;
@@ -156,7 +157,7 @@ class _OwlLoadSequenceState extends State<OwlLoadSequence> with SingleTickerProv
       padding: const EdgeInsets.symmetric(vertical: 1.5),
       child: Row(
         children: [
-          Text(on ? '[ OK ]' : '[ .. ]', style: _mono(11.5, on ? _white : _grey, w: FontWeight.w800)),
+          Text(on ? '[ OK ]' : '[ .. ]', style: _mono(11.5, on ? _accent : _grey, w: FontWeight.w800)),
           const SizedBox(width: 10),
           Text(name, style: _mono(11.5, on ? _white : _grey)),
         ],
@@ -218,7 +219,7 @@ class _OwlLoadSequenceState extends State<OwlLoadSequence> with SingleTickerProv
           animation: _blink,
           builder: (context, _) => Text(
             '> ${_statusText(p, m)}${cursorOn ? '_' : ' '}',
-            style: _mono(11, (m & 15) == 15 ? _white : _grey),
+            style: _mono(11, (m & 15) == 15 ? _accent : _grey),
           ),
         ),
         const SizedBox(height: 22),
@@ -248,7 +249,7 @@ class _BoxBarPainter extends CustomPainter {
   final double progress;
   const _BoxBarPainter(this.progress);
 
-  static const int _segs = 28;
+  static const int _segs = 40;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -262,7 +263,7 @@ class _BoxBarPainter extends CustomPainter {
         ..color = Colors.white,
     );
 
-    const pad = 4.0, gap = 2.0;
+    const pad = 4.0, gap = 0.6; // tiny gaps so the fill reads as one continuous bar
     final inner = Rect.fromLTWH(pad + 1, pad + 1, size.width - 2 * (pad + 1), size.height - 2 * (pad + 1));
     final segW = (inner.width - gap * (_segs - 1)) / _segs;
     final lit = progress * _segs;
@@ -279,7 +280,7 @@ class _BoxBarPainter extends CustomPainter {
       }
       canvas.drawRect(
         r,
-        Paint()..color = a > 0 ? Colors.white.withOpacity(0.30 + 0.45 * a) : Colors.white.withOpacity(0.07),
+        Paint()..color = a > 0 ? const Color(0xFF19E3C2).withOpacity(0.35 + 0.65 * a) : Colors.white.withOpacity(0.07),
       );
     }
 

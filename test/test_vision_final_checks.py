@@ -172,6 +172,7 @@ class _Env:
 
 def _reset_own():
     OWN._hour_calls[:] = []
+    OWN._last_ask[0] = 0.0
     OWN._last_bar.clear()
     OWN._DUE.clear()
     OWN._idx = 0
@@ -218,8 +219,12 @@ def test_own_scanner_rules():
             assert tr["source"] == "own" and tr["id"].startswith("vo"), tr
             # same coin again, same bar: skipped (no double ask). The scan now goes on to the next coin in the same pass.
             OWN._idx = 0
+            _spacing_wait = OWN._slot_wait()
+            assert _spacing_wait > 0 and OWN.tick(V) is False and calls == ["AAAUSDT"], "the 2nd check must wait for its slot (limit 2/hour = one per 30 min)"
+            OWN._last_ask[0] = 0.0                       # the slot has come
             assert OWN.tick(V) is True and calls == ["AAAUSDT", "BBBUSDT"], calls
             # whole watchlist done for this candle: nothing more to ask
+            OWN._last_ask[0] = 0.0
             assert OWN.tick(V) is False and calls == ["AAAUSDT", "BBBUSDT"], calls
             # hourly cap of 2 reached
             OWN._last_bar.clear()

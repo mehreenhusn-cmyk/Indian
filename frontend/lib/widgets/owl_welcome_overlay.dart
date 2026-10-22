@@ -30,6 +30,9 @@ class OwlWelcomeOverlay extends StatefulWidget {
     this.gate = const Duration(hours: 12),
   });
 
+  /// false when main.dart had to fall back to an in-memory store (the time of the last splash is then lost on every restart).
+  static bool storeIsPersistent = true;
+
   static const _prefsKey = 'owl_welcome_last_shown_ms';
   static const Duration _maxDuration = Duration(seconds: 40);
 
@@ -59,7 +62,7 @@ class _OwlWelcomeOverlayState extends State<OwlWelcomeOverlay> with TickerProvid
 
     final lastShown = widget.prefs.getInt(OwlWelcomeOverlay._prefsKey) ?? 0;
     final now = DateTime.now().millisecondsSinceEpoch;
-    if (now - lastShown >= widget.gate.inMilliseconds) {
+    if (OwlWelcomeOverlay.storeIsPersistent && now - lastShown >= widget.gate.inMilliseconds) {
       _showSplash = true;
       widget.prefs.setInt(OwlWelcomeOverlay._prefsKey, now);
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -154,9 +157,9 @@ class _OwlWelcomeOverlayState extends State<OwlWelcomeOverlay> with TickerProvid
         children: [
           Text('OWL TERMINAL', textAlign: TextAlign.center, style: _mono(22, Colors.white, w: FontWeight.w800, spacing: 6)),
           const SizedBox(height: 8),
-          Text('trading system', textAlign: TextAlign.center, style: _mono(11, const Color(0xFF8A8A8A), spacing: 2)),
+          Text('Trading System', textAlign: TextAlign.center, style: _mono(11, const Color(0xFF19E3C2), spacing: 2)),
           const SizedBox(height: 18),
-          Container(height: 1, color: const Color(0xFF3A3A3A)),
+          Container(height: 1, color: const Color(0xFF19E3C2).withOpacity(0.45)),
           const SizedBox(height: 22),
           OwlLoadSequence(
             signature: 'designed by Hussain Shaikh',

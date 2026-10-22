@@ -3,7 +3,11 @@ Added to api_server.py with two lines; reuses its token guard. Independent of th
 crypto routes."""
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+import asyncio
+import json
+import os
+
+from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.responses import PlainTextResponse
 
 
@@ -26,6 +30,52 @@ def make_router(require_api_token, data_dir):
     def ticks(opt: Optional[str] = None, _a=Depends(require_api_token)):
         """Live index + optional option LTPs (tiny, lock-free). opt=comma symbols, capped 40."""
         return rt().ticks(opt=opt)
+
+    # ---- Part 7: live price PUSH. The app opens one socket and gets prices without asking every 0.8 s. -----
+    def _strip(o):
+        """Drop the keys that change on every look (ages / clocks) so only real price moves count as 'changed'."""
+        if isinstance(o, dict):
+            return {k: _strip(v) for k, v in o.items() if k not in ("age_ms", "at", "now", "speed")}
+        return o
+
+    @r.websocket("/ws_ticks")
+    async def ws_ticks(ws: WebSocket):
+        tok = os.environ.get("API_TOKEN", "").strip()
+        if tok and ws.query_params.get("token", "") != tok:
+            await ws.close(code=4401)
+            return
+        await ws.accept()
+        syms = []
+
+        async def reader():
+            nonlocal syms
+            try:
+                while True:
+                    m = json.loads(await ws.receive_text())
+                    if isinstance(m, dict) and isinstance(m.get("opt"), list):
+                        syms = [str(x) for x in m["opt"] if str(x).strip()][:40]
+            except Exception:
+                return
+
+        rtask = asyncio.create_task(reader())
+        last_sig, last_sent = None, 0.0
+        try:
+            import time as _t
+            while not rtask.done():
+                d = rt().ticks(opt=list(syms))  # lock-free, reads the price the broker socket already pushed
+                sig = json.dumps(_strip(d), sort_keys=True, default=str)
+                now = _t.time()
+                # send the moment a price changed; otherwise a 1 s heartbeat keeps ages / speed fresh
+                if sig != last_sig or now - last_sent >= 1.0:
+                    await ws.send_text(json.dumps(d, default=str))
+                    last_sig, last_sent = sig, now
+                await asyncio.sleep(0.15)
+        except (WebSocketDisconnect, RuntimeError):
+            pass
+        except Exception:
+            pass
+        finally:
+            rtask.cancel()
 
     @r.get("/candles")
     def candles(underlying: str = "NIFTY", limit: int = 150, tf: Optional[int] = None,
