@@ -9,6 +9,7 @@ import '../providers/app_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/candle_chart.dart';
 import '../widgets/ping_widgets.dart';
+import '../widgets/report_download_card.dart';
 
 // ---- constants (starting guesses) ----
 const Duration _pollInterval = Duration(seconds: 3);
@@ -93,6 +94,25 @@ class _PingTabScreenState extends State<PingTabScreen> with AutomaticKeepAliveCl
     }
   }
 
+  void _openReport() {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => const Padding(
+        padding: EdgeInsets.all(12),
+        child: SafeArea(
+          child: ReportDownloadCard(
+            title: 'Ping report',
+            description:
+                'One text file that explains the Ping Lab to any AI: what was built, why, how it works, the numbers so far and an honest verdict. Send it to any AI.',
+            textPath: '/api/ping/report',
+            savePath: '/api/ping/report_save',
+          ),
+        ),
+      ),
+    );
+  }
+
   Future<Map<String, dynamic>?> _get(String base, String path) async {
     try {
       final res = await http.get(Uri.parse('$base$path')).timeout(const Duration(seconds: 6));
@@ -130,7 +150,16 @@ class _PingTabScreenState extends State<PingTabScreen> with AutomaticKeepAliveCl
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Ping', style: AppTypography.sectionHeading.copyWith(color: p.textPrimary)),
+                  Row(
+                    children: [
+                      Expanded(child: Text('Ping', style: AppTypography.sectionHeading.copyWith(color: p.textPrimary))),
+                      TextButton.icon(
+                        onPressed: _openReport,
+                        icon: const Icon(Icons.description_outlined, size: 18),
+                        label: const Text('Report'),
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: 8),
                   PingStatusBadge(
                     stale: stale,

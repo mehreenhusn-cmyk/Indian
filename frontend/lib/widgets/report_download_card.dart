@@ -15,7 +15,20 @@ import '../theme/app_theme.dart';
 /// backend health and errors, settings without keys, known problems) to send to any AI. Read-only: nothing here touches the bot.
 /// Backend: /api/report/app (text) and /api/report/app_save (writes into the phone Download folder). Built in ai_report.py.
 class ReportDownloadCard extends StatefulWidget {
-  const ReportDownloadCard({super.key});
+  /// Defaults = the whole-app report. The Ping tab passes its own title / text + save routes.
+  final String title;
+  final String description;
+  final String textPath;
+  final String savePath;
+
+  const ReportDownloadCard({
+    super.key,
+    this.title = 'Download report',
+    this.description =
+        'One text file with what the app is, dashboard, signals, alerts, AI Vision / AI Own, backend health and errors, your settings (no keys) and known problems. Send it to any AI.',
+    this.textPath = '/api/report/app',
+    this.savePath = '/api/report/app_save',
+  });
 
   @override
   State<ReportDownloadCard> createState() => _ReportDownloadCardState();
@@ -37,7 +50,7 @@ class _ReportDownloadCardState extends State<ReportDownloadCard> {
   }
 
   Future<http.Response> _fetch() async {
-    final res = await http.get(Uri.parse('$_base/api/report/app')).timeout(const Duration(seconds: 90));
+    final res = await http.get(Uri.parse('$_base${widget.textPath}')).timeout(const Duration(seconds: 90));
     if (res.statusCode != 200) throw 'The backend answered HTTP ${res.statusCode}';
     return res;
   }
@@ -59,7 +72,7 @@ class _ReportDownloadCardState extends State<ReportDownloadCard> {
   }
 
   Future<void> _download() => _run(() async {
-        final res = await http.get(Uri.parse('$_base/api/report/app_save')).timeout(const Duration(seconds: 90));
+        final res = await http.get(Uri.parse('$_base${widget.savePath}')).timeout(const Duration(seconds: 90));
         if (res.statusCode != 200) throw 'The backend answered HTTP ${res.statusCode}';
         final r = jsonDecode(utf8.decode(res.bodyBytes));
         if (r is Map && r['ok'] == true) {
@@ -92,10 +105,10 @@ class _ReportDownloadCardState extends State<ReportDownloadCard> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(color: p.surface, borderRadius: BorderRadius.circular(14), border: Border.all(color: p.border)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('Download report', style: context.type.section.copyWith(fontWeight: FontWeight.w700)),
+        Text(widget.title, style: context.type.section.copyWith(fontWeight: FontWeight.w700)),
         const SizedBox(height: 6),
         Text(
-          'One text file with what the app is, dashboard, signals, alerts, AI Vision / AI Own, backend health and errors, your settings (no keys) and known problems. Send it to any AI.',
+          widget.description,
           style: context.type.metadata,
         ),
         const SizedBox(height: 12),

@@ -4,6 +4,7 @@ Never computes inside a request. If snapshot is old or missing -> {"stale": true
 """
 import time
 from fastapi import APIRouter
+from fastapi.responses import PlainTextResponse
 
 from . import ping_store
 
@@ -118,5 +119,23 @@ def make_router():
             return {"stale": True, "sentence": "Worker offline.", "small_sample": True}
         L = snap.get("lead") or {}
         return {"stale": False, **L}
+
+    @r.get("/report")
+    def report():
+        """Text report for any AI (what / why / how / numbers / verdict). Only reads the ping files."""
+        try:
+            from . import ping_report
+            return PlainTextResponse(ping_report.build_text())
+        except Exception as e:
+            return PlainTextResponse(f"Ping report failed: {type(e).__name__}: {e}", status_code=500)
+
+    @r.get("/report_save")
+    def report_save():
+        """Writes the same report into the phone's Download folder."""
+        try:
+            from . import ping_report
+            return ping_report.save_to_downloads()
+        except Exception as e:
+            return {"ok": False, "path": "", "bytes": 0, "hint": f"Report failed: {type(e).__name__}: {e}"}
 
     return r

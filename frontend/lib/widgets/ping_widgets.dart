@@ -76,7 +76,7 @@ class PingSummaryCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(sentence, style: AppTypography.secondaryData.copyWith(color: p.textPrimary)),
-          if (smallSample) ...[
+          if (smallSample && !sentence.toLowerCase().contains('small sample')) ...[
             const SizedBox(height: 6),
             Text(
               'Small sample, not reliable.',
