@@ -25,7 +25,7 @@ from recovered_bot.ping_tracker import PingTracker
 from recovered_bot.ping_signal_bridge import SignalBridge, POLL_SEC
 
 # ---- constants (starting guesses) ----
-BUILD_TAG = "2026-10-23-ping-r2"
+BUILD_TAG = "2026-10-23-ping-r3"
 SNAPSHOT_SEC = 2.0
 # Old /ws and /stream URLs were retired by Binance on 2026-04-23: they open but send nothing.
 # miniTicker lives under /market. Try the raw path first, then the combined-stream form.
@@ -77,23 +77,16 @@ class Worker:
     def write_snapshot(self):
         now = time.time()
         rows = self.engine.all_rows(now=now, only_with_pings=True)
-        for sym, meta in self.collector.candidates.items():
-            if meta.get("watchlist") and not any(r["symbol"] == sym for r in rows):
-                cs = self.engine.get(sym)
-                cs.in_watchlist = True
-                px = self.radar.price(sym)
-                if px:
-                    cs.price = px
-                cs.quote_vol_24h = self.radar.quote_vol_24h(sym)
-                row = self.engine.row_for(sym, now=now, side="BUY")
-                if row:
-                    rows.append(row)
+        # Only coins that really pinged are listed (like the old website). Watchlist coins with no
+        # ping used to be added as fake "BUY" rows, which inflated the BUY count in the app header.
+        watch = sorted(sym for sym, meta in self.collector.candidates.items() if meta.get("watchlist"))
         snap = {
             "ts": now,
             "stale": False,
             "health": self.health(),
             "rows": rows,
             "candidates": sorted(self.collector.candidates.keys()),
+            "watchlist": watch,
             "bot": self.bot.snapshot(),
             "score": self.tracker.score_snapshot(),
             "lead": self.tracker.lead_snapshot(),

@@ -25,6 +25,7 @@ class PingTracker:
         self.lead_events = []  # list of dicts
         self._seen_top = set()  # (day, symbol, "gainer"|"loser")
         self.signal_rows = []  # TAKE/SKIP rows
+        self._baselined = False  # first tick after start only records who is ALREADY in the top 10
         self._load()
 
     def _load(self):
@@ -46,6 +47,20 @@ class PingTracker:
         now = now if now is not None else time.time()
         day = _utc_day_start(now)
         gainers, losers = self.radar.top_bottom_by_change(10)
+        if not self._baselined:
+            if not gainers and not losers:
+                return                       # radar has no data yet - try again next tick
+            # Coins already in the top 10 when the worker starts did not "enter" now.
+            # Counting them gave fake "29 entries, 0% had a ping" right after every restart.
+            self._baselined = True
+            self._seen_top = {k for k in self._seen_top if k[0] >= day}
+            for s in gainers:
+                self._seen_top.add((day, s, "gainer"))
+            for s in losers:
+                self._seen_top.add((day, s, "loser"))
+            self._save()
+            return
+        changed = False
         for sym, kind, side in (
             *[(s, "gainer", "BUY") for s in gainers],
             *[(s, "loser", "SELL") for s in losers],
@@ -86,7 +101,9 @@ class PingTracker:
                 "move_pct": round(move_pct, 4) if move_pct is not None else None,
             })
             self.lead_events = self.lead_events[-LEAD_CAP:]
-        self._save()
+            changed = True
+        if changed:
+            self._save()
 
     def note_bot_signal(self, symbol, action, ts, trade_result=None):
         """Record TAKE/SKIP vs live bot signal. action = BUY/SELL.

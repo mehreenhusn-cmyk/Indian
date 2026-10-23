@@ -105,11 +105,29 @@ def append_event(event):
 
 
 def write_state(state):
-    write_json_atomic(state_path(), state)
+    """Live snapshot, rewritten every ~2 s. Fast path: no fsync, no .bak copy.
+
+    (The phone's shared storage is slow; the full atomic write with fsync + .bak
+    every 2 s was needless wear. A lost snapshot just means 'stale' for 2 s.)
+    """
+    path = state_path()
+    tmp = path + ".tmp"
+    try:
+        with open(tmp, "w") as f:
+            f.write(json.dumps(state, separators=(",", ":"), default=str))
+        os.replace(tmp, path)
+    except Exception as e:
+        print(f"[ping_store] write_state failed: {e}")
 
 
 def read_state():
-    return read_json_safe(state_path(), default={})
+    path = state_path()
+    try:
+        with open(path, "r") as f:
+            data = json.load(f)
+        return data if isinstance(data, dict) else {}
+    except Exception:
+        return {}
 
 
 def trades_path():

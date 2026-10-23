@@ -232,7 +232,6 @@ class _LiveTickerBarState extends State<LiveTickerBar> with TickerProviderStateM
     }
 
     final netText = netMs != null ? '${netMs}ms' : '--';
-    final engineText = engineMs != null ? '${engineMs}ms' : null;
 
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -243,28 +242,13 @@ class _LiveTickerBarState extends State<LiveTickerBar> with TickerProviderStateM
           decoration: BoxDecoration(shape: BoxShape.circle, color: statusColor),
         ),
         const SizedBox(width: 5),
-        Text.rich(
-          TextSpan(
-            children: [
-              TextSpan(
-                text: 'Net ',
-                style: AppTypography.metadata.copyWith(color: context.palette.textMuted, fontSize: 10),
-              ),
-              TextSpan(
-                text: netText,
-                style: AppTypography.metadata.copyWith(color: context.palette.textSecondary, fontSize: 10, fontWeight: FontWeight.w600),
-              ),
-              if (engineText != null) ...[
-                TextSpan(
-                  text: '  |  Engine ',
-                  style: AppTypography.metadata.copyWith(color: context.palette.textMuted, fontSize: 10),
-                ),
-                TextSpan(
-                  text: engineText,
-                  style: AppTypography.metadata.copyWith(color: context.palette.textSecondary, fontSize: 10, fontWeight: FontWeight.w600),
-                ),
-              ],
-            ],
+        // Only the ms value, large and bold, so it reads at a glance on a phone.
+        Text(
+          netText,
+          style: AppTypography.metadata.copyWith(
+            color: context.palette.textPrimary,
+            fontSize: 15,
+            fontWeight: FontWeight.w800,
           ),
         ),
       ],

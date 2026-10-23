@@ -18,6 +18,7 @@ SL_MAX_PCT = 1.2
 TP_FRACTIONS = (0.25, 0.25, 0.25, 0.25)  # TP1..TP4
 TIME_STOP_MIN = 30
 TRADES_CAP = 1000
+BOT_SAVE_SEC = 60.0   # unchanged state is written at most this often
 EMA_READY_FAST = 30   # closed 1m candles needed before EMA30 is trusted
 EMA_READY_SLOW = 50   # closed 1m candles needed before EMA50 is trusted
 VARIANTS = ("A", "B", "C")  # A=EMA30, B=EMA50, C=ping only
@@ -75,6 +76,14 @@ class PingBot:
             "ts": time.time(),
         })
 
+    def _maybe_save(self, now):
+        sig = (len(self.open), len(self.closed), self._seq,
+               tuple(str(t.tp_hits) for t in self.open.values()))
+        if sig != getattr(self, "_last_sig", None) or now - getattr(self, "_last_save", 0.0) >= BOT_SAVE_SEC:
+            self._last_sig = sig
+            self._last_save = now
+            self._save()
+
     def tick(self, now=None):
         """Evaluate entries on candidates + manage open trades."""
         now = now if now is not None else time.time()
@@ -85,7 +94,7 @@ class PingBot:
                 for side in ("LONG", "SHORT"):
                     self._try_entry(sym, cs, variant, side, now)
         self._manage_open(now)
-        self._save()
+        self._maybe_save(now)
 
     def _try_entry(self, sym, cs, variant, side, now):
         key = (sym, variant, side)
