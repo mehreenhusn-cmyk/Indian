@@ -32,7 +32,15 @@ class _CountingSession(requests.Session):
             telemetry.record_rest(url)
         except Exception:
             pass
-        return super().request(method, url, *args, **kwargs)
+        resp = super().request(method, url, *args, **kwargs)
+        try:                                   # how many bytes came back (wire size when the server says it, else body size)
+            if not kwargs.get("stream"):
+                from . import telemetry
+                n = resp.headers.get("Content-Length")
+                telemetry.record_rest_bytes(url, int(n) if n and str(n).isdigit() else len(resp.content))
+        except Exception:
+            pass
+        return resp
 
 
 def get_session():

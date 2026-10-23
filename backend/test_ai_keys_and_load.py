@@ -17,8 +17,8 @@ def check(name, cond):
 
 
 # ---- 1. guess from the first letters
-for key, want in (("sk-ant-api03-abc", "anthropic"), ("sk-or-v1-d4251052ab", "openrouter"), ("AIzaSyA-123456789", "gemini"),
-                  ("gsk_j9hAW6VETdNTrDNnh", "groq"), ("sk-proj-abcdefghijkl", "openai"), ("mstrl_qzMHfYpWjgnYbONhqQ", "mistral")):
+for key, want in (("sk-ant-api03-abc", "anthropic"), ("sk-or-v1-dummy000000", "openrouter"), ("AIzaSyA-123456789", "gemini"),
+                  ("gsk_dummydummydummy00", "groq"), ("sk-proj-abcdefghijkl", "openai"), ("mstrl_dummydummydummy00", "mistral")):
     check(f"guess {want}", ai_keyid.guess(key)[0] == want)
 check("guess bare 32 chars = mistral (not sure)", ai_keyid.guess("a" * 32) == ("mistral", False))
 check("guess junk = unknown", ai_keyid.guess("hello") == ("", False))
@@ -83,7 +83,7 @@ check("second key -> backup 1", a["ok"] and a["slot"] == "backup")
 a = ai_keys_api.add("gsk_FAKEBAD")
 check("bad key is NOT saved", (not a["ok"]) and not settings_store.get("ai3_api_key"))
 st = ai_keys_api.status()
-check("status lists 4 slots", len(st["slots"]) == 4 and st["slots"][0]["provider_name"] == "Google Gemini" and st["slots"][2]["filled"] is False)
+check("status lists 8 slots", len(st["slots"]) == 8 and st["slots"][0]["provider_name"] == "Google Gemini" and st["slots"][2]["filled"] is False)
 check("status never shows the full key", "FAKEKEY123456" not in str(st))
 check("clear works", ai_keys_api.clear("backup")["ok"] and not settings_store.get("ai2_api_key"))
 ai_keyid._list = real_list

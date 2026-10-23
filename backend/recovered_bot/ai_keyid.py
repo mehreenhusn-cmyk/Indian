@@ -16,13 +16,15 @@ import time
 import requests
 
 NAMES = {"gemini": "Google Gemini", "anthropic": "Claude (Anthropic)", "openai": "OpenAI", "groq": "Groq",
-         "mistral": "Mistral", "openrouter": "OpenRouter"}
+         "mistral": "Mistral", "openrouter": "OpenRouter", "nvidia": "NVIDIA", "deepseek": "DeepSeek"}
 _OAI_BASE = {"openai": "https://api.openai.com/v1", "groq": "https://api.groq.com/openai/v1",
-             "mistral": "https://api.mistral.ai/v1", "openrouter": "https://openrouter.ai/api/v1"}
+             "mistral": "https://api.mistral.ai/v1", "openrouter": "https://openrouter.ai/api/v1",
+             "nvidia": "https://integrate.api.nvidia.com/v1", "deepseek": "https://api.deepseek.com"}
 _FALLBACK = {"gemini": "gemini-flash-lite-latest", "anthropic": "claude-haiku-5-5", "openai": "gpt-4o-mini",
              "mistral": "mistral-small-latest", "groq": "meta-llama/llama-4-scout-17b-16e-instruct",
-             "openrouter": "meta-llama/llama-4-maverick:free"}
-_PROBE_ORDER = ("mistral", "openai", "groq", "openrouter", "gemini", "anthropic")   # for keys with no known prefix
+             "openrouter": "meta-llama/llama-4-maverick:free",
+             "nvidia": "nvidia/nemotron-nano-12b-v2-vl", "deepseek": ""}
+_PROBE_ORDER = ("mistral", "openai", "groq", "openrouter", "nvidia", "gemini", "anthropic")   # for keys with no known prefix
 _T = 12
 _lock = threading.Lock()
 _cache = {}            # sha1(key) -> (time, result)
@@ -49,6 +51,10 @@ def guess(key):
         return "gemini", True
     if k.startswith("gsk_"):
         return "groq", True
+    if k.startswith("nvapi-"):
+        return "nvidia", True
+    if re.fullmatch(r"sk-[0-9a-f]{32}", k):          # DeepSeek keys: sk- + exactly 32 hex letters (OpenAI keys are much longer)
+        return "deepseek", True
     if k.startswith("sk-"):
         return "openai", True
     if k.lower().startswith("mstr"):
@@ -157,6 +163,15 @@ def pick_model(provider, raw):
         vis = [i for i in ids if re.search(r"scout|maverick|vision", i, re.I) and not _BAD.search(i)]
         vis.sort(key=lambda i: (0 if "scout" in i else 1 if "maverick" in i else 2, i))
         return vis[0] if vis else ""        # "" = this key has no picture model; shown to the owner
+    if provider == "nvidia":
+        vis = [i for i in ids if re.search(r"nemotron.*vl|vl.*nemotron|vision|llama-4|pixtral|mistral-small|qwen.*vl", i, re.I) and not _BAD.search(i)]
+        for want in ("nvidia/nemotron-nano-12b-v2-vl", "nvidia/llama-3.1-nemotron-nano-vl-8b-v1"):
+            if want in vis:
+                return want
+        vis.sort(key=lambda i: (0 if "nemotron" in i else 1, i))
+        return vis[0] if vis else ""
+    if provider == "deepseek":
+        return ""        # DeepSeek's API reads text only: it cannot look at a chart picture
     if provider == "openrouter":
         free = []
         for m in raw:

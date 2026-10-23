@@ -72,7 +72,7 @@ def _own(pnl, closed_at=1_000_100.0, status="closed", live=0.0):
 
 def test_capital_lock_sizing_and_reset():
     CAP._st.update(day0=0.0, lock="")
-    FakeV.cfg = {}
+    FakeV.cfg = {"vision_own_free_money": False}              # safety manager tests: free mode OFF
     FakeV._state = {"trades": [_own(-3.0, closed_at=900_000.0), _own(5.0)]}
     s = CAP.status(FakeV)
     assert s["balance"] == 102.0 and s["day_start_balance"] == 97.0 and s["net"] == 5.0 and s["state"] == "active", s

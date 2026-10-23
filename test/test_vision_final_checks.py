@@ -204,6 +204,7 @@ def test_own_scanner_rules():
                     V._state["trades"].append(tr)
             V._process_signal = fake_process
 
+            SS.update(vision_own_free_money=False)          # this test checks the safety rules, so FREE MONEY mode is off here
             SS.update(vision_own_enabled=False)
             _reset_own()
             with V._lock:

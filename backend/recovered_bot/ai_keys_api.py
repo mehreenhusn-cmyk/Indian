@@ -1,5 +1,5 @@
 """
-ai_keys_api.py - the 4 AI key slots in one place: paste a key, the backend detects whose key it is and which model to use.
+ai_keys_api.py - the 8 AI key slots in one place: paste a key, the backend detects whose key it is and which model to use.
 
   status()            -> the 4 slots with provider, model, state (ready / out of quota / error) and call numbers
   add(key, slot=None) -> detect + save into the chosen slot (or the first empty one)
@@ -13,7 +13,8 @@ import time
 
 from . import ai_keyid, settings_store
 
-SLOTS = (("main", "ai", "Main key"), ("backup", "ai2", "Backup key 1"), ("backup2", "ai3", "Backup key 2"), ("backup3", "ai4", "Backup key 3"))
+SLOTS = (("main", "ai", "Main key"), ("backup", "ai2", "Backup key 1"), ("backup2", "ai3", "Backup key 2"), ("backup3", "ai4", "Backup key 3"),
+         ("backup4", "ai5", "Backup key 4"), ("backup5", "ai6", "Backup key 5"), ("backup6", "ai7", "Backup key 6"), ("backup7", "ai8", "Backup key 7"))
 _PFX = {s: p for s, p, _ in SLOTS}
 
 
@@ -81,7 +82,7 @@ def add(key, slot=None):
                 slot = s
                 break
     if not slot:
-        return {"ok": False, "need_slot": True, "message": "All 4 slots are full. Choose which key to replace."}
+        return {"ok": False, "need_slot": True, "message": f"All {len(SLOTS)} slots are full. Choose which key to replace."}
     res = ai_keyid.inspect(key, force=True)
     label = dict((s, l) for s, _, l in SLOTS)[slot]
     if res["ok"]:

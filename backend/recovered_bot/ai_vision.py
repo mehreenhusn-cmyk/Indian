@@ -76,7 +76,7 @@ TSI PANE (middle)
   light red = signal below zero and TSI above the signal (selling is weak; a bounce is possible);
   dark red = signal below zero and TSI below the signal (sellers strong).
 - Bars = TSI minus signal (the push). Ignore any reversal arrows.
-- A small HIST box in this pane (and the same numbers in the text you are given) shows the last 5 bars, oldest to newest, one trend word and one plain line. Growing = the push is getting stronger; Shrinking = the push is fading; Flipping up / Flipping down = the push just changed side; Flat = no clear push. Plain lines: Buyers coming in, Buyers leaving, Sellers coming in, Sellers leaving, Buyers taking over, Sellers taking over, No clear push. The box can also show the last 10 bars (red below 0, green above 0) and where TSI and its signal line sit against zero. IMPORTANT: a shrinking histogram alone is never a reason to buy or sell. If TSI and the signal line are still below 0, sellers are still in control, so do not buy early just because the bars are shrinking; check Z-score, EMA and SD levels yourself first. Use these numbers, do not guess the bars from the picture. When the note matters for your decision, say it in your reason (for example: skipped because the histogram is shrinking, buyers leaving).
+- A small HIST box in this pane (and the same numbers in the text you are given) shows the last 10 bars of the histogram, oldest to newest (red = below 0, green = above 0), and the TSI and signal-line values. Nothing is pre-interpreted: work out what the numbers mean yourself and learn from how your trades end.
 
 Z-SCORE PANE (bottom)
 - Green area = upside momentum. Red area = downside momentum. The black line = Z-SMA (200-candle average of Z).
@@ -95,9 +95,15 @@ The empty space on the right of the picture is the future: nothing is known ther
 Think about what past candles say about where price may go next. Give honest probabilities, not certainty. If the picture is unclear, say so and choose SKIP or WAIT."""
 
 
-def guide_text(symbol=None, side=None):
+OWN_GUIDE_91 = "- Script 1 and Script 2 can disagree. Judge which one matters more on this coin and say why; you will see how it ends and learn."
+OWN_GUIDE_95 = "Give honest probabilities, not certainty. If the picture is unclear, say what is unclear in the reason; you decide TAKE, SKIP or WAIT."
+
+
+def guide_text(symbol=None, side=None, own=False):
     notes = str(_cfg("vision_notes", "") or "").strip()
     out = GUIDE
+    if own:                                                # AI Own is free: no "prefer SKIP / WAIT" nudges
+        out = out.replace("- If Script 1 looks fine but Script 2 disagrees (or the reverse), prefer WAIT or SKIP.", OWN_GUIDE_91).replace("Give honest probabilities, not certainty. If the picture is unclear, say so and choose SKIP or WAIT.", OWN_GUIDE_95)
     if notes:
         out += "\n\nOWNER'S OWN NOTES (written by the person who built these indicators; trust them):\n" + notes
     try:                                                   # the learning notebook: approved rules + the AI's own recent lessons
@@ -435,49 +441,22 @@ def hist_note(f, take=5):
             word, line = "Flat", "No clear push"
     dec = 2 if max(abs(x) for x in v) < 1 else 1
     nums = [f"{x:+.{dec}f}" for x in v]
-    # v2: the last 10 bars (two rows of 5 in the box), where TSI and its signal line sit against zero,
-    # and a plain line that says what the bars mean in that place. A shrinking bar alone is never a buy.
+    # v3: no hand-made reading. Only the last 10 bars (red below 0, green above 0) and the raw TSI / signal numbers.
+    # The AI learns by itself what they mean from how its trades end.
     all10 = [x for x in list((f or {}).get("diff") or [])[-10:] if x is not None]
     v10 = [round(float(x), 3) for x in all10] if len(all10) >= take else [round(x, 3) for x in v]
     tsi = _last_num((f or {}).get("tsi"))
     tsl = _last_num((f or {}).get("tsl"))
-    pos_txt, ctx, ctx_short = "", "", ""
+    pos_txt = ""
     if tsi is not None and tsl is not None:
         d2 = 2 if max(abs(tsi), abs(tsl)) < 1 else 1
-        if tsi < 0 and tsl < 0:
-            side = "both below 0 (sellers' side)"
-        elif tsi > 0 and tsl > 0:
-            side = "both above 0 (buyers' side)"
-        else:
-            side = "on different sides of 0 (mixed)"
-        pos_txt = f"TSI {tsi:+.{d2}f}, signal line {tsl:+.{d2}f}: {side}."
-        below, above = tsi < 0 and tsl < 0, tsi > 0 and tsl > 0
-        if word == "Shrinking" and below:
-            ctx = "Sellers still in control but weakening. Not a buy yet: wait for the histogram above 0."
-            ctx_short = "Sellers weakening - not a buy yet"
-        elif word == "Shrinking" and above:
-            ctx = "Buyers still in control but weakening. Not a sell yet: wait for the histogram below 0."
-            ctx_short = "Buyers weakening - not a sell yet"
-        elif word == "Flipping up" and not above:
-            ctx = "Histogram just turned up but TSI and signal are not above 0 yet. Early: wait for them to cross above 0."
-            ctx_short = "Turned up - TSI still not above 0"
-        elif word == "Flipping down" and not below:
-            ctx = "Histogram just turned down but TSI and signal are not below 0 yet. Early: wait for them to cross below 0."
-            ctx_short = "Turned down - TSI still not below 0"
-        elif word == "Growing" and below:
-            ctx = "Sellers in control and getting stronger. Not a buy."
-            ctx_short = "Sellers getting stronger"
-        elif word == "Growing" and above:
-            ctx = "Buyers in control and getting stronger. Not a sell."
-            ctx_short = "Buyers getting stronger"
-    if not ctx_short:
-        ctx_short = line
-    n10 = [f"{x:+.{dec}f}" for x in v10]
-    text = (f"TSI histogram (last {len(v10)} closed bars, oldest to newest): {', '.join(n10)}. Trend: {word}. {line}."
-            + (f" {pos_txt}" if pos_txt else "") + (f" {ctx}" if ctx else "")
-            + " A shrinking histogram alone is never a reason to buy or sell: also check Z-score, EMA and SD levels.")
-    return {"vals": [round(x, 3) for x in v], "vals10": v10, "word": word, "line": line, "ctx": ctx, "ctx_short": ctx_short,
-            "pos": pos_txt, "short": f"{word} - {line} ({', '.join(nums)})", "text": text}
+        pos_txt = f"TSI {tsi:+.{d2}f}, signal line {tsl:+.{d2}f}."
+    dec10 = 2 if v10 and max(abs(x) for x in v10) < 1 else 1
+    n10 = [f"{x:+.{dec10}f}" for x in v10]
+    text = (f"TSI histogram (last {len(v10)} closed bars, oldest to newest; green = above 0, red = below 0): {', '.join(n10)}."
+            + (f" {pos_txt}" if pos_txt else ""))
+    return {"vals": [round(x, 3) for x in v], "vals10": v10, "word": "", "line": "", "ctx": "", "ctx_short": "",
+            "pos": pos_txt, "short": f"last {len(v10)} bars: {', '.join(n10)}", "text": text}
 
 
 def render_chart(symbol, candles, tf_label, side=None, marks=None, title_extra="", source=None):
@@ -756,12 +735,12 @@ def render_chart(symbol, candles, tf_label, side=None, marks=None, title_extra="
         dec_ = (2 if max(abs(y) for y in v10) < 1 else 1) if v10 else 1
         rows = [v10[:-5], v10[-5:]] if len(v10) >= 10 else [v10]
         rows = [r for r in rows if r]
-        l3 = f"{hn['word']} - {hn['line']}" if hn["vals"] else hn["line"]
-        l4 = hn.get("ctx_short") or ""
+        l3 = "" if hn["vals"] else hn["line"]        # only the "not enough bars" case still shows a line
+        l4 = ""
         lines_w = [d.textlength("HIST  " + "  ".join(f"{x:+.{dec_}f}" for x in r), font=f12) for r in rows]
         bw_ = max(lines_w + [d.textlength(l3, font=f12), d.textlength(l4, font=f12)]) + 14
         rh = 15
-        nrow = len(rows) + 1 + (1 if l4 and l4 != hn["line"] else 0)
+        nrow = max(1, len(rows)) + (1 if l3 else 0)
         bh_ = nrow * rh + 6
         bx1 = x1 - 6
         bx0 = bx1 - bw_
@@ -797,11 +776,8 @@ def render_chart(symbol, candles, tf_label, side=None, marks=None, title_extra="
                 d.text((xx, y), t_, fill=((8, 120, 90) if x_ >= 0 else (200, 40, 55)), font=f12)
                 xx += d.textlength(t_, font=f12)
             y += rh
-        wc = (8, 120, 90) if hn["line"].startswith("Buyers") else ((200, 40, 55) if hn["line"].startswith("Sellers") else (100, 100, 100))
-        d.text((bx0 + 6, y), l3, fill=wc, font=f12)
-        y += rh
-        if l4 and l4 != hn["line"]:
-            d.text((bx0 + 6, y), l4, fill=(90, 90, 90), font=f12)
+        if l3:
+            d.text((bx0 + 6, y), l3, fill=(100, 100, 100), font=f12)
     except Exception as e:
         print(f"[Vision] hist box: {e}")
 
@@ -842,6 +818,7 @@ _OAI_STYLE = {      # provider -> (url, default vision model). All three speak t
     "mistral": ("https://api.mistral.ai/v1/chat/completions", "mistral-small-latest"),
     "groq": ("https://api.groq.com/openai/v1/chat/completions", "meta-llama/llama-4-scout-17b-16e-instruct"),
     "openrouter": ("https://openrouter.ai/api/v1/chat/completions", "meta-llama/llama-4-maverick:free"),   # free model names change: set the Model field if it says 404
+    "nvidia": ("https://integrate.api.nvidia.com/v1/chat/completions", "nvidia/nemotron-nano-12b-v2-vl"),    # free NVIDIA key (build.nvidia.com); picture-reading Nemotron model
 }
 _rr = [0]            # round-robin counter: calls are SHARED between the ready keys instead of emptying the first key first
 _pause = {}          # "slot:model" -> time until which that model is paused (quota or key problem)
@@ -853,7 +830,7 @@ def _ai_key():
     return key, str(_cfg("ai_provider", "openai") or "openai"), str(_cfg("ai_model", "") or "").strip()
 
 
-_PFX = {"main": "ai", "backup": "ai2", "backup2": "ai3", "backup3": "ai4"}     # slot -> settings prefix
+_PFX = {"main": "ai", "backup": "ai2", "backup2": "ai3", "backup3": "ai4", "backup4": "ai5", "backup5": "ai6", "backup6": "ai7", "backup7": "ai8"}     # slot -> settings prefix
 
 
 def _fix_provider(key, prov):
@@ -881,7 +858,7 @@ def _slots():
     if key:
         prov = _fix_provider(key, prov)
         out.append({"slot": "main", "key": key, "provider": prov, "model": model, "auto": _auto_model("ai", prov)})
-    for n, name in ((2, "backup"), (3, "backup2"), (4, "backup3")):
+    for n, name in ((2, "backup"), (3, "backup2"), (4, "backup3"), (5, "backup4"), (6, "backup5"), (7, "backup6"), (8, "backup7")):
         k = str(_cfg(f"ai{n}_api_key", "") or "").strip()
         if k:
             p = _fix_provider(k, str(_cfg(f"ai{n}_provider", "mistral") or "mistral").strip().lower())
@@ -1018,13 +995,19 @@ def _try_oai(sl, system, text, b64):
     url, _dm = _OAI_STYLE.get(sl["provider"], _OAI_STYLE["openai"])
     user = [{"type": "text", "text": text}] + ([{"type": "image_url", "image_url": {"url": "data:image/png;base64," + b64}}] if b64 else [])
     nm = _slot_models(sl)[0]
-    for attempt in (0, 1):
-        body = {"model": nm, "temperature": 0.2, "max_tokens": 900, "response_format": {"type": "json_object"},
+    use_rf = sl["provider"] != "nvidia"          # NVIDIA models do not all accept response_format; the prompt already asks for JSON only
+    for attempt in (0, 1, 2):
+        body = {"model": nm, "temperature": 0.2, "max_tokens": 900,
                 "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}]}
+        if use_rf:
+            body["response_format"] = {"type": "json_object"}
         r = requests.post(url, headers={"Authorization": f"Bearer {sl['key']}", "Content-Type": "application/json"}, json=body, timeout=60)
         if r.status_code == 200:
             return r.json()["choices"][0]["message"]["content"], None, nm
-        if r.status_code == 404 and not sl["model"] and attempt == 0:      # retired model name: ask the company for a live one, retry once
+        if r.status_code == 400 and use_rf:                                # option refused: try once more without it
+            use_rf = False
+            continue
+        if r.status_code == 404 and not sl["model"] and attempt < 2:      # retired model name: ask the company for a live one, retry once
             newm = _rediscover(sl)
             if newm and newm != nm:
                 nm = newm
@@ -1203,17 +1186,18 @@ def _signal_prompt(rec, lv, price, recent_ctx=""):
     ind = _indicator_summary(lv, rec.get("side") or "BUY", rec.get("feat"))
     ind_line = "; ".join(f"{k}={v}" for k, v in ind.items() if v)
     own = str(rec.get("source") or "bot") == "own"
-    head = ("Your own scanner found this setup (the bot did not signal it). Goal: make profit with as few trades as possible. "
-            "Take only a clear, well-placed setup; SKIP or WAIT on anything doubtful. Read BOTH indicator families as evidence, but agreement is a hint, not a rule: one family can be weak on a good continuation, and everything agreeing can still be a late entry far out in the SD bands. Judge the place and the regime, not a vote count. "
-            "There is no daily loss limit on your own trades, so quality is the only filter. "
+    head = ("Your own scanner is showing you this coin (the bot did not signal it). You trade this paper account yourself and you learn from the results. "
+            "Read the chart and BOTH indicator families (EMA + SD bands, and TSI + Z-score) as evidence, decide yourself whether to enter, and explain what you see. "
+            "There are no entry rules and no vote count to follow: you will see how each trade ends and you are expected to get better at using the indicators. "
+            "The side below is only the side the scanner leans to; if you think the opposite side is the better trade, say so in the reason and SKIP. "
             "Your reason MUST name the price level (an SD band, EMA or swing high/low) and the indicator that supports it, for example: 'bounce from -2SD, TSI above its signal'.\n") if own else "A bot signal just fired.\n"
     return (head + f"Symbol: {rec['symbol']}; timeframe {_tf_label(rec['tf_min'])}; signal: {rec['side']} "
-            f"(the bot wants to go {_side_word(rec['side'])}); bot entry price {_fmt(rec.get('sig_price'))}; price now {_fmt(price)}.\n"
+            f"({'the scanner leans' if own else 'the bot wants'} to go {_side_word(rec['side'])}); {'scan' if own else 'bot entry'} price {_fmt(rec.get('sig_price'))}; price now {_fmt(price)}.\n"
             f"Numbers read from the same chart: {_lv_text(lv)}.\n"
             f"Indicator read (both families — EMA/SD and TSI/Z): {ind_line}.{ctx}{prev}\n"
             f"{(rec.get('tsi_hist_note') or {}).get('text', '')}\n"
             "You MUST weigh BOTH indicator families (EMA+SD bands AND TSI+Z-score). Do not decide from EMA alone. When the TSI histogram note matters, name it in your reason.\n"
-            "If price just pumped and is stretched at the top of the recent range, prefer SKIP or WAIT for BUY.\n"
+            + ("" if own else "If price just pumped and is stretched at the top of the recent range, prefer SKIP or WAIT for BUY.\n") +
             "Decide TAKE, SKIP or WAIT. TAKE = open the trade now. WAIT = the idea may work but the entry is not ready (say what you wait for; you will be asked again on the next candles). SKIP = do not trade.\n"
             "For TAKE give a stop (the price where the idea is wrong, beyond a recent swing or band) and a first target (the next level where price may stall). The target is NOT a fixed exit: you will manage the trade later from fresh charts.\n"
             "Answer with JSON only, in simple English:\n"
@@ -1302,9 +1286,23 @@ def _finish(rec, status, decision, reason):
         _mark()
 
 
-def _validate_take(side, price, stop, target, lv):
+def _own_free(src):
+    """AI Own in FREE MONEY mode (paper only): own margin x own leverage, no 3% stop limit, no max-open limit."""
+    return (src or "bot") == "own" and bool(_cfg("vision_own_free_money", True))
+
+
+def _own_lev():
+    v = _f(_cfg("vision_own_lev", 10), 10)
+    return v if v >= 1 else 10.0
+
+
+def _validate_take(side, price, stop, target, lv, src="bot"):
     stop, target = _f(stop), _f(target)
     risk_cap = float(_f(_cfg("vision_max_risk_pct", 3.0), 3.0))
+    min_risk = 0.12
+    if _own_free(src):                                  # only a stop on the right side, inside liquidation (about 90% of 100/leverage)
+        risk_cap = max(1.0, 90.0 / _own_lev())
+        min_risk = 0.03
     if side == "BUY":
         if not stop or stop >= price:
             stop = lv["low12"] if lv["low12"] < price else None
@@ -1320,7 +1318,7 @@ def _validate_take(side, price, stop, target, lv):
         if not target or target >= price:
             target = price - 1.5 * (stop - price)
     risk = abs(price - stop) / price * 100.0
-    if risk < 0.12:
+    if risk < min_risk:
         return None, None, f"stop is too tight ({risk:.2f}% from price)"
     if risk > risk_cap:
         return None, None, f"stop is too far ({risk:.1f}% from price, limit {risk_cap:g}%)"
@@ -1329,12 +1327,15 @@ def _validate_take(side, price, stop, target, lv):
 
 def _open_trade(rec, price, stop, target):
     lev = _f(rec.get("lev"), 0) or _f(_cfg("leverage", 1), 1) or 1
+    own_free = _own_free(rec.get("source"))
+    if own_free:                                        # AI Own paper account: its own margin and leverage
+        lev = _own_lev()
     cur = _bar_start(time.time(), rec["tf_min"])
     src = rec.get("source") or "bot"
     tid = ("vo" + str(rec["signal_no"])) if src == "own" else ("v" + str(rec["signal_no"]))
     tr = {"id": tid, "dec_id": rec["id"], "symbol": rec["symbol"], "side": rec["side"], "tf_min": rec["tf_min"],
           "entry": price, "sl": stop, "sl0": stop, "target": target, "lev": lev,
-          "invest": float(_f(_cfg("invest_amount", 10.0), 10.0)), "fee_roi": float(_f(_cfg("fee_roi_pct", 1.0), 1.0)),
+          "invest": float(_f(_cfg("vision_own_margin", 100.0), 100.0)) if own_free else float(_f(_cfg("invest_amount", 10.0), 10.0)), "fee_roi": float(_f(_cfg("fee_roi_pct", 1.0), 1.0)),
           "opened_at": time.time(), "status": "open", "peak_roi": 0.0, "last_review_bar": cur, "tgt_bar": 0, "notes": [], "bar_ts": rec.get("bar_ts"),
           "source": src, "partial_done": False, "partial_frac": 0.0, "partial_pnl": 0.0}
     _note(tr, f"Opened {_side_word(rec['side'])} at {_fmt(price)}. Stop {_fmt(stop)}, target {_fmt(target)}. {rec.get('reason', '')}")
@@ -1351,6 +1352,8 @@ def _close_trade(tr, price, reason):
             return
         gross = _roi(tr["side"], tr["entry"], price, tr["lev"])
         net = gross - tr["fee_roi"]
+        if (tr.get("source") or "bot") == "own" and bool(_cfg("vision_own_free_money", True)):
+            net = max(net, -100.0)                      # liquidation: an AI Own trade can never lose more than its margin
         leg_invest = float(tr.get("invest") or 10)
         leg_pnl = leg_invest * net / 100.0
         part = float(tr.get("partial_pnl") or 0)
@@ -1427,7 +1430,7 @@ def _process_signal(rec):
         _review(ot, f"the bot just gave an opposite {rec['side']} signal")
         if ot["status"] == "open":
             return _finish(rec, "skipped", "SKIP", "The AI is still holding the opposite trade.")
-    if _open_count() >= int(_f(_cfg("vision_max_open", 8), 8)):
+    if _open_count() >= int(_f(_cfg("vision_max_open", 8), 8)) and not _own_free(rec.get("source")):
         return _finish(rec, "skipped", "SKIP", "AI trade limit reached.")
     try:
         candles = _fetch(sym, tf)
@@ -1495,7 +1498,7 @@ def _process_signal(rec):
     except Exception as e:
         return _retry(rec, f"chart: {str(e)[:80]}")
     _count()
-    text, err = _call_ai(guide_text(sym, rec["side"]),
+    text, err = _call_ai(guide_text(sym, rec["side"], own=str(rec.get("source") or "bot") == "own"),
                          _signal_prompt(rec, lv, price, recent_ctx=rec.get("recent_context") or ""), png)
     if err and str(err).startswith("quota:"):
         # No quota left on any key: the signal just WAITS (it is not an error and it does not use up its 3 tries).
@@ -1528,7 +1531,7 @@ def _process_signal(rec):
         rec["decided_at"] = time.time()
         _mark()
     if rec["decision"] == "TAKE":
-        stop, target, bad = _validate_take(rec["side"], price, out.get("stop"), out.get("target"), lv)
+        stop, target, bad = _validate_take(rec["side"], price, out.get("stop"), out.get("target"), lv, rec.get("source"))
         if bad:
             return _finish(rec, "skipped", "SKIP", f"The AI said TAKE but {bad}.")
         rec["stop"], rec["target"] = stop, target

@@ -28,6 +28,8 @@ _start_ts = time.time()
 
 # REST calls: (monotonic ts, endpoint). Bounded so it can't grow if nobody reads it.
 _rest = deque(maxlen=6000)
+_rest_bytes = deque(maxlen=20000)     # (time, endpoint, bytes) - about the last hour of REST answers
+_rest_bytes_total = 0
 _rest_total = 0
 
 # WS broadcaster (api_server): cost of one 250ms tick.
@@ -52,6 +54,35 @@ _prev_sys = None      # (total_jiffies, idle_jiffies) from /proc/stat
 
 
 # ---------------------------------------------------------------- recorders
+def _ep_of(url):
+    rest = str(url).split("?", 1)[0].split("://", 1)[-1]
+    return "/" + rest.split("/", 1)[1] if "/" in rest else rest
+
+
+def record_rest_bytes(url, nbytes):
+    """Count the size of one REST answer (mobile data check). Never raises."""
+    global _rest_bytes_total
+    try:
+        n = max(0, int(nbytes))
+        _rest_bytes.append((time.monotonic(), _ep_of(url), n))
+        _rest_bytes_total += n
+    except Exception:
+        pass
+
+
+def rest_data_use():
+    """-> {"mb_hour", "mb_total", "top_mb": [{"ep","mb","calls"}]} for the last 60 minutes. Approximate (wire size)."""
+    now = time.monotonic()
+    per = {}
+    for t, ep, n in list(_rest_bytes):
+        if now - t <= 3600.0:
+            b, c = per.get(ep, (0, 0))
+            per[ep] = (b + n, c + 1)
+    top = sorted(per.items(), key=lambda kv: kv[1][0], reverse=True)[:4]
+    return {"mb_hour": round(sum(b for b, _ in per.values()) / 1e6, 2), "mb_total": round(_rest_bytes_total / 1e6, 2),
+            "top_mb": [{"ep": k, "mb": round(v[0] / 1e6, 2), "calls": v[1]} for k, v in top]}
+
+
 def record_rest(url):
     """Count one outgoing REST request. `url` may be a full URL."""
     global _rest_total
@@ -234,7 +265,7 @@ def _sample_once():
                             if mem_total and mem_avail is not None else None)},
         "disk": disk,
         "rest": {"per_min": len(_rest), "total": _rest_total,
-                 "top": [{"ep": k, "n": v} for k, v in top]},
+                 "top": [{"ep": k, "n": v} for k, v in top], "data": rest_data_use()},
         "broadcast": {"avg_ms": round(bc["ema_ms"], 2), "max_ms": round(bc["max_ms"], 2),
                       "build_ms": round(bc["build_ms"], 2), "bytes": bc["bytes"],
                       "dumps_ms": round(bc["dumps_ms"], 2), "dumps_max_ms": round(bc["dumps_max"], 2),

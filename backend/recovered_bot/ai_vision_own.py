@@ -43,6 +43,19 @@ def enabled():
     return bool(_cfg("vision_own_enabled", False))
 
 
+def free_money():
+    """AI Own FREE MONEY mode (paper only): no locks / caps / grade gate. See settings vision_own_free_money."""
+    return bool(_cfg("vision_own_free_money", True))
+
+
+def own_lev():
+    """Leverage for AI Own trades only (the bot's leverage is never changed)."""
+    if free_money():
+        v = _num("vision_own_lev", 10.0)
+        return v if v >= 1 else 10.0
+    return float(_cfg("leverage", 1) or 1)
+
+
 def _hour_used():
     now = time.time()
     with _lock:
@@ -62,7 +75,7 @@ def _mark_call():
 def _slot_wait(now=None):
     """Seconds until the next AI Own check may start. The hourly limit is spread evenly (limit 12/hour = one check per 5 min)
     instead of being used up in the first minute and then idling for the rest of the hour."""
-    cap_h = int(_num("vision_own_max_calls_hour", 12))
+    cap_h = int(_num("vision_own_max_calls_hour", 0))
     if cap_h <= 0:
         return 0.0
     now = time.time() if now is None else now
@@ -101,6 +114,22 @@ def _watchlist():
     except Exception:
         pass
     return []
+
+
+_NEED = ("slope_with", "tsi_agrees", "z_agrees")
+
+
+def _tags(feat, side):
+    """Measured tags for one side (information for the AI and the notebook, never a gate)."""
+    try:
+        from . import ai_vision_lessons as L
+        return L.features(feat, side) or {}
+    except Exception:
+        return {}
+
+
+def _agree(tags):
+    return sum(1 for k in _NEED if tags.get(k) is True)
 
 
 def _prefilter(feat, side):
@@ -216,9 +245,11 @@ def _blocked_reason(V):
             return "AI quota is paused"
     except Exception:
         pass
-    cap_h = int(_num("vision_own_max_calls_hour", 12))        # 0 = no limit
+    cap_h = int(_num("vision_own_max_calls_hour", 0))        # 0 = no limit
     if cap_h > 0 and _hour_used() >= cap_h:
         return f"Hour call limit reached ({cap_h}). Next slot in {int(_hour_resume_in() // 60) + 1} min"
+    if free_money():                                          # FREE MONEY mode: no daily loss cap, no max open
+        return ""
     day_cap = _num("vision_own_daily_loss_cap", 15.0)         # 0 = no daily loss limit
     if day_cap > 0 and _own_day_net(V) <= -abs(day_cap):
         return "daily own loss cap reached"
@@ -292,28 +323,16 @@ def tick(V):
             from . import ai_ind_features as F
             feat = F.build(candles)
             level = _level_text(V, candles)
-            chosen, last_tags, last_side = None, {}, "BUY"
-            for side in ("BUY", "SELL"):
-                ok, tags = _prefilter(feat, side)
-                if ok:
-                    chosen = (side, tags)
-                    break
-                if sum(1 for k in ("slope_with", "tsi_agrees", "z_agrees") if tags.get(k) is True) >= \
-                        sum(1 for k in ("slope_with", "tsi_agrees", "z_agrees") if last_tags.get(k) is True) or not last_tags:
-                    last_tags, last_side = tags, side
-            if not chosen:
-                try:                                          # keep a sample of the rejected coins: their shadow outcome shows what the scan missed
-                    from . import ai_candidates as AC, ai_evidence as EV
-                    if AC.sample_ok(symbol, bar_ts):
-                        AC.add("own_scan", symbol, last_side, tf, bar_ts, candles[-1]["close"], candles,
-                               AC.tokens_from(EV.extra_tags(feat, last_side, candles), last_tags), "rejected")
-                except Exception:
-                    pass
-                _log_scan(V, {"symbol": symbol, "tf": tf_label, "bar_ts": bar_ts, "result": "no_setup", "side": last_side,
-                              "why": "No setup: fewer than 2 of 3 indicators agree" + (", and price is stretched" if last_tags.get("stretched") else "") + ".",
-                              "level": level, "ind": _ind_reason(last_tags, last_side)})
-                continue
-
+            # AI Own is free: no entry rules and no indicator vote. The scanner only leans to the side that has more
+            # indicators agreeing (tie: the colour of the last candle) and the AI decides TAKE / SKIP / WAIT itself.
+            t_buy, t_sell = _tags(feat, "BUY"), _tags(feat, "SELL")
+            n_buy, n_sell = _agree(t_buy), _agree(t_sell)
+            if n_buy == n_sell:
+                lc = candles[-1]
+                lean = "BUY" if float(lc.get("close") or 0) >= float(lc.get("open") or lc.get("close") or 0) else "SELL"
+            else:
+                lean = "BUY" if n_buy > n_sell else "SELL"
+            chosen = (lean, t_buy if lean == "BUY" else t_sell)
             side, tags = chosen
             with _lock:
                 _stats["passed"] += 1
@@ -323,7 +342,7 @@ def tick(V):
                 "tf_min": tf, "status": "queued", "decision": None, "reason": "",
                 "checklist": {}, "sig_time": time.time(), "sig_price": candles[-1]["close"],
                 "bar_ts": bar_ts, "source": "own", "feat": tags, "waits_left": getattr(V, "WAITS", 3), "last_bar": 0,
-                "checks": 0, "lev": float(_cfg("leverage", 1) or 1),
+                "checks": 0, "lev": own_lev(),
             }
             with V._lock:
                 V._state["dec"].append(rec)
@@ -429,7 +448,7 @@ def own_summary(V, own_scan, own_tr):
         blocked = _blocked_reason(V)
     except Exception:
         blocked = ""
-    cap_h = int(_num("vision_own_max_calls_hour", 12))
+    cap_h = int(_num("vision_own_max_calls_hour", 0))
     used = _hour_used()
     closed = [t for t in own_tr if t.get("status") == "closed"]
     wins = sum(1 for t in closed if float(t.get("pnl") or 0) > 0)

@@ -60,7 +60,14 @@ def _save():
         pass
 
 
+def free_mode(V):
+    """AI Own FREE MONEY mode (paper): no locks, no max open, no grade gate. Own margin x own leverage."""
+    return bool(V._cfg("vision_own_free_money", True))
+
+
 def enabled(V):
+    if free_mode(V):
+        return False                                         # every lock / gate below is skipped
     return bool(V._cfg("vision_cap_enabled", True))
 
 

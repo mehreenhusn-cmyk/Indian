@@ -1118,7 +1118,8 @@ async def get_candles(symbol: str, limit: int = 260, tf: str = None):
 # looks like our own mask, so opening Settings and hitting Save without
 # touching a secret field can never overwrite the real stored secret with
 # the masked placeholder.
-_SETTINGS_SECRET_KEYS = ("binance_api_secret", "telegram_bot_token", "ai2_api_key", "ai3_api_key", "ai4_api_key")
+_SETTINGS_SECRET_KEYS = ("binance_api_secret", "telegram_bot_token", "ai2_api_key", "ai3_api_key", "ai4_api_key",
+                         "ai5_api_key", "ai6_api_key", "ai7_api_key", "ai8_api_key")
 _SECRET_MASK_PREFIX = "\u2022\u2022\u2022\u2022"  # "••••"
 
 

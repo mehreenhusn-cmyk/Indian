@@ -9,7 +9,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "backend"))
 def main():
     from recovered_bot import ai_vision as V, ai_vision_own as O
 
-    vals = {}
+    vals = {"vision_own_free_money": False}                           # this test checks the safety rules (FREE MONEY mode off)
     O._cfg = lambda name, default: vals.get(name, default)          # fake settings
     assert O._num("vision_own_daily_loss_cap", 15.0) == 15.0         # unset -> default as before
     vals["vision_own_daily_loss_cap"] = 0
@@ -39,7 +39,7 @@ def main():
     base = {"symbol": "BTCUSDT", "side": "BUY", "tf_min": 15, "sig_price": 110.0, "feat": {}}
     own = V._signal_prompt(dict(base, source="own"), lv, 110.0)
     bot = V._signal_prompt(dict(base, source="bot"), lv, 110.0)
-    assert "as few trades as possible" in own and "no daily loss limit" in own and "A bot signal just fired" not in own
+    assert "as few trades as possible" not in own and "doubtful" not in own.lower() and "A bot signal just fired" not in own
     assert bot.startswith("A bot signal just fired.") and "as few trades" not in bot
     print("PASS test_vision_own_cap")
 
