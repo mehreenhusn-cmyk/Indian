@@ -1,0 +1,69 @@
+Z-SCORE SCENARIO TEST  5m, 7 days, 10x, fee 1% ROI per trade
+Bot signals judged: 3155  (older 1893 / newer 1262)
+  Bot as it is today: 3155 trades, net -1343.4, avg -0.43, win 12%
+
+SHORT ANSWER (combinations that kept the better trades in BOTH halves):
+  none confirmed - no combination clearly beat the plain bot on both halves
+  these made it WORSE in both halves:
+  - Z black candle (3 candles) + Z trend + TSI (all three)
+
+HOW MANY OPINIONS AGREE (more agree = better?):
+  0 of 3 Special Master opinions agree (+ main chart): 676 trades, net +1558.7, avg +2.31, win 15%
+  1 of 3 Special Master opinions agree (+ main chart): 1005 trades, net -664.8, avg -0.66, win 10%
+  2 of 3 Special Master opinions agree (+ main chart): 1350 trades, net -1620.4, avg -1.20, win 12%
+  3 of 3 Special Master opinions agree (+ main chart): 124 trades, net -616.9, avg -4.98, win 3%
+
+EVERY COMBINATION (kept = signals you would still take):
+* Z black candle on the SAME candle as the bot signal
+    not confirmed (no clear difference on both halves)
+    old: kept 542 (net -367, avg -0.68) | skipped 1351 (net -901, avg -0.67)
+    new: kept 301 (net -433, avg -1.44) | skipped 961 (net +358, avg +0.37)
+    loss avoided +10678 | profit missed -10134 | net effect +543 (ROI points)
+* Z black candle within the last 3 candles
+    not confirmed (no clear difference on both halves)
+    old: kept 715 (net -1051, avg -1.47) | skipped 1178 (net -217, avg -0.18)
+    new: kept 413 (net -238, avg -0.58) | skipped 849 (net +162, avg +0.19)
+    loss avoided +9299 | profit missed -9244 | net effect +55 (ROI points)
+* Z close on the trade side of its EMA50
+    not confirmed (no clear difference on both halves)
+    old: kept 1253 (net -1496, avg -1.19) | skipped 640 (net +228, avg +0.36)
+    new: kept 802 (net -833, avg -1.04) | skipped 460 (net +757, avg +1.65)
+    loss avoided +4668 | profit missed -5654 | net effect -985 (ROI points)
+* Z cloud colour with the trade (EMA30 vs EMA50)
+    not confirmed (no clear difference on both halves)
+    old: kept 857 (net -656, avg -0.77) | skipped 1036 (net -612, avg -0.59)
+    new: kept 564 (net -209, avg -0.37) | skipped 698 (net +134, avg +0.19)
+    loss avoided +7892 | profit missed -7414 | net effect +478 (ROI points)
+* Z trend: close AND EMA30 both on the trade side
+    not confirmed (no clear difference on both halves)
+    old: kept 742 (net -1116, avg -1.50) | skipped 1151 (net -151, avg -0.13)
+    new: kept 482 (net -844, avg -1.75) | skipped 780 (net +768, avg +0.99)
+    loss avoided +8693 | profit missed -9310 | net effect -617 (ROI points)
+* TSI on the right side of its signal line
+    not confirmed (no clear difference on both halves)
+    old: kept 1047 (net -1182, avg -1.13) | skipped 846 (net -86, avg -0.10)
+    new: kept 678 (net -1326, avg -1.96) | skipped 584 (net +1250, avg +2.14)
+    loss avoided +6035 | profit missed -7199 | net effect -1164 (ROI points)
+* Z black candle (3 candles) + TSI with the trade
+    not confirmed (no clear difference on both halves)
+    old: kept 430 (net -703, avg -1.64) | skipped 1463 (net -564, avg -0.39)
+    new: kept 250 (net -319, avg -1.28) | skipped 1012 (net +243, avg +0.24)
+    loss avoided +11239 | profit missed -10917 | net effect +321 (ROI points)
+* Z trend + TSI with the trade
+    not confirmed (no clear difference on both halves)
+    old: kept 343 (net -442, avg -1.29) | skipped 1550 (net -825, avg -0.53)
+    new: kept 230 (net -780, avg -3.39) | skipped 1032 (net +704, avg +0.68)
+    loss avoided +11579 | profit missed -11458 | net effect +121 (ROI points)
+* Z black candle (3 candles) + Z trend + TSI (all three)
+    HARMFUL: skipped trades were better in both halves
+    old: kept 87 (net -366, avg -4.21) | skipped 1806 (net -902, avg -0.50)
+    new: kept 37 (net -251, avg -6.78) | skipped 1225 (net +175, avg +0.14)
+    loss avoided +13916 | profit missed -13190 | net effect +726 (ROI points)
+* Z black candle (3 candles) + room (long below Z 0, short above Z 0)
+    not confirmed (no clear difference on both halves)
+    old: kept 368 (net -359, avg -0.97) | skipped 1525 (net -909, avg -0.60)
+    new: kept 209 (net -352, avg -1.68) | skipped 1053 (net +276, avg +0.26)
+    loss avoided +11959 | profit missed -11326 | net effect +633 (ROI points)
+
+Reading guide: CONFIRMED = skipped trades were clearly worse in older AND newer signals. 'not enough data' = too few skipped
+trades to judge, run more days. Fee is already inside every number.
