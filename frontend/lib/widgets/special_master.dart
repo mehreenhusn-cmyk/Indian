@@ -50,6 +50,12 @@ class SmSettings {
     'zSma': true, 'sma1': false, 'sma2': true, 'sma1Len': 100.0, 'sma2Len': 200.0,
     'cSma1': 0xFF2962FF, 'cSma2': 0xFF000000,
     'uclLcl': false, 'cUcl': 0xFF4CAF50, 'cLcl': 0xFFFF5252,
+    // Special Master v6: Z-score EMA 30/50 + cloud, and the BUY / SELL cross signal (black candle + coloured border)
+    'zEma': false, 'zEmaMode': 'EMA + Cloud', 'zEmaFast': 30.0, 'zEmaSlow': 50.0,
+    'cEmaFast': 0xFF4CAF50, 'cEmaSlow': 0xFFF23645, 'emaWidth': 1.0,
+    'cEmaBull': 0xFF4CAF50, 'cEmaBear': 0xFFFF5252, 'emaCloudTransp': 70.0,
+    'zSig': false, 'zSigLbl': true, 'zSigRule': 'Candle Close crosses Slow EMA',
+    'cZBuy': 0xFF4CAF50, 'cZSell': 0xFFFF5252,
   };
 
   final Map<String, dynamic> _m;
@@ -96,7 +102,7 @@ class SmSettings {
 
   /// Anything that changes the NUMBERS (not just the drawing) - data is recomputed only when this changes.
   String get computeKey =>
-      '${fast}|${n('ob')}|${n('os')}|${n('arrowZ')}|${i('zLen')}|${i('sma1Len')}|${i('sma2Len')}|${s('zStyle') == 'Candles'}';
+      '${fast}|${n('ob')}|${n('os')}|${n('arrowZ')}|${i('zLen')}|${i('sma1Len')}|${i('sma2Len')}|${s('zStyle') == 'Candles'}|${i('zEmaFast')}|${i('zEmaSlow')}|${s('zSigRule')}';
 }
 
 // ------------------------------------------------------------------ data
@@ -123,8 +129,16 @@ class SpecialMasterData {
   /// "Show Ob/Os Cross" background tint: +1 = TSI crossed up at/below Os, -1 = crossed down at/above Ob.
   final List<int> cross;
 
+  /// Z close EMA fast / slow (Special Master v6: 30 / 50), sigma units.
+  final List<double?> zEmaF;
+  final List<double?> zEmaS;
+
+  /// Z cross signal per candle: +1 = BUY (black candle, green border), -1 = SELL (black candle, red border), 0 = none.
+  final List<int> zSig;
+
   SpecialMasterData(this.z, this.zO, this.zH, this.zL, this.zSma1, this.zSma2, this.ucl, this.lcl, this.tsi, this.tsl,
-      this.diff, this.warn, this.barTint, this.cross);
+      this.diff, this.warn, this.barTint, this.cross,
+      {this.zEmaF = const <double?>[], this.zEmaS = const <double?>[], this.zSig = const <int>[]});
 
   int get n => z.length;
 
@@ -271,7 +285,21 @@ class SpecialMasterData {
       if (crossUp && t0 <= os) cross[i] = 1;
       if (crossDn && t0 >= ob) cross[i] = -1;
     }
-    return SpecialMasterData(z, zO, zH, zL, zSma1, zSma2, ucl, lcl, tsi, tsl, diff, warn, barTint, cross);
+    // --- Z-score EMA fast / slow and the cross signal (Special Master v6, section 3B / 3C)
+    final zEmaF = _ema(z, math.max(1, cfg.i('zEmaFast')));
+    final zEmaS = _ema(z, math.max(1, cfg.i('zEmaSlow')));
+    final rule = cfg.s('zSigRule');
+    final a = rule == 'Fast EMA crosses Slow EMA' ? zEmaF : z;
+    final b = rule == 'Candle Close crosses Fast EMA' ? zEmaF : zEmaS;
+    final zSig = List<int>.filled(n, 0);
+    for (var i = 1; i < n; i++) {
+      final a0 = a[i], a1 = a[i - 1], b0 = b[i], b1 = b[i - 1];
+      if (a0 == null || a1 == null || b0 == null || b1 == null) continue;
+      if (a0 > b0 && a1 <= b1) zSig[i] = 1; // ta.crossover
+      if (a0 < b0 && a1 >= b1) zSig[i] = -1; // ta.crossunder
+    }
+    return SpecialMasterData(z, zO, zH, zL, zSma1, zSma2, ucl, lcl, tsi, tsl, diff, warn, barTint, cross,
+        zEmaF: zEmaF, zEmaS: zEmaS, zSig: zSig);
   }
 }
 
@@ -579,6 +607,23 @@ class SpecialMasterPainter extends CustomPainter {
       _text(canvas, '0', Offset(r.right - 4, y(0) - 6), _ink.withOpacity(0.5), right: true);
     }
     final bull = st.c('cZBull'), bear = st.c('cZBear');
+    final emaOn = st.b('zEma') && d.zEmaF.length == d.n && d.zEmaS.length == d.n;
+    final emaMode = st.s('zEmaMode');
+    // Z EMA cloud (fast vs slow), drawn first so the Z candles sit on top of it
+    if (emaOn && emaMode != 'EMA Only') {
+      final o = _op(st.n('emaCloudTransp'));
+      for (var i = math.max(i0, 1); i <= i1; i++) {
+        final f0 = d.zEmaF[i - 1], f1 = d.zEmaF[i], s0 = d.zEmaS[i - 1], s1 = d.zEmaS[i];
+        if (f0 == null || f1 == null || s0 == null || s1 == null) continue;
+        final p = Path()
+          ..moveTo(_x(i - 1), y(f0))
+          ..lineTo(_x(i), y(f1))
+          ..lineTo(_x(i), y(s1))
+          ..lineTo(_x(i - 1), y(s0))
+          ..close();
+        canvas.drawPath(p, Paint()..color = (f1 >= s1 ? st.c('cEmaBull') : st.c('cEmaBear')).withOpacity(o));
+      }
+    }
     if (style == 'Area') {
       final o = _op(st.n('zTransp'));
       for (var i = math.max(i0, 1); i <= i1; i++) {
@@ -626,6 +671,51 @@ class SpecialMasterPainter extends CustomPainter {
       ..color = c
       ..strokeWidth = w
       ..style = PaintingStyle.stroke;
+    if (emaOn && emaMode != 'Cloud Only') {
+      final ew = st.n('emaWidth').clamp(1.0, 4.0).toDouble();
+      _drawRuns(canvas, d.zEmaS, y, line(st.c('cEmaSlow'), ew), i0, i1);
+      _drawRuns(canvas, d.zEmaF, y, line(st.c('cEmaFast'), ew), i0, i1);
+    }
+    // cross signal: the candle turns BLACK with a green (BUY) or red (SELL) border, plus a tiny label
+    if (st.b('zSig') && d.zSig.length == d.n) {
+      final bw = math.max(2.0, slot * 0.7);
+      for (var i = i0; i <= i1; i++) {
+        final sg = d.zSig[i];
+        final zc = d.z[i];
+        if (sg == 0 || zc == null) continue;
+        final col = sg > 0 ? st.c('cZBuy') : st.c('cZSell');
+        final x = _x(i);
+        final zo = candles ? d.zO[i] : null, zh = candles ? d.zH[i] : null, zl = candles ? d.zL[i] : null;
+        final border = Paint()
+          ..color = col
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.3;
+        double top, bottom;
+        if (zo != null && zh != null && zl != null) {
+          canvas.drawLine(Offset(x, y(zh)), Offset(x, y(zl)), border);
+          final body = Rect.fromLTRB(x - bw / 2, math.min(y(zo), y(zc)), x + bw / 2, math.max(y(zo), y(zc)) + 1.0);
+          canvas.drawRect(body, Paint()..color = const Color(0xFF000000));
+          canvas.drawRect(body, border);
+          top = y(zh);
+          bottom = y(zl);
+        } else {
+          canvas.drawCircle(Offset(x, y(zc)), math.max(3.0, slot * 0.4), Paint()..color = const Color(0xFF000000));
+          canvas.drawCircle(Offset(x, y(zc)), math.max(3.0, slot * 0.4), border);
+          top = bottom = y(zc);
+        }
+        if (st.b('zSigLbl')) {
+          const lw = 24.0, lh = 11.0;
+          final cy = sg > 0 ? math.min(bottom + 3 + lh / 2, r.bottom - lh / 2 - 1) : math.max(top - 3 - lh / 2, r.top + 14 + lh / 2);
+          final rr = RRect.fromRectAndRadius(Rect.fromCenter(center: Offset(x, cy), width: lw, height: lh), const Radius.circular(3));
+          canvas.drawRRect(rr, Paint()..color = col);
+          final tp = TextPainter(
+            text: TextSpan(text: sg > 0 ? 'BUY' : 'SELL', style: const TextStyle(color: Colors.white, fontSize: 7, fontWeight: FontWeight.w800)),
+            textDirection: TextDirection.ltr,
+          )..layout();
+          tp.paint(canvas, Offset(x - tp.width / 2, cy - tp.height / 2));
+        }
+      }
+    }
     if (st.b('zSma')) {
       if (st.b('sma1')) _drawRuns(canvas, d.zSma1, y, line(_vis(st.c('cSma1')), 1.0), i0, i1);
       if (st.b('sma2')) {
@@ -658,7 +748,16 @@ class SpecialMasterPainter extends CustomPainter {
       final a = zv.abs();
       zone = a >= 3 ? '  (3s+)' : a >= 2 ? '  (2s-3s)' : a >= 1 ? '  (1s-2s)' : '  (inside 1s)';
     }
-    _text(canvas, zv == null ? 'Z-score (${st.i('zLen')})' : 'Z ${zv >= 0 ? '+' : ''}${zv.toStringAsFixed(2)}s$zone',
+    var extra = '';
+    if (zv != null && d.zEmaS.length == d.n && d.zEmaS[idx] != null) {
+      extra = zv > d.zEmaS[idx]! ? '  | above EMA${st.i('zEmaSlow')}' : '  | below EMA${st.i('zEmaSlow')}';
+    }
+    if (d.zSig.length == d.n) {
+      for (var j = math.max(0, idx - 2); j <= idx; j++) {
+        if (d.zSig[j] != 0) extra += d.zSig[j] > 0 ? '  | BUY signal' : '  | SELL signal';
+      }
+    }
+    _text(canvas, zv == null ? 'Z-score (${st.i('zLen')})' : 'Z ${zv >= 0 ? '+' : ''}${zv.toStringAsFixed(2)}s$zone$extra',
         Offset(r.left + 4, r.top + 1), _ink.withOpacity(0.85), bold: true);
   }
 

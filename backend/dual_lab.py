@@ -88,6 +88,9 @@ def _tl():
     return TL
 
 
+import dual_memory as MD            # Part B: fake-signal labels, mistake memory, lessons
+
+
 def feats_of(tg_list, tf, d):
     TL = _tl()
     out = [f"{TL.DIMS[k]}={v}" for k, v in enumerate(tg_list)]
@@ -254,6 +257,8 @@ def _scenario(t):
     for k in ("tsi_zero", "z_ema", "cloud", "zsm"):
         if tg.get(k):
             parts.append(tg[k])
+    if tg.get("side_main_pct") is not None:
+        parts.append(f"Sideways: main chart {tg['side_main_pct']}%, Z pane {tg['side_z_pct']}%")
     return ". ".join(parts) + "."
 
 
@@ -326,7 +331,8 @@ def process(data, sym, tf, candles, boot, now_ms, model, exit_names):
         if key in data["rows"]:
             continue
         tg_list = [r["tg"][k] for k in TL.DIMS]
-        data["rows"][key] = [sym, tf, r["t"], r["d"], tg_list, [round(r["x"][n][0], 2) for n in exit_names]]
+        data["rows"][key] = [sym, tf, r["t"], r["d"], tg_list, [round(r["x"][n][0], 2) for n in exit_names],
+                            [int(r["x"][n][1]) for n in exit_names]]
         added += 1
     # 2. finish open / skipped trades of this coin
     pos = {t: k for k, t in enumerate(S["t"])}
@@ -340,7 +346,8 @@ def process(data, sym, tf, candles, boot, now_ms, model, exit_names):
         rule = TL.EXITS[tr["exit"]]
         r = TL.sim_rule(S, Z, i, tr["d"], tr["entry"], tr["sl"], tr["tps"], LEV, FEE, **rule)
         if r is not None:
-            tr["net"], tr["end"], tr["bars"] = round(r["net"], 2), r["why"], r["bars"]
+            tr["net"], tr["end"], tr["bars"], tr["hit"] = round(r["net"], 2), r["why"], r["bars"], r["hit"]
+            tr["label"], tr["reason"] = MD.label_trade(tr.get("tg") or {}, tr["net"], r["why"], r["hit"])
             tr.update(_bits(S, i, FL.TF_MS[tf], r))
             tr.pop("lpx", None)
             tr["status"] = "closed" if tr["take"] else "skipped_done"
@@ -362,10 +369,11 @@ def process(data, sym, tf, candles, boot, now_ms, model, exit_names):
         data["seen"][key] = 1
         fs = feats_of([e["tg"][k] for k in TL.DIMS], tf, e["d"])
         take, xi, mode, pred, why = decide(model, fs, exit_names)
+        mem = MD.lookalikes(list(data["rows"].values()), [e["tg"][k] for k in TL.DIMS], e["t"])
         data["trades"].append({
             "id": key, "s": sym, "f": tf, "ct": e["ct"], "t": e["t"], "d": e["d"], "src": e["src"], "entry": e["entry"],
             "sl": e["sl"], "tps": e["tps"], "exit": exit_names[xi], "take": take, "mode": mode, "pred": pred, "why": why,
-            "status": "open" if take else "skipped", "opened": time.time(), "tg": e["tg"]})
+            "status": "open" if take else "skipped", "opened": time.time(), "tg": e["tg"], "mem": mem})
     return added
 
 
@@ -422,6 +430,53 @@ def insights(data, exit_names):
     return {"best": out[:6], "worst": worst}
 
 
+MIN_SCEN, SCEN_DAYS = 25, 2.0
+
+
+def scenarios(data, exit_names):
+    """Part C: every situation (1 or 2 tags of both indicators) seen in the memory, in plain numbers: how often it repeats per day,
+    how many trades, win %, average result and time taken with the bot's exit and with the best exit, and a verdict.
+    Verdict is counting only: USE = best exit earns in the older AND the newer half, SKIP = the bot's exit loses in both, else UNSURE."""
+    TL = _tl()
+    rows = sorted((r for r in data["rows"].values() if len(r) > 6), key=lambda r: r[2])
+    if len(rows) < 80:
+        return {"status": "collecting", "days": 0.0, "cards": [], "tips": []}
+    days = (rows[-1][2] - rows[0][2]) / 86_400_000.0
+    if days < SCEN_DAYS:
+        return {"status": "collecting", "days": round(days, 1), "cards": [], "tips": []}
+    bot_i, cut, nd = exit_names.index(TL.BOT), len(rows) // 2, len(TL.DIMS)
+    keys_of = [k for k in range(nd) if TL.DIMS[k] != "hour"]
+    groups = {}
+    for idx, r in enumerate(rows):
+        for a in range(len(keys_of)):
+            for b in range(a, len(keys_of)):
+                ka, kb = keys_of[a], keys_of[b]
+                key = ((ka, r[4][ka]),) if a == b else ((ka, r[4][ka]), (kb, r[4][kb]))
+                groups.setdefault(key, []).append(idx)
+    cards = []
+    for key, ix in groups.items():
+        if len(ix) < MIN_SCEN:
+            continue
+        rs = [rows[i] for i in ix]
+        be = max(range(len(exit_names)), key=lambda e: _avg([x[5][e] for x in rs]))
+        o, nw = [rows[i] for i in ix if i < cut], [rows[i] for i in ix if i >= cut]
+        best, bot = _avg([x[5][be] for x in rs]), _avg([x[5][bot_i] for x in rs])
+        use = bool(o) and bool(nw) and _avg([x[5][be] for x in o]) > 0.5 and _avg([x[5][be] for x in nw]) > 0.5
+        skip = bool(o) and bool(nw) and _avg([x[5][bot_i] for x in o]) < -0.5 and _avg([x[5][bot_i] for x in nw]) < -0.5
+        mins = _avg([x[6][be] * TF_MIN.get(x[1], 5) for x in rs])
+        name = " + ".join(f"{TL.DIM_NAME[TL.DIMS[k]]}: {v}" for k, v in key)
+        cards.append({"name": name, "n": len(rs), "per_day": round(len(rs) / max(days, 1.0), 1),
+                      "bot_avg": round(bot, 1), "bot_win": int(round(100.0 * sum(1 for x in rs if x[5][bot_i] > 0) / len(rs))),
+                      "best_avg": round(best, 1), "best_exit": exit_names[be], "best_win": int(round(100.0 * sum(1 for x in rs if x[5][be] > 0) / len(rs))),
+                      "mins": int(round(mins)), "verdict": "USE" if use else "SKIP" if skip else "UNSURE", "singles": len(key) == 1})
+    use_c = sorted((c for c in cards if c["verdict"] == "USE"), key=lambda c: -c["best_avg"])[:6]
+    skip_c = sorted((c for c in cards if c["verdict"] == "SKIP"), key=lambda c: c["bot_avg"])[:6]
+    tips = [f"Use: {c['name']}. About {c['best_avg']:+.1f}% per trade with '{c['best_exit']}', takes about {c['mins']} min, seen {c['per_day']}x a day."
+            for c in use_c if c["singles"]][:3]
+    tips += [f"Skip: {c['name']}. The bot's exit loses {c['bot_avg']:+.1f}% per trade here ({c['n']} trades)." for c in skip_c if c["singles"]][:3]
+    return {"status": "ready", "days": round(days, 1), "cards": use_c + skip_c, "tips": tips}
+
+
 def summary(data, model, exit_names):
     tr = data["trades"]
     closed = [t for t in tr if t["status"] == "closed"]
@@ -451,7 +506,8 @@ def slim(t):
             "status": t["status"], "net": t.get("net"), "live": t.get("live"), "end": t.get("end"), "bars": t.get("bars"),
             "t": t["t"], "ct": t.get("ct"), "entry": t["entry"], "sl": t["sl"], "tps": t.get("tps"),
             "path": t.get("path") or [], "xpx": t.get("xpx"), "xt": t.get("xt"), "lpx": t.get("lpx"),
-            "scn": scn, "what1": w1, "what2": w2}
+            "scn": scn, "what1": w1, "what2": w2, "label": t.get("label"), "reason": t.get("reason"), "mem": t.get("mem"),
+            "side": [(t.get("tg") or {}).get("side_main_pct"), (t.get("tg") or {}).get("side_z_pct")]}
 
 
 def make_view(data, model, ins, exit_names, progress, err, enabled):
@@ -461,7 +517,7 @@ def make_view(data, model, ins, exit_names, progress, err, enabled):
         mv = {"mode": model["mode"], "rows": model["rows"], "val": model["val"],
               "best_exit": exit_names[model["best_exit"]]}
     return {"enabled": enabled, "beat": time.time(), "model": mv, "rows": len(data["rows"]), "summary": summary(data, model, exit_names),
-            "insights": ins, "recent": [slim(t) for t in ([t for t in tr if t["status"] == "open"] + [t for t in tr if t["status"] != "open"][:40])], "progress": progress, "error": err,
+            "insights": ins, "scen": ins.get("scen") or {"status": "collecting", "days": 0.0, "cards": [], "tips": []}, "lessons": MD.lessons(data["trades"]), "recent": [slim(t) for t in ([t for t in tr if t["status"] == "open"] + [t for t in tr if t["status"] != "open"][:40])], "progress": progress, "error": err,
             "margin": MARGIN, "lev": LEV, "started": data.get("started")}
 
 
@@ -552,6 +608,8 @@ def worker():
         if not isinstance(data.get(k), type(v)):
             data[k] = v
     data.setdefault("started", time.time())
+    if data.get("dims") != list(TL.DIMS) + ["bars"]:             # new tags (Part B): old rows have fewer tags, so the history is read again once
+        data["rows"], data["boot"], data["fetched"], data["dims"] = {}, {}, {}, list(TL.DIMS) + ["bars"]
     st = {"model": None, "rows_at_train": -999, "train_t": 0, "ins": {"best": [], "worst": []}, "ins_t": 0}
     st["push"] = lambda: _save("dual_lab_view.json", make_view(data, st["model"], st["ins"], exit_names, st.get("progress", ""), st.get("err", ""), True))
     st["push"]()
@@ -571,6 +629,7 @@ def worker():
                     st["rows_at_train"], st["train_t"] = len(data["rows"]), now
                 if now - st["ins_t"] > 300:
                     st["ins"], st["ins_t"] = insights(data, exit_names), now
+                    st["ins"]["scen"] = scenarios(data, exit_names)
                 _save("dual_lab_data.json", data)
                 err = st.get("err", "")
             except Exception as e:

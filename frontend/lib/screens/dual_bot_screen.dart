@@ -235,6 +235,92 @@ class _DualBotScreenState extends State<DualBotScreen> {
     ]);
   }
 
+  // ---- Part D: what the bot tells you, in plain words ----
+  Widget _tipsCard(AppPalette p) {
+    final sc = _map(_st['scen']);
+    final tips = (sc['tips'] is List) ? (sc['tips'] as List).map((e) => '$e').toList() : <String>[];
+    final ready = sc['status'] == 'ready';
+    return _card(p, title: 'WHAT THE BOT TELLS YOU', edge: ready ? p.accent : null, children: [
+      if (!ready)
+        Text(
+            'Still collecting. It needs about 2 days of data before it can say how to use the indicators. '
+            '${_n(sc['days']) > 0 ? 'So far: ${_n(sc['days']).toStringAsFixed(1)} days.' : ''}',
+            style: context.type.secondary)
+      else if (tips.isEmpty)
+        Text('No situation is strong enough yet to call it. Not enough proof, so the bot says nothing rather than guess.', style: context.type.secondary)
+      else
+        for (final t in tips)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: Text(t, style: context.type.primary.copyWith(height: 1.35, color: t.startsWith('Skip') ? p.loss : p.profit)),
+          ),
+      Text('Found by counting old and new trades. Nobody typed these rules.', style: context.type.metadata),
+    ]);
+  }
+
+  Widget _scenCard(AppPalette p) {
+    final sc = _map(_st['scen']);
+    final cards = _maps(sc['cards']);
+    if (sc['status'] != 'ready' || cards.isEmpty) return const SizedBox.shrink();
+    return _card(p, title: 'SCENARIOS (HOW OFTEN, HOW LONG, HOW MUCH)', children: [
+      for (final c in cards)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                    color: (c['verdict'] == 'USE' ? p.profit : p.loss).withOpacity(0.18), borderRadius: BorderRadius.circular(6)),
+                child: Text('${c['verdict']}',
+                    style: context.type.metadata.copyWith(fontWeight: FontWeight.w800, color: c['verdict'] == 'USE' ? p.profit : p.loss)),
+              ),
+              const SizedBox(width: 8),
+              Expanded(child: Text('${c['name']}', style: context.type.primary.copyWith(height: 1.3))),
+            ]),
+            const SizedBox(height: 2),
+            Text(
+                'Seen ${c['per_day']} times a day (${c['n']} trades). Takes about ${c['mins']} min with "${c['best_exit']}". '
+                'Best exit: ${_n(c['best_avg']).toStringAsFixed(1)}% per trade, ${c['best_win']}% win. '
+                'Bot exit: ${_n(c['bot_avg']).toStringAsFixed(1)}% per trade, ${c['bot_win']}% win.',
+                style: context.type.metadata.copyWith(height: 1.35)),
+          ]),
+        ),
+    ]);
+  }
+
+  Widget _lessonsCard(AppPalette p) {
+    final l = _map(_st['lessons']);
+    final closed = (l['closed'] ?? 0) as num;
+    if (closed == 0) {
+      return _card(p, title: 'LESSONS FROM MISTAKES', children: [
+        Text('No finished trade yet. After each finished trade the bot marks it REAL or FAKE and remembers why.', style: context.type.secondary),
+      ]);
+    }
+    final rep = _map(l['repeat']);
+    final warned = (rep['warned'] ?? 0) as num;
+    final free = (rep['not_warned'] ?? 0) as num;
+    final reasons = _maps(l['top_reasons']);
+    return _card(p, title: 'LESSONS FROM MISTAKES', children: [
+      _kv('Finished trades', '$closed'),
+      _kv('Fake signals', '${l['fake'] ?? 0}', color: p.loss),
+      _kv('Real moves', '${l['real'] ?? 0}', color: p.profit),
+      if (reasons.isNotEmpty) ...[
+        const SizedBox(height: 4),
+        Text('Why signals turned out fake', style: context.type.label),
+        for (final r in reasons) Text('${r['n']}x  ${r['reason']}', style: context.type.metadata.copyWith(height: 1.4)),
+      ],
+      const SizedBox(height: 6),
+      Text('Old-mistake warning check', style: context.type.label),
+      Text(
+          warned == 0
+              ? 'No trade looked like an old mistake yet.'
+              : 'Looked like an old mistake: ${rep['warned_lost']} of $warned lost. '
+                  'Did not look like one: ${rep['not_warned_lost']} of $free lost.',
+          style: context.type.metadata.copyWith(height: 1.4)),
+    ]);
+  }
+
   Widget _tradeRow(AppPalette p, Map<String, dynamic> t) {
     final status = '${t['status']}';
     final long = (t['d'] ?? 1) > 0;
@@ -274,6 +360,13 @@ class _DualBotScreenState extends State<DualBotScreen> {
               Text('${t['s']} ${t['f']}  ${long ? 'LONG' : 'SHORT'}  (${t['src']})', style: context.type.primary),
               Text('$tag. Exit: ${t['exit']}${path > 0 ? '. Stop moved $path×' : ''}', style: context.type.metadata),
               if ('${t['what1'] ?? ''}'.isNotEmpty) Text('${t['what1']}', style: context.type.metadata.copyWith(height: 1.3)),
+              if (t['label'] == 'real' || t['label'] == 'fake')
+                Text('${t['label'] == 'fake' ? 'FAKE' : 'REAL'}: ${t['reason'] ?? ''}',
+                    style: context.type.metadata.copyWith(fontWeight: FontWeight.w700, color: t['label'] == 'fake' ? p.loss : p.profit)),
+              if (t['side'] is List && (t['side'] as List).length == 2 && (t['side'] as List)[0] is num)
+                Text('Sideways: main chart ${(t['side'] as List)[0]}%, Z pane ${(t['side'] as List)[1]}%', style: context.type.metadata),
+              if (t['mem'] is Map && '${(t['mem'] as Map)['text'] ?? ''}'.isNotEmpty)
+                Text('${(t['mem'] as Map)['text']}', style: context.type.metadata.copyWith(height: 1.3)),
             ]),
           ),
           if (usdt != null)
@@ -355,12 +448,15 @@ class _DualBotScreenState extends State<DualBotScreen> {
             padding: const EdgeInsets.all(16),
             children: [
               _statusCard(p),
-              _howToReadCard(p),
+              _tipsCard(p),
               _openCard(p),
+              _scenCard(p),
+              _lessonsCard(p),
               _modelCard(p),
               _resultCard(p),
               _situationsCard(p),
               _recentCard(p),
+              _howToReadCard(p),
               OutlinedButton.icon(
                 onPressed: () => Navigator.of(context).push(OwlRoute(builder: (_) => const TagLabScreen())),
                 icon: const Icon(Icons.hub_outlined, size: 18),

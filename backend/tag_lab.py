@@ -45,11 +45,11 @@ MIN_EDGE = 0.5                   # ROI pts per trade a half must beat: the repla
 MAX_K = 3                        # tags per combination
 TF_MIN = {"3m": 3, "5m": 5, "15m": 15}
 DIMS = ("src", "order", "tsi_zero", "tsi_line", "tsi_hist", "z_ema", "cloud", "zsm", "z_chop", "main_chop", "z_room",
-        "diverge", "hour")
+        "diverge", "side_main", "side_z", "hour")
 DIM_NAME = {"src": "Entry type", "order": "Who came first", "tsi_zero": "TSI vs zero", "tsi_line": "TSI vs signal line",
             "tsi_hist": "TSI histogram", "z_ema": "Z candle vs its EMAs", "cloud": "Z cloud colour", "zsm": "Z vs ZSM",
             "z_chop": "Z sideways", "main_chop": "Main sideways", "z_room": "Room in SD bands",
-            "diverge": "Price vs Z", "hour": "Time of day"}
+            "diverge": "Price vs Z", "side_main": "Main chart sideways", "side_z": "Z pane sideways", "hour": "Time of day"}
 
 
 # ---------------------------------------------------------------- series
@@ -75,6 +75,22 @@ def z_series(S):
         pm[j + 1] = pm[j] + (1 if (S["xup"][j] or S["xdn"][j]) else 0)
         pz[j + 1] = pz[j] + (1 if (up[j] or dn[j]) else 0)
     return {"zf": zf, "zs": zs, "up": up, "dn": dn, "pm": pm, "pz": pz}
+
+
+def sideways(S, Z, i):
+    """How sideways are the two panes at candle i? -> (main %, Z %), 0 = clear trend, 100 = fully sideways.
+    Half of the score is the number of crosses in the last CHOP_WIN candles, half is how flat the slow EMA is over 10 candles."""
+    def part(prefix, ema, unit):
+        cr = prefix[i + 1] - prefix[max(0, i + 1 - CHOP_WIN)]
+        a, b = ema[i], ema[i - 10] if i >= 10 else None
+        flat = 0.5 if (a is None or b is None or not unit) else 1.0 - min(abs(a - b) / unit, 1.0)
+        return int(round(50.0 * min(cr, 4) / 4.0 + 50.0 * flat))
+    sd = S["std"][i]
+    return part(Z["pm"], S["e50"], 0.5 * sd if sd else 0), part(Z["pz"], Z["zs"], 1.0)
+
+
+def _side_word(name, pct):
+    return f"{name} trending" if pct < 34 else f"{name} mixed" if pct < 67 else f"{name} sideways"
 
 
 def _recent(flags_up, flags_dn, i, d):
@@ -114,7 +130,9 @@ def make_tags(S, Z, i, d, src, t_close):
     zv = z * d
     mv, zmv = (S["c"][i] - S["c"][i - 5]) * d, (z - (S["z"][i - 5] if S["z"][i - 5] is not None else z)) * d
     hr = (t_close // 3_600_000) % 24
+    sm, sz = sideways(S, Z, i)
     return {
+        "side_main": _side_word("main chart", sm), "side_z": _side_word("Z pane", sz), "side_main_pct": sm, "side_z_pct": sz,
         "src": src, "order": _order(S, Z, i, d, src),
         "tsi_zero": "TSI with the trade (above/below 0)" if tsi * d > 0 else "TSI against the trade",
         "tsi_line": "TSI on the trade side of its signal line" if diff * d > 0 else "TSI on the wrong side of its signal line",

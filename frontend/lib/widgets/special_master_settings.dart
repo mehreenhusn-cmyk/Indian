@@ -155,6 +155,18 @@ class _SmSettingsSheetState extends State<_SmSettingsSheet> {
         _num('Z-SMA 2 length', 'sma2Len', isInt: true, min: 2, max: 1000),
         _tick('Show probability bands (1s, 2s, 3s)', 'probBands'),
         _num('Probability bands transparency (0-100)', 'probTransp', isInt: true, min: 0, max: 100),
+        _head('Z-score EMA 30 / 50 + cloud'),
+        _tick('Show Z-score EMAs', 'zEma'),
+        _dropdown('Display mode', 'zEmaMode', const ['EMA + Cloud', 'EMA Only', 'Cloud Only']),
+        _num('Fast EMA length', 'zEmaFast', isInt: true, min: 1, max: 500),
+        _num('Slow EMA length', 'zEmaSlow', isInt: true, min: 1, max: 500),
+        _num('EMA line width', 'emaWidth', isInt: true, min: 1, max: 4),
+        _num('Cloud transparency (0-100)', 'emaCloudTransp', isInt: true, min: 0, max: 100),
+        _head('Z-score EMA cross signals (buy / sell)'),
+        _dropdown('Signal rule', 'zSigRule',
+            const ['Candle Close crosses Slow EMA', 'Candle Close crosses Fast EMA', 'Fast EMA crosses Slow EMA']),
+        _tick('Enable cross signals (black candle + coloured border)', 'zSig'),
+        _tick('Show tiny BUY / SELL labels', 'zSigLbl'),
       ];
 
   List<Widget> _style() => [
@@ -178,6 +190,12 @@ class _SmSettingsSheetState extends State<_SmSettingsSheet> {
         _color('Z-SMA 2 colour', 'cSma2'),
         _color('UCL band colour', 'cUcl'),
         _color('LCL band colour', 'cLcl'),
+        _color('Fast EMA colour', 'cEmaFast'),
+        _color('Slow EMA colour', 'cEmaSlow'),
+        _color('Cloud colour: fast above slow', 'cEmaBull'),
+        _color('Cloud colour: fast below slow', 'cEmaBear'),
+        _color('BUY border colour', 'cZBuy'),
+        _color('SELL border colour', 'cZSell'),
       ];
 
   @override

@@ -1109,6 +1109,7 @@ void showCandleChartSheet(
   String? title,
   String? initialTf,
   int? focusTsMs,
+  bool dualStyle = false, // Dual Bot charts: Z candles + Z-EMA 30/50 + cloud + BUY/SELL on (normal charts keep the saved settings)
 }) {
   showModalBottomSheet(
     context: context,
@@ -1134,6 +1135,7 @@ void showCandleChartSheet(
       title: title,
       initialTf: initialTf,
       focusTsMs: focusTsMs,
+      dualStyle: dualStyle,
     ),
   );
 }
@@ -1152,6 +1154,7 @@ class _CandleChartSheetContent extends StatefulWidget {
   final String? title;
   final String? initialTf;
   final int? focusTsMs;
+  final bool dualStyle;
 
   const _CandleChartSheetContent({
     required this.symbol,
@@ -1167,6 +1170,7 @@ class _CandleChartSheetContent extends StatefulWidget {
     this.title,
     this.initialTf,
     this.focusTsMs,
+    this.dualStyle = false,
   });
 
   @override
@@ -1586,12 +1590,14 @@ class _CandleChartSheetContentState extends State<_CandleChartSheetContent>
   Future<void> _loadSmSettings() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final loaded = SmSettings.fromJson(prefs.getString(SmSettings.prefsKey));
+      var loaded = SmSettings.fromJson(prefs.getString(SmSettings.prefsKey));
+      if (widget.dualStyle) loaded = loaded.set('zStyle', 'Candles').set('zEma', true).set('zSig', true).set('zOn', true);
       if (mounted) setState(() => _smSet = loaded);
     } catch (_) {/* defaults stay */}
   }
 
   Future<void> _saveSmSettings() async {
+    if (widget.dualStyle) return; // the Dual Bot look is temporary, it must not change the normal charts
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(SmSettings.prefsKey, _smSet.toJson());

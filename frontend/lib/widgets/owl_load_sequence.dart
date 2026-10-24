@@ -38,6 +38,7 @@ class _OwlLoadSequenceState extends State<OwlLoadSequence> with SingleTickerProv
   static const int _tickMs = 33;
 
   static const Color _white = Color(0xFFFFFFFF);
+  static const Color _copper = Color(0xFFE59A5B);
   static const Color _grey = Color(0xFF8A8A8A);
   static const Color _accent = Color(0xFF22C55E); // plain green for OK marks and the finished line (no odd teal)
 
@@ -194,9 +195,9 @@ class _OwlLoadSequenceState extends State<OwlLoadSequence> with SingleTickerProv
             builder: (context, _) => Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(word, style: _mono(15, _white, w: FontWeight.w800, spacing: 5)),
+                Text(word, style: _mono(15, _copper, w: FontWeight.w800, spacing: 5)),
                 if (!done && (_phase == 0 || cursorOn))
-                  Container(width: 9, height: 16, margin: const EdgeInsets.only(left: 3), color: _white),
+                  Container(width: 9, height: 16, margin: const EdgeInsets.only(left: 3), color: _copper),
               ],
             ),
           ),
@@ -224,17 +225,23 @@ class _OwlLoadSequenceState extends State<OwlLoadSequence> with SingleTickerProv
         ),
         const SizedBox(height: 22),
         // Signature line, typed like heavy key presses.
-        SizedBox(
-          height: 48,
+        Container(
+          height: 76,
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          decoration: BoxDecoration(
+            color: Colors.black.withOpacity(0.55),
+            border: Border.all(color: _copper.withOpacity(_phase >= 3 ? 0.75 : 0.25), width: 1),
+            borderRadius: BorderRadius.circular(6),
+          ),
           child: AnimatedBuilder(
             animation: _blink,
             builder: (context, _) => Row(
               mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.end,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Flexible(child: Text(_phase >= 3 ? sigShown : '', textAlign: TextAlign.center, style: _mono(12.5, _white, w: FontWeight.w700, spacing: 1.0))),
+                Flexible(child: Text(_phase >= 3 ? sigShown : '', textAlign: TextAlign.center, style: _mono(11, _copper, w: FontWeight.w700, spacing: 1.0))),
                 if (_phase >= 3 && (typingSig || cursorOn))
-                  Container(width: 2, height: 15, margin: const EdgeInsets.only(left: 2, bottom: 2), color: _white),
+                  Container(width: 2, height: 15, margin: const EdgeInsets.only(left: 2), color: _copper),
               ],
             ),
           ),
@@ -261,7 +268,7 @@ class _BoxBarPainter extends CustomPainter {
       Paint()
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1.6
-        ..color = Colors.white,
+        ..color = const Color(0xFFE59A5B),
     );
 
     const pad = 4.0, gap = 0.6; // tiny gaps so the fill reads as one continuous bar
