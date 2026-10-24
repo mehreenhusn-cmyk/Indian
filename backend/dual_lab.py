@@ -523,13 +523,30 @@ def make_view(data, model, ins, exit_names, progress, err, enabled):
 
 # ---------------------------------------------------------------- the worker (own process)
 def _lock():
+    """Only one worker at a time.
+    Returns a file handle (got the lock), None (another worker really holds it) or -1 (this phone cannot lock files: run without).
+    The lock file is tried in the HOME folder first. On many phones flock does NOT work inside the shared-storage data folder
+    (Internal storage/owl_data); before, that error was read as "already running" and the worker quit at once - the app then
+    showed "Starting..." forever."""
     try:
         import fcntl
-        fd = os.open(_p("dual_lab.lock"), os.O_CREAT | os.O_RDWR)
-        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        return fd
     except Exception:
-        return None
+        return -1
+    for path in (os.path.join(os.path.expanduser("~"), ".owl_dual_lab.lock"), _p("dual_lab.lock")):
+        try:
+            fd = os.open(path, os.O_CREAT | os.O_RDWR)
+        except Exception:
+            continue
+        try:
+            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            return fd
+        except BlockingIOError:                      # a real second worker is running
+            os.close(fd)
+            return None
+        except Exception:                            # this folder does not support locks: try the next one
+            os.close(fd)
+            continue
+    return -1
 
 
 def cycle(data, st, fetch_limit, fetch_range, coins_fn):
@@ -639,7 +656,7 @@ def worker():
 
 
 # ---------------------------------------------------------------- the backend side (reads the small view file, starts the worker)
-_SPAWN = {"t": 0.0}
+_SPAWN = {"t": 0.0, "err": ""}
 
 
 def set_enabled(on):
@@ -647,7 +664,8 @@ def set_enabled(on):
 
 
 def ensure_running():
-    """Starts the worker if it is enabled and its heartbeat is stale. The lock file inside the worker stops a second copy."""
+    """Starts the worker if it is enabled and its heartbeat is stale. The lock inside the worker stops a second copy.
+    A failure to start is no longer silent: it is kept in _SPAWN['err'] and shown in the app (red line)."""
     try:
         if not _load("dual_lab_ctl.json", {"enabled": True}).get("enabled", True):
             return False
@@ -656,11 +674,25 @@ def ensure_running():
             return False
         _SPAWN["t"] = time.time()
         log = open(_p("dual_lab.log"), "a", encoding="utf-8")
-        kw = {"preexec_fn": (lambda: os.nice(10))} if hasattr(os, "nice") else {}
-        subprocess.Popen([sys.executable, os.path.abspath(__file__), "worker"], stdout=log, stderr=subprocess.STDOUT, cwd=HERE, **kw)
+        # no preexec_fn: it can hang inside a multi-threaded server. The worker lowers its own priority (os.nice) itself.
+        subprocess.Popen([sys.executable, os.path.abspath(__file__), "worker"], stdout=log, stderr=subprocess.STDOUT,
+                         stdin=subprocess.DEVNULL, cwd=HERE)
+        _SPAWN["err"] = ""
         return True
-    except Exception:
+    except Exception as e:
+        _SPAWN["err"] = f"Could not start the Dual Bot worker: {type(e).__name__}: {str(e)[:120]}"
         return False
+
+
+def _log_tail(n=4):
+    try:
+        with open(_p("dual_lab.log"), "rb") as f:
+            f.seek(0, 2)
+            f.seek(max(0, f.tell() - 4000))
+            lines = [x.strip() for x in f.read().decode("utf-8", "replace").splitlines() if x.strip()]
+        return " | ".join(lines[-n:])[-300:]
+    except Exception:
+        return ""
 
 
 def status():
@@ -672,10 +704,28 @@ def status():
     view["enabled"] = bool(ctl.get("enabled", True))
     view["running"] = age is not None and age < BEAT_STALE_S
     view["age_s"] = int(age) if age is not None else None
+    view["log_tail"] = _log_tail()
+    if view["enabled"] and not view["running"] and not view.get("error"):
+        if _SPAWN.get("err"):
+            view["error"] = _SPAWN["err"]
+        elif _SPAWN["t"] and time.time() - _SPAWN["t"] > 25:
+            view["error"] = "The worker was started but sends no heartbeat. Last log: " + (view["log_tail"] or "(empty)")
     return view
 
 
 if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == "worker":
-        sys.exit(worker() or 0)
+        try:
+            sys.exit(worker() or 0)
+        except SystemExit:
+            raise
+        except BaseException as e:                   # a crash before the loop: say it in the log AND in the app
+            import traceback
+            traceback.print_exc()
+            try:
+                _save("dual_lab_view.json", {"enabled": True, "beat": 0, "progress": "", "rows": 0,
+                                             "error": f"Worker crashed: {type(e).__name__}: {str(e)[:140]}"})
+            except Exception:
+                pass
+            sys.exit(1)
     print(json.dumps(status())[:2000])
