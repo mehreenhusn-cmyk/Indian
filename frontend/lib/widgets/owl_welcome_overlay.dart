@@ -38,7 +38,7 @@ class OwlWelcomeOverlay extends StatefulWidget {
 
   /// Change this text when you ship a new app build: the welcome screen then shows once on the first start of that build
   /// (new install or update), and after that once every 12 hours.
-  static const String buildId = '2026-10-25-copper2';
+  static const String buildId = '2026-10-25-plate4';
 
   static const _prefsKey = 'owl_welcome_last_shown_ms';
   static const Duration _maxDuration = Duration(seconds: 40);
@@ -169,7 +169,7 @@ class _OwlWelcomeOverlayState extends State<OwlWelcomeOverlay> with TickerProvid
                             gradient: LinearGradient(
                               begin: Alignment.topCenter,
                               end: Alignment.bottomCenter,
-                              colors: [Colors.black.withOpacity(0.66), Colors.black.withOpacity(0.38), Colors.black.withOpacity(0.72)],
+                              colors: [Colors.black.withOpacity(0.50), Colors.black.withOpacity(0.32), Colors.black.withOpacity(0.64)],
                             ),
                           ),
                         ),
@@ -254,8 +254,7 @@ class _OwlWelcomeOverlayState extends State<OwlWelcomeOverlay> with TickerProvid
           ),
           const SizedBox(height: 22),
           OwlLoadSequence(
-            signature: 'SELF-LEARNING  •  AUTONOMOUS  •  ZERO-LAG\nCRYPTO DESIGN BY HUSSAIN SHAIKH\nINDIAN MARKET DESIGN BY FAISAL SHAIKH',
-            // Bar complete and name typed: close a moment later.
+            // Bar complete and both names typed: close a moment later.
             onDone: () => Future.delayed(const Duration(milliseconds: 1300), _dismiss),
           ),
         ],

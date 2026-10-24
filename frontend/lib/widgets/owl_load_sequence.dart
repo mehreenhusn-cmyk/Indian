@@ -17,14 +17,13 @@ import 'owl_key_clicker.dart';
 ///    going slowly to 100 %. The app opens anyway and the slow part keeps
 ///    connecting in the background. Before, the bar could stop at 70 % and the
 ///    welcome screen closed before your name was typed.
-/// 4. At 100 % the word turns to COMPLETED, then the signature is typed. Only
+/// 4. At 100 % the word turns to COMPLETED, then the two maker names are typed on a copper plate. Only
 ///    after that [onDone] is called.
 ///
 /// All sounds follow the app's sound setting. Nothing here can block the app.
 class OwlLoadSequence extends StatefulWidget {
-  final String signature;
   final VoidCallback onDone;
-  const OwlLoadSequence({super.key, required this.signature, required this.onDone});
+  const OwlLoadSequence({super.key, required this.onDone});
 
   @override
   State<OwlLoadSequence> createState() => _OwlLoadSequenceState();
@@ -36,6 +35,11 @@ class _OwlLoadSequenceState extends State<OwlLoadSequence> with SingleTickerProv
   static const double _slowSpeed = 0.075; // speed after a step got stuck
   static const int _stuckMs = 2500; // wait this long on a missing step, then go on
   static const int _tickMs = 33;
+
+  // The two makers. Typed one letter at a time on the copper plate (first name, then second).
+  static const String _n1 = 'Hussain Shaikh';
+  static const String _n2 = 'Faisal Shaikh';
+  static const int _nameTotal = 14 + 13; // _n1.length + _n2.length
 
   static const Color _white = Color(0xFFFFFFFF);
   static const Color _copper = Color(0xFFE59A5B);
@@ -126,12 +130,12 @@ class _OwlLoadSequenceState extends State<OwlLoadSequence> with SingleTickerProv
       case 2: // COMPLETED, short pause
         if (_msInPhase > 600) _go(3);
         break;
-      case 3: // signature, typed like heavy key presses
-        if (_msInPhase >= 60 * (_sigChars + 1) && _sigChars < widget.signature.length) {
+      case 3: // the two names, typed like heavy key presses
+        if (_msInPhase >= 75 * (_sigChars + 1) && _sigChars < _nameTotal) {
           _sigChars++;
-          if (widget.signature[_sigChars - 1] != ' ') _clicker.tick();
+          _clicker.tick();
         }
-        if (_sigChars >= widget.signature.length) {
+        if (_sigChars >= _nameTotal) {
           _clicker.bell();
           _go(4);
           t.cancel();
@@ -176,6 +180,87 @@ class _OwlLoadSequenceState extends State<OwlLoadSequence> with SingleTickerProv
     return 'Checking connection speed...';
   }
 
+  /// One credit: a round maker's seal with the initials, a small caption, and the name in metallic copper.
+  /// When both names are done (phase 4) a light streak sweeps once across the names.
+  Widget _creditRow(String initials, String caption, String shown, bool lit, bool cursor) {
+    return Row(
+      children: [
+        Container(
+          width: 42,
+          height: 42,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: const Color(0xFF1A0F08).withOpacity(0.9),
+            border: Border.all(color: _copper.withOpacity(lit ? 0.95 : 0.35), width: 1.6),
+          ),
+          child: Center(
+            child: Container(
+              width: 33,
+              height: 33,
+              decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: _copper.withOpacity(0.4), width: 0.8)),
+              child: Center(
+                child: Text(initials, style: TextStyle(fontFamily: 'Inter', fontSize: 12, fontWeight: FontWeight.w800, letterSpacing: 1, color: _copper.withOpacity(lit ? 1 : 0.4))),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(caption, style: TextStyle(fontFamily: 'Inter', fontSize: 11, letterSpacing: 1.2, color: const Color(0xFFC9955F).withOpacity(lit ? 0.95 : 0.35))),
+              const SizedBox(height: 3),
+              SizedBox(
+                height: 28,
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: _nameText(shown, cursor),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _nameText(String shown, bool cursor) {
+    const style = TextStyle(fontFamily: 'Inter', fontSize: 22, fontWeight: FontWeight.w700, letterSpacing: 1.3, color: Colors.white, height: 1.15);
+    Widget text(double sweep) => ShaderMask(
+          blendMode: BlendMode.srcIn,
+          shaderCallback: (r) {
+            if (sweep < 0) {
+              return const LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Color(0xFFFFE2BE), Color(0xFFE59A5B), Color(0xFFB8672E)],
+              ).createShader(r);
+            }
+            final a = (sweep - 0.2).clamp(0.0, 1.0).toDouble();
+            final b = sweep.clamp(0.0, 1.0).toDouble();
+            final c = (sweep + 0.2).clamp(0.0, 1.0).toDouble();
+            return LinearGradient(
+              colors: const [Color(0xFFE59A5B), Color(0xFFFFF3E0), Color(0xFFE59A5B)],
+              stops: [a, b, c],
+            ).createShader(r);
+          },
+          child: Text(shown + (cursor ? '|' : ' '), maxLines: 1, softWrap: false, style: style),
+        );
+    if (_phase < 4) return text(-1);
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.0, end: 1.3),
+      duration: const Duration(milliseconds: 1500),
+      curve: Curves.easeInOut,
+      builder: (context, v, _) => text(v),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final m = context.select<AppProvider, int>((p) => _mask(p));
@@ -183,8 +268,11 @@ class _OwlLoadSequenceState extends State<OwlLoadSequence> with SingleTickerProv
     final done = _phase >= 2;
     final word = done ? 'COMPLETED' : _word.substring(0, _wordChars);
     final cursorOn = _blink.value > 0.35;
-    final sigShown = widget.signature.substring(0, _sigChars);
-    final typingSig = _phase == 3 && _sigChars < widget.signature.length;
+    final n1Shown = _n1.substring(0, math.min(_sigChars, _n1.length));
+    final n2Shown = _sigChars > _n1.length ? _n2.substring(0, _sigChars - _n1.length) : '';
+    final typing = _phase == 3 && _sigChars < _nameTotal;
+    final line1Typing = typing && _sigChars <= _n1.length;
+    final line2Typing = typing && _sigChars > _n1.length;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -224,27 +312,41 @@ class _OwlLoadSequenceState extends State<OwlLoadSequence> with SingleTickerProv
           ),
         ),
         const SizedBox(height: 22),
-        // Signature line, typed like heavy key presses.
-        Container(
-          height: 76,
-          padding: const EdgeInsets.symmetric(horizontal: 10),
-          decoration: BoxDecoration(
-            color: Colors.black.withOpacity(0.55),
-            border: Border.all(color: _copper.withOpacity(_phase >= 3 ? 0.75 : 0.25), width: 1),
-            borderRadius: BorderRadius.circular(6),
-          ),
-          child: AnimatedBuilder(
-            animation: _blink,
-            builder: (context, _) => Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Flexible(child: Text(_phase >= 3 ? sigShown : '', textAlign: TextAlign.center, style: _mono(11, _copper, w: FontWeight.w700, spacing: 1.0))),
-                if (_phase >= 3 && (typingSig || cursorOn))
-                  Container(width: 2, height: 15, margin: const EdgeInsets.only(left: 2), color: _copper),
-              ],
-            ),
-          ),
+        // Copper maker plate: two engraved seals and the two names, typed one letter at a time.
+        AnimatedBuilder(
+          animation: _blink,
+          builder: (context, _) {
+            final cursorBar = _blink.value > 0.35;
+            final lit = _phase >= 3;
+            return Container(
+              padding: const EdgeInsets.fromLTRB(14, 13, 14, 13),
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.62),
+                border: Border.all(color: _copper.withOpacity(lit ? 0.8 : 0.25), width: 1),
+                borderRadius: BorderRadius.circular(8),
+                boxShadow: _phase >= 4 ? [BoxShadow(color: _copper.withOpacity(0.28), blurRadius: 26)] : const [],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _creditRow('HS', 'Crypto app design by', n1Shown, lit, line1Typing && cursorBar),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(child: Container(height: 1, color: _copper.withOpacity(0.35))),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        child: Text('\u25C6', style: TextStyle(fontSize: 8, color: _copper.withOpacity(lit ? 0.9 : 0.3))),
+                      ),
+                      Expanded(child: Container(height: 1, color: _copper.withOpacity(0.35))),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  _creditRow('FS', 'Indian market design by', n2Shown, lit, line2Typing && cursorBar),
+                ],
+              ),
+            );
+          },
         ),
       ],
     );
