@@ -130,8 +130,7 @@ def text_report(rep, tf, days, lev, fee):
 
 
 def main(argv):
-    args = [a for a in argv[1:] if not a.startswith("--")]
-    opts = {argv[i]: argv[i + 1] for i in range(1, len(argv) - 1) if argv[i].startswith("--")}
+    args, opts = FL.parse_args(argv)
     tf = args[0] if args else "5m"
     days = int(args[1]) if len(args) > 1 else 7
     lev, fee = float(opts.get("--lev", 10)), float(opts.get("--fee", 1.0))

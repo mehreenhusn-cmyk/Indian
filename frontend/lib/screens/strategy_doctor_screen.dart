@@ -14,6 +14,7 @@ import '../widgets/doctor_top_card.dart';
 import '../widgets/scoreboard_card.dart';
 import '../widgets/variant_lab_card.dart';
 import '../widgets/scan_lab_card.dart';
+import '../widgets/tag_lab_card.dart';
 import 'ai_report_screen.dart';
 
 /// Own short request for the Doctor (20 s, one try, utf-8 body). It no longer shares the AI-tab request queue, so a busy or
@@ -197,6 +198,8 @@ class _StrategyDoctorScreenState extends State<StrategyDoctorScreen> {
           if (!widget.india) ...[
             _title(context, 'Final scoreboard'),
             const ScoreboardCard(),
+            _title(context, 'Tag Lab'),
+            const TagLabCard(),
             Theme(
               data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
               child: ExpansionTile(

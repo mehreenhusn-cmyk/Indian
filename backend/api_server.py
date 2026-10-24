@@ -1584,6 +1584,20 @@ async def scan_lab_api(start: str = ""):
         return {"running": False, "error": f"{type(e).__name__}: {e}", "summary": None}
 
 
+@app.get("/api/tag_lab")
+async def tag_lab_api(start: str = "", tf: str = "5m", days: int = 7):
+    """Tag Lab (tag_lab.py): which combination of the main chart signal + the Z candle / TSI / ZSM tags makes money, which exit suits it, and a luck check.
+    start=run starts one test (own low-priority process, 3m/5m/15m, 1-14 days). Without start it only returns the saved result + progress.
+    Plain code, no AI key. Read-only, never touches trading."""
+    try:
+        import tag_lab
+        if start == "run":
+            await asyncio.to_thread(tag_lab.start, tf, days)
+        return await asyncio.to_thread(tag_lab.status, tf)
+    except Exception as e:
+        return {"running": False, "error": f"{type(e).__name__}: {e}", "result": None}
+
+
 @app.get("/api/report/save")
 async def report_save():
     """App button: writes owl_report_<date>.txt into the phone's Download folder (see ai_report.save_to_downloads)."""

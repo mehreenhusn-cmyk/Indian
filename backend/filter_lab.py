@@ -640,9 +640,23 @@ def status_all():
     return out
 
 
+def parse_args(argv):
+    """-> (positional args, {option: value}). The VALUE after --lev / --fee is not a positional arg
+    (before, "--lev 10" made "10" look like the coin list -> "10: no candles")."""
+    args, opts, k = [], {}, 1
+    while k < len(argv):
+        if argv[k].startswith("--"):
+            if k + 1 < len(argv) and not argv[k + 1].startswith("--"):
+                opts[argv[k]] = argv[k + 1]
+                k += 1
+        else:
+            args.append(argv[k])
+        k += 1
+    return args, opts
+
+
 def main(argv):
-    args = [a for a in argv[1:] if not a.startswith("--")]
-    opts = {argv[i]: argv[i + 1] for i in range(1, len(argv) - 1) if argv[i].startswith("--")}
+    args, opts = parse_args(argv)
     tf = args[0] if args else "5m"
     days = int(args[1]) if len(args) > 1 else 7
     lev = float(opts.get("--lev", 10))
