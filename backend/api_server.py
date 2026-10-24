@@ -253,6 +253,13 @@ async def on_startup():
             ai_vision.start()
         except Exception as e:
             print(f"[Vision] start-up: {e}")
+        try:                               # Dual Bot (paper only, own low-priority process, no AI key): start its worker 45 s after boot
+            import dual_lab
+            _t = threading.Timer(45.0, dual_lab.ensure_running)
+            _t.daemon = True
+            _t.start()
+        except Exception as e:
+            print(f"[startup] dual_lab skipped: {e}")
         # The older AI modules (trackers, shadow lab, desk, coach, pick, ...) only start when legacy_ai_enabled is on.
         if settings_store.get("legacy_ai_enabled", False):
             try:
@@ -1596,6 +1603,22 @@ async def tag_lab_api(start: str = "", tf: str = "5m", days: int = 7):
         return await asyncio.to_thread(tag_lab.status, tf)
     except Exception as e:
         return {"running": False, "error": f"{type(e).__name__}: {e}", "result": None}
+
+
+@app.get("/api/dual_lab")
+async def dual_lab_api(action: str = ""):
+    """Dual Bot (dual_lab.py): paper bot that reads BOTH indicators and learns by itself (no AI key). Runs as its own low-priority process.
+    action=start / stop switches it. Only reads one small file, so it never slows the live bot."""
+    try:
+        import dual_lab
+        if action == "start":
+            dual_lab.set_enabled(True)
+        elif action == "stop":
+            dual_lab.set_enabled(False)
+        await asyncio.to_thread(dual_lab.ensure_running)
+        return await asyncio.to_thread(dual_lab.status)
+    except Exception as e:
+        return {"running": False, "enabled": False, "error": f"{type(e).__name__}: {e}"}
 
 
 @app.get("/api/report/save")

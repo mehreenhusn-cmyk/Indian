@@ -92,12 +92,12 @@ _defaults = {
     "vision_max_calls_day": 200,  # AI calls per 24 h (your budget). 0 = no limit. New signals stop first, open-trade checks get 50% extra
     "vision_max_open": 8,         # AI virtual trades open at once
     "vision_review_candles": 4,   # an open AI trade is re-read every N closed candles (plus when its target is touched). 4 keeps free quotas alive; the hard stop is checked every tick anyway
-    "vision_own_daily_loss_cap": 15,   # AI own-scan: stop scanning for the day after this many USDT of net loss. 0 = NO daily loss limit
+    "vision_own_daily_loss_cap": 0,   # AI own-scan: stop scanning for the day after this many USDT of net loss. 0 = NO daily loss limit
     "vision_own_max_calls_hour": 0,    # AI own-scan: AI calls per hour. 0 = no limit (default now: your own keys decide the real limit)
-    "vision_cap_enabled": True,   # paper capital manager for AI Own (ai_capital.py): grade gate, daily target/loss lock, risk sizing. PAPER only
+    "vision_cap_enabled": False,   # paper capital manager for AI Own (ai_capital.py): grade gate, daily target/loss lock, risk sizing. PAPER only
     "vision_cap_start": 100.0,    # AI Own paper account start balance (USDT)
-    "vision_cap_target": 30.0,    # daily profit lock (USDT): at this net, AI Own stops opening trades until 5:30 AM IST. 0 = off. NOT a goal to force
-    "vision_cap_loss": 10.0,      # daily loss lock (USDT). 0 = off
+    "vision_cap_target": 0.0,    # daily profit lock (USDT): at this net, AI Own stops opening trades until 5:30 AM IST. 0 = off. NOT a goal to force
+    "vision_cap_loss": 0.0,      # daily loss lock (USDT). 0 = off
     "vision_cap_risk": 2.0,       # USDT lost if the stop hits, per trade. Leverage changes the margin, never this
     "vision_cap_max_open": 2,     # AI Own trades open at once
     "vision_cap_explore": True,   # while fewer than 40 setups are resolved (grade U), allow trades at half risk so the AI can learn

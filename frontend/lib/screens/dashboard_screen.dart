@@ -9,6 +9,7 @@ import '../widgets/glass_card.dart';
 import '../widgets/dashboard_cockpit.dart';
 import '../widgets/diagnostics_card.dart';
 import '../widgets/system_load_card.dart';
+import '../widgets/tag_lab_tile.dart';
 import '../widgets/live_wallet_card.dart';
 import '../widgets/owl_animated_pnl.dart';
 import '../widgets/owl_connection_indicator.dart';
@@ -207,6 +208,10 @@ class DashboardScreen extends StatelessWidget {
                   // Backend load (CPU/RAM/disk, Binance feed, broadcaster,
                   // candle polling, AI assistant) - see system_load_card.dart.
                   const SystemLoadCard(),
+
+                  // Tag Lab - which mix of both indicators makes money (read-only, opens tag_lab_screen.dart)
+                  const DualBotTile(),
+                  const TagLabTile(),
 
                   // Strategy Doctor - which entries lose / win (read-only, see strategy_doctor_screen.dart)
                   if (kShowStrategyDoctor) const StrategyDoctorCard(),

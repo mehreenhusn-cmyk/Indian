@@ -42,6 +42,8 @@ Z_WARN = 1.0            # script input "Z-Score Extreme Threshold"
 OB = 30.0               # script default Ob / Os value (+30 / -30)
 ZMA_LEN = 200           # the black line in the Z pane = 200-candle average of Z (app default 'Z-score SMA 2')
 DIV_WIN = 10            # divergence: last 10 candles vs the 10 before them
+ZE_FAST = 30            # Special Master v6: EMA of the Z close, fast / slow (the cloud sits between them)
+ZE_SLOW = 50
 MIN_BARS = 400          # candles needed before every feature (incl. SD width history) is valid
 
 
@@ -121,6 +123,22 @@ def build(candles, tsi_short=TSI_SHORT, tsi_long=TSI_LONG, tsi_sig=TSI_SIGNAL,
         if zs_cnt == ZMA_LEN:
             zsma[i] = zs_run / ZMA_LEN
 
+    # --- Special Master v6: EMA 30 / EMA 50 of the Z close (forward-filled where a flat price gave no Z),
+    #     cloud = fast vs slow, black BUY/SELL candle = the Z close crossing the SLOW EMA (Pine crossover / crossunder)
+    zff, zlast = [], None
+    for v in z:
+        zlast = v if v is not None else zlast
+        zff.append(zlast)
+    zef, zes = ema(zff, ZE_FAST), ema(zff, ZE_SLOW)
+    zxu, zxd = [False] * n, [False] * n
+    for i in range(1, n):
+        if None in (zff[i], zff[i - 1], zes[i], zes[i - 1]):
+            continue
+        if zff[i - 1] <= zes[i - 1] and zff[i] > zes[i]:
+            zxu[i] = True
+        elif zff[i - 1] >= zes[i - 1] and zff[i] < zes[i]:
+            zxd[i] = True
+
     # --- EMA50 exactly as the bot computes it (SMA seeded)
     e50 = ema(c, ema_len, seed="sma")
 
@@ -163,7 +181,7 @@ def build(candles, tsi_short=TSI_SHORT, tsi_long=TSI_LONG, tsi_sig=TSI_SIGNAL,
     return {"n": n, "t": t, "o": [float(x["open"]) for x in candles], "h": h, "l": l, "c": c,
             "sma": sma, "std": std, "z": z, "zsma": zsma, "width": width, "e50": e50,
             "tsi": tsi, "tsl": tsl, "diff": diff, "wdn": wdn, "wup": wup,
-            "xup": xup, "xdn": xdn}
+            "xup": xup, "xdn": xdn, "zef": zef, "zes": zes, "zxu": zxu, "zxd": zxd}
 
 
 def _r(v, nd=3):
@@ -229,6 +247,7 @@ def own_features(S, i):
         "run20": _r(run20, 2), "run50": _r(run50, 2),
         **_z_why_numbers(S, i),
         **_extra_numbers(S, i),
+        **_zema_numbers(S, i),
     }
 
 
@@ -264,6 +283,31 @@ def _extra_numbers(S, i):
                 out["es10"] = _r((e50[i] - e50[i - 10]) / sd, 3)
             if e50[i] is not None:
                 out["ed"] = _r((c[i] - e50[i]) / sd, 3)      # price minus EMA50, in SD units (new signals only)
+    except Exception:
+        pass
+    return out
+
+
+def _zema_numbers(S, i):
+    """Special Master v6 numbers (raw, no rule): zef/zes = Z-EMA 30 / 50, zcl = cloud width (fast minus slow, + = green cloud),
+    zcs / zcf = Z close minus slow / fast EMA, zbx = candles since the Z close last crossed the slow EMA
+    (+n after a BUY cross, -n after a SELL cross, 0 = this candle is a black candle, 99 = none in the last 99), zbn = 1 / -1 on this candle."""
+    out = {}
+    try:
+        zf, zs, z = S.get("zef"), S.get("zes"), S["z"]
+        if zf is None or zf[i] is None or zs[i] is None:
+            return out
+        out["zef"], out["zes"] = _r(zf[i]), _r(zs[i])
+        out["zcl"] = _r(zf[i] - zs[i])
+        if z[i] is not None:
+            out["zcs"], out["zcf"] = _r(z[i] - zs[i]), _r(z[i] - zf[i])
+        out["zbx"], out["zbn"] = 99, 0
+        for j in range(i, max(i - 99, 0), -1):
+            if S["zxu"][j] or S["zxd"][j]:
+                sgn = 1 if S["zxu"][j] else -1
+                out["zbx"] = sgn * (i - j)
+                out["zbn"] = sgn if j == i else 0
+                break
     except Exception:
         pass
     return out
@@ -389,6 +433,20 @@ def labels(action, ind, ctx, sig=None):
         f["tsi_zero"] = ("TSI and signal both on trade side of 0" if (tz and sz) else
                          "TSI and signal both on wrong side of 0" if (not tz and not sz) else
                          "TSI and signal on different sides of 0")
+    zcl, zcs, zbx = ind.get("zcl"), ind.get("zcs"), ind.get("zbx")
+    if zcl is not None:                                   # Special Master v6: Z-EMA 30/50 cloud and the black BUY/SELL candle
+        f["z_cloud"] = "Z cloud WITH trade" if zcl * dirn > 0 else "Z cloud AGAINST trade"
+    if zcs is not None:
+        f["z_vs_ema"] = "Z close WITH trade side of its slow EMA" if zcs * dirn > 0 else "Z close on the wrong side of its slow EMA"
+    if zbx is not None:
+        if zbx == 99:
+            f["z_black"] = "no Z black candle lately"
+        else:
+            sgn = ind.get("zbn") or (1 if zbx > 0 else -1)
+            if zbx == 0:
+                sgn = ind.get("zbn") or 1
+            near = "now" if zbx == 0 else ("1-3 candles ago" if abs(zbx) <= 3 else "4-10 candles ago" if abs(zbx) <= 10 else "long ago")
+            f["z_black"] = f"Z black candle {'WITH' if sgn * dirn > 0 else 'AGAINST'} trade, {near}"
     ed = ind.get("ed")
     if ed is not None:
         f["ema_dist"] = ("price near EMA50" if abs(ed) < 0.3 else
