@@ -160,3 +160,15 @@ check(D.status()["enabled"] is False and D.ensure_running() is False, "stopped =
 D.set_enabled(True)
 check(D._lock() is not None, "lock free in the test")
 print(f"PASS test_dual_lab ({ok} checks, {time.time() - t0:.1f}s, rows={len(data['rows'])}, trades={len(data['trades'])}, mode={model['mode']})")
+
+# 6. a failing download is never silent: the app gets a readable error line
+_d = {"rows": {}, "trades": [], "seen": {}, "boot": {}, "fetched": {}, "started": time.time()}
+_s = {"model": None}
+D.cycle(_d, _s, lambda *a: None, lambda *a: None, lambda: ["AAAUSDT"])
+check("Could not download candles" in _s.get("err", ""), "failed candle download is reported")
+_s2 = {"model": None}
+def _bad_coins():
+    raise ConnectionError("Name or service not known")
+D.cycle(_d, _s2, lambda *a: None, lambda *a: None, _bad_coins)
+check("coin list" in _s2.get("err", ""), "failed coin list is reported with the reason")
+print("PASS part 6 (error reporting)")

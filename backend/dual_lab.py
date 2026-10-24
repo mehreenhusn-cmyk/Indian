@@ -487,9 +487,10 @@ def cycle(data, st, fetch_limit, fetch_range, coins_fn):
         try:
             st["coins"], st["coins_t"] = list(coins_fn()), now
         except Exception as e:
-            st["err"] = f"coin list: {type(e).__name__}"
+            st["err"] = f"Cannot get today's coin list from Binance ({type(e).__name__}: {str(e)[:90]})"
     coins = list(dict.fromkeys(st.get("coins", []) + [t["s"] for t in data["trades"] if t["status"] in ("open", "skipped")]))
     done = 0
+    failed = 0
     total = len(coins) * len(TFS)
     for tf in TFS:
         step = FL.TF_MS[tf]
@@ -506,6 +507,7 @@ def cycle(data, st, fetch_limit, fetch_range, coins_fn):
             candles = fetch_range(sym, tf, now_ms - BOOT_DAYS * 86_400_000 - 450 * step) if boot else fetch_limit(sym, tf, 470)
             if not candles:
                 data["fetched"][key] = latest - step + 1       # try again next cycle, not in a tight loop
+                failed += 1
                 continue
             process(data, sym, tf, candles, boot, now_ms, st.get("model"), exit_names)
             data["fetched"][key] = latest
@@ -516,6 +518,14 @@ def cycle(data, st, fetch_limit, fetch_range, coins_fn):
                 st["push"]()
                 st["push_t"] = time.time()
             time.sleep(0.05)
+    if failed and not st.get("err"):                          # never fail silently: the app shows this line in red
+        why = ""
+        try:
+            from recovered_bot import ai_shadow_lab as _LAB
+            why = str(_LAB._st.get("last_error") or "")[:100]
+        except Exception:
+            pass
+        st["err"] = f"Could not download candles for {failed} of {total} coin/timeframe pairs. {why}".strip()
     return done
 
 
@@ -528,6 +538,11 @@ def worker():
         os.nice(10)
     except Exception:
         pass
+    try:                                   # own process = the backend's DNS workaround is NOT active here unless we switch it on
+        from recovered_bot.dns_fallback import ensure_dns_fallback
+        ensure_dns_fallback()
+    except Exception as e:
+        print(f"dual_lab: dns fallback not active ({e})", flush=True)
     import filter_lab as FL
     from recovered_bot import ai_shadow_lab as LAB
     TL = _tl()
