@@ -218,6 +218,69 @@ def decide(model, fs, exit_names):
 
 
 # ---------------------------------------------------------------- signals + trades
+TF_MIN = {"5m": 5, "15m": 15}
+WHY_WORD = {"SL": "Stop loss was hit", "BE": "Stop at entry was hit (no loss)", "TRAIL": "The trailing stop was hit",
+            "TP": "The take-profit level was reached", "REV": "The opposite signal came, so it closed",
+            "HOLD": "The time limit ended the trade", "TIMEOUT": "The time limit ended the trade"}
+
+
+def _bits(S, i, step, r, live=False):
+    """Chart facts of one replayed trade: where the stop moved, where / when it ended (or the latest price if still open)."""
+    j = min(S["n"] - 1, i + int(r["bars"]))
+    out = {"path": [[S["t"][k] + step, p] for k, p in r.get("path", [])], "xt": S["t"][j]}
+    out["lpx" if live else "xpx"] = r["px"]
+    out["lbars" if live else "bars2"] = int(r["bars"])
+    return out
+
+
+def _dur(candles, tf):
+    m = int(candles) * TF_MIN.get(tf, 5)
+    return f"{m} min" if m < 120 else f"{m // 60}h {m % 60:02d}m"
+
+
+def _px(x):
+    return "-" if x is None else f"{x:.8g}"
+
+
+def _scenario(t):
+    """The situation in plain words, from the tags of both indicators (nothing here is a rule, it only describes)."""
+    tg = t.get("tg") or {}
+    side = "BUY" if t["d"] > 0 else "SELL"
+    head = {"MAIN": f"Main chart {side} signal (EMA50 cross)", "Z": f"Z black candle {side}",
+            "BOTH": f"Both indicators gave {side} on the same candle"}.get(t["src"], f"{side} signal")
+    parts = [head]
+    if t["src"] != "BOTH" and tg.get("order"):
+        parts.append(tg["order"])
+    for k in ("tsi_zero", "z_ema", "cloud", "zsm"):
+        if tg.get(k):
+            parts.append(tg[k])
+    return ". ".join(parts) + "."
+
+
+def _what(t):
+    """Two lines: what happened in this trade."""
+    path = t.get("path") or []
+    moves = f"The stop moved {len(path)} time{'s' if len(path) != 1 else ''}" if path else "The stop did not move"
+    now_sl = path[-1][1] if path else t["sl"]
+    status = t["status"]
+    if status in ("closed", "skipped_done"):
+        net = t.get("net") or 0.0
+        usdt = MARGIN * net / 100.0
+        lead = ("" if status == "closed" else "It was skipped, but if taken: ")
+        return (f"{lead}{WHY_WORD.get(t.get('end'), 'The trade ended')} after {_dur(t.get('bars') or 0, t['f'])}. "
+                f"Result {usdt:+.2f} USDT ({net:+.1f}% of margin, fee inside).",
+                f"Exit rule: {t['exit']}. {moves}; last stop {_px(now_sl)}.")
+    net = t.get("live")
+    if net is None:
+        return ("Waiting for the first candle after the entry.", f"Exit rule: {t['exit']}. First stop {_px(t['sl'])}.")
+    lead = "Skipped, but if taken it would be " if status == "skipped" else "Open for "
+    dur = _dur(t.get("lbars") or 0, t["f"])
+    txt = (f"{lead}{dur}. " if status == "open" else f"{lead}at {net * MARGIN / 100.0:+.2f} USDT after {dur}.")
+    if status == "open":
+        txt += f"Now {net * MARGIN / 100.0:+.2f} USDT ({net:+.1f}% of margin)."
+    return (txt, f"Exit rule: {t['exit']}. {moves}; stop now {_px(now_sl)}.")
+
+
 def _entry(S, Z, i, tf, strat, TL, FL):
     """Same entry as Tag Lab (MAIN / Z / BOTH). None = no signal or no sensible room."""
     m = 1 if S["xup"][i] else -1 if S["xdn"][i] else 0
@@ -278,11 +341,15 @@ def process(data, sym, tf, candles, boot, now_ms, model, exit_names):
         r = TL.sim_rule(S, Z, i, tr["d"], tr["entry"], tr["sl"], tr["tps"], LEV, FEE, **rule)
         if r is not None:
             tr["net"], tr["end"], tr["bars"] = round(r["net"], 2), r["why"], r["bars"]
+            tr.update(_bits(S, i, FL.TF_MS[tf], r))
+            tr.pop("lpx", None)
             tr["status"] = "closed" if tr["take"] else "skipped_done"
             tr["closed_at"] = time.time()
         else:
             lv = TL.sim_rule(S, Z, i, tr["d"], tr["entry"], tr["sl"], tr["tps"], LEV, FEE, allow_open=True, **rule)
             tr["live"] = round(lv["net"], 2) if lv else None
+            if lv:
+                tr.update(_bits(S, i, FL.TF_MS[tf], lv, live=True))
     # 3. new signals on the last closed candles
     n = S["n"]
     for i in range(max(F.MIN_BARS, n - LATEST), n):
@@ -378,9 +445,13 @@ def summary(data, model, exit_names):
 
 
 def slim(t):
+    scn = _scenario(t)
+    w1, w2 = _what(t)
     return {"s": t["s"], "f": t["f"], "d": t["d"], "src": t["src"], "exit": t["exit"], "mode": t["mode"], "why": t["why"],
             "status": t["status"], "net": t.get("net"), "live": t.get("live"), "end": t.get("end"), "bars": t.get("bars"),
-            "t": t["t"], "entry": t["entry"], "sl": t["sl"]}
+            "t": t["t"], "ct": t.get("ct"), "entry": t["entry"], "sl": t["sl"], "tps": t.get("tps"),
+            "path": t.get("path") or [], "xpx": t.get("xpx"), "xt": t.get("xt"), "lpx": t.get("lpx"),
+            "scn": scn, "what1": w1, "what2": w2}
 
 
 def make_view(data, model, ins, exit_names, progress, err, enabled):
@@ -390,7 +461,7 @@ def make_view(data, model, ins, exit_names, progress, err, enabled):
         mv = {"mode": model["mode"], "rows": model["rows"], "val": model["val"],
               "best_exit": exit_names[model["best_exit"]]}
     return {"enabled": enabled, "beat": time.time(), "model": mv, "rows": len(data["rows"]), "summary": summary(data, model, exit_names),
-            "insights": ins, "recent": [slim(t) for t in tr[:40]], "progress": progress, "error": err,
+            "insights": ins, "recent": [slim(t) for t in ([t for t in tr if t["status"] == "open"] + [t for t in tr if t["status"] != "open"][:40])], "progress": progress, "error": err,
             "margin": MARGIN, "lev": LEV, "started": data.get("started")}
 
 
@@ -441,6 +512,9 @@ def cycle(data, st, fetch_limit, fetch_range, coins_fn):
             if boot:
                 data["boot"][key] = 1
             done += 1
+            if st.get("push") and time.time() - st.get("push_t", 0) > 2:     # the app sees progress while history loads
+                st["push"]()
+                st["push_t"] = time.time()
             time.sleep(0.05)
     return done
 
@@ -464,6 +538,8 @@ def worker():
             data[k] = v
     data.setdefault("started", time.time())
     st = {"model": None, "rows_at_train": -999, "train_t": 0, "ins": {"best": [], "worst": []}, "ins_t": 0}
+    st["push"] = lambda: _save("dual_lab_view.json", make_view(data, st["model"], st["ins"], exit_names, st.get("progress", ""), st.get("err", ""), True))
+    st["push"]()
     print("dual_lab worker started", flush=True)
     while True:
         enabled = bool(_load("dual_lab_ctl.json", {"enabled": True}).get("enabled", True))
@@ -517,6 +593,8 @@ def status():
     view = _load("dual_lab_view.json", {})
     ctl = _load("dual_lab_ctl.json", {"enabled": True})
     age = time.time() - float(view.get("beat") or 0) if view.get("beat") else None
+    view.setdefault("margin", MARGIN)
+    view.setdefault("lev", LEV)
     view["enabled"] = bool(ctl.get("enabled", True))
     view["running"] = age is not None and age < BEAT_STALE_S
     view["age_s"] = int(age) if age is not None else None

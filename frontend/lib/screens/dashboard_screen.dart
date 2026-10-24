@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../providers/app_provider.dart';
 import '../config_flags.dart';
 import 'strategy_doctor_screen.dart';
+import '../widgets/top_movers_card.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/dashboard_cockpit.dart';
 import '../widgets/diagnostics_card.dart';
@@ -249,6 +250,8 @@ class DashboardScreen extends StatelessWidget {
                       style: AppTypography.metadata.copyWith(color: context.palette.textMuted, fontSize: 10.5),
                     ),
                   ],
+
+                  const TopMoversCard(),
 
                   const SizedBox(height: 20),
 

@@ -46,10 +46,12 @@ def fetch_limit(sym, tf, limit):
     return candles(tf, limit, seedof(sym, tf))[-limit:]
 
 data = {"rows": {}, "trades": [], "seen": {}, "boot": {}, "fetched": {}, "started": time.time()}
-st = {"model": None}
+pushed = []
+st = {"model": None, "push": lambda: pushed.append(1), "push_t": 0}
 t0 = time.time()
 n = D.cycle(data, st, fetch_limit, fetch_range, lambda: COINS)
 check(n == len(COINS) * 2, f"cycle processed all coins ({n})")
+check(len(pushed) >= 1, "the cycle sends progress to the app while it loads history")
 check(len(data["rows"]) >= 60, f"history rows were remembered ({len(data['rows'])})")
 check(set(data["boot"]) == {f"{c}|{t}" for c in COINS for t in D.TFS}, "boot marked")
 n2 = D.cycle(data, st, fetch_limit, fetch_range, lambda: COINS)
@@ -119,6 +121,31 @@ for cut3 in range(420, 900):
         break
 check(sk_n >= 1, "LEARNED mode skips a signal it expects to lose (and keeps following it)")
 
+# 5c. chart facts: the stop path, exit price / time, plain-English text, open trades always in the view
+import tag_lab as _TL
+_n = 14
+_S = {"h": [100 + 2 * k + 1 for k in range(_n)], "l": [100 + 2 * k - 1 for k in range(_n)], "c": [100 + 2 * k for k in range(_n)],
+      "t": [1_000_000 + 300_000 * k for k in range(_n)], "n": _n, "xup": [False] * _n, "xdn": [False] * _n}
+_Z = {"up": [False] * _n, "dn": [False] * _n}
+_r = _TL.sim_rule(_S, _Z, 0, 1, 100.0, 98.0, [101.0, 110.0, 120.0, 130.0], 10.0, 1.0, cap=None, be=True, xmode=None, trail=1.5, allow_open=True)
+check(_r is not None and _r["path"] and all(isinstance(j, int) and p_ > 0 for j, p_ in _r["path"]), "sim_rule returns the stop path")
+check(all(_r["path"][k][1] <= _r["path"][k + 1][1] for k in range(len(_r["path"]) - 1)), "a long trade's stop only moves up")
+check(_r["px"] == _S["c"][-1] and _r["why"] == "OPEN", "open trade ends at the latest close")
+_b = D._bits(_S, 0, 300_000, _r, live=True)
+check(_b["lpx"] == _r["px"] and "xpx" not in _b and _b["path"][0][0] > _S["t"][0], "live chart bits")
+_t = {"s": "AAAUSDT", "f": "5m", "d": 1, "src": "BOTH", "exit": "NO CAP, trail 1.5R", "mode": "test", "why": "", "status": "open", "t": 1, "ct": 1_000_000,
+      "entry": 100.0, "sl": 98.0, "tps": [101.0, 110.0, 120.0, 130.0], "live": 12.5, "lbars": 7, "path": _b["path"], "tg": {"tsi_zero": "TSI with the trade (above/below 0)"}}
+_sl = D.slim(_t)
+check(_sl["scn"].startswith("Both indicators gave BUY") and "TSI with the trade" in _sl["scn"], "scenario in plain words")
+check("Open for 35 min" in _sl["what1"] and "+12.50 USDT" in _sl["what1"] and "moved" in _sl["what2"], "open trade summary: " + _sl["what1"])
+_t2 = dict(_t, status="closed", net=-3.4, end="SL", bars=3, path=[])
+_s2 = D.slim(_t2)
+check("Stop loss was hit after 15 min" in _s2["what1"] and "-3.40 USDT" in _s2["what1"] and "did not move" in _s2["what2"], "closed trade summary: " + _s2["what1"])
+_dd = {"rows": {}, "trades": [dict(_t, t=k, status="closed", net=1.0, end="TP", bars=2) for k in range(60)] + [dict(_t, t=-5)], "seen": {}, "boot": {}, "fetched": {}}
+_v = D.make_view(_dd, None, {"best": [], "worst": []}, names, "", "", True)
+check(sum(1 for x in _v["recent"] if x["status"] == "open") == 1 and len(_v["recent"]) == 41, "every open trade is always in the view")
+
+
 # 6. report numbers and the small view file
 ins = D.insights(data, names)
 check(isinstance(ins["best"], list) and isinstance(ins["worst"], list), "insights")
@@ -126,7 +153,8 @@ sm = D.summary(data, model, names)
 check({"closed", "pnl", "open", "skipped_pnl", "by_src"} <= set(sm), "summary keys")
 D._save("dual_lab_view.json", D.make_view(data, model, ins, names, "x", "", True))
 s = D.status()
-check(s["running"] is True and s["enabled"] is True and len(s["recent"]) <= 40, "status reads the view")
+check(s["running"] is True and s["enabled"] is True and len(s["recent"]) <= 60, "status reads the view")
+check(D.status().get("margin") == 100.0 and D.status().get("lev") == 10.0, "status always has margin and leverage")
 D.set_enabled(False)
 check(D.status()["enabled"] is False and D.ensure_running() is False, "stopped = no spawn")
 D.set_enabled(True)

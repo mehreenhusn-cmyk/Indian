@@ -37,7 +37,7 @@ class OwlWelcomeOverlay extends StatefulWidget {
 
   /// Change this text when you ship a new app build: the welcome screen then shows once on the first start of that build
   /// (new install or update), and after that once every 12 hours.
-  static const String buildId = '2026-10-22-part9';
+  static const String buildId = '2026-10-24-bg20s';
 
   static const _prefsKey = 'owl_welcome_last_shown_ms';
   static const Duration _maxDuration = Duration(seconds: 40);
@@ -156,6 +156,11 @@ class _OwlWelcomeOverlayState extends State<OwlWelcomeOverlay> with TickerProvid
                   color: Colors.black,
                   child: Stack(
                     children: [
+                      // Futuristic dashboard picture behind the loading screen (assets/welcome_bg.jpg). If the file is
+                      // ever missing, errorBuilder keeps the plain black screen.
+                      Positioned.fill(
+                        child: Image.asset('assets/welcome_bg.jpg', fit: BoxFit.cover, gaplessPlayback: true, errorBuilder: (_, __, ___) => const SizedBox.shrink()),
+                      ),
                       const Positioned.fill(
                         child: RepaintBoundary(
                           child: CustomPaint(painter: _ScanlinePainter()),
@@ -199,12 +204,12 @@ class _OwlWelcomeOverlayState extends State<OwlWelcomeOverlay> with TickerProvid
         children: [
           Text('OWL TERMINAL', textAlign: TextAlign.center, style: _mono(22, Colors.white, w: FontWeight.w800, spacing: 6)),
           const SizedBox(height: 8),
-          Text('Trading System', textAlign: TextAlign.center, style: _mono(11, const Color(0xFF19E3C2), spacing: 2)),
+          Text('Trading System', textAlign: TextAlign.center, style: _mono(11, const Color(0xFFB5B5B5), spacing: 2)),
           const SizedBox(height: 18),
-          Container(height: 1, color: const Color(0xFF19E3C2).withOpacity(0.45)),
+          Container(height: 1, color: Colors.white.withOpacity(0.25)),
           const SizedBox(height: 22),
           OwlLoadSequence(
-            signature: 'designed by Hussain Shaikh',
+            signature: 'Crypto design by Hussain Shaikh\nIndian market by Faisal Shaikh',
             // Bar complete and name typed: close a moment later.
             onDone: () => Future.delayed(const Duration(milliseconds: 1300), _dismiss),
           ),

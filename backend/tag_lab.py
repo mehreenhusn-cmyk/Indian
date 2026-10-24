@@ -156,6 +156,7 @@ def sim_rule(S, Z, i, d, entry, sl, tps, lev, fee, cap=4, be=True, xmode="main",
     opp = None if xmode is None else ((S["xdn"] if d > 0 else S["xup"]) if xmode == "main" else (Z["dn"] if d > 0 else Z["up"]))
     R = abs(entry - sl)
     cur, be_on, hit, b1, mae, best, got = sl, False, 0, None, 0.0, entry, None
+    path = []                                            # every move of the stop: (candle index it was set on, new stop)
     for j in range(i + 1, end + 1):
         hh, ll = h[j], l[j]
         mae = max(mae, (entry - ll) / entry if d > 0 else (hh - entry) / entry)
@@ -178,10 +179,12 @@ def sim_rule(S, Z, i, d, entry, sl, tps, lev, fee, cap=4, be=True, xmode="main",
         best = max(best, hh) if d > 0 else min(best, ll)
         if be and not be_on and hit >= 1 and ((entry > cur) if d > 0 else (entry < cur)):
             cur, be_on = entry, True
+            path.append((j, cur))
         if trail and abs(best - entry) >= R:
             ns = best - d * trail * R
             if (ns > cur) if d > 0 else (ns < cur):
                 cur = ns
+                path.append((j, cur))
     if got is None:
         if end - i >= FL.MAX_FWD:
             got = (c[end], "TIMEOUT", end - i)
@@ -191,7 +194,7 @@ def sim_rule(S, Z, i, d, entry, sl, tps, lev, fee, cap=4, be=True, xmode="main",
             return None
     px, why, bars = got
     return {"net": (px - entry) / entry * 100.0 * d * lev - fee, "why": why, "bars": bars, "hit": hit, "b1": b1,
-            "mae": mae * 100.0 * lev}
+            "mae": mae * 100.0 * lev, "px": px, "path": path}
 
 
 def simulate(S, Z, i, d, entry, sl, tps, xmode, lev, fee):

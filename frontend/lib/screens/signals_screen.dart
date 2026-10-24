@@ -418,6 +418,8 @@ class _SignalsScreenState extends State<SignalsScreen> {
     final entry = numOrNull(sg['entry_price']);
     final risk = pctDist(entry, numOrNull(sg['stop_loss']));
     final tp1 = pctDist(entry, numOrNull(sg['tp1']));
+    final tp2 = pctDist(entry, numOrNull(sg['tp2']));
+    final slPx = numOrNull(sg['stop_loss']);
     final tf = (sg['timeframe'] is String) ? sg['timeframe'] as String : '';
     final skip = sg['skip_reason'];
     final line2 = [
@@ -425,7 +427,9 @@ class _SignalsScreenState extends State<SignalsScreen> {
       if (tf.isNotEmpty) tf,
       if (entry != null) 'Entry ${fmtPrice(entry)}',
       if (risk != null) 'Risk ${risk.toStringAsFixed(2)}%',
+      if (slPx != null) 'SL ${fmtPrice(slPx)}',
       if (tp1 != null) 'TP1 +${tp1.toStringAsFixed(2)}%',
+      if (tp2 != null) 'TP2 +${tp2.toStringAsFixed(2)}%',
     ].join(' · ');
 
     return GestureDetector(
@@ -471,7 +475,7 @@ class _SignalsScreenState extends State<SignalsScreen> {
               ],
             ),
             const SizedBox(height: 4),
-            Text(line2, maxLines: 1, overflow: TextOverflow.ellipsis, style: t.metadata.copyWith(fontSize: 11)),
+            Text(line2, maxLines: 2, overflow: TextOverflow.ellipsis, style: t.metadata.copyWith(fontSize: 11, height: 1.3)),
             if (skip != null) ...[
               const SizedBox(height: 3),
               Text('Why skipped: $skip',

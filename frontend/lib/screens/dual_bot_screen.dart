@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 
 import '../providers/app_provider.dart';
 import '../theme/app_theme.dart';
+import '../widgets/dual_trade_chart.dart';
 import '../widgets/owl_route.dart';
 import 'tag_lab_screen.dart';
 
@@ -116,7 +117,7 @@ class _DualBotScreenState extends State<DualBotScreen> {
         const SizedBox(width: 6),
         Expanded(
             child: Text(
-                running ? 'Running' : (enabled ? 'Starting... (the backend starts it by itself)' : 'Stopped'),
+                running ? 'Running' : (enabled ? (progress.isNotEmpty ? 'Loading history...' : 'Starting... (the backend starts it by itself)') : 'Stopped'),
                 style: context.type.primary)),
         OutlinedButton(
           onPressed: _busy ? null : () => _toggle(!enabled),
@@ -259,28 +260,81 @@ class _DualBotScreenState extends State<DualBotScreen> {
         tag = status;
     }
     final usdt = net == null ? null : net * _n(_st['margin']) / 100.0;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Icon(long ? Icons.arrow_upward : Icons.arrow_downward, size: 16, color: long ? p.profit : p.loss),
-        const SizedBox(width: 6),
-        Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('${t['s']} ${t['f']}  ${long ? 'LONG' : 'SHORT'}  (${t['src']})', style: context.type.primary),
-            Text('$tag. Exit: ${t['exit']}', style: context.type.metadata),
-          ]),
-        ),
-        if (usdt != null)
-          Text(_usdt(usdt), style: context.type.primary.copyWith(fontWeight: FontWeight.w700, color: usdt >= 0 ? p.profit : p.loss)),
-      ]),
+    final path = t['path'] is List ? (t['path'] as List).length : 0;
+    return InkWell(
+      borderRadius: BorderRadius.circular(8),
+      onTap: () => showDualTradeChart(context, row: t, margin: _n(_st['margin']), lev: _n(_st['lev'])),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Icon(long ? Icons.arrow_upward : Icons.arrow_downward, size: 16, color: long ? p.profit : p.loss),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('${t['s']} ${t['f']}  ${long ? 'LONG' : 'SHORT'}  (${t['src']})', style: context.type.primary),
+              Text('$tag. Exit: ${t['exit']}${path > 0 ? '. Stop moved $path×' : ''}', style: context.type.metadata),
+              if ('${t['what1'] ?? ''}'.isNotEmpty) Text('${t['what1']}', style: context.type.metadata.copyWith(height: 1.3)),
+            ]),
+          ),
+          if (usdt != null)
+            Text(_usdt(usdt), style: context.type.primary.copyWith(fontWeight: FontWeight.w700, color: usdt >= 0 ? p.profit : p.loss)),
+          Icon(Icons.chevron_right, size: 18, color: p.textMuted),
+        ]),
+      ),
     );
   }
 
+  Widget _openCard(AppPalette p) {
+    final open = _maps(_st['recent']).where((t) => '${t['status']}' == 'open').toList();
+    return _card(p, title: 'OPEN TRADES (LIVE)', edge: open.isEmpty ? null : p.profit, children: [
+      if (open.isEmpty) Text('No open trade right now. Tap any trade below to see its chart.', style: context.type.secondary),
+      for (final t in open) _tradeRow(p, t),
+      if (open.isNotEmpty) Text('Tap a trade: chart with entry, stop steps, take-profit levels and the latest price.', style: context.type.metadata),
+    ]);
+  }
+
   Widget _recentCard(AppPalette p) {
-    final recent = _maps(_st['recent']);
-    return _card(p, title: 'LATEST SIGNALS', children: [
+    final recent = _maps(_st['recent']).where((t) => '${t['status']}' != 'open').toList();
+    return _card(p, title: 'LATEST SIGNALS (FINISHED AND SKIPPED)', children: [
       if (recent.isEmpty) Text('No signal yet. New ones appear after each candle closes (5m and 15m).', style: context.type.secondary),
       for (final t in recent.take(25)) _tradeRow(p, t),
+    ]);
+  }
+
+  Widget _howToReadCard(AppPalette p) {
+    const exits = [
+      'Bot exit: TP4, or the main chart turns',
+      'TP4, or the Z black candle turns',
+      'All closed at TP1',
+      'All closed at TP2',
+      'No limit, leaves when the main chart turns',
+      'No limit, leaves at the Z black candle',
+      'No limit, trailing stop 1.5R',
+      'No limit, trailing stop 3R',
+      'Closed after 12 candles',
+    ];
+    return _card(p, title: 'HOW TO READ THIS', children: [
+      Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          tilePadding: EdgeInsets.zero,
+          title: Text('Tap here to read', style: context.type.primary.copyWith(fontWeight: FontWeight.w700)),
+          expandedCrossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+                'Every signal is a paper trade. The bot looks at both indicators, takes the trade, and checks how 9 different exits would have done. '
+                'Entry and first stop are always the same: the stop is the low (buy) or high (sell) of the signal candle. '
+                'Tap a trade to see it on the chart: blue triangle = in, orange steps = where the stop moved, green lines = take-profit levels, dot = out.',
+                style: context.type.secondary.copyWith(height: 1.35)),
+            const SizedBox(height: 8),
+            Text('The 9 exits it tests', style: context.type.label),
+            const SizedBox(height: 2),
+            for (var k = 0; k < exits.length; k++) Text('${k + 1}. ${exits[k]}', style: context.type.metadata.copyWith(height: 1.4)),
+            const SizedBox(height: 6),
+            Text('R = the distance from entry to the first stop. Fee is already inside every result.', style: context.type.metadata),
+          ],
+        ),
+      ),
     ]);
   }
 
@@ -301,6 +355,8 @@ class _DualBotScreenState extends State<DualBotScreen> {
             padding: const EdgeInsets.all(16),
             children: [
               _statusCard(p),
+              _howToReadCard(p),
+              _openCard(p),
               _modelCard(p),
               _resultCard(p),
               _situationsCard(p),

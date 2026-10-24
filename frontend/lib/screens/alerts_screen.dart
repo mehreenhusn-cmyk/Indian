@@ -531,6 +531,26 @@ class _AlertCard extends StatelessWidget {
 
   // ---- Binance-style trade card ---------------------------------------------
 
+  /// One plain sentence: what happened in this trade (so the numbers below are easy to read).
+  String _plainLine(Map<String, dynamic> d, bool isClose, double? pnl, double? roi, double? dur, double? entry, double? sl, double? tp1) {
+    final side = d['side'] == 'BUY' ? 'Bought' : 'Sold';
+    final sym = _shortSym(d['symbol']);
+    if (!isClose) {
+      return '$side $sym at ${_price(entry)}. Stop at ${_price(sl)}${tp1 != null ? ', first target ${_price(tp1)}' : ''}. Trade is open.';
+    }
+    const how = {
+      'TP': 'It reached its profit target',
+      'SCALP': 'It reached its quick profit %',
+      'TSL': 'The trailing stop closed it',
+      'SL': 'The stop loss was hit',
+      'REV': 'The opposite signal closed it',
+      'MAN': 'It was closed by hand',
+    };
+    final w = how['${d['exit_tag']}'] ?? 'The trade closed';
+    final res = pnl == null ? '' : (pnl >= 0 ? ' and made ${_signed(pnl)} USDT' : ' and lost ${_signed(pnl.abs())} USDT');
+    return '$side $sym. $w$res${roi != null ? ' (${_signed(roi)}% of margin)' : ''}${dur != null ? ' after ${_dur(dur)}' : ''}.';
+  }
+
   Widget _tradeCard(
     BuildContext context,
     Map<String, dynamic> d, {
@@ -683,6 +703,9 @@ class _AlertCard extends StatelessWidget {
                           ),
                         ],
                       ),
+                      const SizedBox(height: 6),
+                      Text(_plainLine(d, isClose, pnl, roi, dur, entry, sl, _n(tp['1'])),
+                          style: t.secondary.copyWith(fontSize: 12.5, height: 1.35, color: p.textSecondary)),
                       const SizedBox(height: AppSpacing.m),
                       ...grid,
                       const SizedBox(height: AppSpacing.s),

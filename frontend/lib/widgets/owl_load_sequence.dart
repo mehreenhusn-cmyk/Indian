@@ -32,14 +32,14 @@ class OwlLoadSequence extends StatefulWidget {
 
 class _OwlLoadSequenceState extends State<OwlLoadSequence> with SingleTickerProviderStateMixin {
   static const String _word = 'LOADING';
-  static const double _maxSpeed = 0.30; // share of the bar per second
-  static const double _slowSpeed = 0.12; // speed after a step got stuck
+  static const double _maxSpeed = 0.075; // share of the bar per second (bar takes about 14 s, whole welcome screen about 20 s)
+  static const double _slowSpeed = 0.075; // speed after a step got stuck
   static const int _stuckMs = 2500; // wait this long on a missing step, then go on
   static const int _tickMs = 33;
 
   static const Color _white = Color(0xFFFFFFFF);
   static const Color _grey = Color(0xFF8A8A8A);
-  static const Color _accent = Color(0xFF19E3C2); // teal accent for OK marks and the finished line
+  static const Color _accent = Color(0xFF22C55E); // plain green for OK marks and the finished line (no odd teal)
 
   late final OwlKeyClicker _clicker;
   late final AnimationController _blink;
@@ -126,7 +126,7 @@ class _OwlLoadSequenceState extends State<OwlLoadSequence> with SingleTickerProv
         if (_msInPhase > 600) _go(3);
         break;
       case 3: // signature, typed like heavy key presses
-        if (_msInPhase >= 85 * (_sigChars + 1) && _sigChars < widget.signature.length) {
+        if (_msInPhase >= 60 * (_sigChars + 1) && _sigChars < widget.signature.length) {
           _sigChars++;
           if (widget.signature[_sigChars - 1] != ' ') _clicker.tick();
         }
@@ -225,15 +225,16 @@ class _OwlLoadSequenceState extends State<OwlLoadSequence> with SingleTickerProv
         const SizedBox(height: 22),
         // Signature line, typed like heavy key presses.
         SizedBox(
-          height: 22,
+          height: 48,
           child: AnimatedBuilder(
             animation: _blink,
             builder: (context, _) => Row(
               mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Text(_phase >= 3 ? '\u00A9 $sigShown' : '', style: _mono(13, _white, w: FontWeight.w700, spacing: 1.2)),
+                Flexible(child: Text(_phase >= 3 ? sigShown : '', textAlign: TextAlign.center, style: _mono(12.5, _white, w: FontWeight.w700, spacing: 1.0))),
                 if (_phase >= 3 && (typingSig || cursorOn))
-                  Container(width: 2, height: 15, margin: const EdgeInsets.only(left: 2), color: _white),
+                  Container(width: 2, height: 15, margin: const EdgeInsets.only(left: 2, bottom: 2), color: _white),
               ],
             ),
           ),
@@ -278,9 +279,11 @@ class _BoxBarPainter extends CustomPainter {
       } else {
         a = 0.0;
       }
+      // First half of the bar is RED (like a loss), the second half turns GREEN: it reads as "was in loss, now going green".
+      final base = (i + 0.5) / _segs < 0.5 ? const Color(0xFFEF4444) : const Color(0xFF22C55E);
       canvas.drawRect(
         r,
-        Paint()..color = a > 0 ? const Color(0xFF19E3C2).withOpacity(0.35 + 0.65 * a) : Colors.white.withOpacity(0.07),
+        Paint()..color = a > 0 ? base.withOpacity(0.35 + 0.65 * a) : Colors.white.withOpacity(0.07),
       );
     }
 
