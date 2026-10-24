@@ -13,19 +13,22 @@ class AppColors {
   AppColors._();
 
   // ---- Backgrounds (true-black canvas for AMOLED, raised surfaces above) ----
-  static const Color background = Color(0xFF000000);
-  static const Color surfacePrimary = Color(0xFF11151A);
-  static const Color surfaceElevated = Color(0xFF181C22);
-  static const Color surfaceHigher = Color(0xFF1E2329);
+  // Ink-navy canvas: still near-black for AMOLED, but with a cool tint so
+  // glass cards have something to glow against (premium glass look).
+  static const Color background = Color(0xFF05070D);
+  static const Color surfacePrimary = Color(0xFF0B101A);
+  static const Color surfaceElevated = Color(0xFF111827);
+  static const Color surfaceHigher = Color(0xFF182134);
 
   // ---- Borders & accent ----
-  static const Color border = Color(0xFF242A32);
-  static const Color accent = Color(0xFF4C8DFF);
+  static const Color border = Color(0xFF1F2A40);
+  // One calm blue-violet for tabs, buttons and selected states.
+  static const Color accent = Color(0xFF7388FF);
 
   // ---- Text ----
   static const Color textPrimary = Color(0xFFF5F7FA);
-  static const Color textSecondary = Color(0xFF8B95A5);
-  static const Color textMuted = Color(0xFF5F6875);
+  static const Color textSecondary = Color(0xFF93A0B8);
+  static const Color textMuted = Color(0xFF66738C);
 
   // ---- Status ----
   static const Color positive = Color(0xFF0ECB81);
@@ -37,7 +40,7 @@ class AppColors {
   // ---- Glow variants (15% / 15% / 20% alpha) ----
   static const Color positiveGlow = Color(0x260ECB81);
   static const Color negativeGlow = Color(0x26F6465D);
-  static const Color accentGlow = Color(0x334C8DFF);
+  static const Color accentGlow = Color(0x337388FF);
 
   // ---- Legacy aliases (do not remove: used across existing screens) ----
   static const Color obsidian = background;
@@ -47,5 +50,5 @@ class AppColors {
   // Solid (non-blurred) "glass" so scrolling lists stay at 60 FPS.
   static const Color glassFill = surfaceElevated;
   static const Color glassBorder = border;
-  static const Color glassHighlight = Color(0x08FFFFFF);
+  static const Color glassHighlight = Color(0x0DFFFFFF);
 }

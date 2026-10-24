@@ -4,8 +4,8 @@ import 'owl_pressable.dart';
 
 /// Bottom navigation - same public API as before (currentIndex + onTap) and
 /// 7 tabs (AI sits at index 4, after Signals; Dash/Market/Pos/Signals keep
-/// their indexes so AppProvider.goToTab keeps working). Only the look changed: flat solid bar,
-/// hairline top border, accent pill + dot on the active tab.
+/// their indexes so AppProvider.goToTab keeps working). Only the look changed: floating
+/// rounded glass bar, accent pill on the active tab.
 class BottomNavBar extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
@@ -41,20 +41,31 @@ class BottomNavBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = context.palette;
-    return Container(
-      decoration: BoxDecoration(
-        color: p.surfacePrimary,
-        border: Border(top: BorderSide(color: p.border, width: 1)),
-        // Soft accent glow fading up from the bar's top edge (premium depth,
-        // purely decorative - does not change layout or hit-testing).
-        boxShadow: [BoxShadow(color: p.accent.withOpacity(0.07), blurRadius: 14, offset: const Offset(0, -3))],
-      ),
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.xs,
-            vertical: AppSpacing.s,
+    final dark = p.brightness == Brightness.dark;
+    // Floating rounded bar, inset from the screen edges. Solid fill (no
+    // blur) so it stays smooth on mid-range phones.
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(10, 4, 10, 8),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+          decoration: BoxDecoration(
+            color: dark ? p.surfaceElevated : p.surface,
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(
+              color: dark ? Colors.white.withOpacity(0.08) : p.border,
+              width: 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: dark
+                    ? p.accent.withOpacity(0.10)
+                    : p.accent.withOpacity(0.12),
+                blurRadius: 22,
+                offset: const Offset(0, 6),
+              ),
+            ],
           ),
           child: Row(
             children: [
@@ -76,20 +87,20 @@ class BottomNavBar extends StatelessWidget {
       onTap: () => onTap(index),
       child: AnimatedContainer(
         duration: AppMotion.base,
-        margin: const EdgeInsets.symmetric(horizontal: 0),
-        padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs + 1),
+        curve: AppMotion.standard,
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs + 2),
         decoration: BoxDecoration(
-          color: selected ? p.accent.withOpacity(0.10) : Colors.transparent,
-          borderRadius: BorderRadius.circular(AppSpacing.radiusSmall),
+          color: selected ? p.accent.withOpacity(0.14) : Colors.transparent,
+          borderRadius: BorderRadius.circular(16),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             AnimatedScale(
-              scale: selected ? 1.14 : 1.0,
+              scale: selected ? 1.12 : 1.0,
               duration: AppMotion.base,
               curve: Curves.easeOutBack,
-              child: Icon(_icons[index], size: 18, color: color),
+              child: Icon(_icons[index], size: 19, color: color),
             ),
             const SizedBox(height: 3),
             Text(
@@ -101,13 +112,6 @@ class BottomNavBar extends StatelessWidget {
                 color: color,
                 fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
               ),
-            ),
-            const SizedBox(height: 3),
-            AnimatedContainer(
-              duration: AppMotion.base,
-              width: selected ? 4 : 0,
-              height: 4,
-              decoration: BoxDecoration(color: p.accent, shape: BoxShape.circle),
             ),
           ],
         ),

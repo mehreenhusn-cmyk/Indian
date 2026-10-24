@@ -47,12 +47,16 @@ class AppTheme {
           fontFamily: AppTypography.fontFamily,
         ),
       ),
+      pageTransitionsTheme: const PageTransitionsTheme(builders: {
+        TargetPlatform.android: ZoomPageTransitionsBuilder(),
+        TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+      }),
       cardTheme: CardThemeData(
         color: AppColors.surfaceElevated,
         elevation: 0,
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(AppSpacing.radiusLarge),
           side: const BorderSide(color: AppColors.border, width: 1),
         ),
       ),
@@ -88,12 +92,16 @@ class AppTheme {
           fontFamily: AppTypography.fontFamily,
         ),
       ),
+      pageTransitionsTheme: const PageTransitionsTheme(builders: {
+        TargetPlatform.android: ZoomPageTransitionsBuilder(),
+        TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+      }),
       cardTheme: CardThemeData(
         color: AppPalette.light.surface,
         elevation: 0,
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(AppSpacing.radiusLarge),
           side: BorderSide(color: AppPalette.light.glassBorder, width: 1),
         ),
       ),
@@ -178,24 +186,25 @@ class AppPalette {
   /// Crisp institutional white - same family of colors as the older app
   /// version's screenshots (white cards, near-black text, blue accent).
   static const AppPalette light = AppPalette(
-    bg: Color(0xFFF3F4F7),
+    // Soft pearl-lavender canvas + white cards: modern, not plain white.
+    bg: Color(0xFFF1F3FB),
     surface: Color(0xFFFFFFFF),
     surfacePrimary: Color(0xFFFFFFFF),
     surfaceElevated: Color(0xFFFFFFFF),
-    surfaceHigher: Color(0xFFEEF0F4),
-    border: Color(0xFFE1E4EA),
+    surfaceHigher: Color(0xFFE9ECF8),
+    border: Color(0xFFE2E6F4),
     glassFill: Color(0xFFFFFFFF),
-    glassBorder: Color(0xFFE1E4EA),
-    glassHighlight: Color(0x08000000),
-    accent: Color(0xFF2563EB),
+    glassBorder: Color(0xFFE2E6F4),
+    glassHighlight: Color(0x06000000),
+    accent: Color(0xFF4F5DF0),
     profit: Color(0xFF16A34A),
     loss: Color(0xFFE11D2E),
     purple: Color(0xFF7C3AED),
     owlEye: Color(0xFFD97706),
     warning: Color(0xFFB45309),
     textPrimary: Color(0xFF10141C),
-    textSecondary: Color(0xFF475569),
-    textMuted: Color(0xFF8792A2),
+    textSecondary: Color(0xFF4B5670),
+    textMuted: Color(0xFF8590A8),
     brightness: Brightness.light,
   );
 }

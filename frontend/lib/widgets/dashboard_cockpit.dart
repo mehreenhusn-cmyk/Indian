@@ -83,6 +83,7 @@ class DashboardCockpit extends StatelessWidget {
         Widget hairline() => Container(height: 0.5, color: p.border);
 
         return GlassCard(
+          hero: true,
           glowColor: main == 0 ? null : mainColor,
           child: Padding(
             padding: const EdgeInsets.all(AppSpacing.cardPad),
@@ -93,8 +94,8 @@ class DashboardCockpit extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     SizedBox(
-                      width: 108,
-                      height: 108,
+                      width: 116,
+                      height: 116,
                       child: Stack(
                         alignment: Alignment.center,
                         children: [
@@ -112,7 +113,7 @@ class DashboardCockpit extends StatelessWidget {
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Text(isLive ? 'LIVE OPEN' : 'TODAY',
+                                Text(isLive ? 'Live open' : 'Today',
                                     style: context.type.label.copyWith(fontSize: 9.5, letterSpacing: 0.8, color: p.textMuted)),
                                 const SizedBox(height: 2),
                                 FittedBox(
@@ -141,20 +142,20 @@ class DashboardCockpit extends StatelessWidget {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           if (isLive)
-                            statRow('MARGIN USED', '${marginUsed.toStringAsFixed(2)} USDT', color: p.accent)
+                            statRow('Margin used', '${marginUsed.toStringAsFixed(2)} USDT', color: p.accent)
                           else ...[
-                            statRow('OPEN (live)', '${openPnl >= 0 ? '+' : ''}${openPnl.toStringAsFixed(2)}',
+                            statRow('Open P&L', '${openPnl >= 0 ? '+' : ''}${openPnl.toStringAsFixed(2)}',
                                 color: openPnl == 0 ? null : (openPnl > 0 ? p.profit : p.loss)),
                           ],
                           hairline(),
                           if (!isLive) ...[
-                            statRow('WIN TODAY', '${winRate.toStringAsFixed(1)}%', color: p.accent),
+                            statRow('Win rate today', '${winRate.toStringAsFixed(1)}%', color: p.accent),
                             hairline(),
                           ],
                           // Tabs: 0=Dash, 1=Market, 2=Positions, 3=Signals
-                          statRow('OPEN POSITIONS', '$openCount', onTap: () => goToTab(2)),
+                          statRow('Open positions', '$openCount', onTap: () => goToTab(2)),
                           hairline(),
-                          statRow('SIGNALS TODAY', '$signalsToday', onTap: () => goToTab(3)),
+                          statRow('Signals today', '$signalsToday', onTap: () => goToTab(3)),
                         ],
                       ),
                     ),
@@ -200,6 +201,14 @@ class DashboardCockpit extends StatelessWidget {
     final p = context.palette;
     final c = pnl == 0 ? p.textPrimary : (pnl > 0 ? p.profit : p.loss);
     return Expanded(
+      child: Container(
+      margin: const EdgeInsets.symmetric(horizontal: 4),
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      decoration: BoxDecoration(
+        color: p.surfaceHigher.withOpacity(0.5),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusMedium),
+        border: Border.all(color: p.border.withOpacity(0.7), width: 1),
+      ),
       child: Column(
         children: [
           Text(label, style: context.type.label.copyWith(fontSize: 10, letterSpacing: 0.6, color: p.textMuted)),
@@ -210,7 +219,7 @@ class DashboardCockpit extends StatelessWidget {
             Text('$trades trades', style: context.type.metadata.copyWith(fontSize: 9.5, color: p.textMuted)),
         ],
       ),
-    );
+    ));
   }
 }
 
@@ -224,7 +233,7 @@ class _RingPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    const stroke = 8.0;
+    const stroke = 9.0;
     final rect = Offset.zero & size;
     final arcRect = rect.deflate(stroke / 2);
     final trackPaint = Paint()

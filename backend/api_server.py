@@ -869,7 +869,8 @@ def _attach_signal_results(sigs):
         res = None
         for pos in open_by.get(key, []):
             if near(pos.get("opened_at_ts"), rec):
-                res = {"state": "open", "tp_hit_levels": list(pos.get("tp_hit_levels") or [])}
+                res = {"state": "open", "tp_hit_levels": list(pos.get("tp_hit_levels") or []),
+                       "opened_ts": pos.get("opened_at_ts")}
                 break
         if res is None:
             for t in reversed(closed.get(key, [])):
@@ -881,7 +882,9 @@ def _attach_signal_results(sigs):
                         tag = "OTHER"
                     res = {"state": "closed", "exit_tag": tag, "pnl": t.get("pnl_usdt"),
                            "target_level": t.get("target_level"),
-                           "tp_hit_levels": list(t.get("tp_hit_levels") or [])}
+                           "tp_hit_levels": list(t.get("tp_hit_levels") or []),
+                           "opened_ts": t.get("opened_at_ts"), "closed_ts": t.get("closed_at_ts"),
+                           "exit_px": t.get("exit_price"), "roi": t.get("roi_pct") or t.get("net_roi_pct")}
                     break
         s["result"] = res or {"state": "old"}
     return sigs

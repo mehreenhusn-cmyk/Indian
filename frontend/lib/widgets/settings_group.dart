@@ -86,27 +86,18 @@ class _SettingsGroupState extends State<SettingsGroup> {
   Widget build(BuildContext context) {
     final p = context.palette;
     final t = context.type;
-    final radius = BorderRadius.circular(16);
+    final radius = BorderRadius.circular(AppSpacing.radiusLarge);
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 6),
-      // Neomorphism: soft raised card (light edge top-left, soft shadow bottom-right).
+      margin: const EdgeInsets.only(bottom: AppSpacing.s),
+      // Glass card: thin border, soft lavender shadow in the light theme.
       decoration: BoxDecoration(
         color: p.surfaceElevated,
         borderRadius: radius,
-        border: Border.all(color: p.border.withOpacity(0.6), width: 0.8),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(p.brightness == Brightness.dark ? 0.35 : 0.07),
-            blurRadius: 8,
-            offset: const Offset(2, 3),
-          ),
-          BoxShadow(
-            color: Colors.white.withOpacity(p.brightness == Brightness.dark ? 0.03 : 0.95),
-            blurRadius: 6,
-            offset: const Offset(-2, -2),
-          ),
-        ],
+        border: Border.all(color: p.border, width: 1),
+        boxShadow: p.brightness == Brightness.dark
+            ? null
+            : [BoxShadow(color: p.accent.withOpacity(0.06), blurRadius: 18, offset: const Offset(0, 6))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -125,29 +116,16 @@ class _SettingsGroupState extends State<SettingsGroup> {
               child: Row(
                 children: [
                   if (widget.icon != null) ...[
-                    // Claymorphism: puffy gradient tile with a soft coloured shadow.
+                    // Soft tinted icon tile (colour = the group's tint).
                     Container(
-                      width: 34,
-                      height: 34,
+                      width: 36,
+                      height: 36,
                       decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            Color.lerp(widget.tint ?? p.accent, Colors.white, 0.28)!,
-                            widget.tint ?? p.accent,
-                          ],
-                        ),
-                        borderRadius: BorderRadius.circular(11),
-                        boxShadow: [
-                          BoxShadow(
-                            color: (widget.tint ?? p.accent).withOpacity(0.30),
-                            blurRadius: 6,
-                            offset: const Offset(0, 3),
-                          ),
-                        ],
+                        color: (widget.tint ?? p.accent).withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: (widget.tint ?? p.accent).withOpacity(0.30), width: 1),
                       ),
-                      child: Icon(widget.icon, size: 18, color: Colors.white),
+                      child: Icon(widget.icon, size: 19, color: widget.tint ?? p.accent),
                     ),
                     const SizedBox(width: 10),
                   ],

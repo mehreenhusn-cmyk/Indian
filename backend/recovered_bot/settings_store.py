@@ -111,6 +111,8 @@ _defaults = {
     "vision_notes": "",           # the owner's own notes about the indicators, added to the AI guide (edited in the app)
     "vision_lessons_enabled": True,  # learning notebook (ai_vision_lessons.py): a lesson after every closed AI trade + rules you approve. Uses a few cheap text calls in idle time
     # ---- optional BACKUP AI key for the Vision AI: used automatically when the main key runs out of quota ----
+    "ai_switch_pct": 90,          # a key that used this % of its daily budget goes to the end of the line (next key answers first)
+    "ai_slot_day_limit": 200,     # default daily call budget per key (set aiN_day_limit for one key, e.g. ai2_day_limit)
     "ai2_provider": "mistral",    # "mistral" or "groq" (both have a free plan), or "openai" / "gemini" / "anthropic"
     "ai2_api_key": "",            # SECURITY: never hardcode - paste via Settings only
     "ai2_model": "",              # optional; "" = a sensible vision model for that provider

@@ -437,6 +437,13 @@ class _VisionTabScreenState extends State<VisionTabScreen> {
     return '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
   }
 
+  String _slotName(String s) {
+    if (s == 'main') return 'Main key';
+    if (s == 'backup') return 'Backup key 1';
+    final n = int.tryParse(s.replaceFirst('backup', ''));
+    return n == null ? s : 'Backup key $n';
+  }
+
   /// "AI Calls" card: how many calls the keys made in the last 24 h, which key answers, and why signals wait. Numbers come from the backend.
   Widget _monitorCard(AppPalette p, Map<String, dynamic> d) {
     final m = _m(d['monitor']);
@@ -474,13 +481,30 @@ class _VisionTabScreenState extends State<VisionTabScreen> {
                     Row(
                       children: [
                         Expanded(
-                          child: Text('${sl['slot'] == 'main' ? 'Main key' : sl['slot'] == 'backup' ? 'Backup key 1' : sl['slot'] == 'backup2' ? 'Backup key 2' : 'Backup key 3'}  ·  ${_provName((sl['provider'] ?? '').toString())}',
+                          child: Text('${_slotName('${sl['slot']}')}  ·  ${_provName((sl['provider'] ?? '').toString())}',
                               style: TextStyle(color: p.textPrimary, fontSize: 12.5, fontWeight: FontWeight.w800)),
                         ),
-                        Text(sl['state'] == 'paused' ? 'OUT OF QUOTA' : 'READY',
-                            style: TextStyle(color: sl['state'] == 'paused' ? p.warning : p.profit, fontSize: 10.5, fontWeight: FontWeight.w800)),
+                        Text(sl['state'] == 'paused' ? 'OUT OF QUOTA' : (sl['near_limit'] == true ? 'NEAR LIMIT' : 'READY'),
+                            style: TextStyle(color: (sl['state'] == 'paused' || sl['near_limit'] == true) ? p.warning : p.profit, fontSize: 10.5, fontWeight: FontWeight.w800)),
                       ],
                     ),
+                    if ((_d(sl['day_limit']) ?? 0) > 0) ...[
+                      const SizedBox(height: 4),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: LinearProgressIndicator(
+                          value: ((_d(sl['ok']) ?? 0) / (_d(sl['day_limit']) ?? 1)).clamp(0.0, 1.0).toDouble(),
+                          minHeight: 4,
+                          backgroundColor: p.border,
+                          color: (sl['near_limit'] == true || sl['state'] == 'paused') ? p.warning : p.accent,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${sl['ok'] ?? 0} of ${sl['day_limit']} calls today${sl['near_limit'] == true ? '  ·  next key answers first' : ''}',
+                        style: context.type.metadata.copyWith(fontSize: 10.5, height: 1.3),
+                      ),
+                    ],
                     const SizedBox(height: 2),
                     Text(
                       '${sl['calls'] ?? 0} calls  ·  ${sl['ok'] ?? 0} worked  ·  ${sl['quota'] ?? 0} quota stops  ·  ${sl['errors'] ?? 0} errors'

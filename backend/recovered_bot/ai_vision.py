@@ -922,6 +922,25 @@ def _slot_paused_until(sl):
     return 0.0 if not waits or min(waits) <= now else min(waits)
 
 
+def _slot_used_24h(slot):
+    """Answered calls of this key slot in the last 24 h (counted in memory, starts again from 0 after a backend restart)."""
+    now = time.time()
+    return sum(1 for x in _mon if x[1] == slot and x[2] == "ok" and now - x[0] < 86400)
+
+
+def _slot_day_limit(sl):
+    """Daily call budget of one key. Per key: aiN_day_limit (N = 2..8, 'ai' for main); empty/0 = the shared ai_slot_day_limit."""
+    pfx = _PFX.get(sl["slot"], "ai")
+    own = int(_f(_cfg(f"{pfx}_day_limit", 0), 0))
+    return own if own > 0 else max(1, int(_f(_cfg("ai_slot_day_limit", 200), 200)))
+
+
+def _near_limit(sl):
+    """True when this key already used ai_switch_pct % (default 90) of its daily budget: other keys answer first."""
+    pct = min(100.0, max(1.0, _f(_cfg("ai_switch_pct", 90), 90)))
+    return _slot_used_24h(sl["slot"]) >= _slot_day_limit(sl) * pct / 100.0
+
+
 def _slot_models(sl):
     auto = sl.get("auto") or ""
     if sl["provider"] == "gemini":
@@ -1051,6 +1070,7 @@ def monitor():
         pu = _slot_paused_until(sl)
         slots.append({"slot": sl["slot"], "provider": sl["provider"], "model": (_slot_models(sl) or [""])[0], "last_error": _slot_err.get(sl["slot"], ""), "calls": len(mine), "ok": len(ok),
                       "quota": sum(1 for x in mine if x[2] == "quota"), "errors": sum(1 for x in mine if x[2] == "error"),
+                      "day_limit": _slot_day_limit(sl), "near_limit": _near_limit(sl),
                       "avg_s": round(sum(x[3] for x in ok) / len(ok), 1) if ok else None,
                       "state": "paused" if pu > 0 else "ready", "paused_until": pu})
     with _lock:
@@ -1076,6 +1096,12 @@ def _call_ai(system, text, png=None):
     if len(sls) > 1:                      # share the load: start with a different ready key each call
         _rr[0] = (_rr[0] + 1) % len(sls)
         sls = sls[_rr[0]:] + sls[:_rr[0]]
+        # A key that used 90% of its daily budget moves to the END of the line: the next key answers first.
+        # It is still used as a last resort, so nothing stops while a key still has quota.
+        try:
+            sls = [x for x in sls if not _near_limit(x)] + [x for x in sls if _near_limit(x)]
+        except Exception:
+            pass
     for attempt in range(2):
         transient = False
         for sl in sls:

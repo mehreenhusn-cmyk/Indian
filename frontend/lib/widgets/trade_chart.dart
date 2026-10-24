@@ -53,7 +53,7 @@ void showTradeChart(BuildContext context, Map<String, dynamic> t) {
     }
     final closed = _n(t['closed']);
     bot = {
-      'state': 'closed',
+      'state': t['state'] ?? 'closed',
       'exit_px': t['exit'],
       'closed_ts': closed,
       'pnl': t['pnl'],

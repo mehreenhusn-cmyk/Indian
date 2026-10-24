@@ -18,7 +18,7 @@ class AppSpacing {
 
   // Radii
   static const double radiusSmall = 8.0; // controls
-  static const double radiusMedium = 12.0; // cards
-  static const double radiusLarge = 16.0; // major surfaces
+  static const double radiusMedium = 14.0; // cards
+  static const double radiusLarge = 20.0; // major surfaces
   static const double radiusPill = 100.0; // status badges
 }
