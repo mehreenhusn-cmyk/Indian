@@ -126,7 +126,7 @@ class DashboardScreen extends StatelessWidget {
                       icon: Icons.warning_amber_rounded,
                       text: 'Bot: $botError',
                     ),
-                  if (connError != null || botError != null) const SizedBox(height: 12),
+                  if (connError != null || botError != null) const SizedBox(height: AppSpacing.cardGap),
                   // Discipline / risk guardrail banner - new auto-trades stop
                   // opening the moment either of these is true (see app.py's
                   // _open_signal gate); shown here so it's visible, not just
@@ -143,7 +143,7 @@ class DashboardScreen extends StatelessWidget {
                       text: 'Daily target hit - auto-trading paused for today',
                       isLoss: false,
                     ),
-                  if (targetHit || lossLimitHit) const SizedBox(height: 12),
+                  if (targetHit || lossLimitHit) const SizedBox(height: AppSpacing.cardGap),
                   // Header
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -192,14 +192,14 @@ class DashboardScreen extends StatelessWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppSpacing.s),
                   Text(
                     'Bot is running and monitoring ${status['symbols_tracked'] ?? 0} coins',
                     style: AppTypography.primaryData.copyWith(color: context.palette.textSecondary, fontSize: 14),
                   ),
                   if (status['last_reconcile'] is Map)
                     _CatchUpLine(Map<String, dynamic>.from(status['last_reconcile'] as Map)),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppSpacing.l),
 
                   // DASHBOARD MOUNTING - real feed/latency/guard/error
                   // telemetry, wired straight to AppProvider (see
@@ -256,13 +256,13 @@ class DashboardScreen extends StatelessWidget {
 
                   const TopMoversCard(),
 
-                  const SizedBox(height: 20),
+                  const SizedBox(height: AppSpacing.cardGap),
 
                   // Equity Curve Chart + timeframe selector
                   _EquityChart(provider.equityCurve, provider.equityTf,
                       (tf) => provider.fetchEquity(tf: tf)),
 
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.cardGap),
 
                   // Daily P&L calendar (closed trades, after fee) right under the equity curve
                   PnlCalendar(
@@ -379,16 +379,17 @@ class _BentoTile extends StatelessWidget {
   }
 }
 
-class _RiskBanner extends StatelessWidget {
+/// One banner look for every warning at the top of the Dashboard (errors, daily limit, daily target).
+class _Banner extends StatelessWidget {
   final IconData icon;
   final String text;
-  final bool isLoss;
+  final Color color;
+  final bool bold;
 
-  const _RiskBanner({required this.icon, required this.text, required this.isLoss});
+  const _Banner({required this.icon, required this.text, required this.color, this.bold = false});
 
   @override
   Widget build(BuildContext context) {
-    final color = isLoss ? context.palette.loss : context.palette.profit;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(AppSpacing.m),
@@ -401,17 +402,29 @@ class _RiskBanner extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(icon, color: color, size: 18),
-          const SizedBox(width: 8),
+          const SizedBox(width: AppSpacing.s),
           Expanded(
             child: Text(
               text,
-              style: AppTypography.secondaryData.copyWith(color: color, fontSize: 12, fontWeight: FontWeight.w600),
+              style: AppTypography.secondaryData.copyWith(color: color, fontSize: 12, fontWeight: bold ? FontWeight.w600 : null),
             ),
           ),
         ],
       ),
     );
   }
+}
+
+class _RiskBanner extends StatelessWidget {
+  final IconData icon;
+  final String text;
+  final bool isLoss;
+
+  const _RiskBanner({required this.icon, required this.text, required this.isLoss});
+
+  @override
+  Widget build(BuildContext context) =>
+      _Banner(icon: icon, text: text, color: isLoss ? context.palette.loss : context.palette.profit, bold: true);
 }
 
 class _ErrorBanner extends StatelessWidget {
@@ -421,30 +434,7 @@ class _ErrorBanner extends StatelessWidget {
   const _ErrorBanner({required this.icon, required this.text});
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(AppSpacing.m),
-      decoration: BoxDecoration(
-        color: context.palette.loss.withOpacity(0.15),
-        borderRadius: BorderRadius.circular(AppSpacing.radiusMedium),
-        border: Border.all(color: context.palette.loss.withOpacity(0.4)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, color: context.palette.loss, size: 18),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              text,
-              style: AppTypography.secondaryData.copyWith(color: context.palette.loss, fontSize: 12),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  Widget build(BuildContext context) => _Banner(icon: icon, text: text, color: context.palette.loss);
 }
 
 class _StatCard extends StatelessWidget {

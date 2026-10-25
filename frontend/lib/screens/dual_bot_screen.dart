@@ -11,6 +11,7 @@ import '../widgets/dual_trade_card.dart';
 import '../widgets/dual_trade_chart.dart';
 import '../widgets/report_download_card.dart';
 import '../widgets/smart_brain_view.dart';
+import '../widgets/owl_card.dart';
 import '../widgets/owl_route.dart';
 import 'tag_lab_screen.dart';
 
@@ -29,7 +30,8 @@ class _DualBotScreenState extends State<DualBotScreen> {
   Map<String, dynamic> _st = {};
   String _err = '';
   bool _busy = false;
-  int _seg = 0; // 0 = Dual Bot, 1 = Smart Brain
+  int _seg = 0; // 0 = Now, 1 = Learned, 2 = History, 3 = Brain
+  Map<String, dynamic> _brainIds = {}; // Smart Brain opinion per trade (coin|timeframe|time), for the small badge on the open cards
   Timer? _timer;
 
   @override
@@ -63,6 +65,19 @@ class _DualBotScreenState extends State<DualBotScreen> {
     } catch (e) {
       if (mounted) setState(() => _err = '$e');
     }
+    await _pollBrain();
+  }
+
+  /// Only the small per-trade opinion map. A failure here is silent: the cards just show no badge.
+  Future<void> _pollBrain() async {
+    if (!mounted) return;
+    try {
+      final base = context.read<AppProvider>().baseUrl;
+      final res = await http.get(Uri.parse('$base/api/smart_brain')).timeout(const Duration(seconds: 15));
+      if (res.statusCode != 200) return;
+      final m = jsonDecode(utf8.decode(res.bodyBytes));
+      if (m is Map && m['by_key'] is Map && mounted) setState(() => _brainIds = Map<String, dynamic>.from(m['by_key'] as Map));
+    } catch (_) {}
   }
 
   Future<void> _toggle(bool on) async {
@@ -80,23 +95,9 @@ class _DualBotScreenState extends State<DualBotScreen> {
   double _mg(Map t) => t['margin'] is num ? (t['margin'] as num).toDouble() : _n(_st['margin']);
   static String _usdt(double v) => '${v >= 0 ? '+' : ''}${v.toStringAsFixed(2)} USDT';
 
-  Widget _card(AppPalette p, {required String title, required List<Widget> children, Color? edge}) {
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: p.surface,
-        borderRadius: BorderRadius.circular(AppSpacing.radiusLarge),
-        border: Border.all(color: (edge ?? p.border).withOpacity(0.6)),
-      ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(title, style: context.type.label.copyWith(fontWeight: FontWeight.w800, letterSpacing: 0.6)),
-        const SizedBox(height: 8),
-        ...children,
-      ]),
-    );
-  }
+  Widget _card(AppPalette p, {required String title, required List<Widget> children, Color? edge}) =>
+      OwlSectionCard(title: title, edge: edge, children: children);
+
 
   Widget _kv(String k, String v, {Color? color}) {
     return Padding(
@@ -566,6 +567,7 @@ class _DualBotScreenState extends State<DualBotScreen> {
           margin: _mg(t),
           onTap: () => showDualTradeChart(context, row: t, margin: _mg(t), lev: _n(_st['lev'])),
           setupLine: t['stp'] is Map ? _setupLine(p, t['stp'] as Map) : null,
+          brain: _brainIds['${t['s']}|${t['f']}|${t['t']}'] is Map ? Map<String, dynamic>.from(_brainIds['${t['s']}|${t['f']}|${t['t']}'] as Map) : null,
         ),
       if (open.isNotEmpty) Text('Tap a card: big chart with entry, stop and take-profit lines. Scroll and zoom like the Positions tab.', style: context.type.metadata),
     ]);
@@ -700,9 +702,27 @@ class _DualBotScreenState extends State<DualBotScreen> {
       );
     }
 
+    const hints = [
+      'Live status, today, BTC and the trades that are open right now.',
+      'What the bot learned: daily review, setups, retest check, scenarios, lessons, model.',
+      'Past results, finished and skipped signals, how to read it, reports.',
+      'The Smart Brain: scores, probability, trust meter. Analysis only, no trades.',
+    ];
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
-      child: Row(children: [chip('Dual Bot', Icons.swap_vert_rounded, 0), chip('Brain', Icons.psychology_outlined, 1)]),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(children: [
+            chip('Now', Icons.bolt_rounded, 0),
+            chip('Learned', Icons.school_outlined, 1),
+            chip('History', Icons.history_rounded, 2),
+            chip('Brain', Icons.psychology_outlined, 3),
+          ]),
+        ),
+        const SizedBox(height: 4),
+        Text(hints[_seg.clamp(0, 3)], style: context.type.metadata),
+      ]),
     );
   }
 
@@ -723,19 +743,19 @@ class _DualBotScreenState extends State<DualBotScreen> {
             padding: const EdgeInsets.all(16),
             children: [
               _segRow(p),
-              if (_seg == 1)
-                const SmartBrainView()
-              else ...[
+              if (_seg == 0) ...[
                 _statusCard(p),
                 _todayCard(p),
                 _btcDualCard(p),
                 _openCard(p),
+              ] else if (_seg == 1) ...[
                 _reviewCard(p),
                 _setupCard(p),
                 _retestCard(p),
                 _scenCard(p),
                 _lessonsCard(p),
                 _modelCard(p),
+              ] else if (_seg == 2) ...[
                 _resultCard(p),
                 _situationsCard(p),
                 _recentCard(p),
@@ -751,7 +771,8 @@ class _DualBotScreenState extends State<DualBotScreen> {
                   icon: const Icon(Icons.hub_outlined, size: 18),
                   label: const Text('Open Tag Lab (full test on old candles)'),
                 ),
-              ],
+              ] else
+                const SmartBrainView(),
               const SizedBox(height: 16),
             ],
           ),

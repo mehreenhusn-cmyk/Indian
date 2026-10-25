@@ -481,6 +481,14 @@ def _extra_entry_block(signal, symbol):
     except Exception:
         pass
     try:
+        # Smart Brain skip switch (default OFF, needs earned trust + solid luck test). Returns None in every other case.
+        import smart_brain
+        _sb = smart_brain.gate_reason(symbol, signal.action)
+        if _sb:
+            return _sb
+    except Exception:
+        pass
+    try:
         mx = int(settings_store.get("max_open_trades", 0) or 0)
         if mx > 0 and not _is_btc(symbol):      # BTC has its own slot: never blocked by, never counted in, the alt limit
             if settings_store.get("live_trading_enabled", False):

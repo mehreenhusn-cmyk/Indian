@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 
 import '../providers/app_provider.dart';
 import '../theme/app_theme.dart';
+import 'owl_card.dart';
 
 /// "Brain" view inside the Dual Bot screen (paper only, analysis only). Shows what the Smart Brain thinks about the Dual Bot setups:
 /// clean score, agree / disagree, measured win chance of look-alike old trades, bad hours, repeat losses, a watch list and a trust meter.
@@ -58,6 +59,12 @@ class _SmartBrainViewState extends State<SmartBrainView> {
     }
   }
 
+  Future<void> _setGate(bool on) async {
+    setState(() => _busy = true);
+    await _poll(action: on ? 'gate_on' : 'gate_off');
+    if (mounted) setState(() => _busy = false);
+  }
+
   Future<void> _toggle(bool on) async {
     setState(() => _busy = true);
     await _poll(action: on ? 'start' : 'stop');
@@ -70,34 +77,96 @@ class _SmartBrainViewState extends State<SmartBrainView> {
   static double _n(dynamic v) => v is num ? v.toDouble() : 0.0;
   static String _coin(dynamic s) => '$s'.replaceAll('USDT', '');
 
-  Widget _card(AppPalette p, {required String title, required List<Widget> children, Color? edge}) {
+  Widget _card(AppPalette p, {required String title, required List<Widget> children, Color? edge}) =>
+      OwlSectionCard(title: title, edge: edge, children: children);
+
+  Widget _chip(String text, Color c) => OwlChip(text, c);
+
+  Color _cleanColor(AppPalette p, num v) => v >= 70 ? p.profit : (v >= 40 ? p.warning : p.loss);
+  Color _divColor(AppPalette p, num v) => v <= 14 ? p.profit : (v <= 42 ? p.warning : p.loss);
+  Color _vColor(AppPalette p, String v) => v == 'like' ? p.profit : (v == 'dislike' ? p.loss : p.warning);
+
+  /// One live setup in a few words: big clean number, coin, side and the Brain's one-line opinion.
+  Widget _miniSetup(AppPalette p, String tag, Map<String, dynamic> s, Color c) {
+    final buy = _n(s['d']) > 0;
+    final clean = _n(s['clean']);
     return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: p.surface,
-        borderRadius: BorderRadius.circular(AppSpacing.radiusLarge),
-        border: Border.all(color: (edge ?? p.border).withOpacity(0.6)),
-      ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(title, style: context.type.label.copyWith(fontWeight: FontWeight.w800, letterSpacing: 0.6)),
-        const SizedBox(height: 8),
-        ...children,
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(color: c.withOpacity(0.07), border: Border.all(color: c.withOpacity(0.35)), borderRadius: BorderRadius.circular(12)),
+      child: Row(children: [
+        Column(children: [
+          Text(clean.toStringAsFixed(0), style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: _cleanColor(p, clean), height: 1.0)),
+          Text('clean', style: context.type.metadata),
+        ]),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Wrap(spacing: 6, runSpacing: 2, crossAxisAlignment: WrapCrossAlignment.center, children: [
+              _chip(tag, c),
+              Text(_coin(s['s']), style: context.type.primary.copyWith(fontWeight: FontWeight.w800)),
+              _chip(buy ? 'BUY' : 'SELL', buy ? p.profit : p.loss),
+              Text('${s['f'] ?? ''}', style: context.type.metadata),
+            ]),
+            const SizedBox(height: 3),
+            Text('${s['text'] ?? ''}', style: context.type.secondary),
+            Text('${s['prob_text'] ?? ''}', style: context.type.metadata),
+          ]),
+        ),
       ]),
     );
   }
 
-  Widget _chip(String text, Color c) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(color: c.withOpacity(0.14), borderRadius: BorderRadius.circular(10), border: Border.all(color: c.withOpacity(0.5))),
-      child: Text(text, style: context.type.metadata.copyWith(color: c, fontWeight: FontWeight.w700)),
+  /// Top card: what the Brain thinks about the live Dual Bot setups, in one headline plus the best and the worst one.
+  Widget _nowCard(AppPalette p) {
+    final n = _map(_st['now']);
+    if (n.isEmpty) return const SizedBox.shrink();
+    final mood = '${n['mood'] ?? ''}';
+    final c = mood == 'like' ? p.profit : (mood == 'dislike' ? p.loss : (mood == 'collecting' ? p.textMuted : p.warning));
+    final best = _map(n['best']);
+    final worst = _map(n['worst']);
+    return _card(p, title: 'WHAT THE BRAIN THINKS RIGHT NOW', edge: c, children: [
+      Text('${n['headline'] ?? ''}', style: context.type.primary.copyWith(fontWeight: FontWeight.w800, fontSize: 15, height: 1.3)),
+      if (best.isNotEmpty) _miniSetup(p, 'BEST', best, _vColor(p, '${best['verdict']}')),
+      if (worst.isNotEmpty) _miniSetup(p, 'WORST', worst, _vColor(p, '${worst['verdict']}')),
+      const SizedBox(height: 6),
+      Text('Green = the Brain likes it, yellow = not sure, red = it dislikes it. Paper only: the Brain never places a trade.', style: context.type.metadata),
+    ]);
+  }
+
+  Widget _bar(AppPalette p, String label, num v, num need, Color c) {
+    final f = need <= 0 ? 0.0 : (v / need).clamp(0.0, 1.0).toDouble();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text('$label: ${v.toStringAsFixed(0)} of ${need.toStringAsFixed(0)}', style: context.type.secondary),
+        const SizedBox(height: 3),
+        ClipRRect(borderRadius: BorderRadius.circular(6), child: LinearProgressIndicator(value: f, minHeight: 6, color: c, backgroundColor: p.border.withOpacity(0.4))),
+      ]),
     );
   }
 
-  Color _cleanColor(AppPalette p, num v) => v >= 70 ? p.profit : (v >= 40 ? p.warning : p.loss);
-  Color _divColor(AppPalette p, num v) => v <= 14 ? p.profit : (v <= 42 ? p.warning : p.loss);
+  /// "What is it learning": how much data it has read, where the data is thin, which coins the scan covers, what comes next.
+  Widget _learnCard(AppPalette p) {
+    final l = _map(_map(_st['now'])['learning']);
+    if (l.isEmpty) return const SizedBox.shrink();
+    final thin = (l['thin'] is List) ? (l['thin'] as List).map((e) => '$e').toList() : <String>[];
+    final coins = (l['scan_list'] is List) ? (l['scan_list'] as List).map((e) => '$e').toList() : <String>[];
+    final scanN = _n(l['scan_n']);
+    return _card(p, title: 'WHAT IT IS LEARNING', children: [
+      _bar(p, 'Old setups read', _n(l['rows']), _n(l['need_rows']), p.accent),
+      _bar(p, 'Unseen trades judged (for trust)', _n(l['judged']), _n(l['need_judged']), p.warning),
+      Text('Where it has too little data', style: context.type.label),
+      const SizedBox(height: 3),
+      if (thin.isEmpty) Text('Nothing thin right now.', style: context.type.metadata),
+      for (final t in thin) Text('- $t', style: context.type.metadata),
+      const SizedBox(height: 8),
+      Text(scanN <= 0 ? 'Scan: waiting for the first scan.' : 'Scan: looking at ${scanN.toStringAsFixed(0)} coins every 5 minutes (${coins.join(', ')}${scanN > coins.length ? ', ...' : ''}).',
+          style: context.type.secondary),
+      const SizedBox(height: 6),
+      Text('${l['next'] ?? ''}', style: context.type.primary.copyWith(fontWeight: FontWeight.w700)),
+    ]);
+  }
 
   Widget _statusCard(AppPalette p) {
     final state = '${_st['state'] ?? ''}';
@@ -117,6 +186,19 @@ class _SmartBrainViewState extends State<SmartBrainView> {
         OutlinedButton(onPressed: _busy ? null : () => _toggle(!enabled), child: Text(enabled ? 'Stop' : 'Start')),
       ]),
       if (_st.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 6), child: Text('Old setups read: ${_n(_st['rows']).toStringAsFixed(0)}', style: context.type.metadata)),
+      if (_st.isNotEmpty) ...[
+        const Divider(height: 18),
+        Row(children: [
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('Let the Brain skip bad signals', style: context.type.primary.copyWith(fontWeight: FontWeight.w700)),
+              Text('OFF = main bot takes every signal, as always. ON = the main bot skips a signal only when the Brain DISLIKES the matching setup, and only while trust is "earned" and the luck test says "Looks real". Unsure or unknown = the trade is taken.',
+                  style: context.type.metadata),
+            ]),
+          ),
+          Switch(value: _st['gate'] == true, onChanged: _busy ? null : (v) => _setGate(v)),
+        ]),
+      ],
       if (_err.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 6), child: Text(_err, style: context.type.metadata.copyWith(color: p.loss))),
     ]);
   }
@@ -145,6 +227,143 @@ class _SmartBrainViewState extends State<SmartBrainView> {
       ],
       const SizedBox(height: 6),
       Text('Trust is only given when the Brain beats "take every signal" on trades it had not seen. Until then it only explains.', style: context.type.metadata),
+    ]);
+  }
+
+  /// "Is it luck?": the Brain's picks against many random picks of the same size.
+  Widget _luckCard(AppPalette p) {
+    final l = _map(_st['luck']);
+    if (l.isEmpty) return const SizedBox.shrink();
+    final v = '${l['verdict'] ?? 'learning'}';
+    final c = v == 'solid' ? p.profit : (v == 'maybe' ? p.warning : (v == 'luck' ? p.loss : p.textMuted));
+    final label = v == 'solid' ? 'LOOKS REAL' : (v == 'maybe' ? 'MAYBE REAL' : (v == 'luck' ? 'COULD BE LUCK' : 'NOT ENOUGH DATA'));
+    final d = _map(_st['drift']);
+    return _card(p, title: 'IS IT SKILL OR LUCK?', edge: c, children: [
+      _chip(label, c),
+      const SizedBox(height: 8),
+      Text('${l['text'] ?? ''}', style: context.type.primary),
+      const SizedBox(height: 6),
+      Text('The test picks the same number of trades at random 1000 times and checks how often chance alone does as well as the Brain.', style: context.type.metadata),
+      if (d.isNotEmpty) ...[
+        const SizedBox(height: 8),
+        Text('Newest ${_n(d['recent_n']).toStringAsFixed(0)} setups: ${_n(d['recent_win']).toStringAsFixed(0)}% won. Older ${_n(d['old_n']).toStringAsFixed(0)}: ${_n(d['old_win']).toStringAsFixed(0)}% won.', style: context.type.secondary),
+        Text('Newer trades count more in every probability (an old trade counts half after ${_n(d['half_life']).toStringAsFixed(0)} newer setups).', style: context.type.metadata),
+      ],
+    ]);
+  }
+
+  /// Exit learner (shadow only): for open trades it says "hold" or "exit looks fine" from past trades. It never closes anything.
+  Widget _exitCard(AppPalette p) {
+    final x = _map(_st['exit']);
+    if (x.isEmpty) return const SizedBox.shrink();
+    final open = _maps(x['open']);
+    final stages = _maps(x['stages']);
+    final sc = _map(x['score']);
+    final ready = '${x['status']}' == 'ready';
+    Color advColor(String a) => a == 'HOLD' ? p.profit : (a == 'EXIT_OK' ? p.warning : p.textMuted);
+    String advWord(String a) => a == 'HOLD' ? 'HOLD' : (a == 'EXIT_OK' ? 'EXIT IS FINE' : (a == 'WAIT' ? 'WAITING' : 'NO OPINION'));
+    return _card(p, title: 'WHEN TO EXIT (LEARNING ONLY)', edge: ready ? null : p.textMuted, children: [
+      Text('${x['text'] ?? ''}', style: context.type.secondary),
+      if (open.isNotEmpty) ...[
+        const SizedBox(height: 8),
+        for (final o in open)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                Expanded(child: Text('${_coin(o['s'])} ${o['f']} ${_n(o['d']) > 0 ? 'BUY' : 'SELL'}', style: context.type.primary.copyWith(fontWeight: FontWeight.w700))),
+                if (o['live'] is num) Text('${_n(o['live']) >= 0 ? '+' : ''}${_n(o['live']).toStringAsFixed(1)}%', style: context.type.secondary.copyWith(color: _n(o['live']) >= 0 ? p.profit : p.loss, fontWeight: FontWeight.w700)),
+                const SizedBox(width: 6),
+                _chip(advWord('${o['adv']}'), advColor('${o['adv']}')),
+              ]),
+              const SizedBox(height: 2),
+              Text('${o['text'] ?? ''}', style: context.type.metadata),
+            ]),
+          ),
+      ] else if (ready)
+        Padding(padding: const EdgeInsets.only(top: 6), child: Text('No open Dual Bot trade right now.', style: context.type.metadata)),
+      if (stages.isNotEmpty) ...[
+        const SizedBox(height: 6),
+        Text('How past trades finished, by how far the stop trailed:', style: context.type.metadata),
+        for (final s in stages)
+          Text('${_n(s['stage']).toInt() == 0 ? 'Any trade' : (_n(s['stage']).toInt() >= 4 ? 'Stop moved 4+ times' : 'Stop moved ${_n(s['stage']).toInt()}+ times')}: ${_n(s['n']).toInt()} trades, ${_n(s['win']).toInt()}% won, average ${_n(s['avg']) >= 0 ? '+' : ''}${_n(s['avg']).toStringAsFixed(1)}%', style: context.type.secondary),
+      ],
+      const SizedBox(height: 6),
+      Text('${sc['text'] ?? ''}', style: context.type.metadata),
+      Text('It does not close or change any trade. It only gives an opinion and checks later if it was right.', style: context.type.metadata),
+    ]);
+  }
+
+  /// "What if the bot had listened?": same finished trades, three paper stories. Shadow only, nothing changes in the bot.
+  Widget _followCard(AppPalette p) {
+    final f = _map(_st['follow']);
+    if (f.isEmpty) return const SizedBox.shrink();
+    final st = _maps(f['stories']);
+    final ready = '${f['status']}' == 'ready';
+    String sg(num v, int d) => '${v >= 0 ? '+' : ''}${v.toStringAsFixed(d)}';
+    return _card(p, title: 'WHAT IF THE BOT HAD LISTENED?', edge: ready ? null : p.textMuted, children: [
+      Text('${f['text'] ?? ''}', style: context.type.primary),
+      if (st.isNotEmpty) ...[
+        const SizedBox(height: 8),
+        for (final s in st)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text('${s['name']}', style: context.type.label.copyWith(fontWeight: FontWeight.w700)),
+                  Text('${_n(s['n']).toInt()} trades, ${_n(s['win']).toInt()}% won, worst drop ${_n(s['drop']).toStringAsFixed(0)}', style: context.type.metadata),
+                ]),
+              ),
+              Text(sg(_n(s['total']), 0), style: context.type.primary.copyWith(color: _n(s['total']) >= 0 ? p.profit : p.loss, fontWeight: FontWeight.w800, fontSize: 17)),
+            ]),
+          ),
+      ],
+      const SizedBox(height: 4),
+      Text('Numbers are ROI points of margin, fee inside. Each trade is judged using only older memory. Report only: the bot is not changed.', style: context.type.metadata),
+    ]);
+  }
+
+  Widget _riskLine(AppPalette p, String label, String a, String b) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(children: [
+        Expanded(flex: 5, child: Text(label, style: context.type.secondary)),
+        Expanded(flex: 3, child: Text(a, textAlign: TextAlign.right, style: context.type.primary.copyWith(fontWeight: FontWeight.w700))),
+        Expanded(flex: 3, child: Text(b, textAlign: TextAlign.right, style: context.type.secondary)),
+      ]),
+    );
+  }
+
+  /// Risk numbers of the Brain's frozen picks next to "all signals": biggest drop, risk-adjusted gain, worst 5% trades, worst-case range.
+  Widget _riskCard(AppPalette p) {
+    final r = _map(_st['risk']);
+    if (r.isEmpty) return const SizedBox.shrink();
+    final pk = _map(r['picks']);
+    final al = _map(r['all']);
+    final w = _map(r['worst']);
+    String usdt(dynamic v) => v is num ? '${v >= 0 ? '+' : ''}${v.toStringAsFixed(2)}' : '--';
+    String num2(dynamic v) => v is num ? v.toStringAsFixed(2) : '--';
+    return _card(p, title: 'RISK (PAPER BOOK)', children: [
+      if (pk.isEmpty) Text('${r['text'] ?? ''}', style: context.type.secondary),
+      if (pk.isNotEmpty) ...[
+        _riskLine(p, '', 'Brain picks', 'All signals'),
+        _riskLine(p, 'Finished trades', _n(pk['n']).toStringAsFixed(0), al.isEmpty ? '--' : _n(al['n']).toStringAsFixed(0)),
+        _riskLine(p, 'Total (USDT)', usdt(pk['total']), usdt(al['total'])),
+        _riskLine(p, 'Biggest drop (USDT)', num2(pk['max_dd']), num2(al['max_dd'])),
+        _riskLine(p, 'Worst 5% trades, average', usdt(pk['cvar5']), usdt(al['cvar5'])),
+        _riskLine(p, 'Gain per unit of risk', num2(pk['sharpe']), num2(al['sharpe'])),
+        _riskLine(p, 'Same, only downside risk', num2(pk['sortino']), num2(al['sortino'])),
+        const SizedBox(height: 4),
+        Text('Ratios are per trade. Higher is better, a small biggest drop is better. "--" means there were no losses or too few trades.', style: context.type.metadata),
+      ],
+      if (w.isNotEmpty) ...[
+        const SizedBox(height: 8),
+        Text('WORST-CASE RANGE', style: context.type.label),
+        const SizedBox(height: 3),
+        Text('${w['text'] ?? ''}', style: context.type.secondary),
+        Text('Typical shuffle: ${num2(w['median'])} USDT. Plan for the bad case, not the typical one.', style: context.type.metadata),
+      ],
     ]);
   }
 
@@ -214,6 +433,11 @@ class _SmartBrainViewState extends State<SmartBrainView> {
           _chip(buy ? 'BUY' : 'SELL', buy ? p.profit : p.loss),
           Text('${s['f'] ?? ''}  ${s['src'] ?? ''}${status.isEmpty ? '' : '  ·  $status'}', style: context.type.metadata),
         ]),
+        if ('${s['verdict_text'] ?? ''}'.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Text('${s['verdict_text']}', style: context.type.secondary.copyWith(fontWeight: FontWeight.w700, color: _vColor(p, '${s['verdict']}'))),
+          ),
         const SizedBox(height: 6),
         Wrap(spacing: 6, runSpacing: 4, children: [
           _chip('Clean ${clean.toStringAsFixed(0)}/100', _cleanColor(p, clean)),
@@ -319,6 +543,15 @@ class _SmartBrainViewState extends State<SmartBrainView> {
 
   Widget _howCard(AppPalette p) {
     return _card(p, title: 'HOW TO READ THIS', children: [
+      for (final g in _maps(_map(_st['now'])['guide']))
+        Padding(
+          padding: const EdgeInsets.only(bottom: 3),
+          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Icon(Icons.circle, size: 10, color: '${g['color']}' == 'green' ? p.profit : ('${g['color']}' == 'yellow' ? p.warning : p.loss)),
+            const SizedBox(width: 6),
+            Expanded(child: Text('${g['band']} ${g['name']}: ${g['meaning']}', style: context.type.secondary)),
+          ]),
+        ),
       Text('Clean score: 100 = both panes trending and everything points the same way. Low = sideways market or warning signs.', style: context.type.secondary),
       const SizedBox(height: 4),
       Text('Agree / Disagree: do the Main chart, the Z pane and TSI point the same way?', style: context.type.secondary),
@@ -333,10 +566,16 @@ class _SmartBrainViewState extends State<SmartBrainView> {
   Widget build(BuildContext context) {
     final p = context.palette;
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      _nowCard(p),
+      _learnCard(p),
+      _signalsCard(p),
       _statusCard(p),
       _trustCard(p),
+      _luckCard(p),
+      _exitCard(p),
+      _followCard(p),
       _bookCard(p),
-      _signalsCard(p),
+      _riskCard(p),
       _watchCard(p),
       _patternsCard(p),
       _hoursCard(p),

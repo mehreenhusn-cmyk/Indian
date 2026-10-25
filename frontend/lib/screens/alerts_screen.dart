@@ -219,7 +219,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
                                 index: index,
                                 shake: freshSl,
                                 child: Padding(
-                                padding: const EdgeInsets.only(bottom: AppSpacing.s),
+                                padding: const EdgeInsets.only(bottom: AppSpacing.cardGap),
                                 child: _AlertCard(
                                   alert: a,
                                   expanded: _expanded.contains(key),

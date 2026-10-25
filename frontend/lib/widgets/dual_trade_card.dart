@@ -17,7 +17,10 @@ class DualTradeCard extends StatelessWidget {
   /// Optional one-line "how did this setup do before" widget, built by the screen.
   final Widget? setupLine;
 
-  const DualTradeCard({super.key, required this.row, required this.margin, required this.onTap, this.setupLine});
+  /// Optional Smart Brain opinion for this trade: {clean, div, verdict}. Shown as a small badge. Null = no badge.
+  final Map<String, dynamic>? brain;
+
+  const DualTradeCard({super.key, required this.row, required this.margin, required this.onTap, this.setupLine, this.brain});
 
   static double? _n(dynamic v) => v is num ? v.toDouble() : null;
 
@@ -188,6 +191,22 @@ class DualTradeCard extends StatelessWidget {
                   Icon(Icons.chevron_right_rounded, size: 18, color: p.textMuted),
                 ],
               ),
+              if (brain != null && brain!.isNotEmpty) ...[
+                const SizedBox(height: 6),
+                Builder(builder: (_) {
+                  final cl = _n(brain!['clean']) ?? 0;
+                  final dv = _n(brain!['div']) ?? 0;
+                  final cc = cl >= 70 ? p.profit : (cl >= 40 ? p.warning : p.loss);
+                  final dc = dv <= 14 ? p.profit : (dv <= 42 ? p.warning : p.loss);
+                  return Row(children: [
+                    Icon(Icons.psychology_outlined, size: 14, color: p.textMuted),
+                    const SizedBox(width: 4),
+                    chip('Brain: clean ${cl.toStringAsFixed(0)}', cc),
+                    const SizedBox(width: 6),
+                    chip(dv <= 14 ? 'Main and Z agree' : (dv <= 42 ? 'Mixed' : 'Main and Z disagree'), dc),
+                  ]);
+                }),
+              ],
               if (setupLine != null) ...[
                 const SizedBox(height: 4),
                 setupLine!,

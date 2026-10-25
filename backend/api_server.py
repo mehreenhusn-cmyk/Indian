@@ -1717,6 +1717,10 @@ async def smart_brain_api(action: str = ""):
             smart_brain.set_enabled(True)
         elif action == "stop":
             smart_brain.set_enabled(False)
+        elif action == "gate_on":
+            smart_brain.set_gate(True)
+        elif action == "gate_off":
+            smart_brain.set_gate(False)
         await asyncio.to_thread(smart_brain.ensure_running)
         return await asyncio.to_thread(smart_brain.status)
     except Exception as e:

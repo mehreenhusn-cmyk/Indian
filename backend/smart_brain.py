@@ -22,7 +22,9 @@ Run by hand:  cd backend && python3 smart_brain.py once      (one pass, prints a
               cd backend && python3 smart_brain.py worker    (normally the backend starts it by itself)
 """
 import json
+import math
 import os
+import random
 import subprocess
 import sys
 import time
@@ -44,6 +46,9 @@ WIN_GOOD = 65                # % won = good pattern
 TRUST_MIN = 30               # judged trades needed before the trust meter says anything
 TRUST_LAST = 150             # the trust meter looks at the newest this-many closed trades
 SHOW_TRADES = 40
+ROLL_HALF = 400              # rolling memory: an old trade counts half as much for every this-many newer setups
+LUCK_RUNS = 1000             # random re-draws in the luck test
+RISK_MIN = 10                # finished picks needed before risk numbers are shown
 SIDE_WORD_PCT = {"trending": 15, "mixed": 50, "sideways": 85}
 KEY_DIMS = ("order", "tsi_zero", "tsi_line", "z_ema", "cloud", "zsm", "z_room", "side_main", "side_z", "diverge")
 
@@ -200,25 +205,28 @@ def probability(rows, tg, t_before=None, use=None):
     use = use or _use_dims()
     bi = _bot_i()
     tl = _tg_list(tg)
+    elig = [r for r in rows if t_before is None or r[2] < t_before]
+    last = len(elig) - 1
     scored = []
-    for r in rows:
-        if t_before is not None and r[2] >= t_before:
-            continue
+    for pos, r in enumerate(elig):
         sim = 0
         for k in use:
             if r[4][k] == tl[k]:
                 sim += 1
         if sim >= MIN_SIM:
-            scored.append((sim, r))
+            scored.append((sim, pos, r))
     if len(scored) < MIN_N:
         return None
-    scored.sort(key=lambda x: -x[0])
-    near = [r for _, r in scored[:K_NEAR]]
-    nets = [r[5][bi] for r in near]
+    scored.sort(key=lambda x: (-x[0], -x[1]))
+    near = scored[:K_NEAR]
+    # rolling memory: newer look-alikes count more (half-life ROLL_HALF setups), so the number follows the market as it changes
+    wts = [0.5 ** ((last - pos) / float(ROLL_HALF)) for _, pos, _r in near]
+    nets = [r[5][bi] for _, _p, r in near]
+    wsum = sum(wts)
+    win_pct = int(round(100.0 * sum(w for w, x in zip(wts, nets) if x > 0) / wsum))
+    avg = sum(w * x for w, x in zip(wts, nets)) / wsum
     wins = sum(1 for x in nets if x > 0)
-    fast = sum(1 for r in near if r[5][bi] > 0 and int(r[6][bi]) <= 6)
-    win_pct = int(round(100.0 * wins / len(near)))
-    avg = sum(nets) / len(nets)
+    fast = sum(1 for _, _p, r in near if r[5][bi] > 0 and int(r[6][bi]) <= 6)
     return {"n": len(near), "win_pct": win_pct, "avg": round(avg, 2),
             "fast_pct": int(round(100.0 * fast / max(1, wins))) if wins else 0,
             "text": f"{len(near)} similar old trades: {win_pct}% won, average {avg:+.1f}% of margin."}
@@ -324,10 +332,8 @@ def bands(rows):
 
 
 # ---------------------------------------------------------------- 6. trust meter
-def trust(rows, trades):
-    """Would the Brain have helped on trades it had not seen? For each finished trade the Brain scores it using ONLY older memory.
-    'Brain picks' = trades with enough look-alikes, win chance >= 50% and clean score >= 50. Compared with taking everything.
-    Verdict is only 'earned' if the picks beat 'take everything' by a clear margin on at least TRUST_MIN judged trades."""
+def _judge(rows, trades):
+    """The Brain scores each finished trade using ONLY older memory. -> (nets of all judged trades, nets of the ones it would have picked)."""
     done = [t for t in trades if t.get("status") in ("closed", "skipped_done") and t.get("net") is not None]
     done.sort(key=lambda t: t["t"])
     done = done[-TRUST_LAST:]
@@ -340,6 +346,14 @@ def trust(rows, trades):
         judged.append(t["net"])
         if pr["win_pct"] >= 50 and clean_score(t["tg"]) >= 50:
             picks.append(t["net"])
+    return judged, picks
+
+
+def trust(rows, trades):
+    """Would the Brain have helped on trades it had not seen? For each finished trade the Brain scores it using ONLY older memory.
+    'Brain picks' = trades with enough look-alikes, win chance >= 50% and clean score >= 50. Compared with taking everything.
+    Verdict is only 'earned' if the picks beat 'take everything' by a clear margin on at least TRUST_MIN judged trades."""
+    judged, picks = _judge(rows, trades)
     out = {"judged": len(judged), "picks": len(picks), "need": TRUST_MIN}
     if len(judged) < TRUST_MIN or len(picks) < 8:
         out.update(verdict="learning", text=f"Still learning: {len(judged)} of {TRUST_MIN} unseen trades judged. No trust yet.")
@@ -361,8 +375,26 @@ def score_setup(rows, tg, t_before=None):
     ds, dl, dwhy = divergence(tg)
     good, bad = why_lines(tg)
     pr = probability(rows, tg, t_before)
-    return {"clean": clean_score(tg), "div": ds, "div_label": dl, "good": good, "bad": bad,
-            "prob": pr, "prob_text": pr["text"] if pr else "Not enough data yet (needs %d similar old trades)." % MIN_N}
+    sc = {"clean": clean_score(tg), "div": ds, "div_label": dl, "good": good, "bad": bad,
+          "prob": pr, "prob_text": pr["text"] if pr else "Not enough data yet (needs %d similar old trades)." % MIN_N}
+    sc["verdict"], sc["verdict_text"] = verdict_of(sc)
+    return sc
+
+
+def verdict_of(sc):
+    """One plain opinion per setup: 'like' / 'unsure' / 'dislike', with the reason in one sentence. Same rules as the paper-book pick."""
+    pr = sc.get("prob")
+    if is_pick(sc):
+        return "like", "Likes it: clean setup, Main and Z agree, and %d%% of similar old trades won." % pr["win_pct"]
+    if sc["clean"] < 40:
+        return "dislike", "Dislikes it: dirty setup (clean score %d)." % sc["clean"]
+    if sc["div"] >= PICK_DIV:
+        return "dislike", "Dislikes it: Main chart and Z pane disagree."
+    if pr and pr["win_pct"] < 45:
+        return "dislike", "Dislikes it: only %d%% of similar old trades won." % pr["win_pct"]
+    if pr is None:
+        return "unsure", "Not sure: too few similar old trades to judge."
+    return "unsure", "Not sure: it is not clean enough or similar trades won too rarely to pick it."
 
 
 def signals_view(rows, trades):
@@ -472,19 +504,198 @@ def book_summary(book, trades):
     return out
 
 
+# ---------------------------------------------------------------- 8c. "what is the Brain thinking now" (one summary for the top of the Brain tab)
+SCORE_GUIDE = [
+    {"band": "70-100", "name": "Clean", "color": "green", "meaning": "Both panes are trending and the signs point the same way."},
+    {"band": "40-69", "name": "Medium", "color": "yellow", "meaning": "Some warning signs. Not bad, not great."},
+    {"band": "0-39", "name": "Dirty", "color": "red", "meaning": "Sideways market or the indicators disagree. Old trades like this lost more."},
+]
+
+
+def _slim(sc):
+    return {"s": sc.get("s"), "f": sc.get("f"), "d": sc.get("d"), "clean": sc.get("clean"), "div": sc.get("div"),
+            "verdict": sc.get("verdict"), "text": sc.get("verdict_text"), "prob_text": sc.get("prob_text")}
+
+
+def thin_spots(rows, limit=4):
+    """Tag values the Dual Bot has seen too rarely (fewer than MIN_GROUP old trades) - the places where the Brain cannot judge yet."""
+    TL = _tl()
+    out = []
+    for k in KEY_DIMS:
+        if k not in TL.DIMS:
+            continue
+        ix = TL.DIMS.index(k)
+        cnt = {}
+        for r in rows:
+            cnt[r[4][ix]] = cnt.get(r[4][ix], 0) + 1
+        for val, c in cnt.items():
+            if 0 < c < MIN_GROUP:
+                out.append((c, "%s: %s (%d of %d old trades)" % (TL.DIM_NAME.get(k, k), val, c, MIN_GROUP)))
+    out.sort(key=lambda x: x[0])
+    return [t for _, t in out[:limit]]
+
+
+def thinking(rows, signals, tv, scan_coins=None, scan_t=0, watch=None):
+    """-> dict for the top card: headline, best and worst live setup, and 'what is it learning'. Pure reading of numbers already computed."""
+    need_rows = 4 * MIN_GROUP
+    cur = [s for s in signals if s.get("status") in ("open", "skipped")]
+    likes = [s for s in cur if s.get("verdict") == "like"]
+    dislikes = [s for s in cur if s.get("verdict") == "dislike"]
+    if len(rows) < need_rows:
+        mood, head = "collecting", "Still collecting: %d of about %d old setups read. No opinions yet." % (len(rows), need_rows)
+    elif not cur:
+        mood, head = "idle", "No live Dual Bot setup right now. The Brain is watching %d coins." % len(scan_coins or [])
+    else:
+        mood = "like" if likes else ("dislike" if len(dislikes) == len(cur) else "unsure")
+        head = "%d of %d live setups look good, %d look bad." % (len(likes), len(cur), len(dislikes))
+    best = worst = None
+    if len(rows) >= need_rows and cur:
+        ranked = sorted(cur, key=lambda s: ((s["prob"]["win_pct"] if s.get("prob") else -1), s["clean"]), reverse=True)
+        best = _slim(ranked[0])
+        if len(ranked) > 1 and ranked[-1] is not ranked[0]:
+            worst = _slim(min(cur, key=lambda s: (s["clean"], -s["div"])))
+    judged, need_j = int((tv or {}).get("judged") or 0), int((tv or {}).get("need") or TRUST_MIN)
+    if len(rows) < need_rows:
+        nxt = "Next: %d more old setups for the first patterns." % (need_rows - len(rows))
+    elif (tv or {}).get("verdict") != "earned" and judged < need_j:
+        nxt = "Next: %d more unseen trades before the trust meter can say anything." % (need_j - judged)
+    elif (tv or {}).get("verdict") != "earned":
+        nxt = "Next: the Brain must beat take-everything on unseen trades to earn trust."
+    else:
+        nxt = "Trust is earned. New picks are paper picks. Still paper money only."
+    coins = [str(c).replace("USDT", "") for c in (scan_coins or [])]
+    return {"mood": mood, "headline": head, "best": best, "worst": worst, "live": len(cur), "likes": len(likes), "dislikes": len(dislikes),
+            "learning": {"rows": len(rows), "need_rows": need_rows, "judged": judged, "need_judged": need_j,
+                         "thin": thin_spots(rows) if rows else [], "scan_n": len(coins), "scan_list": coins[:8], "scan_t": scan_t,
+                         "watch_n": len(watch or []), "next": nxt},
+            "guide": SCORE_GUIDE}
+
+
+# ---------------------------------------------------------------- 8d. luck test, risk numbers, worst case (ideas from Jesse, own numpy-free code)
+def luck_test(rows, trades, runs=LUCK_RUNS):
+    """Is the Brain's edge real or luck? Same trades the trust meter judged. Draw the same number of trades AT RANDOM many times and count
+    how often a random draw earns at least as much per trade as the Brain's picks. Small share = hard to explain by luck."""
+    judged, picks = _judge(rows, trades)
+    if len(judged) < TRUST_MIN or len(picks) < 8:
+        return {"verdict": "learning", "p": None, "text": "Not enough unseen trades yet to test luck (%d of %d judged)." % (len(judged), TRUST_MIN)}
+    pick_avg = sum(picks) / len(picks)
+    rnd = random.Random(5)
+    better = sum(1 for _ in range(runs) if sum(rnd.sample(judged, len(picks))) / len(picks) >= pick_avg)
+    p = (better + 1.0) / (runs + 1.0)
+    pct = int(round(100 * p))
+    verdict = "solid" if p <= 0.05 else ("maybe" if p <= 0.20 else "luck")
+    word = {"solid": "Hard to explain by luck.", "maybe": "Maybe real, not proven.", "luck": "Could easily be luck."}[verdict]
+    return {"verdict": verdict, "p": round(p, 3), "n_picks": len(picks), "n_judged": len(judged), "pick_avg": round(pick_avg, 2),
+            "text": "If trades were picked at random, %d out of 100 random sets would earn as much as the Brain's picks. %s" % (pct, word)}
+
+
+def _max_dd(pnls):
+    peak = cum = dd = 0.0
+    for x in pnls:
+        cum += x
+        peak = max(peak, cum)
+        dd = max(dd, peak - cum)
+    return dd
+
+
+def risk_stats(pnls):
+    """pnls = USDT result per finished trade, oldest first. Ratios are PER TRADE (not per year). None when there are too few trades."""
+    n = len(pnls)
+    if n < RISK_MIN:
+        return None
+    mean = sum(pnls) / n
+    sd = math.sqrt(sum((x - mean) ** 2 for x in pnls) / n)
+    dsd = math.sqrt(sum(min(0.0, x) ** 2 for x in pnls) / n)
+    k = max(1, int(n * 0.05))
+    cvar = sum(sorted(pnls)[:k]) / k
+    return {"n": n, "total": round(sum(pnls), 2), "mean": round(mean, 2), "max_dd": round(_max_dd(pnls), 2),
+            "sharpe": round(mean / sd, 2) if sd > 0 else None, "sortino": round(mean / dsd, 2) if dsd > 0 else None,
+            "cvar5": round(cvar, 2)}
+
+
+def worst_case(pnls, runs=LUCK_RUNS):
+    """Same trades, order shuffled many times: how deep can the biggest drop get when the bad trades come together?"""
+    if len(pnls) < RISK_MIN:
+        return None
+    rnd = random.Random(11)
+    dds = []
+    for _ in range(runs):
+        x = list(pnls)
+        rnd.shuffle(x)
+        dds.append(_max_dd(x))
+    dds.sort()
+    p95 = dds[int(0.95 * runs) - 1]
+    return {"runs": runs, "actual": round(_max_dd(pnls), 2), "median": round(dds[runs // 2], 2), "p95": round(p95, 2),
+            "text": "In 95 of 100 shuffles of the same trades the biggest drop stayed under %.2f USDT (the real one was %.2f)." % (p95, _max_dd(pnls))}
+
+
+def risk_view(book, trades):
+    """Risk numbers for the Brain's frozen picks and for 'all signals', both since the book started. Reads only."""
+    import dual_lab
+    since = (book or {}).get("since") or 0
+    ids = set(((book or {}).get("picks") or {}).keys())
+
+    def series(items):
+        done = [t for t in items if t.get("status") in ("closed", "skipped_done") and t.get("net") is not None]
+        done.sort(key=lambda t: t.get("end") or t["t"])
+        return [dual_lab._mg(t) * t["net"] / 100.0 for t in done]
+
+    pk = series([t for t in trades if t.get("id") in ids])
+    al = series([t for t in trades if t["t"] >= since])
+    if len(pk) < RISK_MIN:
+        return {"picks": None, "all": risk_stats(al), "worst": None, "n_picks": len(pk),
+                "text": "Risk numbers need %d finished Brain picks (now %d)." % (RISK_MIN, len(pk))}
+    return {"picks": risk_stats(pk), "all": risk_stats(al), "worst": worst_case(pk), "n_picks": len(pk), "text": ""}
+
+
+def recent_vs_old(rows, recent=100):
+    """Rolling memory check: how did the newest setups end compared with the older ones (BOT exit)?"""
+    if len(rows) < 2 * MIN_GROUP + recent // 2:
+        return None
+    bi = _bot_i()
+    new, old = rows[-recent:], rows[:-recent]
+    pct = lambda xs: int(round(100.0 * sum(1 for r in xs if r[5][bi] > 0) / len(xs)))
+    return {"recent_n": len(new), "recent_win": pct(new), "old_n": len(old), "old_win": pct(old), "half_life": ROLL_HALF}
+
+
+# ---------------------------------------------------------------- 8b. exit learner (shadow only, see brain_exit.py)
+def _exit_view(state, trades):
+    try:
+        import brain_exit as BX
+        return BX.view(state, trades)
+    except Exception as e:
+        return {"status": "error", "text": "Exit learner error: %s" % str(e)[:80], "n_past": 0, "open": [], "stages": [], "score": {"n": 0, "right": 0, "pct": None, "text": ""}}
+
+
+def _follow_view(rows, trades):
+    try:
+        import brain_follow as BF
+        return BF.build(rows, trades, score_setup)
+    except Exception as e:
+        return {"status": "error", "text": "Follow report error: %s" % str(e)[:80], "judged": 0, "need": 30, "stories": [], "dislike_avg": None}
+
+
 # ---------------------------------------------------------------- 9. the view for the app
-def build_view(rows=None, trades=None, watch=None, scan_t=0, progress="", err="", book=None, tv=None):
+def build_view(rows=None, trades=None, watch=None, scan_t=0, progress="", err="", book=None, tv=None, scan_coins=None, exit_state=None):
     if rows is None:
         rows, trades = read_v1()
     trades = trades or []
     rl, gp = patterns(rows)
+    sigs = signals_view(rows, trades) if rows else []
+    tv = tv or trust(rows, trades)
     return {"beat": time.time(), "enabled": True, "rows": len(rows), "min_n": MIN_N,
             "status": "ready" if len(rows) >= 4 * MIN_GROUP else "collecting",
             "status_text": ("Ready." if len(rows) >= 4 * MIN_GROUP else
                             f"Collecting: {len(rows)} old setups read. Needs about {4 * MIN_GROUP} for the first patterns."),
-            "signals": signals_view(rows, trades) if rows else [],
+            "signals": sigs,
+            "now": thinking(rows, sigs, tv, scan_coins, scan_t, watch),
+            "luck": luck_test(rows, trades) if rows else None, "risk": risk_view(book, trades) if book and book.get("picks") is not None else None,
+            "drift": recent_vs_old(rows),
+            "exit": _exit_view(exit_state, trades),
+            "follow": _follow_view(rows, trades),
+            "by_key": {"%s|%s|%s" % (x["s"], x["f"], x["t"]): {"clean": x["clean"], "div": x["div"], "verdict": x["verdict"], "text": x["verdict_text"]} for x in sigs},
             "hours": hours_table(rows), "repeat_loss": rl, "patterns": gp, "speed": fast_slow(rows),
-            "bands": bands(rows) if len(rows) >= 3 * MIN_GROUP else [], "trust": tv or trust(rows, trades),
+            "bands": bands(rows) if len(rows) >= 3 * MIN_GROUP else [], "trust": tv,
             "watch": watch or [], "scan_t": scan_t, "progress": progress, "error": err,
             "book": book_summary(book, trades) if book and book.get("picks") is not None else None}
 
@@ -527,7 +738,7 @@ def worker():
     except Exception:
         pass
     from recovered_bot import ai_shadow_lab as LAB
-    watch, scan_t = [], 0.0
+    watch, scan_t, scan_list = [], 0.0, []
     print("smart_brain worker started", flush=True)
     while True:
         err = ""
@@ -537,13 +748,20 @@ def worker():
                 rows, trades = read_v1()
                 if time.time() - scan_t > SCAN_S and len(rows) >= 4 * MIN_GROUP:
                     coins = [k.split("|")[0] for k in (_load("dual_lab_data.json", {}).get("fetched") or {}) if k.endswith("|" + SCAN_TF)]
-                    watch, scan_t = scan(rows, list(dict.fromkeys(coins)), LAB._fetch_limit), time.time()
+                    scan_list = list(dict.fromkeys(coins))[:SCAN_COINS]
+                    watch, scan_t = scan(rows, scan_list, LAB._fetch_limit), time.time()
                 book = _load("smart_brain_book.json", {})
                 tv = trust(rows, trades)
                 if len(rows) >= 4 * MIN_GROUP:
                     update_book(book, rows, trades, tv.get("verdict"))
                     _save("smart_brain_book.json", book)
-                view = build_view(rows, trades, watch, scan_t, book=book, tv=tv)
+                try:
+                    import brain_exit as BX
+                    ex = BX.update(_load("smart_brain_exit.json", {}), trades)
+                    _save("smart_brain_exit.json", ex)
+                except Exception:
+                    ex = None
+                view = build_view(rows, trades, watch, scan_t, book=book, tv=tv, scan_coins=scan_list, exit_state=ex)
             else:
                 view = dict(build_view([], []), enabled=False, status="stopped", status_text="Stopped.")
             _save("smart_brain_view.json", view)
@@ -563,7 +781,52 @@ _SPAWN = {"t": 0.0, "err": ""}
 
 
 def set_enabled(on):
-    _save("smart_brain_ctl.json", {"enabled": bool(on)})
+    ctl = _load("smart_brain_ctl.json", {"enabled": True})
+    ctl["enabled"] = bool(on)
+    _save("smart_brain_ctl.json", ctl)
+
+
+GATE_WINDOW_S = 1800         # a main-bot signal is matched to a Dual Bot setup of the same coin and side seen in the last 30 minutes
+
+
+def gate_on():
+    return bool(_load("smart_brain_ctl.json", {}).get("gate", False))
+
+
+def set_gate(on):
+    """The skip switch. Default OFF. Only changes the one flag; never touches Dual Bot."""
+    ctl = _load("smart_brain_ctl.json", {"enabled": True})
+    ctl["gate"] = bool(on)
+    _save("smart_brain_ctl.json", ctl)
+
+
+def gate_reason(symbol, action, now=None):
+    """Called by the main bot before it opens a paper trade. Returns a reason text ONLY when ALL of these are true, else None (= take it):
+    the switch is ON, the Brain is running, trust is 'earned', the luck test says 'solid', the same coin and side has a matching Dual Bot
+    setup from the last 30 minutes, and the Brain DISLIKES that setup. Unknown or unsure always means: take the trade."""
+    try:
+        if not gate_on():
+            return None
+        now = now or time.time()
+        view = _load("smart_brain_view.json", {})
+        if now - float(view.get("beat") or 0) > BEAT_STALE_S:
+            return None
+        if (view.get("trust") or {}).get("verdict") != "earned" or (view.get("luck") or {}).get("verdict") != "solid":
+            return None
+        want = 1 if str(action).upper() in ("BUY", "LONG") else -1
+        best = None
+        for x in view.get("signals") or []:
+            if x.get("s") != symbol or x.get("d") != want or x.get("src") not in ("MAIN", "BOTH"):
+                continue
+            t = float(x.get("t") or 0)
+            t = t / 1000.0 if t > 1e11 else t
+            if 0 <= now - t <= GATE_WINDOW_S and (best is None or t > best[0]):
+                best = (t, x)
+        if best and best[1].get("verdict") == "dislike":
+            return "Smart Brain skipped it: " + str(best[1].get("verdict_text") or "dislikes this setup")[:110]
+    except Exception:
+        return None
+    return None
 
 
 def ensure_running():
@@ -598,7 +861,7 @@ def status():
         state, text = "starting", "Starting up, give it a minute."
     out = dict(view) if view else {"signals": [], "hours": [], "repeat_loss": [], "patterns": [], "bands": [], "watch": [],
                                     "trust": {"verdict": "learning", "text": "No data yet."}, "rows": 0, "min_n": MIN_N}
-    out.update({"enabled": enabled, "running": running, "state": state, "state_text": text,
+    out.update({"gate": gate_on(), "enabled": enabled, "running": running, "state": state, "state_text": text,
                 "error": _SPAWN["err"] or out.get("error", "")})
     return out
 

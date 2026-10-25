@@ -243,7 +243,7 @@ class _SignalsScreenState extends State<SignalsScreen> {
         children: List.generate(
           4,
           (_) => const Padding(
-            padding: EdgeInsets.only(bottom: AppSpacing.s),
+            padding: EdgeInsets.only(bottom: AppSpacing.cardGap),
             child: OWLSkeleton.card(height: 96),
           ),
         ),
@@ -338,7 +338,7 @@ class _SignalsScreenState extends State<SignalsScreen> {
         final it = row as _Item;
         final open = _expanded.contains(it.key);
         return Padding(
-          padding: const EdgeInsets.only(bottom: AppSpacing.s),
+          padding: const EdgeInsets.only(bottom: AppSpacing.cardGap),
           child: _row(context, it, items, open),
         );
       },
@@ -368,9 +368,9 @@ class _SignalsScreenState extends State<SignalsScreen> {
     final lev = (_btc['leverage'] is num) ? (_btc['leverage'] as num).toStringAsFixed(0) : '10';
     int n(dynamic v) => v is num ? v.toInt() : 0;
     return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.s),
+      padding: const EdgeInsets.only(bottom: AppSpacing.cardGap),
       child: OWLCard(
-        padding: const EdgeInsets.all(AppSpacing.m),
+        padding: const EdgeInsets.all(AppSpacing.cardPad),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -423,9 +423,9 @@ class _SignalsScreenState extends State<SignalsScreen> {
     final netColor = td.net > 0 ? p.profit : (td.net < 0 ? p.loss : p.textSecondary);
     final wr = td.winRate;
     return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.s),
+      padding: const EdgeInsets.only(bottom: AppSpacing.cardGap),
       child: OWLCard(
-        padding: const EdgeInsets.all(AppSpacing.m),
+        padding: const EdgeInsets.all(AppSpacing.cardPad),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

@@ -163,4 +163,71 @@ check(B.update_book({}, rows[:5], alltr, "earned", now_ms=fut)["picks"] == {}, "
 vb = B.build_view(r2, alltr, [], 0, book=book)
 check(vb["book"]["picks"]["n"] >= 20 and len(vb["book"]["recent"]) <= 10, "book is in the view")
 json.dumps(vb)
+
+# 12. Part 1: the Brain says what it thinks (verdict per setup, one summary on top, per-trade badge map)
+sg = B.score_setup(rows, clean)
+sd = B.score_setup(rows, dirty)
+check(sg["verdict"] == "like" and "Likes it" in sg["verdict_text"], "clean setup with a good record is liked")
+check(sd["verdict"] == "dislike" and sd["verdict_text"], "dirty setup is disliked, with a reason")
+check(B.score_setup(rows[:5], clean)["verdict"] == "unsure", "too few look-alikes = unsure, not a made-up opinion")
+check(B.verdict_of(sg)[0] == ("like" if B.is_pick(sg) else "unsure"), "verdict follows the same rule as the paper-book pick")
+vn = B.build_view(r2, t2, [], 0, scan_coins=["AAAUSDT", "BBBUSDT"])
+nw = vn["now"]
+check(nw["mood"] in ("like", "unsure", "dislike", "idle") and nw["headline"], "summary headline")
+check(nw["learning"]["scan_n"] == 2 and nw["learning"]["scan_list"] == ["AAA", "BBB"], "scan coins shown")
+check(nw["learning"]["rows"] == 400 and nw["learning"]["need_rows"] == 4 * B.MIN_GROUP and nw["learning"]["next"], "learning block")
+check(len(nw["guide"]) == 3, "score colour guide")
+live = [x for x in vn["signals"] if x.get("status") in ("open", "skipped")]
+if len(live) > 1:
+    check(nw["best"] is not None and nw["worst"] is not None and nw["best"]["clean"] >= nw["worst"]["clean"], "best is not worse than worst")
+check(len(vn["by_key"]) == len(vn["signals"]) and all(set(v_) == {"clean", "div", "verdict", "text"} for v_ in vn["by_key"].values()), "badge map per trade (coin|timeframe|signal time)")
+x0 = vn["signals"][0]
+check(vn["by_key"]["%s|%s|%s" % (x0["s"], x0["f"], x0["t"])]["clean"] == x0["clean"], "badge key matches the Dual Bot row fields")
+vc = B.build_view(rows[:10], [], [], 0)
+check(vc["now"]["mood"] == "collecting" and "Still collecting" in vc["now"]["headline"] and vc["now"]["best"] is None, "collecting state, no opinions")
+check(vc["now"]["learning"]["next"].startswith("Next:"), "says what is missing")
+th = B.thin_spots(rows[:30] + [dict_row for dict_row in []])
+check(isinstance(th, list) and len(th) <= 4, "thin spots capped")
+json.dumps(vn); json.dumps(vc)
+check(open(path, "rb").read() == before, "dual_lab_data.json still untouched after the new summary")
+check(B.build_view([], [])["now"]["mood"] == "collecting", "stopped view still builds")
+
+
+# 13. Part 3: luck test, risk numbers, worst case, rolling memory
+lk = B.luck_test(rows, tr_edge)
+check(lk["verdict"] == "solid" and lk["p"] <= 0.05, f"a planted edge is hard to explain by luck: {lk}")
+lk_n = B.luck_test(noise_rows, trades_from(noise_rows, 120, False))
+check(lk_n["verdict"] in ("maybe", "luck", "learning") and lk_n["verdict"] != "solid", f"pure noise is not called solid: {lk_n['verdict']}")
+check(B.luck_test(rows, tr_edge[:5])["verdict"] == "learning" and B.luck_test(rows, tr_edge[:5])["p"] is None, "too few trades = no luck verdict")
+check(B.luck_test(rows, tr_edge) == lk, "luck test gives the same answer twice (fixed seed)")
+rk = B.risk_stats([10, -5, 10, -20, 10, 10, -5, 10, 10, 10])
+check(rk["max_dd"] == 20 and rk["total"] == 40 and rk["cvar5"] == -20 and rk["sharpe"] > 0 and rk["sortino"] > 0, f"risk numbers: {rk}")
+check(B.risk_stats([5] * 4) is None, "risk numbers need enough trades")
+check(B.risk_stats([5] * 12)["sharpe"] is None and B.risk_stats([5] * 12)["max_dd"] == 0, "no losses: no division by zero")
+wc = B.worst_case([10, -5, 10, -20, 10, 10, -5, 10, 10, 10])
+check(wc["p95"] >= wc["median"] >= 0 and wc["p95"] >= 20 and "95 of 100" in wc["text"], f"worst case: {wc}")
+check(B.worst_case([1, 2]) is None, "worst case needs enough trades")
+rv = B.risk_view(book, alltr)
+check(rv["picks"] and rv["picks"]["n"] == 20 and rv["all"]["n"] == 40 and rv["worst"], f"risk view {rv}")
+check(rv["picks"]["total"] > rv["all"]["total"], "picks earned more than all signals on the planted edge")
+check(B.risk_view({"since": fut, "picks": {}}, alltr)["picks"] is None, "no picks = no risk numbers, says why")
+# rolling memory: newer look-alikes count more. Old rows say clean wins, the NEWEST rows say clean loses.
+old_rows = [mkrow(i, True) for i in range(300)]
+for r in old_rows:
+    r[5] = [12.0] * nx
+new_rows = [mkrow(300 + i, True) for i in range(100)]
+for r in new_rows:
+    r[5] = [-9.0] * nx
+mixed = old_rows + new_rows
+prm = B.probability(mixed, clean)
+check(prm and prm["win_pct"] < 75, f"rolling memory leans to the newer trades ({prm['win_pct']}% instead of the plain 75%)")
+check(B.probability(rows, clean, t_cut) == B.probability(older, clean), "rolling weights still ignore newer rows")
+dr = B.recent_vs_old(mixed)
+check(dr and dr["recent_win"] == 0 and dr["old_win"] == 100, f"recent vs old: {dr}")
+check(B.recent_vs_old(rows[:30]) is None, "no drift line from a tiny memory")
+vr = B.build_view(r2, alltr, [], 0, book=book)
+check(vr["luck"] and vr["risk"]["picks"] and "drift" in vr, "luck, risk and drift are in the view")
+json.dumps(vr)
+check(open(path, "rb").read() == before, "dual_lab_data.json still untouched after Part 3")
+
 print("OK %d checks" % ok)
