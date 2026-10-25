@@ -22,6 +22,9 @@ Rule for anyone working on this repo: do NOT break the running bot, Dual Bot v1 
 | 10 | Brain "skip bad signals" gate: built, then the app switch was REMOVED on purpose. Brain cannot skip any trade. Default OFF in backend. | smart_brain.py, test_brain_gate.py |
 
 | 11 | Fixes 25 Oct: tab keeps last reply (no "Connecting..."), TP ladder labels no longer overlap, workers start earlier (Dual Bot 8 s, Brain 15 s) and Brain's first round skips the slow coin scan, trust needs 100 judged trades with a progress line on the Brain tab | dual_bot_screen.dart, smart_brain_view.dart, dual_trade_card.dart, api_server.py, smart_brain.py |
+| 12 | Brain's OWN paper trades, separate book (`smart_brain_own.json`). When the 5-minute scan finds a setup it likes it opens a pretend trade (same stop, targets and exit rule as Dual Bot), follows it to the end, shows open / finished trades and USDT on the Brain tab. Max 20 open. Never touches Dual Bot or the main bot. | brain_own.py, smart_brain.py, smart_brain_view.dart, test_brain_own.py |
+| 13 | Brain learns WHICH EXIT works (FULL TP / HALF TP / HOLD) from old setups (their results for every exit style are already in Dual Bot's memory). Its own pretend trades use the style that was clearly best among look-alikes, else the bot's exit. Shown on the Brain tab with results by exit style. Advice for the Brain's own pretend trades only. | brain_exit_pick.py, brain_own.py, smart_brain.py, smart_brain_view.dart, test_brain_exit_pick.py |
+| - | tools/old_check.sh restored (report only; `move` puts old main.py / config.py in backend/_old/, never deletes) | tools/old_check.sh |
 
 ## NOT DONE - waiting for DATA (do not build early)
 | Work | Files / lines | Start only when ALL of these are true |
@@ -54,7 +57,7 @@ Rule for anyone working on this repo: do NOT break the running bot, Dual Bot v1 
 
 ## Owner's vision (told 25 Oct 2026, NOT built yet - no live, no India)
 Dual Bot learns the two indicators. Smart Brain is the upgrade: it should find opportunities itself, take its own PAPER trades, learn from new data and explore new scenarios (sideways, time, speed), and learn when to book full TP, half TP or hold. Maybe later he gives it $10 to trade for real. Also: data must load fast after the backend starts.
-Next steps when he says ok: (1) Brain own paper trades in a separate book, (2) exit learning for full / half TP and hold. (Fast load after start is done, see Part 11.) Always tell files and lines first.
+Brain own paper trades (Part 12), exit learning (Part 13) and fast load (Part 11) are DONE. Still waiting for data: Step D and Brain skip (see above). Always tell files and lines first.
 
 ## For the next Claude
 When the owner starts a new chat, first read this file. If the numbers above look reached (Brain tab: TRUST METER, "What if the bot had listened?", exit hit-rate), ASK the owner: "Data is ready for Step D / Brain skip. Do you want me to build it?" Do not build without his ok.

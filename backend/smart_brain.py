@@ -415,6 +415,9 @@ def scan(rows, coins, fetch_limit):
     This never places a trade and never writes into Dual Bot."""
     TL = _tl()
     from recovered_bot import ai_ind_features as F
+    import brain_own as BO
+    from recovered_bot.strategy import ABCDStrategy
+    strat = ABCDStrategy()
     found = []
     for sym in coins[:SCAN_COINS]:
         try:
@@ -434,6 +437,7 @@ def scan(rows, coins, fetch_limit):
                 pr = sc["prob"]
                 if pr and sc["clean"] >= 70 and pr["win_pct"] >= 55 and sc["div"] <= 29:
                     sc.update({"s": sym, "f": SCAN_TF, "d": d, "t": int(time.time() * 1000)})
+                    sc["_plan"], sc["_tg"] = BO.plan_levels(S, i, d, strat), tg   # used by brain_own, removed before the view is saved
                     found.append(sc)
         except Exception:
             continue
@@ -676,7 +680,23 @@ def _follow_view(rows, trades):
 
 
 # ---------------------------------------------------------------- 9. the view for the app
-def build_view(rows=None, trades=None, watch=None, scan_t=0, progress="", err="", book=None, tv=None, scan_coins=None, exit_state=None):
+def _exitpick_view(rows):
+    try:
+        import brain_exit_pick as XP
+        return XP.exit_table(rows)
+    except Exception:
+        return None
+
+
+def _own_view(own):
+    try:
+        import brain_own as BO
+        return BO.summary(own)
+    except Exception:
+        return None
+
+
+def build_view(rows=None, trades=None, watch=None, scan_t=0, progress="", err="", book=None, tv=None, scan_coins=None, exit_state=None, own=None):
     if rows is None:
         rows, trades = read_v1()
     trades = trades or []
@@ -693,6 +713,8 @@ def build_view(rows=None, trades=None, watch=None, scan_t=0, progress="", err=""
             "drift": recent_vs_old(rows),
             "exit": _exit_view(exit_state, trades),
             "follow": _follow_view(rows, trades),
+            "own": _own_view(own),
+            "exit_pick": _exitpick_view(rows),
             "by_key": {"%s|%s|%s" % (x["s"], x["f"], x["t"]): {"clean": x["clean"], "div": x["div"], "verdict": x["verdict"], "text": x["verdict_text"]} for x in sigs},
             "hours": hours_table(rows), "repeat_loss": rl, "patterns": gp, "speed": fast_slow(rows),
             "bands": bands(rows) if len(rows) >= 3 * MIN_GROUP else [], "trust": tv,
@@ -745,12 +767,27 @@ def worker():
         err = ""
         try:
             enabled = bool(_load("smart_brain_ctl.json", {"enabled": True}).get("enabled", True))
+            scanned = False
             if enabled:
                 rows, trades = read_v1()
                 if not first and time.time() - scan_t > SCAN_S and len(rows) >= 4 * MIN_GROUP:
                     coins = [k.split("|")[0] for k in (_load("dual_lab_data.json", {}).get("fetched") or {}) if k.endswith("|" + SCAN_TF)]
                     scan_list = list(dict.fromkeys(coins))[:SCAN_COINS]
                     watch, scan_t = scan(rows, scan_list, LAB._fetch_limit), time.time()
+                    scanned = True
+                own = _load("smart_brain_own.json", {})
+                try:                                           # the Brain's own pretend trades: any problem here is ignored
+                    import brain_own as BO
+                    if scanned:
+                        import brain_exit_pick as XP
+                        BO.open_from(own, watch, pick_fn=lambda tg: XP.pick(rows, tg))   # also strips the plan out of the watch list
+                    BO.settle(own, LAB._fetch_limit)
+                    if own.get("since") is not None:
+                        _save("smart_brain_own.json", own)
+                except Exception as e:
+                    print("smart_brain: own trades skipped: %s: %s" % (type(e).__name__, str(e)[:100]), flush=True)
+                for w in watch:                                # never leave plan data in the saved view
+                    w.pop("_plan", None), w.pop("_tg", None)
                 book = _load("smart_brain_book.json", {})
                 tv = trust(rows, trades)
                 if len(rows) >= 4 * MIN_GROUP:
@@ -762,7 +799,7 @@ def worker():
                     _save("smart_brain_exit.json", ex)
                 except Exception:
                     ex = None
-                view = build_view(rows, trades, watch, scan_t, book=book, tv=tv, scan_coins=scan_list, exit_state=ex)
+                view = build_view(rows, trades, watch, scan_t, book=book, tv=tv, scan_coins=scan_list, exit_state=ex, own=own)
             else:
                 view = dict(build_view([], []), enabled=False, status="stopped", status_text="Stopped.")
             _save("smart_brain_view.json", view)

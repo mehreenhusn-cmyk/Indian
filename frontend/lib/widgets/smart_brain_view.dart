@@ -575,6 +575,91 @@ class _SmartBrainViewState extends State<SmartBrainView> {
     ]);
   }
 
+  /// Exit styles the Brain compared (full TP / half TP / hold), from old setups. Advice for its own pretend trades only.
+  Widget _exitPickCard(AppPalette p) {
+    final x = _map(_st['exit_pick']);
+    if (x.isEmpty) return const SizedBox.shrink();
+    final rows = _maps(x['table']);
+    final ready = '${x['status']}' == 'ready';
+    String sg(num v) => '${v >= 0 ? '+' : ''}${v.toStringAsFixed(1)}';
+    const kinds = {'FULL': 'FULL TP', 'HALF': 'HALF TP', 'HOLD': 'HOLD', 'TIME': 'TIME EXIT'};
+    return _card(p, title: 'WHICH EXIT WORKS BEST (FULL TP / HALF TP / HOLD)', edge: ready ? null : p.textMuted, children: [
+      Text('${x['text'] ?? ''}', style: context.type.primary),
+      if (rows.isNotEmpty) ...[
+        const SizedBox(height: 8),
+        for (final r in rows)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: Row(children: [
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text('${r['name']}', style: context.type.secondary.copyWith(fontWeight: r['best'] == true ? FontWeight.w800 : FontWeight.w500)),
+                  Text('${kinds['${r['kind']}'] ?? r['kind']} - ${_n(r['win']).toInt()}% won', style: context.type.metadata),
+                ]),
+              ),
+              Text('${sg(_n(r['avg']))}%', style: context.type.secondary.copyWith(color: _n(r['avg']) >= 0 ? p.profit : p.loss, fontWeight: FontWeight.w700)),
+            ]),
+          ),
+      ],
+      const SizedBox(height: 4),
+      Text('Average result per old setup, as % of margin, fee inside. For each new own trade the Brain looks only at look-alike setups and uses another exit only when it is clearly better. Pretend money only.', style: context.type.metadata),
+    ]);
+  }
+
+  /// The Brain's OWN pretend trades (paper only, separate book). It never touches Dual Bot or the main bot.
+  Widget _ownCard(AppPalette p) {
+    final o = _map(_st['own']);
+    if (o.isEmpty) return const SizedBox.shrink();
+    final open = _maps(o['open']);
+    final recent = _maps(o['recent']);
+    final n = _n(o['n']).toInt();
+    final pnl = _n(o['pnl']);
+    String sg(num v) => '${v >= 0 ? '+' : ''}${v.toStringAsFixed(2)}';
+    String side(dynamic d) => _n(d) > 0 ? 'BUY' : 'SELL';
+    return _card(p, title: "THE BRAIN'S OWN PAPER TRADES", edge: n == 0 ? p.textMuted : (pnl >= 0 ? p.profit : p.loss), children: [
+      Text('${o['text'] ?? ''}', style: context.type.primary),
+      if (open.isNotEmpty) ...[
+        const SizedBox(height: 8),
+        Text('Open now', style: context.type.label.copyWith(fontWeight: FontWeight.w700)),
+        for (final t in open)
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Row(children: [
+              Expanded(child: Text('${_coin(t['s'])} ${t['f']} ${side(t['d'])}${t['kind'] != null ? ' - ${t['kind']}' : ''}', style: context.type.secondary.copyWith(fontWeight: FontWeight.w700))),
+              if (t['usdt'] is num) Text('${sg(_n(t['usdt']))} USDT', style: context.type.secondary.copyWith(color: _n(t['usdt']) >= 0 ? p.profit : p.loss, fontWeight: FontWeight.w700))
+              else Text('just opened', style: context.type.metadata),
+            ]),
+          ),
+      ],
+      if (recent.isNotEmpty) ...[
+        const SizedBox(height: 8),
+        Text('Last finished', style: context.type.label.copyWith(fontWeight: FontWeight.w700)),
+        for (final t in recent)
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Row(children: [
+              Expanded(child: Text('${_coin(t['s'])} ${side(t['d'])} - ${t['end'] ?? ''}', style: context.type.secondary)),
+              Text('${sg(_n(t['usdt']))} USDT', style: context.type.secondary.copyWith(color: _n(t['usdt']) >= 0 ? p.profit : p.loss, fontWeight: FontWeight.w700)),
+            ]),
+          ),
+      ],
+      if (_maps(o['by_exit']).isNotEmpty) ...[
+        const SizedBox(height: 8),
+        Text('Result by exit style', style: context.type.label.copyWith(fontWeight: FontWeight.w700)),
+        for (final b in _maps(o['by_exit']))
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Row(children: [
+              Expanded(child: Text('${b['kind']}: ${_n(b['n']).toInt()} trades, ${_n(b['wins']).toInt()} won', style: context.type.secondary)),
+              Text('${sg(_n(b['pnl']))} USDT', style: context.type.secondary.copyWith(color: _n(b['pnl']) >= 0 ? p.profit : p.loss, fontWeight: FontWeight.w700)),
+            ]),
+          ),
+      ],
+      const SizedBox(height: 6),
+      Text('Pretend money only. The Brain opens a trade when its scan finds a setup it likes, with the same stop, targets and exit rule as Dual Bot. It never touches Dual Bot or the main bot.', style: context.type.metadata),
+    ]);
+  }
+
   @override
   Widget build(BuildContext context) {
     final p = context.palette;
@@ -587,6 +672,8 @@ class _SmartBrainViewState extends State<SmartBrainView> {
       _luckCard(p),
       _exitCard(p),
       _followCard(p),
+      _exitPickCard(p),
+      _ownCard(p),
       _bookCard(p),
       _riskCard(p),
       _watchCard(p),
