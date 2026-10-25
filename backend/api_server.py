@@ -905,7 +905,63 @@ def _attach_signal_results(sigs):
 @app.get("/api/signals")
 def get_signals(bot: str = "b1"):
     _mode = "LIVE" if settings_store.get("live_trading_enabled", False) else None   # LIVE account: real signals only
-    return {"signals": _attach_signal_results(db.get_recent_signals(400, bot=_bot_arg(bot), mode=_mode))}
+    # BTC has its own list and numbers (/api/btc/signals): the alt-coin list never includes it.
+    return {"signals": _attach_signal_results(db.get_recent_signals(400, bot=_bot_arg(bot), mode=_mode, btc=False))}
+
+
+@app.get("/api/btc/live")
+def get_btc_live():
+    """BTC live price (from the bot's own Binance push feed, REST fallback) + BTC's own today numbers. Light call: the
+    Dashboard tile asks every second."""
+    from recovered_bot import market_ws
+    price, src, _err = market_ws.get_best_live_price(trade_store.BTC_SYMBOL)
+    change = None
+    try:
+        live = market_ws.get_live(trade_store.BTC_SYMBOL)
+        change = live.get("change_pct") if live else None
+    except Exception:
+        pass
+    open_pnl, open_n = 0.0, 0
+    try:
+        for pos in (status.get().get("open_positions") or []):
+            if str(pos.get("symbol")).upper() == trade_store.BTC_SYMBOL:
+                open_n += 1
+                open_pnl += float(pos.get("pnl_usdt") or pos.get("pnl") or 0.0)
+    except Exception:
+        pass
+    st = trade_store.get_btc_stats()
+    return {"price": price, "src": src, "change_pct": change, "today_pnl": st["today_pnl_usdt"],
+            "today_trades": st["total_trades"], "open": open_n, "open_pnl": round(open_pnl, 4), "ts": time.time()}
+
+
+@app.get("/api/btc/signals")
+def get_btc_signals():
+    """BTC only: its own signals + trades for Today / Yesterday / Day before (trading day = 5:30 AM IST),
+    kept apart from the alt-coin numbers. Each day: signals, opened, skipped, won, lost, P&L."""
+    _mode = "LIVE" if settings_store.get("live_trading_enabled", False) else None
+    start = trade_store._trading_day_start_ts()
+    sigs = _attach_signal_results(db.get_recent_signals(200, bot="b1", mode=_mode, btc=True))
+    for s in sigs:
+        try:
+            no = int(s.get("signal_no") or 0)
+            s["btc_no"] = no - trade_store.BTC_NO_BASE if no >= trade_store.BTC_NO_BASE else no
+        except Exception:
+            pass
+    closed = trade_store.get_btc_closed_days(3)
+    names = ["Today", "Yesterday", "Day before"]
+    days = []
+    for i in range(3):
+        lo, hi = start - i * 86400, (start - (i - 1) * 86400) if i else float("inf")
+        day_sigs = [s for s in sigs if lo <= float(s.get("recorded_at") or 0) < hi]
+        opened = sum(1 for s in day_sigs if s.get("opened"))
+        open_now = sum(1 for s in day_sigs if (s.get("result") or {}).get("state") == "open")
+        c = closed[i]
+        days.append({"name": names[i], "signals": len(day_sigs), "opened": opened, "skipped": len(day_sigs) - opened,
+                     "open": open_now, "won": c["wins"], "lost": c["losses"], "pnl": c["pnl"]})
+    keep = [s for s in sigs if float(s.get("recorded_at") or 0) >= start - 2 * 86400]
+    return {"signals": keep, "days": days, "today": trade_store.get_btc_stats(),
+            "margin": float(settings_store.get("btc_margin", 1000.0) or 1000.0),
+            "leverage": int(settings_store.get("btc_leverage", 10) or 10)}
 
 
 @app.get("/api/daily-report")

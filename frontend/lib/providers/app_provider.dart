@@ -509,6 +509,23 @@ class AppProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// BTC (own numbers, apart from the alt coins): GET a /api/btc/... path and return the decoded map, or null.
+  Future<Map<String, dynamic>?> getBtcJson(String path) async {
+    try {
+      final res = await _getResilient(_u(path));
+      if (res.statusCode == 200) return jsonDecode(res.body) as Map<String, dynamic>;
+    } catch (_) {}
+    return null;
+  }
+
+  /// Dashboard BTC tile asks the Signals tab to open with the BTC chip on.
+  int btcReq = 0;
+  void openBtcSignals() {
+    btcReq++;
+    goToTab(3);
+    notifyListeners();
+  }
+
   Future<void> fetchSettings() async {
     try {
       final res = await _getResilient(_u('/api/settings'));

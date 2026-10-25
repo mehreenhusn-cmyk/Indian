@@ -299,24 +299,24 @@ def record_signal(signal, symbol, opened, skip_reason=None, bot="b1"):
 
 
 def count_signals_today(mode=None, since_ts=0.0):
-    """Signals recorded since since_ts (the trading-day start); mode='LIVE' / 'PAPER' limits it to that mode."""
+    """ALT-coin signals recorded since since_ts (the trading-day start; BTC has its own count); mode='LIVE' / 'PAPER' limits it to that mode."""
     _ensure_init()
     try:
         with _lock:
             if mode:
                 r = _conn.execute(
                     "SELECT COUNT(*) FROM signals WHERE recorded_at >= ? AND UPPER(COALESCE(mode,'')) = ? "
-                    "AND (bot IS NULL OR bot != 'b2')", (float(since_ts), str(mode).upper())).fetchone()
+                    "AND (bot IS NULL OR bot != 'b2') AND UPPER(symbol) != 'BTCUSDT'", (float(since_ts), str(mode).upper())).fetchone()
             else:
                 r = _conn.execute(
-                    "SELECT COUNT(*) FROM signals WHERE recorded_at >= ? AND (bot IS NULL OR bot != 'b2')",
+                    "SELECT COUNT(*) FROM signals WHERE recorded_at >= ? AND (bot IS NULL OR bot != 'b2') AND UPPER(symbol) != 'BTCUSDT'",
                     (float(since_ts),)).fetchone()
         return int(r[0] or 0)
     except Exception:
         return 0
 
 
-def get_recent_signals(limit=100, bot="b1", mode=None):
+def get_recent_signals(limit=100, bot="b1", mode=None, btc=None):
     """Most-recent-first list of dicts - same shape signal_log.get_recent()
     returned, so GET /api/signals needs no response-shape change, only its
     import/call site swapped."""
@@ -329,7 +329,8 @@ def get_recent_signals(limit=100, bot="b1", mode=None):
                    recorded_at, opened, skip_reason, timeframe, leverage, mode
             FROM signals WHERE {where} ORDER BY id DESC LIMIT ?
             """.format(where=("bot = 'b2'" if str(bot or "b1").lower() == "b2" else "(bot IS NULL OR bot != 'b2')")
-                       + (" AND UPPER(COALESCE(mode,'')) = '%s'" % ("LIVE" if str(mode).upper() == "LIVE" else "PAPER") if mode else "")),
+                       + (" AND UPPER(COALESCE(mode,'')) = '%s'" % ("LIVE" if str(mode).upper() == "LIVE" else "PAPER") if mode else "")
+                       + ("" if btc is None else (" AND UPPER(symbol) = 'BTCUSDT'" if btc else " AND UPPER(symbol) != 'BTCUSDT'"))),
             (limit,),
         ).fetchall()
     return [

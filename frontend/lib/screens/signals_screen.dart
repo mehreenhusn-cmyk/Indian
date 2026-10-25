@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
@@ -96,7 +97,49 @@ class SignalsScreen extends StatefulWidget {
 class _SignalsScreenState extends State<SignalsScreen> {
   String _filter = 'auto'; // auto | running | closed | skipped  (auto = Running when something runs, else Closed)
   final Set<String> _expanded = {};
-  bool _btcOnly = false; // BTC chip on top: shows only BTCUSDT signals, with their own summary
+  bool _btcOnly = false; // BTC chip on top: BTC has its own numbers (3 days) and its own list, never mixed with the alt coins
+  Map<String, dynamic> _btc = {}; // GET /api/btc/signals
+  Timer? _btcTimer;
+  int _seenReq = 0;
+  AppProvider? _prov;
+
+  @override
+  void initState() {
+    super.initState();
+    _prov = context.read<AppProvider>();
+    _seenReq = _prov!.btcReq;
+    _prov!.addListener(_onProv);
+  }
+
+  @override
+  void dispose() {
+    _prov?.removeListener(_onProv);
+    _btcTimer?.cancel();
+    super.dispose();
+  }
+
+  /// The Dashboard BTC tile asks for the BTC view.
+  void _onProv() {
+    final r = _prov?.btcReq ?? 0;
+    if (r != _seenReq) {
+      _seenReq = r;
+      if (mounted) _setBtc(true);
+    }
+  }
+
+  void _setBtc(bool on) {
+    setState(() => _btcOnly = on);
+    _btcTimer?.cancel();
+    if (on) {
+      _loadBtc();
+      _btcTimer = Timer.periodic(const Duration(seconds: 10), (_) => _loadBtc());
+    }
+  }
+
+  Future<void> _loadBtc() async {
+    final d = await context.read<AppProvider>().getBtcJson('/api/btc/signals');
+    if (d != null && mounted) setState(() => _btc = d);
+  }
 
   bool _match(String tab, SignalOutcomeKind k) {
     switch (tab) {
@@ -138,7 +181,7 @@ class _SignalsScreenState extends State<SignalsScreen> {
               const SizedBox(height: AppSpacing.m),
               Expanded(
                 child: OWLRefresh(
-                  onRefresh: () => context.read<AppProvider>().fetchSignals(),
+                  onRefresh: () => _btcOnly ? _loadBtc() : context.read<AppProvider>().fetchSignals(),
                   child: Selector<AppProvider, int>(
                     selector: (_, p) => Object.hash(
                       p.signalsRev,
@@ -165,7 +208,7 @@ class _SignalsScreenState extends State<SignalsScreen> {
     return OWLPressable(
       onTap: () {
         AppHaptics.light();
-        setState(() => _btcOnly = !_btcOnly);
+        _setBtc(!_btcOnly);
       },
       child: AnimatedContainer(
         duration: AppMotion.base,
@@ -191,8 +234,9 @@ class _SignalsScreenState extends State<SignalsScreen> {
     final t = context.type;
     final provider = context.read<AppProvider>();
     final allSignals = provider.signals.whereType<Map>().map((e) => e.cast<String, dynamic>()).toList();
-    final signals = _btcOnly ? allSignals.where((e) => '${e['symbol']}' == 'BTCUSDT').toList() : allSignals;
-    if (allSignals.isEmpty && provider.status.isEmpty && provider.error == null) {
+    final btcList = ((_btc['signals'] as List?) ?? const []).whereType<Map>().map((e) => e.cast<String, dynamic>()).toList();
+    final signals = _btcOnly ? btcList : allSignals;
+    if (!_btcOnly && allSignals.isEmpty && provider.status.isEmpty && provider.error == null) {
       // First load only: grey placeholder cards.
       return ListView(
         physics: owlPullPhysics,
@@ -204,6 +248,9 @@ class _SignalsScreenState extends State<SignalsScreen> {
           ),
         ),
       );
+    }
+    if (signals.isEmpty && _btcOnly && _btc.isNotEmpty) {
+      return ListView(physics: owlPullPhysics, children: [_btcDaysCard(context), _btcEmptyNote(context)]);
     }
     if (signals.isEmpty) {
       return OWLPullEmpty(
@@ -254,7 +301,7 @@ class _SignalsScreenState extends State<SignalsScreen> {
     final tab = _filter == 'auto' ? ((counts['running'] ?? 0) > 0 ? 'running' : 'closed') : _filter;
 
     // 3) Rows: summary, chips, then the signals grouped by day.
-    final rows = <dynamic>[_SummaryRow(today, all), _ChipsRow(counts, tab)];
+    final rows = <dynamic>[if (_btcOnly && _btc.isNotEmpty) 'btc_days' else _SummaryRow(today, all), _ChipsRow(counts, tab)];
     final shown = items.where((e) => _match(tab, e.out.kind)).toList();
     String? lastDay = '\u0000';
     for (var i = 0; i < shown.length; i++) {
@@ -281,6 +328,7 @@ class _SignalsScreenState extends State<SignalsScreen> {
         final row = rows[index];
         if (row is _SummaryRow) return _summaryCard(context, row);
         if (row is _ChipsRow) return _tabs(context, row.counts, row.active);
+        if (row == 'btc_days') return _btcDaysCard(context);
         if (row is String) {
           return Padding(
             padding: const EdgeInsets.only(top: 10, bottom: 6),
@@ -294,6 +342,75 @@ class _SignalsScreenState extends State<SignalsScreen> {
           child: _row(context, it, items, open),
         );
       },
+    );
+  }
+
+  // ---------------------------------------------------------------- BTC (own numbers, 3 days)
+
+  Widget _btcEmptyNote(BuildContext context) {
+    final t = context.type;
+    return Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: Text(
+        'No BTC signal in the last 3 days. BTC is always watched with the same EMA50 cross as every coin. '
+        'When it fires or is skipped, it shows here with the reason.',
+        style: t.metadata.copyWith(height: 1.4),
+      ),
+    );
+  }
+
+  /// Today / Yesterday / Day before - BTC only: signals, trades taken, skipped, won, lost, P&L.
+  Widget _btcDaysCard(BuildContext context) {
+    final p = context.palette;
+    final t = context.type;
+    final days = ((_btc['days'] as List?) ?? const []).whereType<Map>().map((e) => e.cast<String, dynamic>()).toList();
+    final margin = (_btc['margin'] is num) ? (_btc['margin'] as num).toStringAsFixed(0) : '1000';
+    final lev = (_btc['leverage'] is num) ? (_btc['leverage'] as num).toStringAsFixed(0) : '10';
+    int n(dynamic v) => v is num ? v.toInt() : 0;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.s),
+      child: OWLCard(
+        padding: const EdgeInsets.all(AppSpacing.m),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(children: [
+              const Icon(Icons.currency_bitcoin_rounded, size: 20, color: Color(0xFFF7931A)),
+              const SizedBox(width: 6),
+              Text('BTC ONLY', style: t.label.copyWith(fontWeight: FontWeight.w800, letterSpacing: 1.2)),
+              const Spacer(),
+              Text('$margin USDT x ${lev}x (paper)', style: t.metadata),
+            ]),
+            const SizedBox(height: AppSpacing.s),
+            for (var i = 0; i < days.length; i++) ...[
+              if (i > 0) Divider(height: 14, color: p.border),
+              Builder(builder: (_) {
+                final d = days[i];
+                final pnl = (d['pnl'] is num) ? (d['pnl'] as num).toDouble() : 0.0;
+                final c = pnl > 0 ? p.profit : (pnl < 0 ? p.loss : p.textSecondary);
+                return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Row(children: [
+                    Text('${d['name']}', style: t.primary.copyWith(fontWeight: FontWeight.w800)),
+                    const Spacer(),
+                    Text('${fmtSigned(pnl)} USDT', style: t.primary.copyWith(color: c, fontWeight: FontWeight.w800, fontSize: 17)),
+                  ]),
+                  const SizedBox(height: 4),
+                  Row(children: [
+                    _stat(t, p, 'Signals', '${n(d['signals'])}', p.textPrimary),
+                    _stat(t, p, 'Opened', '${n(d['opened'])}', p.accent),
+                    _stat(t, p, 'Won', '${n(d['won'])}', p.profit),
+                    _stat(t, p, 'Lost', '${n(d['lost'])}', p.loss),
+                    _stat(t, p, 'Skipped', '${n(d['skipped'])}', p.textMuted),
+                  ]),
+                ]);
+              }),
+            ],
+            const SizedBox(height: AppSpacing.s),
+            Text('Separate from the alt coins: not in their totals, Today P&L or daily limits. Tap a trade for its chart, Details for the levels.',
+                style: t.metadata.copyWith(height: 1.4)),
+          ],
+        ),
+      ),
     );
   }
 

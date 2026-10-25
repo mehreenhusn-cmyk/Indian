@@ -762,7 +762,15 @@ def day_review(data, now=None):
 
 
 def summary(data, model, exit_names):
-    tr = data["trades"]
+    """Alt-coin numbers at the top level; BTC (own margin, own totals) under ["btc"] - never added together."""
+    alt = [t for t in data["trades"] if t.get("s") != BTC_SYM]
+    btc = [t for t in data["trades"] if t.get("s") == BTC_SYM]
+    out = _summary_of(alt)
+    out["btc"] = _summary_of(btc)
+    return out
+
+
+def _summary_of(tr):
     closed = [t for t in tr if t["status"] == "closed"]
     opens = [t for t in tr if t["status"] == "open"]
     skipped_done = [t for t in tr if t["status"] == "skipped_done"]

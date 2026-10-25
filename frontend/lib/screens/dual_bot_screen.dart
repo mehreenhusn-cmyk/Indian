@@ -260,6 +260,27 @@ class _DualBotScreenState extends State<DualBotScreen> {
     ]);
   }
 
+  // ---- BTC (own margin, own totals - never added to the alt coins above) ----
+  Widget _btcDualCard(AppPalette p) {
+    final s = _map(_map(_st['summary'])['btc']);
+    if (s.isEmpty) return const SizedBox.shrink();
+    final t = _map(s['today']);
+    final opened = _n(t['opened']).toInt();
+    final closedN = _n(s['closed']).toInt();
+    if (opened == 0 && closedN == 0 && _n(s['open']) == 0) return const SizedBox.shrink();
+    final total = _n(t['total']);
+    final up = total >= 0;
+    final bm = _n(_st['btc_margin']);
+    return _card(p, title: 'BTC ONLY (${bm > 0 ? bm.toStringAsFixed(0) : '1000'} USDT PER TRADE)', edge: up ? p.profit : p.loss, children: [
+      Text(_usdt(total), style: context.type.primary.copyWith(fontWeight: FontWeight.w900, fontSize: 22, color: up ? p.profit : p.loss)),
+      Text('Today: closed ${_usdt(_n(t['realized']))}, open ${_usdt(_n(t['open_pnl']))}. Not part of the totals above.', style: context.type.metadata),
+      const SizedBox(height: 8),
+      _kv('Opened today', '${t['opened'] ?? 0}'),
+      _kv('Closed today', '${t['closed'] ?? 0}  (${t['wins'] ?? 0} won, ${t['losses'] ?? 0} lost)'),
+      _kv('All BTC trades', '$closedN finished, ${_usdt(_n(s['pnl']))}', color: _n(s['pnl']) >= 0 ? p.profit : p.loss),
+    ]);
+  }
+
   // ---- Daily review: the bot trades a full day first, then looks back ----
   Widget _reviewRow(AppPalette p, Map<String, dynamic> r) {
     final prev = r['prev'];
@@ -677,6 +698,7 @@ class _DualBotScreenState extends State<DualBotScreen> {
             children: [
               _statusCard(p),
               _todayCard(p),
+              _btcDualCard(p),
               _openCard(p),
               _reviewCard(p),
               _setupCard(p),

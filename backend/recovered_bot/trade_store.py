@@ -63,6 +63,34 @@ def _bucket(bot):
     """Counters/lists for a bot (caller must hold _lock): _data itself for Bot 1."""
     return _b2() if _bk(bot) == "b2" else _data
 
+
+# ---- BTC (own numbers) ---------------------------------------------------------
+# BTCUSDT trades 1000 USDT x 10x, so it is kept completely apart from the alt coins: its own
+# today P&L / trades / wins / signal counter. The alt counters, daily limits, Today P&L, 7D/30D
+# and equity curve never include BTC. (Its closed trades still sit in closed_trades + archive,
+# so History and the chart keep working.)
+BTC_SYMBOL = "BTCUSDT"
+BTC_NO_BASE = 9000      # BTC signal numbers start here, so they never clash with alt signal numbers
+
+
+def _is_btc_trade(t, bot="b1"):
+    try:
+        sym = t.get("symbol") or t.get("s")
+        return _bk(bot if bot else t.get("bot")) != "b2" and str(sym).upper() == BTC_SYMBOL
+    except Exception:
+        return False
+
+
+def _btc():
+    """BTC bucket inside _data (caller must hold _lock)."""
+    b = _data.get("btc")
+    if not isinstance(b, dict):
+        b = {}
+        _data["btc"] = b
+    for k, v in (("date", None), ("today_pnl_usdt", 0.0), ("total_trades", 0), ("wins", 0), ("signal_count_today", 0)):
+        b.setdefault(k, v)
+    return b
+
 # Mirrors app.py's _current_trading_day_key(): the user's trading day rolls
 # over at 5:30 AM IST, not UTC midnight. This used to be a plain UTC-midnight
 # date here while app.py's Market Watch gainers/losers already used the 5:30
@@ -164,11 +192,11 @@ def _recover_from_archive():
             events = _data.setdefault("pnl_events", [])
             for t in missing:
                 ts = t.get("closed_at_ts")
-                if ts and round(float(ts), 3) not in ledger:
+                if ts and not _is_btc_trade(t) and round(float(ts), 3) not in ledger:
                     events.append([float(ts), float(t.get("pnl_usdt", 0.0) or 0.0)])
             events.sort(key=lambda e: e[0])
             day0 = _trading_day_start_ts()
-            today = [t for t in _data["closed_trades"] if float(t.get("closed_at_ts") or 0) >= day0]
+            today = [t for t in _data["closed_trades"] if float(t.get("closed_at_ts") or 0) >= day0 and not _is_btc_trade(t)]
             _data["date"] = _today_utc()
             _data["today_pnl_usdt"] = sum(float(t.get("pnl_usdt", 0.0) or 0.0) for t in today)
             _data["total_trades"] = len(today)
@@ -197,7 +225,7 @@ def _load():
             _data["pnl_events"] = [
                 [t["closed_at_ts"], float(t.get("pnl_usdt", 0.0) or 0.0)]
                 for t in _data.get("closed_trades", [])
-                if t.get("closed_at_ts")
+                if t.get("closed_at_ts") and not _is_btc_trade(t)
             ]
     if _src == "backup":
         _save()  # put a good main file back right away
@@ -302,6 +330,14 @@ def _check_rollover():
             b["wins"] = 0
             b["signal_count_today"] = 0
             changed = True
+        bb = _btc()
+        if bb.get("date") != today:
+            bb["date"] = today
+            bb["today_pnl_usdt"] = 0.0
+            bb["total_trades"] = 0
+            bb["wins"] = 0
+            bb["signal_count_today"] = 0
+            changed = True
     if changed:
         _save()
     return changed
@@ -336,15 +372,17 @@ def record_close(pos):
     bot = _bk(pos.get("bot"))
     with _lock:
         b = _bucket(bot)
-        b["today_pnl_usdt"] += pnl
-        b["total_trades"] += 1
+        is_btc = _is_btc_trade(pos, bot)
+        c = _btc() if is_btc else b          # BTC counts only in its own bucket, never in the alt numbers
+        c["today_pnl_usdt"] += pnl
+        c["total_trades"] += 1
         if pnl > 0:
-            b["wins"] += 1
+            c["wins"] += 1
         b["closed_trades"].append(enriched)
         b["closed_trades"] = b["closed_trades"][-MAX_HISTORY:]
         _archive_append(enriched, bot)
         ts = pos.get("closed_at_ts")
-        if ts:
+        if ts and not is_btc:
             events = b.setdefault("pnl_events", [])
             events.append([float(ts), pnl])
             if len(events) > MAX_PNL_EVENTS:
@@ -352,18 +390,63 @@ def record_close(pos):
     _save()
 
 
-def bump_signal_count(bot="b1"):
+def bump_signal_count(bot="b1", btc=False):
     """Increment and persist today's signal counter. Persisted to disk (unlike
     a plain in-memory variable) so restarting the app mid-day doesn't reset
     numbering back to #1 and collide with signal numbers already used earlier
-    that day for currently-open or already-closed positions."""
+    that day for currently-open or already-closed positions.
+    btc=True uses BTC's own counter (numbers start at BTC_NO_BASE) - the alt counter is not touched."""
     _check_rollover()
     with _lock:
-        b = _bucket(bot)
-        b["signal_count_today"] += 1
-        count = b["signal_count_today"]
+        if btc:
+            bb = _btc()
+            bb["signal_count_today"] += 1
+            count = BTC_NO_BASE + bb["signal_count_today"]
+        else:
+            b = _bucket(bot)
+            b["signal_count_today"] += 1
+            count = b["signal_count_today"]
     _save()
     return count
+
+
+def get_btc_stats():
+    """BTC's own numbers for today (never mixed with the alt coins)."""
+    _check_rollover()
+    with _lock:
+        bb = _btc()
+        total, wins = bb["total_trades"], bb["wins"]
+        return {"today_pnl_usdt": round(bb["today_pnl_usdt"], 4), "total_trades": total, "wins": wins,
+                "losses": total - wins, "win_rate": (wins / total * 100.0) if total else 0.0,
+                "signal_count_today": bb["signal_count_today"]}
+
+
+def get_btc_closed_days(days=3):
+    """BTC closed trades grouped by trading day (5:30 AM IST), newest first: [{day, trades, wins, losses, pnl}]."""
+    start = _trading_day_start_ts()
+    out = [{"day": i, "trades": 0, "wins": 0, "losses": 0, "pnl": 0.0} for i in range(days)]
+    try:
+        rows = get_all_closed(8000, net=False)
+    except Exception:
+        rows = []
+    for t in rows:
+        if not _is_btc_trade(t):
+            continue
+        try:
+            ts = float(t.get("closed_at_ts") or 0)
+            pnl = float(t.get("pnl_usdt") or 0)
+        except Exception:
+            continue
+        i = int(-(-(start - ts) // 86400)) if ts < start else 0     # ceil: 0 = today, 1 = yesterday, 2 = day before
+        if 0 <= i < days:
+            d = out[i]
+            d["trades"] += 1
+            d["pnl"] = round(d["pnl"] + pnl, 4)
+            if pnl > 0:
+                d["wins"] += 1
+            else:
+                d["losses"] += 1
+    return out
 
 
 def get_today_stats(bot="b1"):

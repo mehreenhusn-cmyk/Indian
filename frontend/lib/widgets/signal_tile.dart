@@ -99,7 +99,7 @@ class SignalTile extends StatelessWidget {
               ),
               if (signal['signal_no'] != null) ...[
                 const SizedBox(width: 6),
-                Text('#${signal['signal_no']}', style: t.metadata),
+                Text('#${signal['btc_no'] ?? signal['signal_no']}', style: t.metadata),
               ],
               const SizedBox(width: 6),
               _tag(p, tag),

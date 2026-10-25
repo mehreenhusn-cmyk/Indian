@@ -11,6 +11,7 @@ import '../widgets/dashboard_cockpit.dart';
 import '../widgets/diagnostics_card.dart';
 import '../widgets/system_load_card.dart';
 import '../widgets/tag_lab_tile.dart';
+import '../widgets/btc_live_tile.dart';
 import '../widgets/live_wallet_card.dart';
 import '../widgets/owl_animated_pnl.dart';
 import '../widgets/owl_connection_indicator.dart';
@@ -211,6 +212,8 @@ class DashboardScreen extends StatelessWidget {
                   const SystemLoadCard(),
 
                   // Tag Lab - which mix of both indicators makes money (read-only, opens tag_lab_screen.dart)
+                  // BTC live price + BTC's own result today (apart from the alt coins)
+                  const BtcLiveTile(),
                   const DualBotTile(),
                   const TagLabTile(),
 

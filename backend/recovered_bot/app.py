@@ -306,11 +306,14 @@ def _daily_loss_limit_hit(bot_id="b1") -> bool:
 def _today_str():
     return datetime.now(timezone.utc).date().isoformat()
 
-def _bump_signal_count(bot_id="b1"):
+def _bump_signal_count(bot_id="b1", symbol=None):
     # Persisted via trade_store (survives app restarts within the same UTC
     # day) instead of the old plain in-memory counter, which used to reset
     # to 0 on every restart and could hand out a signal_no already used
     # earlier that day by a currently-open or already-closed position.
+    # BTC has its own counter: it never changes the alt "signals today" number.
+    if symbol is not None and _is_btc(symbol) and str(bot_id or "b1").lower() != "b2":
+        return trade_store.bump_signal_count(bot_id, btc=True)
     count = trade_store.bump_signal_count(bot_id)
     status.update(signals_today=count)
     return count
@@ -515,7 +518,7 @@ def _extra_entry_block(signal, symbol):
 def _open_signal(signal, symbol, source="watchlist", bot_id="b1"):
     """Send to Telegram, log it, and (if every gate passes) open the
     paper trade. Returns True if a trade was actually opened."""
-    count = _bump_signal_count(bot_id)
+    count = _bump_signal_count(bot_id, symbol)
     signal.signal_no = count
     bot.send_signal(signal)
     _rec_signal = lambda *a, **k: db.record_signal(*a, bot=bot_id, **k)

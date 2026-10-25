@@ -39,7 +39,29 @@ t_btc = {"s": "BTCUSDT", "status": "closed", "net": 5.0, "live": None}
 t_eth = {"s": "ETHUSDT", "status": "closed", "net": 5.0, "live": None}
 check("dual: 5% of margin = 50 USDT on BTC, 5 on ETH", abs(D._usdt(t_btc) - 50.0) < 1e-9 and abs(D._usdt(t_eth) - 5.0) < 1e-9)
 sm = D.summary({"trades": [dict(t_btc, src="main", t=0, d=1, closed_at=0), dict(t_eth, src="main", t=0, d=1, closed_at=0)], "rows": {}}, None, [])
-check("dual summary adds both with their own margin", abs(sm["pnl"] - 55.0) < 1e-9)
+check("dual: alt totals have no BTC (ETH only = 5)", abs(sm["pnl"] - 5.0) < 1e-9 and sm["closed"] == 1)
+check("dual: BTC totals are separate (BTC only = 50)", abs(sm["btc"]["pnl"] - 50.0) < 1e-9 and sm["btc"]["closed"] == 1)
+
+# trade_store: BTC has its own counters, alt numbers never include it
+import time
+from recovered_bot import trade_store as TS
+TS.init(os.path.join(tempfile.mkdtemp(), "trades.json"))
+now = time.time()
+def closed(sym, pnl, ts):
+    return {"symbol": sym, "pnl_usdt": pnl, "closed_at_ts": ts, "opened_at_ts": ts - 60, "id": f"{sym}{ts}"}
+TS.record_close(closed("BTCUSDT", 10.0, now - 86400))        # yesterday's trade (counters reset below, as the day rollover does)
+TS._data["btc"].update(today_pnl_usdt=0.0, total_trades=0, wins=0)
+TS.record_close(closed("ETHUSDT", 3.0, now))
+TS.record_close(closed("BTCUSDT", -40.0, now))
+alt = TS.get_today_stats()
+btc = TS.get_btc_stats()
+check("alt today P&L ignores BTC (3.0)", abs(alt["today_pnl_usdt"] - 3.0) < 1e-9 and alt["total_trades"] == 1)
+check("BTC today P&L is its own (-40.0)", abs(btc["today_pnl_usdt"] + 40.0) < 1e-9 and btc["total_trades"] == 1 and btc["losses"] == 1)
+check("alt 7D/30D P&L ignores BTC", abs(TS.get_period_stats()["d7_pnl"] - 3.0) < 1e-9)
+days = TS.get_btc_closed_days(3)
+check("BTC days: today -40 (1 lost), yesterday +10 (1 won)", days[0]["losses"] == 1 and abs(days[0]["pnl"] + 40.0) < 1e-9 and days[1]["wins"] == 1 and abs(days[1]["pnl"] - 10.0) < 1e-9)
+a = TS.bump_signal_count(); b = TS.bump_signal_count(btc=True)
+check("signal counters apart: alt #1, BTC starts at 9001", a == 1 and b == TS.BTC_NO_BASE + 1 and TS.get_today_stats()["signal_count_today"] == 1)
 
 print(f"\n{PASS} passed, {FAIL} failed")
 sys.exit(1 if FAIL else 0)

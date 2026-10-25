@@ -16,14 +16,25 @@ class BottomNavBar extends StatelessWidget {
     required this.onTap,
   });
 
+  // Outlined icon when idle, filled when selected. AI = CPU chip (no more sparkle).
   static const List<IconData> _icons = [
-    Icons.grid_view_rounded,
-    Icons.trending_up_rounded,
-    Icons.layers_rounded,
+    Icons.space_dashboard_outlined,
+    Icons.query_stats_outlined,
+    Icons.account_balance_wallet_outlined,
+    Icons.sensors_outlined,
+    Icons.smart_toy_outlined,
+    Icons.memory_outlined,
+    Icons.widgets_outlined,
+  ];
+
+  static const List<IconData> _iconsOn = [
+    Icons.space_dashboard_rounded,
+    Icons.query_stats_rounded,
+    Icons.account_balance_wallet_rounded,
     Icons.sensors_rounded,
-    Icons.compare_arrows_rounded,
-    Icons.auto_awesome_rounded,
-    Icons.apps_rounded,
+    Icons.smart_toy_rounded,
+    Icons.memory_rounded,
+    Icons.widgets_rounded,
   ];
 
   static const List<String> _labels = [
@@ -90,6 +101,7 @@ class BottomNavBar extends StatelessWidget {
         decoration: BoxDecoration(
           color: selected ? p.accent.withOpacity(0.14) : Colors.transparent,
           borderRadius: BorderRadius.circular(16),
+          boxShadow: selected ? [BoxShadow(color: p.accent.withOpacity(0.18), blurRadius: 12, offset: const Offset(0, 3))] : null,
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -98,7 +110,7 @@ class BottomNavBar extends StatelessWidget {
               scale: selected ? 1.12 : 1.0,
               duration: AppMotion.base,
               curve: Curves.easeOutBack,
-              child: Icon(_icons[index], size: 19, color: color),
+              child: Icon(selected ? _iconsOn[index] : _icons[index], size: 22, color: color),
             ),
             const SizedBox(height: 3),
             Text(
