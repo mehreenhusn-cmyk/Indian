@@ -2,10 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../widgets/signal_tile.dart';
-import '../widgets/owl_pressable.dart';
-import '../widgets/trade_row.dart';
-import '../widgets/trade_chart.dart';
-import '../widgets/coin_history_sheet.dart';
 import '../widgets/owl_card.dart';
 import '../utils/signal_status.dart';
 import '../utils/format.dart';
@@ -82,8 +78,7 @@ class _SummaryRow {
 
 class _ChipsRow {
   final Map<String, int> counts;
-  final String active;
-  const _ChipsRow(this.counts, this.active);
+  const _ChipsRow(this.counts);
 }
 
 class SignalsScreen extends StatefulWidget {
@@ -94,17 +89,21 @@ class SignalsScreen extends StatefulWidget {
 }
 
 class _SignalsScreenState extends State<SignalsScreen> {
-  String _filter = 'auto'; // auto | running | closed | skipped  (auto = Running when something runs, else Closed)
+  String _filter = 'all'; // all | open | won | lost | skipped
   final Set<String> _expanded = {};
 
-  bool _match(String tab, SignalOutcomeKind k) {
-    switch (tab) {
-      case 'running':
-        return k == SignalOutcomeKind.open || k == SignalOutcomeKind.opened || k == SignalOutcomeKind.fresh;
+  bool _match(SignalOutcomeKind k) {
+    switch (_filter) {
+      case 'open':
+        return k == SignalOutcomeKind.open || k == SignalOutcomeKind.opened;
+      case 'won':
+        return k == SignalOutcomeKind.win;
+      case 'lost':
+        return k == SignalOutcomeKind.loss;
       case 'skipped':
         return k == SignalOutcomeKind.skipped;
       default:
-        return k == SignalOutcomeKind.win || k == SignalOutcomeKind.loss || k == SignalOutcomeKind.neutral;
+        return true;
     }
   }
 
@@ -198,29 +197,32 @@ class _SignalsScreenState extends State<SignalsScreen> {
     final today = _Totals();
     final all = _Totals();
     final todayKey = _istDay(0);
-    final counts = <String, int>{'running': 0, 'closed': 0, 'skipped': 0};
+    final counts = <String, int>{'all': items.length, 'open': 0, 'won': 0, 'lost': 0, 'skipped': 0};
     for (final it in items) {
       all.add(it);
       if (it.day == todayKey) today.add(it);
       switch (it.out.kind) {
         case SignalOutcomeKind.open:
         case SignalOutcomeKind.opened:
-        case SignalOutcomeKind.fresh:
-          counts['running'] = counts['running']! + 1;
+          counts['open'] = counts['open']! + 1;
+          break;
+        case SignalOutcomeKind.win:
+          counts['won'] = counts['won']! + 1;
+          break;
+        case SignalOutcomeKind.loss:
+          counts['lost'] = counts['lost']! + 1;
           break;
         case SignalOutcomeKind.skipped:
           counts['skipped'] = counts['skipped']! + 1;
           break;
         default:
-          counts['closed'] = counts['closed']! + 1;
           break;
       }
     }
-    final tab = _filter == 'auto' ? ((counts['running'] ?? 0) > 0 ? 'running' : 'closed') : _filter;
 
     // 3) Rows: summary, chips, then the signals grouped by day.
-    final rows = <dynamic>[_SummaryRow(today, all), _ChipsRow(counts, tab)];
-    final shown = items.where((e) => _match(tab, e.out.kind)).toList();
+    final rows = <dynamic>[_SummaryRow(today, all), _ChipsRow(counts)];
+    final shown = items.where((e) => _match(e.out.kind)).toList();
     String? lastDay = '\u0000';
     for (var i = 0; i < shown.length; i++) {
       final dkey = shown[i].day;
@@ -236,7 +238,7 @@ class _SignalsScreenState extends State<SignalsScreen> {
       rows.add(shown[i]);
     }
     if (shown.isEmpty) {
-      rows.add('Nothing in this tab yet.');
+      rows.add('No signals match this filter.');
     }
 
     return ListView.builder(
@@ -245,7 +247,7 @@ class _SignalsScreenState extends State<SignalsScreen> {
       itemBuilder: (context, index) {
         final row = rows[index];
         if (row is _SummaryRow) return _summaryCard(context, row);
-        if (row is _ChipsRow) return _tabs(context, row.counts, row.active);
+        if (row is _ChipsRow) return _chips(context, row.counts);
         if (row is String) {
           return Padding(
             padding: const EdgeInsets.only(top: 10, bottom: 6),
@@ -256,7 +258,7 @@ class _SignalsScreenState extends State<SignalsScreen> {
         final open = _expanded.contains(it.key);
         return Padding(
           padding: const EdgeInsets.only(bottom: AppSpacing.s),
-          child: _row(context, it, items, open),
+          child: open ? _expandedCard(context, it) : _compact(context, it),
         );
       },
     );
@@ -323,45 +325,36 @@ class _SignalsScreenState extends State<SignalsScreen> {
     );
   }
 
-  Widget _tabs(BuildContext context, Map<String, int> counts, String active) {
-    const labels = [('running', 'Running'), ('closed', 'Closed'), ('skipped', 'Skipped')];
+  Widget _chips(BuildContext context, Map<String, int> counts) {
+    const labels = {'all': 'All', 'open': 'Open', 'won': 'Won', 'lost': 'Lost', 'skipped': 'Skipped'};
     final p = context.palette;
-    return Container(
-      margin: const EdgeInsets.only(bottom: AppSpacing.s),
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: p.surfaceHigher.withOpacity(0.6),
-        borderRadius: BorderRadius.circular(AppSpacing.radiusMedium + 2),
-        border: Border.all(color: p.border),
-      ),
-      child: Row(
-        children: [
-          for (final l in labels)
-            Expanded(
-              child: OWLPressable(
-                onTap: () => setState(() => _filter = l.$1),
-                pressedScale: 0.97,
-                child: AnimatedContainer(
-                  duration: AppMotion.base,
-                  alignment: Alignment.center,
-                  padding: const EdgeInsets.symmetric(vertical: 9),
-                  decoration: BoxDecoration(
-                    color: active == l.$1 ? p.accent.withOpacity(0.16) : Colors.transparent,
-                    borderRadius: BorderRadius.circular(AppSpacing.radiusMedium),
-                    border: Border.all(color: active == l.$1 ? p.accent.withOpacity(0.45) : Colors.transparent),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 2),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            for (final e in labels.entries)
+              Padding(
+                padding: const EdgeInsets.only(right: AppSpacing.s),
+                child: ChoiceChip(
+                  label: Text('${e.value} ${counts[e.key] ?? 0}'),
+                  selected: _filter == e.key,
+                  showCheckmark: false,
+                  onSelected: (_) => setState(() => _filter = e.key),
+                  selectedColor: p.accent.withOpacity(0.25),
+                  backgroundColor: p.surfaceElevated,
+                  side: BorderSide(color: _filter == e.key ? p.accent : p.border),
+                  labelStyle: AppTypography.secondaryData.copyWith(
+                    color: _filter == e.key ? p.accent : p.textSecondary,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
                   ),
-                  child: Text(
-                    '${l.$2}  ${counts[l.$1] ?? 0}',
-                    style: AppTypography.secondaryData.copyWith(
-                      color: active == l.$1 ? p.accent : p.textSecondary,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
+                  visualDensity: VisualDensity.compact,
                 ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -388,6 +381,24 @@ class _SignalsScreenState extends State<SignalsScreen> {
     return l;
   }
 
+  Color _kindColor(AppPalette p, SignalOutcomeKind k) {
+    switch (k) {
+      case SignalOutcomeKind.fresh:
+        return p.owlEye;
+      case SignalOutcomeKind.opened:
+      case SignalOutcomeKind.open:
+        return p.accent;
+      case SignalOutcomeKind.win:
+        return p.profit;
+      case SignalOutcomeKind.loss:
+        return p.loss;
+      case SignalOutcomeKind.neutral:
+        return p.textSecondary;
+      case SignalOutcomeKind.skipped:
+        return p.textMuted;
+    }
+  }
+
   void _toggle(String key) {
     AppHaptics.light();
     setState(() {
@@ -395,131 +406,109 @@ class _SignalsScreenState extends State<SignalsScreen> {
     });
   }
 
-  /// What this signal is, in the shape TradeRow needs.
-  TradeRowData _rowData(BuildContext context, _Item it) {
+  /// Short row: who, which side, result, profit. Tap to see the full card.
+  Widget _compact(BuildContext context, _Item it) {
+    final p = context.palette;
+    final t = context.type;
     final sg = it.sg;
     final out = it.out;
-    final res = sg['result'] is Map ? Map<String, dynamic>.from(sg['result'] as Map) : <String, dynamic>{};
-    final provider = context.read<AppProvider>();
-
-    String status;
-    switch (out.kind) {
-      case SignalOutcomeKind.open:
-      case SignalOutcomeKind.opened:
-        status = 'open';
-        break;
-      case SignalOutcomeKind.win:
-        status = 'won';
-        break;
-      case SignalOutcomeKind.loss:
-        status = 'lost';
-        break;
-      case SignalOutcomeKind.skipped:
-        status = 'skipped';
-        break;
-      case SignalOutcomeKind.fresh:
-        status = 'new';
-        break;
-      case SignalOutcomeKind.neutral:
-        status = 'closed';
-        break;
-    }
-
-    double? last;
-    double? pnl = out.pnl;
-    if (status == 'open') {
-      // Live price (and P&L) from the matching open position.
-      for (final x in provider.positions) {
-        if (x is Map && '${x['symbol']}' == '${sg['symbol']}' && '${x['signal_no']}' == '${sg['signal_no']}') {
-          last = numOrNull(x['ltp']);
-          pnl ??= numOrNull(x['pnl_usdt']);
-          break;
-        }
-      }
-    } else if (status == 'won' || status == 'lost' || status == 'closed') {
-      last = numOrNull(res['exit_px']);
-    }
-
-    final plain = _plain(out);
+    final isLong = sg['action'] == 'BUY';
+    final sideColor = isLong ? p.profit : p.loss;
+    final color = _kindColor(p, out.kind);
+    final entry = numOrNull(sg['entry_price']);
+    final risk = pctDist(entry, numOrNull(sg['stop_loss']));
+    final tp1 = pctDist(entry, numOrNull(sg['tp1']));
+    final tp2 = pctDist(entry, numOrNull(sg['tp2']));
+    final slPx = numOrNull(sg['stop_loss']);
+    final tf = (sg['timeframe'] is String) ? sg['timeframe'] as String : '';
     final skip = sg['skip_reason'];
-    final String? extra = skip != null
-        ? 'Why skipped: $skip'
-        : (plain == 'Open' || plain == 'New' || plain == 'Opened' ? null : plain);
+    final line2 = [
+      '${sg['ist_time_str'] ?? '--'}',
+      if (tf.isNotEmpty) tf,
+      if (entry != null) 'Entry ${fmtPrice(entry)}',
+      if (risk != null) 'Risk ${risk.toStringAsFixed(2)}%',
+      if (slPx != null) 'SL ${fmtPrice(slPx)}',
+      if (tp1 != null) 'TP1 +${tp1.toStringAsFixed(2)}%',
+      if (tp2 != null) 'TP2 +${tp2.toStringAsFixed(2)}%',
+    ].join(' · ');
 
-    return TradeRowData(
-      symbol: '${sg['symbol'] ?? 'UNKNOWN'}',
-      isLong: sg['action'] == 'BUY',
-      status: status,
-      entry: numOrNull(sg['entry_price']),
-      last: last,
-      lastIsLive: status == 'open',
-      pnl: pnl,
-      openedSec: status == 'skipped' || status == 'new' ? null : (numOrNull(res['opened_ts']) ?? numOrNull(sg['recorded_at'])),
-      closedSec: numOrNull(res['closed_ts']),
-      fallbackTime: '${sg['ist_time_str'] ?? '--'}',
-      extra: extra,
-      onTap: () => _openChart(context, it),
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => _toggle(it.key),
+      child: OWLCard(
+        hasPositiveGlow: false,
+        hasNegativeGlow: false,
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.m, vertical: AppSpacing.s + 2),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(color: sideColor, borderRadius: BorderRadius.circular(4)),
+                  child: Text(isLong ? 'LONG' : 'SHORT',
+                      style: const TextStyle(color: Colors.white, fontSize: 9.5, fontWeight: FontWeight.w800, letterSpacing: 0.4)),
+                ),
+                const SizedBox(width: AppSpacing.s),
+                Flexible(
+                  child: Text(
+                    '${sg['symbol'] ?? 'UNKNOWN'}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: t.primary.copyWith(fontWeight: FontWeight.w700, fontSize: 14.5),
+                  ),
+                ),
+                if (sg['signal_no'] != null) ...[
+                  const SizedBox(width: 6),
+                  Text('#${sg['signal_no']}', style: t.metadata),
+                ],
+                const Spacer(),
+                Text(_plain(out), style: t.metadata.copyWith(color: color, fontWeight: FontWeight.w800, fontSize: 11)),
+                if (out.pnl != null) ...[
+                  const SizedBox(width: 6),
+                  Text(fmtSigned(out.pnl!),
+                      style: t.metadata.copyWith(color: out.pnl! >= 0 ? p.profit : p.loss, fontWeight: FontWeight.w800, fontSize: 12)),
+                ],
+                const SizedBox(width: 2),
+                Icon(Icons.expand_more_rounded, size: 18, color: p.textMuted),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(line2, maxLines: 2, overflow: TextOverflow.ellipsis, style: t.metadata.copyWith(fontSize: 11, height: 1.3)),
+            if (skip != null) ...[
+              const SizedBox(height: 3),
+              Text('Why skipped: $skip',
+                  maxLines: 2, overflow: TextOverflow.ellipsis, style: t.metadata.copyWith(color: p.textSecondary, fontSize: 11)),
+            ],
+          ],
+        ),
+      ),
     );
   }
 
-  /// Tap a row -> the candle chart with entry, stop-loss, targets and the exit.
-  void _openChart(BuildContext context, _Item it) {
-    final sg = it.sg;
-    final res = sg['result'] is Map ? Map<String, dynamic>.from(sg['result'] as Map) : <String, dynamic>{};
-    final k = it.out.kind;
-    final closed = k == SignalOutcomeKind.win || k == SignalOutcomeKind.loss || k == SignalOutcomeKind.neutral;
-    final running = k == SignalOutcomeKind.open || k == SignalOutcomeKind.opened;
-    final map = <String, dynamic>{
-      'symbol': sg['symbol'],
-      'side': sg['action'] == 'BUY' ? 'BUY' : 'SELL',
-      'entry': sg['entry_price'],
-      'sl': sg['stop_loss'],
-      'tp1': sg['tp1'],
-      'tp2': sg['tp2'],
-      'tp3': sg['tp3'],
-      'tp4': sg['tp4'],
-      'opened': res['opened_ts'] ?? sg['recorded_at'],
-      'state': closed ? 'closed' : (running ? 'open' : 'none'),
-      'tf': sg['timeframe'],
-    };
-    if (closed) {
-      map['closed'] = res['closed_ts'];
-      map['exit'] = res['exit_px'];
-      map['pnl'] = it.out.pnl;
-      map['roi'] = res['roi'];
-      map['reason'] = it.out.label;
-    }
-    showTradeChart(context, map);
-  }
-
-  /// Today's trades of this coin (or its latest ones when it has none today).
-  void _openHistory(BuildContext context, _Item it, List<_Item> all) {
-    final sym = '${it.sg['symbol']}';
-    final todayKey = _istDay(0);
-    var list = all.where((e) => '${e.sg['symbol']}' == sym && e.day == todayKey).toList();
-    var title = '$sym today';
-    if (list.isEmpty) {
-      list = all.where((e) => '${e.sg['symbol']}' == sym).take(20).toList();
-      title = '$sym recent';
-    }
-    showCoinHistorySheet(context, title: title, rows: [for (final e in list) _rowData(context, e)]);
-  }
-
-  Widget _row(BuildContext context, _Item it, List<_Item> all, bool open) {
-    final row = TradeRow(
-      data: _rowData(context, it),
-      detailsOpen: open,
-      onDetails: () => _toggle(it.key),
-      onHistory: () => _openHistory(context, it, all),
-    );
-    if (!open) return row;
-    // Details: the old full card (levels, targets) under the row.
+  /// Full card (the old detailed layout) with a "Show less" line.
+  Widget _expandedCard(BuildContext context, _Item it) {
+    final p = context.palette;
+    final t = context.type;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        row,
-        const SizedBox(height: AppSpacing.s),
         SignalTile(signal: it.sg, outcome: it.out),
+        InkWell(
+          onTap: () => _toggle(it.key),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 6),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.expand_less_rounded, size: 18, color: p.textMuted),
+                const SizedBox(width: 4),
+                Text('Show less', style: t.metadata),
+              ],
+            ),
+          ),
+        ),
       ],
     );
   }

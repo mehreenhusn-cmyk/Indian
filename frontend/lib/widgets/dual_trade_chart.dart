@@ -104,7 +104,6 @@ void showDualTradeChart(BuildContext context, {required Map<String, dynamic> row
     exits: exits.isEmpty ? null : exits,
     links: links.isEmpty ? null : links,
     initialTf: _tfMs.containsKey(tf) ? tf : null,
-    dualStyle: true, // both panes: main chart on top, Z candles + Z-EMA 30/50 + cloud + BUY/SELL below
     title: '$sym  ${long ? 'LONG' : 'SHORT'}  ·  Dual Bot ($tf)',
     summary: _DualSummary(
       status: status,
@@ -120,18 +119,12 @@ void showDualTradeChart(BuildContext context, {required Map<String, dynamic> row
       what1: '${row['what1'] ?? ''}',
       what2: '${row['what2'] ?? ''}',
       why: '${row['why'] ?? ''}',
-      label: '${row['label'] ?? ''}',
-      reason: '${row['reason'] ?? ''}',
-      mem: row['mem'] is Map ? '${(row['mem'] as Map)['text'] ?? ''}${(row['mem'] as Map)['worst'] != null ? ' Worst sign: ${(row['mem'] as Map)['worst']}.' : ''}' : '',
-      side: row['side'] is List && (row['side'] as List).length == 2 && (row['side'] as List)[0] is num
-          ? 'Sideways now: main chart ${(row['side'] as List)[0]}%, Z pane ${(row['side'] as List)[1]}%.'
-          : '',
     ),
   );
 }
 
 class _DualSummary extends StatelessWidget {
-  final String status, scenario, what1, what2, why, label, reason, mem, side;
+  final String status, scenario, what1, what2, why;
   final double? roi, usdt, margin, lev, entry, sl0, slNow;
   final int moves;
   const _DualSummary({
@@ -148,10 +141,6 @@ class _DualSummary extends StatelessWidget {
     required this.what1,
     required this.what2,
     required this.why,
-    this.label = '',
-    this.reason = '',
-    this.mem = '',
-    this.side = '',
   });
 
   String _head() {
@@ -216,21 +205,6 @@ class _DualSummary extends StatelessWidget {
             Text('What happened', style: t.section.copyWith(fontSize: 11.5)),
             Text(what1, style: t.secondary.copyWith(fontSize: 12, height: 1.35)),
             if (what2.isNotEmpty) Text(what2, style: t.secondary.copyWith(fontSize: 12, height: 1.35)),
-          ],
-          if (side.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            Text('Reading line', style: t.section.copyWith(fontSize: 11.5)),
-            Text(side, style: t.secondary.copyWith(fontSize: 12, height: 1.35)),
-          ],
-          if (label == 'real' || label == 'fake') ...[
-            const SizedBox(height: 8),
-            Text(label == 'fake' ? 'FAKE signal' : 'REAL move', style: t.section.copyWith(fontSize: 11.5, color: label == 'fake' ? p.loss : p.profit)),
-            Text(reason, style: t.secondary.copyWith(fontSize: 12, height: 1.35)),
-          ],
-          if (mem.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            Text('Old mistakes vs this trade', style: t.section.copyWith(fontSize: 11.5)),
-            Text(mem, style: t.secondary.copyWith(fontSize: 12, height: 1.35)),
           ],
           if (why.isNotEmpty) ...[
             const SizedBox(height: 8),
