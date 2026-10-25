@@ -172,3 +172,51 @@ def _bad_coins():
 D.cycle(_d, _s2, lambda *a: None, lambda *a: None, _bad_coins)
 check("coin list" in _s2.get("err", ""), "failed coin list is reported with the reason")
 print("PASS part 6 (error reporting)")
+
+# 7. retest check: waiting for a retest versus entering at the signal (measurement only)
+check(len(data.get("rt", {})) > 0, f"the cycle measured the retest check ({len(data.get('rt', {}))} signals)")
+for v in data["rt"].values():
+    check(len(v) == 8 and v[2] in ("MAIN", "Z", "BOTH") and v[3] in (0, 1) and v[4] in (0, 1), "retest row has its 8 fields")
+    check((v[6] is None) == (v[7] is None), "a retest entry has a result and a candle count, a missed one has neither")
+    break
+# 60 fake signals: every 3rd never came back; the others came back after 1..8 candles
+fake = {"rt": {f"k{i}": [i, 1, "MAIN", i % 2, (i // 2) % 2, 5.0, (None if i % 3 == 0 else -2.0), (None if i % 3 == 0 else 1 + i % 8)] for i in range(60)}}
+sm = D.retest_summary(fake)
+check(sm["status"] == "ok" and sm["n"] == 60 and sm["entered"] + sm["missed"] == 60, "summary counts add up")
+check([w["wait"] for w in sm["waits"]] == list(D.RT_WAITS), "every wait length is measured")
+w3, w24 = sm["waits"][0], sm["waits"][-1]
+check(w3["entered"] < w24["entered"], "a longer wait lets more trades enter")
+check(w24["entered"] == sum(1 for i in range(60) if i % 3), "the longest wait catches every trade that came back")
+check(abs(w24["now_all"] - 60 * 5.0 * D.MARGIN / 100) < 0.01, "summary: entering at the signal total")
+check(abs(w24["retest"] - sum(-2.0 for i in range(60) if i % 3) * D.MARGIN / 100) < 0.01, "summary: retest total")
+check(abs(w24["gain"] - (w24["retest"] - w24["now_all"])) < 0.02, "summary: gain = retest minus signal entry")
+check(sm["wait"] == max(sm["waits"], key=lambda b: b["gain"])["wait"], "the best wait is the one with the best gain")
+check(len(sm["tsi"]) == 4 and all(b["n"] >= 5 for b in sm["tsi"]), "TSI split gives 4 groups")
+check(D.retest_summary({"rt": {}})["status"] == "collecting", "summary says collecting when there is little data")
+check(D.retest_summary({"rt": {f"k{i}": [i, 1, "MAIN", 1, 1, 1.0, None] for i in range(40)}})["status"] == "collecting", "old 7-field rows are ignored")
+view = D.make_view(data, model, {}, names, "", "", True)
+check("retest" in view and view["retest"].get("status") in ("ok", "collecting"), "the retest card is part of the view")
+# live overlay: price of right now -> live_now in ROI points
+D._LIVE.update({"t": time.time(), "px": {"AAAUSDT": 101.0}})
+vv = {"recent": [{"s": "AAAUSDT", "status": "open", "entry": 100.0, "d": 1}, {"s": "AAAUSDT", "status": "open", "entry": 100.0, "d": -1}, {"s": "AAAUSDT", "status": "closed", "entry": 100.0, "d": 1}]}
+D._live_overlay(vv)
+check(abs(vv["recent"][0]["live_now"] - (1.0 * D.LEV - D.FEE)) < 1e-9, "live P&L of a long")
+check(abs(vv["recent"][1]["live_now"] - (-1.0 * D.LEV - D.FEE)) < 1e-9, "live P&L of a short")
+check("live_now" not in vv["recent"][2], "closed trades get no live price")
+print(f"PASS part 7 (retest check + live P&L, total {ok} checks)")
+
+# 8. the Download report
+_tg = {k: "x" for k in TL.DIMS}
+_base = {"s": "AAAUSDT", "f": "5m", "d": 1, "src": "MAIN", "entry": 100.0, "sl": 99.0, "tps": [101.0, 102.0, 103.0, 104.0], "exit": names[0],
+         "mode": "test", "pred": 1.2, "why": "Test trade.", "take": True, "tg": _tg, "mem": None, "t": int(time.time() * 1000), "ct": int(time.time() * 1000) - 300000}
+data["trades"] = [dict(_base, id="a", status="closed", net=12.5, end="TP", bars=7, hit=2, path=[[_base["t"], 100.0]], xpx=102.0, xt=_base["t"], label="real", reason="clean"),
+                  dict(_base, id="b", status="open", live=-3.0, lbars=2, lpx=99.7, t=_base["t"] + 1)]
+D._save("dual_lab_data.json", data)
+D._save("dual_lab_view.json", view)
+rep = D.build_report()
+check("DUAL BOT REPORT" in rep and "WHAT THIS IS" in rep and "== TRADES" in rep and "RETEST CHECK" in rep, "report has its sections")
+check(rep.count("\n- ") >= min(len(data["trades"]), 250), "report lists every trade")
+check("stop path:" in rep and "situation:" in rep and "tags:" in rep, "each trade has stop path, situation and tags")
+out = D.save_report()
+check(isinstance(out, dict) and out.get("bytes", 0) > 500 and out.get("path"), "report is written to a file")
+print(f"PASS part 8 (report {len(rep)} chars, {rep.count(chr(10)) + 1} lines, total {ok} checks)")

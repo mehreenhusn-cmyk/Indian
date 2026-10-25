@@ -136,6 +136,38 @@ String _istFull(int ms) {
   return '${d.day} ${_months[d.month - 1]} $hh:$mm';
 }
 
+String _fmtDur(int ms) {
+  var m = (ms / 60000).round();
+  if (m < 1) return '0m';
+  final d = m ~/ 1440;
+  m -= d * 1440;
+  final h = m ~/ 60;
+  m -= h * 60;
+  final parts = <String>[if (d > 0) '${d}d', if (h > 0) '${h}h', if (m > 0 && d == 0) '${m}m'];
+  return parts.join(' ');
+}
+
+String _fmtVol(double v) {
+  if (v >= 1e9) return '${(v / 1e9).toStringAsFixed(2)} B';
+  if (v >= 1e6) return '${(v / 1e6).toStringAsFixed(2)} M';
+  if (v >= 1e3) return '${(v / 1e3).toStringAsFixed(2)} K';
+  return v.toStringAsFixed(0);
+}
+
+/// Where the main pane's price scale sits right now. The painter fills it in while painting, so a touch (pixels)
+/// can be turned back into a price for the measure tool.
+class _PriceMap {
+  double bottom = 0, top = 1, plotH = 1;
+  double priceAt(double y) => bottom + (plotH - y) / plotH * (top - bottom);
+}
+
+/// One end of the measure tool, stored as candle index + price so it stays put while the chart pans / zooms.
+class _MeasurePt {
+  final double idx;
+  final double price;
+  const _MeasurePt(this.idx, this.price);
+}
+
 /// Parsed candle arrays + both EMAs, computed once per data change.
 class _Series {
   final List<int> ts;
@@ -147,8 +179,9 @@ class _Series {
   final List<double> e50;
   final SdLevels? sd;
   final List<SdLevels?> sdSeries;
+  final List<double> v; // volume per candle (empty / zeros when the feed has none)
 
-  _Series(this.ts, this.o, this.h, this.l, this.c, this.e30, this.e50, this.sd, this.sdSeries);
+  _Series(this.ts, this.o, this.h, this.l, this.c, this.e30, this.e50, this.sd, this.sdSeries, {this.v = const []});
 
   int get n => c.length;
 
@@ -158,6 +191,7 @@ class _Series {
     final h = <double>[];
     final l = <double>[];
     final c = <double>[];
+    final v = <double>[];
     for (final r in raw) {
       final m = r as Map;
       ts.add((m['timestamp'] as num).toInt());
@@ -165,8 +199,10 @@ class _Series {
       h.add((m['high'] as num).toDouble());
       l.add((m['low'] as num).toDouble());
       c.add((m['close'] as num).toDouble());
+      final vr = m['volume'];
+      v.add(vr is num ? vr.toDouble() : 0.0);
     }
-    return _Series(ts, o, h, l, c, computeEma(c, 30), computeEma(c, 50), computeSdLevels(c), computeSdSeries(c));
+    return _Series(ts, o, h, l, c, computeEma(c, 30), computeEma(c, 50), computeSdLevels(c), computeSdSeries(c), v: v);
   }
 }
 
@@ -324,6 +360,14 @@ class _ChartPainter extends CustomPainter {
   final bool compact;
   final Offset? cross;
 
+  /// Vertical-only crosshair (x already snapped to a candle) - shown while the finger is on a lower pane.
+  final double? vLine;
+
+  /// Measure tool: two end points + the shared price map (see _PriceMap).
+  final _MeasurePt? mA;
+  final _MeasurePt? mB;
+  final _PriceMap? pmap;
+
   /// White-canvas colour set (see kChartForceWhite).
   final bool light;
 
@@ -377,6 +421,10 @@ class _ChartPainter extends CustomPainter {
     this.rightBlank = 2,
     this.compact = false,
     this.cross,
+    this.vLine,
+    this.mA,
+    this.mB,
+    this.pmap,
     this.liveClose,
     this.nowMs,
     this.timeframeMs,
@@ -475,6 +523,12 @@ class _ChartPainter extends CustomPainter {
     final bottom = mid - span / 2 - pad;
     double yOf(double p) => plotH - (p - bottom) / (top - bottom) * plotH;
     double priceAt(double y) => bottom + (plotH - y) / plotH * (top - bottom);
+    if (pmap != null) {
+      pmap!
+        ..bottom = bottom
+        ..top = top
+        ..plotH = plotH;
+    }
 
     // ---- everything inside the plot area is clipped to it ----
     canvas.save();
@@ -942,6 +996,87 @@ class _ChartPainter extends CustomPainter {
       _chip(canvas, _istFull(t), cx, plotH + 10, light ? _chartInk : Colors.white, light ? Colors.white : Colors.black, fontSize: 9, centerX: true);
     }
 
+    // Finger is on a lower pane: only the vertical line is shared with this pane.
+    if (!compact && cross == null && vLine != null) {
+      final vx = vLine!.clamp(0.0, plotW).toDouble();
+      _dashed(canvas, Offset(vx, 0), Offset(vx, plotH), Paint()
+        ..color = _ink.withOpacity(0.55)
+        ..strokeWidth = 1);
+    }
+
+    // Measure tool (TradingView style): box between two points, price / % / bars / time / volume.
+    if (!compact && mA != null) {
+      final a = mA!;
+      final b = mB ?? a;
+      final stepMs = n >= 2 && s.ts[n - 1] > s.ts[n - 2] ? s.ts[n - 1] - s.ts[n - 2] : 300000;
+      final xa = xOf(a.idx), ya = yOf(a.price), xb = xOf(b.idx), yb = yOf(b.price);
+      final up = b.price >= a.price;
+      final mc = up ? const Color(0xFF2962FF) : const Color(0xFFE53935);
+      canvas.save();
+      canvas.clipRect(Rect.fromLTWH(0, 0, plotW, plotH));
+      if (mB != null) {
+        final box = Rect.fromPoints(Offset(xa, ya), Offset(xb, yb));
+        canvas.drawRect(box, Paint()..color = mc.withOpacity(0.16));
+        canvas.drawRect(box, Paint()
+          ..color = mc.withOpacity(0.7)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1);
+        canvas.drawLine(Offset(xa, ya), Offset(xb, yb), Paint()
+          ..color = mc
+          ..strokeWidth = 1.5);
+      }
+      for (final pt in [Offset(xa, ya), if (mB != null) Offset(xb, yb)]) {
+        canvas.drawCircle(pt, 5, Paint()..color = Colors.white);
+        canvas.drawCircle(pt, 5, Paint()
+          ..color = mc
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2);
+      }
+      if (mB != null) {
+        final diff = b.price - a.price;
+        final pct = a.price == 0 ? 0.0 : diff / a.price * 100;
+        final bars = (b.idx - a.idx).abs().round();
+        final lines = <String>[
+          '${diff >= 0 ? '+' : ''}${_fmtPrice(diff)} (${pct >= 0 ? '+' : ''}${pct.toStringAsFixed(2)}%)',
+          '$bars bars, ${_fmtDur(bars * stepMs)}',
+        ];
+        if (s.v.length == n) {
+          var vs = 0.0;
+          final i0 = math.max(0, math.min(a.idx, b.idx).round());
+          final i1 = math.min(n - 1, math.max(a.idx, b.idx).round());
+          for (var i = i0; i <= i1; i++) {
+            vs += s.v[i];
+          }
+          if (vs > 0) lines.add('Vol ${_fmtVol(vs)}');
+        }
+        final tps = [for (final t in lines) _text(t, const TextStyle(color: Colors.white, fontSize: 10.5, fontWeight: FontWeight.w700))];
+        final bw = tps.map((t) => t.width).reduce((x, y) => math.max(x, y)) + 14;
+        final bh = tps.fold<double>(0, (sum, t) => sum + t.height) + 10;
+        final midX = (xa + xb) / 2;
+        final topY = math.min(ya, yb);
+        var by = topY - bh - 8;
+        if (by < 4) by = math.max(ya, yb) + 8;
+        by = by.clamp(4.0, math.max(4.0, plotH - bh - 4)).toDouble();
+        final bx = (midX - bw / 2).clamp(4.0, math.max(4.0, plotW - bw - 4)).toDouble();
+        canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(bx, by, bw, bh), const Radius.circular(6)), Paint()..color = mc.withOpacity(0.94));
+        var ty = by + 5;
+        for (final t in tps) {
+          t.paint(canvas, Offset(bx + 7, ty));
+          ty += t.height;
+        }
+      }
+      canvas.restore();
+      // Edge chips: both prices on the right axis, both times under the chart.
+      _chip(canvas, _fmtPrice(a.price), plotW + 2, ya.clamp(6.0, plotH - 6.0).toDouble(), mc, Colors.white, fontSize: 9);
+      final ta = s.ts[n - 1] + (a.idx.round() - (n - 1)) * stepMs;
+      _chip(canvas, _istFull(ta), xa.clamp(30.0, math.max(31.0, plotW - 30)).toDouble(), plotH + 10, mc, Colors.white, fontSize: 9, centerX: true);
+      if (mB != null) {
+        _chip(canvas, _fmtPrice(b.price), plotW + 2, yb.clamp(6.0, plotH - 6.0).toDouble(), mc, Colors.white, fontSize: 9);
+        final tb = s.ts[n - 1] + (b.idx.round() - (n - 1)) * stepMs;
+        _chip(canvas, _istFull(tb), xb.clamp(30.0, math.max(31.0, plotW - 30)).toDouble(), plotH + 10, mc, Colors.white, fontSize: 9, centerX: true);
+      }
+    }
+
     // EMA legend (top-left) - current EMA30/EMA50 values, tracking the
     // crosshair position when one is active, else the latest candle.
     if (!compact && (ema30 || ema50)) {
@@ -1079,6 +1214,9 @@ class _ChartPainter extends CustomPainter {
         old.rightBlank != rightBlank ||
         old.compact != compact ||
         old.cross != cross ||
+        old.vLine != vLine ||
+        old.mA != mA ||
+        old.mB != mB ||
         old.priceZoom != priceZoom ||
         old.priceShiftFrac != priceShiftFrac ||
         old.sdBands != sdBands ||
@@ -1255,6 +1393,17 @@ class _CandleChartSheetContentState extends State<_CandleChartSheetContent>
   int _lastPointerCount = 0;
   double _priceShiftFrac = 0.0;
   Offset? _cross;
+  // Lower-pane touch (Special Master TSI / Z panes): crosshair point in the pane's own coordinates, and which
+  // pane's price axis is being dragged (0 none, 1 TSI, 2 Z). Each pane keeps its own scale, like TradingView.
+  Offset? _paneCross;
+  int _paneAxis = 0;
+  double _tsiScale = 1.0;
+  double _zScale = 1.0;
+  // Measure tool.
+  bool _measureOn = false;
+  _MeasurePt? _mA;
+  _MeasurePt? _mB;
+  final _PriceMap _pm = _PriceMap();
   // Last non-null crosshair point, kept around (unlike _cross, which goes
   // straight to null on release) purely so the floating readout pill has a
   // position to animate its fade-out FROM instead of snapping away - see
@@ -1499,6 +1648,8 @@ class _CandleChartSheetContentState extends State<_CandleChartSheetContent>
       _rightBlank = _defaultBlank;
       _priceZoom = 1.0;
       _priceShiftFrac = 0.0;
+      _tsiScale = 1.0;
+      _zScale = 1.0;
       _cross = null;
     });
   }
@@ -1560,6 +1711,15 @@ class _CandleChartSheetContentState extends State<_CandleChartSheetContent>
                 _emaChip('SD Bands', _sdColor, _sdBands, (v) => setState(() => _sdBands = v)),
                 const SizedBox(width: 8),
                 _emaChip('Special Master', const Color(0xFFB388FF), _sm, (v) => setState(() => _sm = v)),
+                const SizedBox(width: 8),
+                _emaChip('Measure', const Color(0xFF2962FF), _measureOn, (v) {
+                  setState(() {
+                    _measureOn = v;
+                    _mA = null;
+                    _mB = null;
+                    _cross = null;
+                  });
+                }),
                 if (_sm) ...[
                   const SizedBox(width: 8),
                   _emaChip('TSI ${_smSet.speed.name}', const Color(0xFF80CBC4), true, (_) {
@@ -1576,13 +1736,6 @@ class _CandleChartSheetContentState extends State<_CandleChartSheetContent>
               ],
             ),
             ),
-            const SizedBox(height: 3),
-            Text(
-              '$_tf  ·  drag pan  ·  pinch zoom  ·  hold crosshair  ·  double-tap reset',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: Colors.grey, fontSize: 10),
-            ),
             const SizedBox(height: 4),
             Expanded(child: _chartArea()),
             if (_sm && !_loading && _series != null && _series!.n > 60) _smPanes(),
@@ -1595,14 +1748,15 @@ class _CandleChartSheetContentState extends State<_CandleChartSheetContent>
   Future<void> _loadSmSettings() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      var loaded = SmSettings.fromJson(prefs.getString(SmSettings.prefsKey));
-      if (widget.dualStyle) loaded = loaded.set('zStyle', 'Candles').set('zEma', true).set('zSig', true).set('zOn', true);
+      final saved = prefs.getString(SmSettings.prefsKey);
+      var loaded = SmSettings.fromJson(saved);
+      // One shared look for every chart. The Dual Bot look is only the starting point when nothing was ever saved.
+      if (widget.dualStyle && saved == null) loaded = loaded.set('zStyle', 'Candles').set('zEma', true).set('zSig', true).set('zOn', true);
       if (mounted) setState(() => _smSet = loaded);
     } catch (_) {/* defaults stay */}
   }
 
   Future<void> _saveSmSettings() async {
-    if (widget.dualStyle) return; // the Dual Bot look is temporary, it must not change the normal charts
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(SmSettings.prefsKey, _smSet.toJson());
@@ -1636,9 +1790,14 @@ class _CandleChartSheetContentState extends State<_CandleChartSheetContent>
     final data = _ensureSm(sr);
     if (data == null || (!_smSet.tsiOn && !_smSet.zOn)) return const SizedBox.shrink();
     int? mark;
-    final pos = _cross;
+    double? paneX;
+    String? paneLabel;
+    final pos = _cross ?? _paneCross;
     if (pos != null && sr.n > 0) {
-      mark = ((sr.n - 1) + _rightBlank - (_plotW - pos.dx) / _slot).round().clamp(0, sr.n - 1).toInt();
+      final rawIdx = _idxAtX(sr, pos.dx);
+      mark = rawIdx.clamp(0, sr.n - 1).toInt();
+      paneX = _xOfIdx(sr, rawIdx);
+      paneLabel = _istFull(sr.ts[sr.n - 1] + (rawIdx - (sr.n - 1)) * _stepMsOf(sr));
     }
     return Padding(
       padding: const EdgeInsets.only(top: 4),
@@ -1646,13 +1805,32 @@ class _CandleChartSheetContentState extends State<_CandleChartSheetContent>
         height: _smPaneH,
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
-          onHorizontalDragUpdate: (d) {
-            setState(() {
-              _rightBlank -= d.delta.dx / _slot;
-              _clampView();
-            });
-            _maybeLoadMore();
+          // Drag on the right price strip = scale THAT pane only; anywhere else = pan time like the main chart.
+          onPanStart: (d) {
+            final both = _smSet.tsiOn && _smSet.zOn;
+            if (d.localPosition.dx > _plotW) {
+              _paneAxis = both ? (d.localPosition.dy < _smPaneH / 2 ? 1 : 2) : (_smSet.tsiOn ? 1 : 2);
+            } else {
+              _paneAxis = 0;
+            }
           },
+          onPanUpdate: (d) {
+            setState(() {
+              if (_paneAxis == 1) {
+                _tsiScale = (_tsiScale * math.exp(-d.delta.dy * 0.006)).clamp(0.3, 8.0).toDouble();
+              } else if (_paneAxis == 2) {
+                _zScale = (_zScale * math.exp(-d.delta.dy * 0.006)).clamp(0.3, 8.0).toDouble();
+              } else {
+                _rightBlank -= d.delta.dx / _slot;
+                _clampView();
+              }
+            });
+            if (_paneAxis == 0) _maybeLoadMore();
+          },
+          onPanEnd: (_) => _paneAxis = 0,
+          onLongPressStart: (d) => setState(() => _paneCross = d.localPosition),
+          onLongPressMoveUpdate: (d) => setState(() => _paneCross = d.localPosition),
+          onLongPressEnd: (_) => setState(() => _paneCross = null),
           onDoubleTap: _resetView,
           child: ClipRect(
             child: Stack(
@@ -1667,6 +1845,11 @@ class _CandleChartSheetContentState extends State<_CandleChartSheetContent>
                     plotW: _plotW,
                     light: _chartLight(context),
                     markIdx: mark,
+                    tsiScale: _tsiScale,
+                    zScale: _zScale,
+                    crossX: paneX,
+                    crossY: _paneCross?.dy,
+                    crossLabel: paneLabel,
                   ),
                 ),
                 if (!_smSet.b('zSma') || !_smSet.b('sma2'))
@@ -1771,11 +1954,24 @@ class _CandleChartSheetContentState extends State<_CandleChartSheetContent>
                 _lastPointerCount = d.pointerCount;
                 // Touch started on the right price-axis strip -> price scale drag.
                 _axisDrag = d.localFocalPoint.dx > _plotW;
+                if (_measureOn && !_axisDrag && d.pointerCount == 1) {
+                  final pt = _measureAt(d.localFocalPoint);
+                  if (pt != null) setState(() {
+                    _mA = pt;
+                    _mB = null;
+                  });
+                  return;
+                }
                 final n0 = _series?.n ?? 0;
                 _anchorIdx = (n0 - 1) + _rightBlank + 0.5 - (_plotW - d.localFocalPoint.dx) / _slot;
                 if (_cross != null) setState(() => _cross = null);
               },
               onScaleUpdate: (d) {
+                if (_measureOn && !_axisDrag) {
+                  final pt = _measureAt(d.localFocalPoint);
+                  if (pt != null && _mA != null) setState(() => _mB = pt);
+                  return;
+                }
                 setState(() {
                   if (_axisDrag) {
                     // Right price scale (TradingView): drag up = zoom in,
@@ -1820,14 +2016,20 @@ class _CandleChartSheetContentState extends State<_CandleChartSheetContent>
               // follows the finger (onLongPressMoveUpdate below); lift off
               // = smoothly fades out (see _crosshairPillWidget - _cross
               // goes null here but _crossDisplay is kept for the fade).
-              onLongPressStart: (d) => setState(() {
-                _cross = d.localPosition;
-                _crossDisplay = d.localPosition;
-              }),
-              onLongPressMoveUpdate: (d) => setState(() {
-                _cross = d.localPosition;
-                _crossDisplay = d.localPosition;
-              }),
+              onLongPressStart: (d) {
+                if (_measureOn) return;
+                setState(() {
+                  _cross = d.localPosition;
+                  _crossDisplay = d.localPosition;
+                });
+              },
+              onLongPressMoveUpdate: (d) {
+                if (_measureOn) return;
+                setState(() {
+                  _cross = d.localPosition;
+                  _crossDisplay = d.localPosition;
+                });
+              },
               onLongPressEnd: (_) => setState(() => _cross = null),
               child: ClipRect(
                 child: CustomPaint(
@@ -1847,6 +2049,10 @@ class _CandleChartSheetContentState extends State<_CandleChartSheetContent>
                     rightBlank: _rightBlank,
                     compact: false,
                     cross: _cross,
+                    vLine: _paneVLine(),
+                    mA: _mA,
+                    mB: _mB,
+                    pmap: _pm,
                     liveClose: _displayLiveClose,
                     nowMs: DateTime.now().millisecondsSinceEpoch,
                     timeframeMs: _timeframeMs(),
@@ -1871,6 +2077,33 @@ class _CandleChartSheetContentState extends State<_CandleChartSheetContent>
         );
       },
     );
+  }
+
+  int _stepMsOf(_Series sr) {
+    final n = sr.n;
+    return (n >= 2 && sr.ts[n - 1] > sr.ts[n - 2]) ? sr.ts[n - 1] - sr.ts[n - 2] : _timeframeMs();
+  }
+
+  /// Touch point (main chart pixels) -> candle index + price for the measure tool.
+  _MeasurePt? _measureAt(Offset p) {
+    final sr = _series;
+    if (sr == null || sr.n == 0) return null;
+    final idx = ((sr.n - 1) + _rightBlank + 0.5 - (_plotW - p.dx) / _slot).roundToDouble();
+    final y = p.dy.clamp(0.0, _plotH).toDouble();
+    return _MeasurePt(idx, _pm.priceAt(y));
+  }
+
+  /// Candle index under an x position in a pane (same rule as the main crosshair).
+  int _idxAtX(_Series sr, double dx) => ((sr.n - 1) + _rightBlank - (_plotW - dx) / _slot).round();
+
+  double _xOfIdx(_Series sr, int idx) => _plotW - (_rightBlank + (sr.n - 1 - idx) + 0.5) * _slot;
+
+  /// x (snapped to a candle) of the lower-pane crosshair, for the vertical line on the main chart.
+  double? _paneVLine() {
+    final sr = _series;
+    final pc = _paneCross;
+    if (sr == null || pc == null || sr.n == 0) return null;
+    return _xOfIdx(sr, _idxAtX(sr, pc.dx));
   }
 
   /// Floating touch-point tooltip: Time/Open/High/Low/Close/%Change for

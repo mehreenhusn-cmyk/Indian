@@ -1636,6 +1636,28 @@ async def dual_lab_api(action: str = ""):
         return {"running": False, "enabled": False, "error": f"{type(e).__name__}: {e}"}
 
 
+@app.get("/api/dual_lab/report")
+async def dual_lab_report():
+    """Dual Bot report as text (dual_lab.build_report): every trade, the retest check, setups, lessons. Read-only."""
+    from fastapi.responses import PlainTextResponse
+    try:
+        import dual_lab
+        txt = await asyncio.to_thread(dual_lab.build_report)
+    except Exception as e:
+        txt = f"Dual Bot report failed: {type(e).__name__}: {e}"
+    return PlainTextResponse(txt, headers={"Content-Disposition": 'attachment; filename="owl_dualbot_report.txt"'})
+
+
+@app.get("/api/dual_lab/report_save")
+async def dual_lab_report_save():
+    """App button: writes owl_dualbot_report_<date>.txt into the phone Download folder."""
+    try:
+        import dual_lab
+        return await asyncio.to_thread(dual_lab.save_report)
+    except Exception as e:
+        return {"ok": False, "path": "", "bytes": 0, "hint": f"Dual Bot report failed: {type(e).__name__}: {e}"}
+
+
 @app.get("/api/report/save")
 async def report_save():
     """App button: writes owl_report_<date>.txt into the phone's Download folder (see ai_report.save_to_downloads)."""

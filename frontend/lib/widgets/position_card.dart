@@ -765,22 +765,24 @@ class _GlassmorphicSurface extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(AppSpacing.radiusMedium),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusLarge),
         // Flat: no coloured glow (near-SL / unprotected only recolours the border).
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(context.palette.brightness == Brightness.light ? 0.06 : 0.25), blurRadius: 6, offset: const Offset(0, 2)),
+          context.palette.brightness == Brightness.light
+              ? BoxShadow(color: context.palette.accent.withOpacity(0.08), blurRadius: 18, offset: const Offset(0, 6))
+              : BoxShadow(color: Colors.black.withOpacity(0.30), blurRadius: 10, offset: const Offset(0, 3)),
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(AppSpacing.radiusMedium),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusLarge),
         child: Builder(
           builder: (_) => Container(
             decoration: BoxDecoration(
               color: context.palette.surfaceElevated,
-              borderRadius: BorderRadius.circular(AppSpacing.radiusMedium),
+              borderRadius: BorderRadius.circular(AppSpacing.radiusLarge),
               border: Border.all(
                 color: highlightBorder?.withOpacity(0.55) ?? context.palette.glassBorder,
-                width: 0.5,
+                width: 1,
               ),
               gradient: LinearGradient(
                 begin: Alignment.topCenter,

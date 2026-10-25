@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/dual_trade_chart.dart';
+import '../widgets/report_download_card.dart';
 import '../widgets/owl_route.dart';
 import 'tag_lab_screen.dart';
 
@@ -462,8 +463,9 @@ class _DualBotScreenState extends State<DualBotScreen> {
         tag = '${t['end'] ?? 'done'}';
         break;
       case 'open':
-        net = t['live'] is num ? (t['live'] as num).toDouble() : null;
-        tag = 'open';
+        final liveV = t['live_now'] is num ? t['live_now'] : t['live'];            // price of right now, else of the last closed candle
+        net = liveV is num ? liveV.toDouble() : null;
+        tag = 'open, live';
         break;
       case 'skipped_done':
         net = t['net'] is num ? (t['net'] as num).toDouble() : null;
@@ -527,6 +529,76 @@ class _DualBotScreenState extends State<DualBotScreen> {
       for (final t in open) _tradeRow(p, t, short: true),
       if (open.isNotEmpty) Text('Tap a trade: big chart with entry, stop and take-profit lines. Scroll and zoom like the Positions tab.', style: context.type.metadata),
     ]);
+  }
+
+  // ---- Retest check: what if we had waited for the price to come back to the EMA? ----
+  Widget _retestRow(AppPalette p, Map<String, dynamic> b, {String? title}) {
+    final gain = _n(b['gain']);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(title ?? '${b['name']}', style: context.type.primary.copyWith(fontWeight: FontWeight.w700, height: 1.3)),
+        Text(
+            '${b['n']} signals: ${b['entered']} came back and would have entered, ${b['missed']} never came back. '
+            'Entering at the signal: ${_usdt(_n(b['now_all']))}. Waiting for the retest: ${_usdt(_n(b['retest']))}.',
+            style: context.type.metadata.copyWith(height: 1.35)),
+        Text('Waiting is ${gain >= 0 ? 'better' : 'worse'} by ${_usdt(gain)}.',
+            style: context.type.metadata.copyWith(fontWeight: FontWeight.w800, color: gain >= 0 ? p.profit : p.loss)),
+      ]),
+    );
+  }
+
+  Widget _retestCard(AppPalette p) {
+    final r = _map(_st['retest']);
+    if (r['status'] != 'ok') {
+      return _card(p, title: 'RETEST CHECK', children: [
+        Text(
+            'For every signal the bot also measures: what if I had waited for the price to come back to the EMA, and entered there? '
+            'It needs more finished signals first (${r['n'] ?? 0} so far, it needs 10).',
+            style: context.type.secondary),
+      ]);
+    }
+    final missedNow = _n(r['now_missed']);
+    final tsi = _maps(r['tsi']);
+    return _card(p, title: 'RETEST CHECK (WAIT FOR PRICE TO COME BACK TO THE EMA)', edge: p.accent, children: [
+      Text('Same stop, same targets, same exit. Only the entry changes: wait for a pullback to the EMA50. The bot measures 3, 6, 12 and 24 candles at once and shows the best.', style: context.type.metadata),
+      const SizedBox(height: 8),
+      _retestRow(p, r, title: 'All signals, best wait: ${r['wait']} candles'),
+      for (final w in _maps(r['waits']))
+        Text('Wait ${w['wait']} candles: ${w['entered']} enter, ${w['missed']} never come back, ${_n(w['gain']) >= 0 ? 'better' : 'worse'} by ${_usdt(_n(w['gain']))}', style: context.type.metadata),
+      const SizedBox(height: 8),
+      Text(
+          'Trades that entered after a retest made ${_usdt(_n(r['extra_on_entered']))} more than the same trades entered at the signal. '
+          'The ${r['missed']} trades that never came back would have made ${_usdt(missedNow)} if taken at the signal '
+          '(${missedNow >= 0 ? 'profit you would have missed' : 'losses you would have avoided'}).',
+          style: context.type.primary.copyWith(fontWeight: FontWeight.w700, height: 1.35, fontSize: 13)),
+      if (tsi.isNotEmpty) ...[
+        const SizedBox(height: 10),
+        Text('Does TSI change the answer?', style: context.type.label),
+        const SizedBox(height: 4),
+        for (final b in tsi) _retestRow(p, b),
+      ],
+      Text('This only measures. The bot still enters at the signal.', style: context.type.metadata),
+    ]);
+  }
+
+  void _openReport() {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => const Padding(
+        padding: EdgeInsets.all(12),
+        child: SafeArea(
+          child: ReportDownloadCard(
+            title: 'Dual Bot report',
+            description:
+                'One text file for any AI: what the Dual Bot is, every trade with its stop steps, exit and situation, the retest check, TSI split, setups, lessons and totals. Send it to any AI and ask what to improve.',
+            textPath: '/api/dual_lab/report',
+            savePath: '/api/dual_lab/report_save',
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _recentCard(AppPalette p) {
@@ -595,6 +667,7 @@ class _DualBotScreenState extends State<DualBotScreen> {
               _openCard(p),
               _reviewCard(p),
               _setupCard(p),
+              _retestCard(p),
               _scenCard(p),
               _lessonsCard(p),
               _modelCard(p),
@@ -602,6 +675,12 @@ class _DualBotScreenState extends State<DualBotScreen> {
               _situationsCard(p),
               _recentCard(p),
               _howToReadCard(p),
+              OutlinedButton.icon(
+                onPressed: _openReport,
+                icon: const Icon(Icons.description_outlined, size: 18),
+                label: const Text('Download Dual Bot report'),
+              ),
+              const SizedBox(height: 8),
               OutlinedButton.icon(
                 onPressed: () => Navigator.of(context).push(OwlRoute(builder: (_) => const TagLabScreen())),
                 icon: const Icon(Icons.hub_outlined, size: 18),

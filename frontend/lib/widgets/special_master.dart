@@ -317,6 +317,19 @@ class SpecialMasterPainter extends CustomPainter {
   /// When true the Z-SMA 2 series is the underlying index overlay (option chart).
   final bool indexZsma;
 
+  /// Per-pane price-axis scale (1 = auto-fit, >1 = zoomed in). Dragging the right axis of a pane changes only that pane.
+  final double tsiScale;
+  final double zScale;
+
+  /// Crosshair: [crossX] draws a vertical line through every pane; [crossY] (this pane's own y) adds a horizontal
+  /// line + value chip in the pane it falls in; [crossLabel] is the time chip under the last pane.
+  final double? crossX;
+  final double? crossY;
+  final String? crossLabel;
+
+  double _tsiLo = -1, _tsiHi = 1, _zLo = -1, _zHi = 1; // last painted value ranges (used by the crosshair)
+  Rect _tsiR = Rect.zero, _zR = Rect.zero;
+
   SpecialMasterPainter(this.d,
       {required this.st,
       required this.slot,
@@ -324,7 +337,12 @@ class SpecialMasterPainter extends CustomPainter {
       required this.plotW,
       required this.light,
       this.markIdx,
-      this.indexZsma = false});
+      this.indexZsma = false,
+      this.tsiScale = 1.0,
+      this.zScale = 1.0,
+      this.crossX,
+      this.crossY,
+      this.crossLabel});
 
   Color get _ink => light ? const Color(0xFF10141C) : Colors.white;
   Color get _grid => (light ? Colors.black : Colors.white).withOpacity(0.10);
@@ -345,8 +363,9 @@ class SpecialMasterPainter extends CustomPainter {
     canvas.save();
     canvas.clipRect(Rect.fromLTWH(0, 0, size.width, size.height));
     _paintCrossTint(canvas, size);
-    if (st.tsiOn) _paintTsi(canvas, Rect.fromLTWH(0, 0, size.width, h));
-    if (st.zOn) _paintZ(canvas, Rect.fromLTWH(0, both ? h : 0, size.width, h));
+    if (st.tsiOn) _paintTsi(canvas, _tsiR = Rect.fromLTWH(0, 0, size.width, h));
+    if (st.zOn) _paintZ(canvas, _zR = Rect.fromLTWH(0, both ? h : 0, size.width, h));
+    _paintCross(canvas, size, both);
     canvas.restore();
     if (both) {
       canvas.drawLine(Offset(0, h), Offset(size.width, h), Paint()
@@ -419,6 +438,13 @@ class SpecialMasterPainter extends CustomPainter {
     final pad = (hi - lo) * 0.10;
     lo -= pad;
     hi += pad;
+    if (tsiScale != 1.0) {
+      final cm = (hi + lo) / 2, ch = (hi - lo) / 2 / tsiScale;
+      lo = cm - ch;
+      hi = cm + ch;
+    }
+    _tsiLo = lo;
+    _tsiHi = hi;
     double y(double v) => r.top + 14 + (hi - v) / (hi - lo) * (r.height - 18);
 
     // Ob / Os / zero lines (script colours: Ob red, Os light blue, zero grey - all 65% transparent)
@@ -580,6 +606,13 @@ class SpecialMasterPainter extends CustomPainter {
     final pad = (hi - lo) * 0.06;
     lo -= pad;
     hi += pad;
+    if (zScale != 1.0) {
+      final cm = (hi + lo) / 2, ch = (hi - lo) / 2 / zScale;
+      lo = cm - ch;
+      hi = cm + ch;
+    }
+    _zLo = lo;
+    _zHi = hi;
     double y(double v) => r.top + 14 + (hi - v) / (hi - lo) * (r.height - 18);
     // probability bands: 0..1 green, 1..2 yellow, 2..3 red (both sides)
     if (st.b('probBands')) {
@@ -761,6 +794,50 @@ class SpecialMasterPainter extends CustomPainter {
         Offset(r.left + 4, r.top + 1), _ink.withOpacity(0.85), bold: true);
   }
 
+  void _dashLine(Canvas canvas, Offset a, Offset b, Paint p) {
+    final len = (b - a).distance;
+    if (len <= 0) return;
+    final dir = (b - a) / len;
+    for (double t = 0; t < len; t += 7) {
+      canvas.drawLine(a + dir * t, a + dir * math.min(t + 4, len), p);
+    }
+  }
+
+  void _edgeChip(Canvas canvas, String text, double x, double yCenter, {bool centerX = false}) {
+    final tp = TextPainter(
+      text: TextSpan(text: text, style: TextStyle(color: light ? Colors.white : Colors.black, fontSize: 9, fontWeight: FontWeight.w700)),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    final w = tp.width + 6;
+    final left = centerX ? x - w / 2 : x;
+    final rect = Rect.fromLTWH(left, yCenter - tp.height / 2 - 1, w, tp.height + 2);
+    canvas.drawRRect(RRect.fromRectAndRadius(rect, const Radius.circular(3)), Paint()..color = light ? const Color(0xFF10141C) : Colors.white);
+    tp.paint(canvas, Offset(left + 3, yCenter - tp.height / 2));
+  }
+
+  /// Crosshair shared with the main chart: vertical line through both panes, horizontal line + value chip in the touched pane.
+  void _paintCross(Canvas canvas, Size size, bool both) {
+    final cx = crossX;
+    if (cx == null) return;
+    final p = Paint()
+      ..color = _ink.withOpacity(0.55)
+      ..strokeWidth = 1;
+    final x = cx.clamp(0.0, plotW).toDouble();
+    _dashLine(canvas, Offset(x, 0), Offset(x, size.height), p);
+    final cy = crossY;
+    if (cy != null) {
+      final inTsi = st.tsiOn && (!both || cy < size.height / 2);
+      final r = inTsi ? _tsiR : _zR;
+      final lo = inTsi ? _tsiLo : _zLo;
+      final hi = inTsi ? _tsiHi : _zHi;
+      final yy = cy.clamp(r.top + 2, r.bottom - 2).toDouble();
+      final v = hi - (yy - r.top - 14) / (r.height - 18) * (hi - lo);
+      _dashLine(canvas, Offset(0, yy), Offset(plotW, yy), p);
+      _edgeChip(canvas, inTsi ? v.toStringAsFixed(1) : v.toStringAsFixed(2), plotW + 2, yy);
+    }
+    if (crossLabel != null) _edgeChip(canvas, crossLabel!, x, size.height - 8, centerX: true);
+  }
+
   @override
   bool shouldRepaint(covariant SpecialMasterPainter old) =>
       old.d != d ||
@@ -770,5 +847,10 @@ class SpecialMasterPainter extends CustomPainter {
       old.plotW != plotW ||
       old.light != light ||
       old.markIdx != markIdx ||
+      old.tsiScale != tsiScale ||
+      old.zScale != zScale ||
+      old.crossX != crossX ||
+      old.crossY != crossY ||
+      old.crossLabel != crossLabel ||
       old.indexZsma != indexZsma;
 }

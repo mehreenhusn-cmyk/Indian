@@ -44,6 +44,8 @@ RIDGE = 15.0
 LUCK_RUNS = 5              # shuffled-result tests the model must beat before it is called LEARNED
 CLIP = 100.0               # one trade counts at most +-100 ROI points in the model (keeps one freak candle from steering it)
 BEAT_STALE_S = 150
+RT_WAITS, RT_ZONE = (3, 6, 12, 24), 0.25   # retest check: how long to wait for price to come back to EMA50 (+ a quarter SD zone): all four are measured
+MAX_RT = 4000
 LATEST = 3                 # a signal is new if it is on one of the last 3 closed candles
 
 
@@ -334,6 +336,15 @@ def process(data, sym, tf, candles, boot, now_ms, model, exit_names):
         data["rows"][key] = [sym, tf, r["t"], r["d"], tg_list, [round(r["x"][n][0], 2) for n in exit_names],
                             [int(r["x"][n][1]) for n in exit_names]]
         added += 1
+    # 1b. retest check (measurement only)
+    rt = data.setdefault("rt", {})
+    try:
+        for r in _retest_rows(S, Z, tf, since, strat, TL, FL):
+            rk = f"{sym}|{tf}|{r[0]}"
+            if rk not in rt or len(rt[rk]) != 8:
+                rt[rk] = list(r)
+    except Exception as ex:                                  # a measurement problem must never stop the bot
+        print(f"dual_lab: retest check skipped for {sym} {tf}: {ex}", flush=True)
     # 2. finish open / skipped trades of this coin
     pos = {t: k for k, t in enumerate(S["t"])}
     for tr in data["trades"]:
@@ -377,10 +388,96 @@ def process(data, sym, tf, candles, boot, now_ms, model, exit_names):
     return added
 
 
+def _retest_rows(S, Z, tf, since, strat, TL, FL):
+    """What if we had WAITED for a retest? For every signal: enter at once (the bot's way) versus wait up to RT_WAIT candles for price to
+    come back to the EMA50 zone, then enter there with the SAME stop, take-profits and exit rule. Nothing here changes the bot, it only measures.
+    -> [(t, d, src, tsi_line_ok, tsi_hist_grow, net_now, net_retest_or_None, candles_until_the_retest)] of finished trades only.
+    The retest candle is the FIRST touch, so one pass answers every wait length: a wait of W candles only counts touches with k <= W."""
+    from recovered_bot import ai_ind_features as F
+    rule = TL.EXITS[TL.BOT]
+    o, h, l, n = S["o"], S["h"], S["l"], S["n"]
+    out = []
+    for i in range(F.MIN_BARS, n):
+        if S["t"][i] + FL.TF_MS[tf] - 1 < since:
+            continue
+        e = _entry(S, Z, i, tf, strat, TL, FL)
+        if e is None:
+            continue
+        d, entry, sl, tps = e["d"], e["entry"], e["sl"], e["tps"]
+        a = TL.sim_rule(S, Z, i, d, entry, sl, tps, LEV, FEE, **rule)
+        if a is None:
+            continue
+        rt, fill_j = None, None
+        for j in range(i + 1, min(n - 1, i + max(RT_WAITS)) + 1):
+            ema, sd = S["e50"][j], S["std"][j]
+            if ema is None or sd is None:
+                continue
+            if (h[j] >= tps[0]) if d > 0 else (l[j] <= tps[0]):
+                break                                           # it ran to TP1 without us: the retest never came
+            if (l[j] <= sl) if d > 0 else (h[j] >= sl):
+                break                                           # the stop level was hit before a retest entry
+            zone = ema + d * RT_ZONE * sd
+            if (l[j] <= zone) if d > 0 else (h[j] >= zone):
+                fill = min(zone, o[j]) if d > 0 else max(zone, o[j])
+                if (sl < fill < tps[0]) if d > 0 else (tps[0] < fill < sl):
+                    fill_j = j
+                    r = TL.sim_rule(S, Z, j, d, fill, sl, tps, LEV, FEE, **rule)
+                    if r is None:
+                        fill_j = -1                             # entered but not finished yet: count it next cycle
+                    else:
+                        rt = r["net"]
+                break
+        if fill_j == -1:
+            continue
+        tg = e["tg"]
+        out.append((e["t"], d, e["src"], 1 if str(tg.get("tsi_line", "")).startswith("TSI on the trade") else 0,
+                    1 if tg.get("tsi_hist") == "histogram growing" else 0, round(a["net"], 2), None if rt is None else round(rt, 2),
+                    None if rt is None else fill_j - i))
+    return out
+
+
+def retest_summary(data):
+    """Plain numbers (USDT on the paper margin) for the app: waiting for a retest versus entering at the signal, for several wait lengths."""
+    rows = [r for r in (data.get("rt") or {}).values() if len(r) == 8]
+    k = MARGIN / 100.0
+
+    def block(rs, W):
+        eff = [(r, r[6] if (r[6] is not None and r[7] is not None and r[7] <= W) else None) for r in rs]
+        ent = [(r, x) for r, x in eff if x is not None]
+        mis = [r for r, x in eff if x is None]
+        now_all = sum(r[5] for r in rs) * k
+        now_ent = sum(r[5] for r, _ in ent) * k
+        now_mis = sum(r[5] for r in mis) * k
+        rt_sum = sum(x for _, x in ent) * k
+        return {"wait": W, "n": len(rs), "entered": len(ent), "missed": len(mis), "now_all": round(now_all, 2),
+                "now_entered": round(now_ent, 2), "now_missed": round(now_mis, 2), "retest": round(rt_sum, 2),
+                "gain": round(rt_sum - now_all, 2), "extra_on_entered": round(rt_sum - now_ent, 2)}
+    if len(rows) < 10:
+        return {"status": "collecting", "n": len(rows)}
+    waits = [block(rows, W) for W in RT_WAITS]
+    best = max(waits, key=lambda b: b["gain"])
+    W = best["wait"]
+    tsi = []
+    for idx, names in ((3, ("TSI on the trade side of its signal line", "TSI on the wrong side of its signal line")),
+                       (4, ("TSI histogram growing", "TSI histogram shrinking"))):
+        for v, lab in ((1, names[0]), (0, names[1])):
+            sub = [r for r in rows if r[idx] == v]
+            if len(sub) >= 5:
+                b = block(sub, W)
+                b["name"] = lab
+                tsi.append(b)
+    out = dict(best)
+    out.update({"status": "ok", "waits": waits, "tsi": tsi})
+    return out
+
+
 def trim(data):
     if len(data["rows"]) > MAX_ROWS:
         keep = sorted(data["rows"].items(), key=lambda kv: kv[1][2])[-MAX_ROWS:]
         data["rows"] = dict(keep)
+    rt = data.get("rt")
+    if rt is not None and len(rt) > MAX_RT:
+        data["rt"] = dict(sorted(rt.items(), key=lambda kv: kv[1][0])[-MAX_RT:])
     if len(data["seen"]) > MAX_SEEN:
         data["seen"] = dict(list(data["seen"].items())[-MAX_SEEN:])
     if len(data["trades"]) > MAX_TRADES:
@@ -709,7 +806,7 @@ def make_view(data, model, ins, exit_names, progress, err, enabled):
     return {"enabled": enabled, "beat": time.time(), "model": mv, "rows": len(data["rows"]), "summary": summary(data, model, exit_names),
             "insights": {"best": ins.get("best", []), "worst": ins.get("worst", [])}, "scen": ins.get("scen") or {"status": "collecting", "days": 0.0, "cards": [], "tips": []}, "lessons": MD.lessons(data["trades"]), "review": day_review(data),
             "setups": ins.get("setups") or {"status": "collecting", "days": 0.0, "totals": {}, "use": [], "skip": [], "common": []},
-            "recent": [dict(slim(t), stp=setup_of(t)) for t in ([t for t in tr if t["status"] == "open"] + [t for t in tr if t["status"] != "open"][:40])], "progress": progress, "error": err,
+            "recent": [dict(slim(t), stp=setup_of(t)) for t in ([t for t in tr if t["status"] == "open"] + [t for t in tr if t["status"] != "open"][:40])], "progress": progress, "error": err, "retest": retest_summary(data),
             "margin": MARGIN, "lev": LEV, "started": data.get("started")}
 
 
@@ -888,6 +985,154 @@ def _log_tail(n=4):
         return ""
 
 
+_LIVE = {"t": 0.0, "px": {}}
+
+
+def _live_prices(syms):
+    """Latest price of a few coins (the close of the newest, still forming 1m candle = the price now). Cached 6 s; any failure just means no live update."""
+    if time.time() - _LIVE["t"] < 6 and all(s in _LIVE["px"] for s in syms):
+        return _LIVE["px"]
+    try:
+        from recovered_bot import ai_shadow_lab as LAB
+        for s in list(syms)[:14]:
+            raw = LAB._fetch_raw(s, "1m", limit=1)             # the newest (still forming) 1m candle: its close is the price now
+            if raw:
+                _LIVE["px"][s] = float(raw[-1][4])
+        _LIVE["t"] = time.time()
+    except Exception:
+        pass
+    return _LIVE["px"]
+
+
+def _live_overlay(view):
+    """Open trades get the price of RIGHT NOW (not only of the last closed candle): live_now / lpx_now in ROI points of the margin."""
+    rec = [t for t in (view.get("recent") or []) if t.get("status") == "open" and t.get("entry")]
+    if not rec:
+        return
+    px = _live_prices(sorted({t["s"] for t in rec}))
+    delta = 0.0
+    for t in rec:
+        p = px.get(t["s"])
+        if p:
+            t["lpx_now"] = p
+            t["live_now"] = round((p - t["entry"]) / t["entry"] * 100.0 * t["d"] * LEV - FEE, 2)
+            if t.get("live") is not None:
+                delta += (t["live_now"] - t["live"]) * MARGIN / 100.0
+    sm = view.get("summary") or {}
+    if delta and isinstance(sm, dict):                        # the open part of every total moves with the live price too
+        td = sm.get("today")
+        if isinstance(td, dict) and "open_pnl" in td:
+            td["open_pnl"] = round(td["open_pnl"] + delta, 2)
+            td["total"] = round(td["total"] + delta, 2)
+        if "open_pnl" in sm:
+            sm["open_pnl"] = round(sm["open_pnl"] + delta, 2)
+
+
+# ---------------------------------------------------------------- Download report (for the user and for any AI)
+def _ts(ms):
+    try:
+        return time.strftime("%Y-%m-%d %H:%M", time.gmtime(float(ms) / 1000.0)) + " UTC"
+    except Exception:
+        return "-"
+
+
+def _jd(obj, limit=2500):
+    t = json.dumps(obj, default=str, separators=(",", ":"), ensure_ascii=False)
+    return t if len(t) <= limit else t[:limit] + " ...(cut)"
+
+
+REPORT_INTRO = (
+    "WHAT THIS IS: the Dual Bot of the Owl Terminal app. It is a PAPER bot (no real money). It reads TWO indicators on the same coin: the main chart "
+    "(EMA50 cross) and the Z pane of Special Master v6 (Z candle crossing its EMA50, with EMA30/50 and a cloud), on 5m and 15m. A signal can come from the "
+    "main chart (MAIN), from the Z pane (Z) or from both on the same candle (BOTH). Every signal is tagged with the full picture of both indicators at that "
+    "moment (TSI vs zero and vs its signal line, histogram, Z vs its EMAs, cloud colour, sideways %, chop, room, time of day). The bot replays 7 days of history, "
+    "learns which pictures earn money, and then trades live on paper. Until it beats luck on newer data it takes EVERY signal (mode EXPLORE) so it can keep learning.\n"
+    "PAPER SETTINGS: 10x leverage, 100 USDT margin per trade, fee included. Results are ROI % of the margin and USDT. Stop = low/high of the signal candle, "
+    "take-profits = main chart SD levels. 9 exit rules exist; each trade uses the one the model expects to be best.\n"
+    "HOW TO READ THE TRADES: 'path' = every place the stop moved (time, new stop). 'tags' = the situation. 'label' = real or fake signal with a reason. "
+    "'setup' = how the same picture of both indicators did before. Open trades show the live result.\n"
+    "RETEST CHECK: measurement only. For every signal the bot also asks what would have happened if it had WAITED for price to come back to the EMA50 zone "
+    "(3, 6, 12 or 24 candles) and entered there with the same stop, targets and exit. Positive gain = waiting was better.\n"
+    "QUESTIONS TO ASK THE AI: which pictures (tags) lose again and again? Is waiting for a retest better than entering at the signal, and for how long? "
+    "Does TSI change the answer? Which exit rule fits which picture? Which coins or hours are bad? What would you skip, and what would that have saved?\n")
+
+
+def build_report(limit_trades=250):
+    view = status()
+    data = _load("dual_lab_data.json", {})
+    L = [f"DUAL BOT REPORT - made {time.strftime('%Y-%m-%d %H:%M', time.gmtime())} UTC", "", REPORT_INTRO]
+    m = view.get("model") or {}
+    L += ["== STATUS ==",
+          f"running={view.get('running')} enabled={view.get('enabled')} mode={m.get('mode')} history rows={view.get('rows')} best exit={m.get('best_exit')}",
+          f"validation on newer data: {_jd(m.get('val'))}", f"error line: {view.get('error') or '-'}", f"progress: {view.get('progress') or '-'}", ""]
+    L += ["== TOTALS ==", _jd(view.get("summary"), 3500), ""]
+    rt = view.get("retest") or {}
+    L.append("== RETEST CHECK (wait for price to come back to EMA50, versus entering at the signal) ==")
+    if rt.get("status") == "ok":
+        L.append(f"signals measured: {rt['n']}. Best wait: {rt['wait']} candles.")
+        for b in rt.get("waits", []):
+            L.append(f"  wait {b['wait']:>2} candles: {b['entered']} entered, {b['missed']} never came back | at signal {b['now_all']:+.2f} USDT | after retest {b['retest']:+.2f} USDT "
+                     f"| waiting is {'better' if b['gain'] >= 0 else 'worse'} by {b['gain']:+.2f} USDT | missed trades would have made {b['now_missed']:+.2f} USDT")
+        L.append("TSI split (at the best wait):")
+        for b in rt.get("tsi", []):
+            L.append(f"  {b['name']}: {b['n']} signals, {b['entered']} entered | at signal {b['now_all']:+.2f} | after retest {b['retest']:+.2f} | gain {b['gain']:+.2f} USDT")
+    else:
+        L.append(f"collecting ({rt.get('n', 0)} signals so far, needs 10)")
+    L.append("")
+    for title, key in (("DAILY REVIEW", "review"), ("SETUPS (same picture of both indicators)", "setups"), ("SCENARIOS", "scen"),
+                       ("LESSONS (old mistakes)", "lessons"), ("BEST / WORST SITUATIONS", "insights")):
+        L += [f"== {title} ==", _jd(view.get(key), 3500), ""]
+    trades = sorted(data.get("trades") or [], key=lambda t: t.get("t", 0), reverse=True)[:limit_trades]
+    L.append(f"== TRADES (newest first, {len(trades)} of {len(data.get('trades') or [])}) ==")
+    for t in trades:
+        net = t.get("net") if t.get("status") in ("closed", "skipped_done") else t.get("live")
+        usdt = "-" if net is None else f"{MARGIN * net / 100.0:+.2f} USDT ({net:+.1f}% of margin)"
+        path = "; ".join(f"{_ts(a)} stop {_px(b)}" for a, b in (t.get("path") or [])) or "stop never moved"
+        try:
+            scn = _scenario(t)
+            w1, w2 = _what(t)
+        except Exception:
+            scn, w1, w2 = "", "", ""
+        L += [f"- {t.get('s')} {t.get('f')} {'LONG' if t.get('d', 1) > 0 else 'SHORT'} from {t.get('src')} | status {t.get('status')} | taken={t.get('take')} ({t.get('mode')}, model expected {t.get('pred')})",
+              f"  signal candle closed {_ts(t.get('t'))} | entry {_px(t.get('entry'))} | first stop {_px(t.get('sl'))} | TP1-4 {', '.join(_px(x) for x in (t.get('tps') or []))}",
+              f"  exit rule: {t.get('exit')} | ended by: {t.get('end') or '-'} at {_px(t.get('xpx'))} {('on ' + _ts(t.get('xt'))) if t.get('xt') else ''} | candles in trade: {t.get('bars') if t.get('bars') is not None else t.get('lbars', '-')} | TPs hit: {t.get('hit', '-')}",
+              f"  result: {usdt} | label: {t.get('label') or '-'} {t.get('reason') or ''}",
+              f"  stop path: {path}", f"  situation: {scn}", f"  what happened: {w1} {w2}", f"  why taken: {t.get('why')}",
+              f"  tags: {_jd(t.get('tg'), 1200)}"]
+        mem = t.get("mem")
+        if isinstance(mem, dict) and mem.get("text"):
+            L.append(f"  memory: {mem['text']}")
+    return "\n".join(L) + "\n"
+
+
+def save_report():
+    """Writes the report into the phone Download folder (same way as the other reports). -> {ok, path, bytes, hint}"""
+    text = build_report()
+    name = "owl_dualbot_report_" + time.strftime("%Y%m%d_%H%M") + ".txt"
+    try:
+        from recovered_bot import ai_report
+        dirs = ai_report._download_dirs()
+    except Exception:
+        dirs = []
+    for d in dirs:
+        try:
+            if os.path.isdir(d) and os.access(d, os.W_OK):
+                path = os.path.join(d, name)
+                with open(path, "w", encoding="utf-8") as f:
+                    f.write(text)
+                return {"ok": True, "path": path, "bytes": len(text.encode("utf-8")), "hint": ""}
+        except Exception:
+            continue
+    try:
+        path = _p(name)
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(text)
+    except Exception:
+        path = ""
+    return {"ok": False, "path": path, "bytes": len(text.encode("utf-8")),
+            "hint": "Phone Download folder is not reachable from Termux. Run  termux-setup-storage  once in Termux, allow storage, then press Download again."}
+
+
 def status():
     view = _load("dual_lab_view.json", {})
     ctl = _load("dual_lab_ctl.json", {"enabled": True})
@@ -898,6 +1143,10 @@ def status():
     view["running"] = age is not None and age < BEAT_STALE_S
     view["age_s"] = int(age) if age is not None else None
     view["log_tail"] = _log_tail()
+    try:
+        _live_overlay(view)
+    except Exception:
+        pass
     if view["enabled"] and not view["running"] and not view.get("error"):
         if _SPAWN.get("err"):
             view["error"] = _SPAWN["err"]

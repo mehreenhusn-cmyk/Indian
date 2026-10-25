@@ -4,6 +4,9 @@ import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/candle_chart.dart';
+import '../widgets/trade_row.dart';
+import '../widgets/trade_chart.dart';
+import '../widgets/coin_history_sheet.dart';
 import '../widgets/daily_report_card.dart';
 import '../widgets/owl_empty_state.dart';
 import '../widgets/owl_entrance.dart';
@@ -427,6 +430,17 @@ class _AlertCard extends StatelessWidget {
 
     // Trade open / close alerts get the Binance-style card.
     if (d['symbol'] != null && _n(d['entry']) != null && (type == 'open' || isClose)) {
+      // Collapsed = the same clean row as Signals (tap = chart). "Details" opens the full card below.
+      if (!expanded) {
+        final r = _rowFromAlert(context, alert);
+        if (r != null) {
+          return TradeRow(
+            data: r,
+            onDetails: onToggle,
+            onHistory: () => _openHistory(context, d, _n(alert['ts'])),
+          );
+        }
+      }
       return _tradeCard(context, d, type: type, isClose: isClose, pill: pill, color: color, pnl: pnl, roi: roi, dur: dur);
     }
 
@@ -526,6 +540,85 @@ class _AlertCard extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+
+  // ---- clean row (same look as Signals) --------------------------------------
+
+  TradeRowData? _rowFromAlert(BuildContext context, Map<String, dynamic> al) {
+    final d = al['d'] is Map ? Map<String, dynamic>.from(al['d'] as Map) : null;
+    if (d == null || d['symbol'] == null || _n(d['entry']) == null) return null;
+    final type = '${al['type'] ?? ''}';
+    final isClose = d['exit_tag'] != null;
+    if (type != 'open' && !isClose) return null;
+    final pnl = _n(d['pnl']);
+    final roi = _n(d['roi']);
+    final dur = _n(d['duration_s']);
+    final entry = _n(d['entry']);
+    final sl = _n(d['sl']) ?? _n(d['sl_initial']);
+    final tp = d['tp'] is Map ? Map<String, dynamic>.from(d['tp'] as Map) : <String, dynamic>{};
+    final ts = _n(al['ts']);
+    final status = !isClose ? 'open' : (pnl == null ? 'closed' : (pnl > 0 ? 'won' : (pnl < 0 ? 'lost' : 'closed')));
+    return TradeRowData(
+      symbol: _shortSym(d['symbol']),
+      isLong: d['side'] == 'BUY',
+      status: status,
+      entry: entry,
+      last: isClose ? _n(d['exit']) : sl,
+      lastLabel: isClose ? 'Exit' : 'Stop',
+      pnl: isClose ? pnl : null,
+      openedSec: isClose ? ((ts != null && dur != null) ? ts - dur : null) : ts,
+      closedSec: isClose ? ts : null,
+      fallbackTime: '${al['time'] ?? '--'}',
+      extra: _plainLine(d, isClose, pnl, roi, dur, entry, sl, _n(tp['1'])),
+      onTap: () => _openChart(context, d, ts, isClose, pnl, roi, dur),
+    );
+  }
+
+  /// Tap a row -> candle chart with entry, stop-loss, targets and the exit.
+  void _openChart(BuildContext context, Map<String, dynamic> d, double? ts, bool isClose, double? pnl, double? roi, double? dur) {
+    final tp = d['tp'] is Map ? Map<String, dynamic>.from(d['tp'] as Map) : <String, dynamic>{};
+    final map = <String, dynamic>{
+      'symbol': d['symbol'],
+      'side': d['side'] == 'BUY' ? 'BUY' : 'SELL',
+      'entry': d['entry'],
+      'sl': d['sl_initial'] ?? d['sl'],
+      'tp1': tp['1'],
+      'tp2': tp['2'],
+      'tp3': tp['3'],
+      'tp4': tp['4'],
+      'opened': isClose ? ((ts != null && dur != null) ? ts - dur : null) : ts,
+      'state': isClose ? 'closed' : 'open',
+    };
+    if (isClose) {
+      map['closed'] = ts;
+      map['exit'] = d['exit'];
+      map['pnl'] = pnl;
+      map['roi'] = roi;
+      map['reason'] = '${d['reason_label'] ?? d['exit_tag']}';
+    }
+    showTradeChart(context, map);
+  }
+
+  /// All trades of this coin on the same trading day, in a bottom sheet.
+  void _openHistory(BuildContext context, Map<String, dynamic> d, double? ts) {
+    final sym = '${d['symbol']}';
+    final day = ts == null ? null : _istYmd(ts);
+    final rows = <TradeRowData>[];
+    for (final a in context.read<AppProvider>().alerts) {
+      if (a is! Map) continue;
+      final m = Map<String, dynamic>.from(a);
+      final dd = m['d'];
+      if (dd is! Map || '${dd['symbol']}' != sym) continue;
+      final at = m['ts'];
+      if (day != null && !(at is num && _istYmd(at) == day)) continue;
+      final r = _rowFromAlert(context, m);
+      if (r != null) rows.add(r);
+    }
+    showCoinHistorySheet(
+      context,
+      title: day == null ? '${_shortSym(sym)} trades' : '${_shortSym(sym)}  ·  ${_dayTitle(day)}',
+      rows: rows,
     );
   }
 
