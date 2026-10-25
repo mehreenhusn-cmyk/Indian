@@ -421,9 +421,9 @@ class _PositionCardState extends State<PositionCard> {
                           ),
                         if (hadGap)
                           Tooltip(
-                            message: 'Bot restarted / data gap while open - peak & drawdown estimated from candles',
+                            message: 'The bot restarted or lost data while this trade was open. Its highest profit and deepest loss are estimated from candles.',
                             triggerMode: TooltipTriggerMode.tap,
-                            child: const _BadgePill(text: 'GAP', color: AppColors.warning),
+                            child: const _BadgePill(text: 'RESTARTED', color: AppColors.warning),
                           ),
                       ],
                     ),

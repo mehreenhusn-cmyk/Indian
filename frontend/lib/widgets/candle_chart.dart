@@ -1399,6 +1399,14 @@ class _CandleChartSheetContentState extends State<_CandleChartSheetContent>
   int _paneAxis = 0;
   double _tsiScale = 1.0;
   double _zScale = 1.0;
+  // Per-pane up/down scroll + the pane the finger is on (1 TSI, 2 Z) + pinch bookkeeping for the lower panes.
+  double _tsiShift = 0.0;
+  double _zShift = 0.0;
+  int _paneTouch = 0;
+  int _paneLastCount = 0;
+  double _paneBaseSlot = 6.0;
+  double _paneAnchor = 0.0;
+  Offset _paneTapAt = Offset.zero;
   // Measure tool.
   bool _measureOn = false;
   _MeasurePt? _mA;
@@ -1650,6 +1658,8 @@ class _CandleChartSheetContentState extends State<_CandleChartSheetContent>
       _priceShiftFrac = 0.0;
       _tsiScale = 1.0;
       _zScale = 1.0;
+      _tsiShift = 0.0;
+      _zShift = 0.0;
       _cross = null;
     });
   }
@@ -1805,33 +1815,70 @@ class _CandleChartSheetContentState extends State<_CandleChartSheetContent>
         height: _smPaneH,
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
-          // Drag on the right price strip = scale THAT pane only; anywhere else = pan time like the main chart.
-          onPanStart: (d) {
+          // One finger: drag sideways = move time (same as the main chart), drag up/down = scroll THIS pane.
+          // Two fingers: pinch = zoom time (candles and panes stay lined up).
+          // Drag on the right price strip = scale THAT pane only. Double tap = reset THAT pane only.
+          onScaleStart: (d) {
             final both = _smSet.tsiOn && _smSet.zOn;
-            if (d.localPosition.dx > _plotW) {
-              _paneAxis = both ? (d.localPosition.dy < _smPaneH / 2 ? 1 : 2) : (_smSet.tsiOn ? 1 : 2);
-            } else {
-              _paneAxis = 0;
-            }
+            _paneTouch = both ? (d.localFocalPoint.dy < _smPaneH / 2 ? 1 : 2) : (_smSet.tsiOn ? 1 : 2);
+            _paneAxis = d.localFocalPoint.dx > _plotW ? _paneTouch : 0;
+            _paneBaseSlot = _slot;
+            _paneLastCount = d.pointerCount;
+            final n0 = _series?.n ?? 0;
+            _paneAnchor = (n0 - 1) + _rightBlank + 0.5 - (_plotW - d.localFocalPoint.dx) / _slot;
+            if (_paneCross != null) setState(() => _paneCross = null);
           },
-          onPanUpdate: (d) {
+          onScaleUpdate: (d) {
             setState(() {
               if (_paneAxis == 1) {
-                _tsiScale = (_tsiScale * math.exp(-d.delta.dy * 0.006)).clamp(0.3, 8.0).toDouble();
-              } else if (_paneAxis == 2) {
-                _zScale = (_zScale * math.exp(-d.delta.dy * 0.006)).clamp(0.3, 8.0).toDouble();
-              } else {
-                _rightBlank -= d.delta.dx / _slot;
-                _clampView();
+                _tsiScale = (_tsiScale * math.exp(-d.focalPointDelta.dy * 0.006)).clamp(0.3, 8.0).toDouble();
+                return;
               }
+              if (_paneAxis == 2) {
+                _zScale = (_zScale * math.exp(-d.focalPointDelta.dy * 0.006)).clamp(0.3, 8.0).toDouble();
+                return;
+              }
+              final n = _series?.n ?? 0;
+              if (d.pointerCount != _paneLastCount) {
+                _paneLastCount = d.pointerCount;
+                _paneBaseSlot = _slot;
+                _paneAnchor = (n - 1) + _rightBlank + 0.5 - (_plotW - d.localFocalPoint.dx) / _slot;
+              }
+              if (d.pointerCount >= 2) {
+                _slot = (_paneBaseSlot * math.pow(d.scale, 0.85).toDouble()).clamp(3.0, 36.0).toDouble();
+              }
+              _rightBlank = _paneAnchor - (n - 1) - 0.5 + (_plotW - d.localFocalPoint.dx) / _slot;
+              // Up/down: scroll only the pane the finger started on.
+              final paneH = (_smSet.tsiOn && _smSet.zOn) ? _smPaneH / 2 : _smPaneH;
+              final inner = math.max(40.0, paneH - 18);
+              if (_paneTouch == 1) {
+                _tsiShift = (_tsiShift + d.focalPointDelta.dy / inner / _tsiScale).clamp(-3.0, 3.0).toDouble();
+              } else if (_paneTouch == 2) {
+                _zShift = (_zShift + d.focalPointDelta.dy / inner / _zScale).clamp(-3.0, 3.0).toDouble();
+              }
+              _clampView();
             });
-            if (_paneAxis == 0) _maybeLoadMore();
+            _maybeLoadMore();
           },
-          onPanEnd: (_) => _paneAxis = 0,
+          onScaleEnd: (_) => _paneAxis = 0,
           onLongPressStart: (d) => setState(() => _paneCross = d.localPosition),
           onLongPressMoveUpdate: (d) => setState(() => _paneCross = d.localPosition),
           onLongPressEnd: (_) => setState(() => _paneCross = null),
-          onDoubleTap: _resetView,
+          onDoubleTapDown: (d) => _paneTapAt = d.localPosition,
+          onDoubleTap: () {
+            final both = _smSet.tsiOn && _smSet.zOn;
+            final pane = both ? (_paneTapAt.dy < _smPaneH / 2 ? 1 : 2) : (_smSet.tsiOn ? 1 : 2);
+            AppHaptics.light();
+            setState(() {
+              if (pane == 1) {
+                _tsiScale = 1.0;
+                _tsiShift = 0.0;
+              } else {
+                _zScale = 1.0;
+                _zShift = 0.0;
+              }
+            });
+          },
           child: ClipRect(
             child: Stack(
               children: [
@@ -1847,6 +1894,8 @@ class _CandleChartSheetContentState extends State<_CandleChartSheetContent>
                     markIdx: mark,
                     tsiScale: _tsiScale,
                     zScale: _zScale,
+                    tsiShift: _tsiShift,
+                    zShift: _zShift,
                     crossX: paneX,
                     crossY: _paneCross?.dy,
                     crossLabel: paneLabel,

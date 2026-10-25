@@ -320,6 +320,9 @@ class SpecialMasterPainter extends CustomPainter {
   /// Per-pane price-axis scale (1 = auto-fit, >1 = zoomed in). Dragging the right axis of a pane changes only that pane.
   final double tsiScale;
   final double zScale;
+  /// Per-pane up/down scroll (fraction of the pane's value range; + moves the window up so the line moves down).
+  final double tsiShift;
+  final double zShift;
 
   /// Crosshair: [crossX] draws a vertical line through every pane; [crossY] (this pane's own y) adds a horizontal
   /// line + value chip in the pane it falls in; [crossLabel] is the time chip under the last pane.
@@ -340,6 +343,8 @@ class SpecialMasterPainter extends CustomPainter {
       this.indexZsma = false,
       this.tsiScale = 1.0,
       this.zScale = 1.0,
+      this.tsiShift = 0.0,
+      this.zShift = 0.0,
       this.crossX,
       this.crossY,
       this.crossLabel});
@@ -442,6 +447,11 @@ class SpecialMasterPainter extends CustomPainter {
       final cm = (hi + lo) / 2, ch = (hi - lo) / 2 / tsiScale;
       lo = cm - ch;
       hi = cm + ch;
+    }
+    if (tsiShift != 0.0) {
+      final sh = (hi - lo) * tsiShift;
+      lo += sh;
+      hi += sh;
     }
     _tsiLo = lo;
     _tsiHi = hi;
@@ -610,6 +620,11 @@ class SpecialMasterPainter extends CustomPainter {
       final cm = (hi + lo) / 2, ch = (hi - lo) / 2 / zScale;
       lo = cm - ch;
       hi = cm + ch;
+    }
+    if (zShift != 0.0) {
+      final sh = (hi - lo) * zShift;
+      lo += sh;
+      hi += sh;
     }
     _zLo = lo;
     _zHi = hi;
@@ -849,6 +864,8 @@ class SpecialMasterPainter extends CustomPainter {
       old.markIdx != markIdx ||
       old.tsiScale != tsiScale ||
       old.zScale != zScale ||
+      old.tsiShift != tsiShift ||
+      old.zShift != zShift ||
       old.crossX != crossX ||
       old.crossY != crossY ||
       old.crossLabel != crossLabel ||

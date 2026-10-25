@@ -38,7 +38,7 @@ def candles(tf, n, seed):
         out.append({"timestamp": latest - (n - 1 - k) * step, "open": o, "high": max(o, p) * 1.001, "low": min(o, p) * 0.999, "close": p, "volume": 1.0})
     return out
 
-COINS = ["AAAUSDT", "BBBUSDT", "CCCUSDT"]
+COINS = ["AAAUSDT", "BBBUSDT", "BTCUSDT"]
 seedof = lambda sym, tf: sum(map(ord, sym + tf))
 def fetch_range(sym, tf, start):
     return candles(tf, int((time.time() * 1000 - start) / FL.TF_MS[tf]) + 1, seedof(sym, tf))

@@ -230,6 +230,13 @@ def open_paper_trade(signal, source="watchlist", bot="b1"):
                         note=f"Opposite {action} signal #{getattr(signal, 'signal_no', '?')} on {signal.symbol} @ {entry:g}")
 
     invest_amount = float(s.get("invest_amount", 10.0))
+    trade_lev = float(s.get("leverage", 1))
+    btc_size = False
+    if str(signal.symbol).upper() == "BTCUSDT" and s.get("btc_fixed", True):
+        # BTC has its own paper size (default 1000 USDT x 10x). Paper only: the live order path never reads this.
+        invest_amount = float(s.get("btc_margin", 1000.0) or 1000.0)
+        trade_lev = float(s.get("btc_leverage", 10) or 10)
+        btc_size = True
     ema_len = int(s.get("ema_length", 50) or 50)
     # CONFIGURABLE STRATEGY TIMEFRAME: was exchange.GRANULARITY_MIN (the raw
     # exchange default, always 5) - now reflects whatever timeframe the
@@ -253,7 +260,8 @@ def open_paper_trade(signal, source="watchlist", bot="b1"):
             "action": action,
             "entry_price": entry,
             "invest_usdt": invest_amount,
-            "leverage": float(s.get("leverage", 1)),
+            "leverage": trade_lev,
+            "btc_fixed_size": btc_size,
             "tp_mode": s.get("tp_mode", "percent"),
             "tp_value": float(s.get("tp_value", 3.0)),
             "sl_value": float(s.get("sl_value", 1.5)),

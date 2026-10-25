@@ -3,8 +3,8 @@ import '../theme/app_theme.dart';
 import 'owl_pressable.dart';
 
 /// Bottom navigation - same public API as before (currentIndex + onTap) and
-/// 7 tabs (AI sits at index 4, after Signals; Dash/Market/Pos/Signals keep
-/// their indexes so AppProvider.goToTab keeps working). Only the look changed: floating
+/// 7 tabs: Dash, Market, Pos, Signals (Signals + Alerts), Dual Bot, AI, More.
+/// Dash/Market/Pos/Signals keep indexes 0-3 so AppProvider.goToTab keeps working. Floating
 /// rounded glass bar, accent pill on the active tab.
 class BottomNavBar extends StatelessWidget {
   final int currentIndex;
@@ -21,21 +21,19 @@ class BottomNavBar extends StatelessWidget {
     Icons.trending_up_rounded,
     Icons.layers_rounded,
     Icons.sensors_rounded,
+    Icons.compare_arrows_rounded,
     Icons.auto_awesome_rounded,
-    Icons.notifications_none_rounded,
-    Icons.settings_rounded,
-    Icons.bolt_rounded,
+    Icons.apps_rounded,
   ];
 
   static const List<String> _labels = [
     'Dash',
     'Market',
     'Pos',
-    'Sig',
+    'Signals',
+    'Dual Bot',
     'AI',
-    'Alert',
-    'Set',
-    'Ping',
+    'More',
   ];
 
   @override
@@ -108,7 +106,7 @@ class BottomNavBar extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.clip,
               style: AppTypography.metadata.copyWith(
-                fontSize: 8.5,
+                fontSize: 9,
                 color: color,
                 fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
               ),

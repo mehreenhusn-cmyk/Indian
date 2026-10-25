@@ -21,6 +21,9 @@ _defaults = {
     "inr_rate": 91.5,
     "daily_target_usdt": 3.0,
     "daily_loss_limit_usdt": 20.0,
+    "btc_fixed": True,        # True = BTCUSDT is always on the bot watchlist (even when not in the top-10 gainers/losers) and trades with its own size below. PAPER only.
+    "btc_margin": 1000.0,     # USDT margin of every BTCUSDT paper trade
+    "btc_leverage": 10,       # leverage of every BTCUSDT paper trade
     "max_open_trades": 0,     # 0 = no limit. N = the bot never holds more than N trades at one time
                                 # (paper + live); a new signal is skipped while N are already open.
     "daily_gate_enabled": True,  # IST schedule: OFF 01:30, no trades 05:30-09:30, back ON 09:30 (see day_gate.py)

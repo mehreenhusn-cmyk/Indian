@@ -147,6 +147,21 @@ def _current_trading_day_key(ist_dt=None):
     return trading_date.isoformat()
 
 
+BTC_SYMBOL = "BTCUSDT"
+
+
+def _is_btc(symbol):
+    return str(symbol).upper() == BTC_SYMBOL
+
+
+def _btc_fixed():
+    """BTCUSDT always on the watchlist with its own paper size (Settings keys btc_fixed / btc_margin / btc_leverage)."""
+    try:
+        return bool(settings_store.get("btc_fixed", True))
+    except Exception:
+        return True
+
+
 _last_ranked = []     # full {symbol, pct24h, price} ranking of the last successful movers fetch
 
 
@@ -239,6 +254,8 @@ def refresh_watchlist():
         print(f"[{datetime.now().strftime('%H:%M:%S')}] [Watchlist] Refresh failed - keeping {len(current)} symbols")
         return current
     new_watch = set(gainers + losers)
+    if _btc_fixed():
+        new_watch.add(BTC_SYMBOL)     # BTC is always scanned, top-10 or not
     with lock:
         old_watch = watchlist
         dropped = old_watch - new_watch - _held_symbols()
@@ -462,7 +479,7 @@ def _extra_entry_block(signal, symbol):
         pass
     try:
         mx = int(settings_store.get("max_open_trades", 0) or 0)
-        if mx > 0:
+        if mx > 0 and not _is_btc(symbol):      # BTC has its own slot: never blocked by, never counted in, the alt limit
             if settings_store.get("live_trading_enabled", False):
                 # LIVE account: count only REAL Binance positions (old paper trades must not
                 # fill the slots). Fresh read; if Binance cannot be read, block - never guess.
@@ -476,13 +493,14 @@ def _extra_entry_block(signal, symbol):
                     held = {str(x).upper() for x in paper_trader.open_symbols()}
                 except Exception:
                     held = _held_symbols()
+            held.discard(BTC_SYMBOL)
             if str(symbol).upper() not in held and len(held) >= mx:
                 return f"Max open trades ({mx}) already open"
     except Exception:
         pass
     try:
         act = str(signal.action).upper()
-        cat = _coin_category(symbol)
+        cat = None if _is_btc(symbol) else _coin_category(symbol)     # BTC is exempt from the gainer/loser SD0 rules
         if act == "SELL" and cat == "gainer" and settings_store.get("block_sell_on_gainer", False):
             if _sd0_last_cross(symbol) not in ("down", "below"):
                 return "Gainer coin: SELL waits until price crosses SD0 from above to below"
@@ -521,6 +539,8 @@ def _open_signal(signal, symbol, source="watchlist", bot_id="b1"):
     _extra_block = _extra_entry_block(signal, symbol)
     target_hit = _daily_target_hit(bot_id)
     loss_hit = _daily_loss_limit_hit(bot_id)
+    if _is_btc(symbol) and _btc_fixed():
+        target_hit = loss_hit = False      # BTC trades 10x bigger than the alts: the alt daily target / loss limit must not block it
     # Pre-trade health check: confirm this symbol actually has a live price
     # right now before ever opening a position on it. This is the fix for
     # the 2U2USDTM bug class - a signal firing on a thin/invalid/delisted

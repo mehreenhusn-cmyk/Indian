@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 
 import '../providers/app_provider.dart';
 import '../theme/app_theme.dart';
+import '../widgets/dual_trade_card.dart';
 import '../widgets/dual_trade_chart.dart';
 import '../widgets/report_download_card.dart';
 import '../widgets/owl_route.dart';
@@ -72,6 +73,9 @@ class _DualBotScreenState extends State<DualBotScreen> {
   static List<Map<String, dynamic>> _maps(dynamic v) =>
       v is List ? v.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList() : <Map<String, dynamic>>[];
   static double _n(dynamic v) => v is num ? v.toDouble() : 0.0;
+
+  /// Margin of ONE trade: BTC has its own (the backend sends it per trade), the rest use the common margin.
+  double _mg(Map t) => t['margin'] is num ? (t['margin'] as num).toDouble() : _n(_st['margin']);
   static String _usdt(double v) => '${v >= 0 ? '+' : ''}${v.toStringAsFixed(2)} USDT';
 
   Widget _card(AppPalette p, {required String title, required List<Widget> children, Color? edge}) {
@@ -106,10 +110,13 @@ class _DualBotScreenState extends State<DualBotScreen> {
     final running = _st['running'] == true;
     final enabled = _st['enabled'] != false;
     final progress = '${_st['progress'] ?? ''}';
+    final btcMargin = _n(_st['btc_margin']);
+    final btcNote = btcMargin > 0 ? 'BTC is always included, with ${btcMargin.toStringAsFixed(0)} USDT per trade. ' : '';
     return _card(p, title: 'DUAL BOT (PAPER)', edge: p.accent, children: [
       Text(
           'A separate bot that reads both indicators and learns by itself when to trade and how to exit. '
           'Paper only: ${_n(_st['margin']).toStringAsFixed(0)} USDT per trade at ${_n(_st['lev']).toStringAsFixed(0)}x. '
+          '$btcNote'
           'No AI key is needed, so a key limit cannot stop it. Your live bot is not touched.',
           style: context.type.metadata),
       const SizedBox(height: 8),
@@ -477,11 +484,11 @@ class _DualBotScreenState extends State<DualBotScreen> {
       default:
         tag = status;
     }
-    final usdt = net == null ? null : net * _n(_st['margin']) / 100.0;
+    final usdt = net == null ? null : net * _mg(t) / 100.0;
     final path = t['path'] is List ? (t['path'] as List).length : 0;
     return InkWell(
       borderRadius: BorderRadius.circular(8),
-      onTap: () => showDualTradeChart(context, row: t, margin: _n(_st['margin']), lev: _n(_st['lev'])),
+      onTap: () => showDualTradeChart(context, row: t, margin: _mg(t), lev: _n(_st['lev'])),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 6),
         child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -526,8 +533,14 @@ class _DualBotScreenState extends State<DualBotScreen> {
             style: context.type.primary.copyWith(fontWeight: FontWeight.w700, fontSize: 13),
           ),
         ),
-      for (final t in open) _tradeRow(p, t, short: true),
-      if (open.isNotEmpty) Text('Tap a trade: big chart with entry, stop and take-profit lines. Scroll and zoom like the Positions tab.', style: context.type.metadata),
+      for (final t in open)
+        DualTradeCard(
+          row: t,
+          margin: _mg(t),
+          onTap: () => showDualTradeChart(context, row: t, margin: _mg(t), lev: _n(_st['lev'])),
+          setupLine: t['stp'] is Map ? _setupLine(p, t['stp'] as Map) : null,
+        ),
+      if (open.isNotEmpty) Text('Tap a card: big chart with entry, stop and take-profit lines. Scroll and zoom like the Positions tab.', style: context.type.metadata),
     ]);
   }
 

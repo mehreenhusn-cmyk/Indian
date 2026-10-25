@@ -96,6 +96,7 @@ class SignalsScreen extends StatefulWidget {
 class _SignalsScreenState extends State<SignalsScreen> {
   String _filter = 'auto'; // auto | running | closed | skipped  (auto = Running when something runs, else Closed)
   final Set<String> _expanded = {};
+  bool _btcOnly = false; // BTC chip on top: shows only BTCUSDT signals, with their own summary
 
   bool _match(String tab, SignalOutcomeKind k) {
     switch (tab) {
@@ -124,9 +125,11 @@ class _SignalsScreenState extends State<SignalsScreen> {
                 builder: (context, _rev, child) {
                   final provider = context.read<AppProvider>();
                   return Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text('Signals', style: t.section.copyWith(fontSize: 22, fontWeight: FontWeight.bold)),
+                      const SizedBox(width: 10),
+                      _btcChip(context),
+                      const Spacer(),
                       if (provider.signals.isNotEmpty) Text('${provider.signals.length} total', style: t.metadata),
                     ],
                   );
@@ -155,11 +158,41 @@ class _SignalsScreenState extends State<SignalsScreen> {
     );
   }
 
+  /// Small "BTC" switch next to the title. On = only BTCUSDT signals (and their summary).
+  Widget _btcChip(BuildContext context) {
+    final p = context.palette;
+    final on = _btcOnly;
+    return OWLPressable(
+      onTap: () {
+        AppHaptics.light();
+        setState(() => _btcOnly = !_btcOnly);
+      },
+      child: AnimatedContainer(
+        duration: AppMotion.base,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+        decoration: BoxDecoration(
+          color: on ? p.accent.withOpacity(0.16) : Colors.transparent,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: on ? p.accent.withOpacity(0.45) : p.border),
+        ),
+        child: Text(
+          'BTC',
+          style: AppTypography.secondaryData.copyWith(
+            color: on ? p.accent : p.textSecondary,
+            fontSize: 12,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _body(BuildContext context) {
     final t = context.type;
     final provider = context.read<AppProvider>();
-    final signals = provider.signals.whereType<Map>().map((e) => e.cast<String, dynamic>()).toList();
-    if (signals.isEmpty && provider.status.isEmpty && provider.error == null) {
+    final allSignals = provider.signals.whereType<Map>().map((e) => e.cast<String, dynamic>()).toList();
+    final signals = _btcOnly ? allSignals.where((e) => '${e['symbol']}' == 'BTCUSDT').toList() : allSignals;
+    if (allSignals.isEmpty && provider.status.isEmpty && provider.error == null) {
       // First load only: grey placeholder cards.
       return ListView(
         physics: owlPullPhysics,
@@ -173,11 +206,13 @@ class _SignalsScreenState extends State<SignalsScreen> {
       );
     }
     if (signals.isEmpty) {
-      return const OWLPullEmpty(
+      return OWLPullEmpty(
         child: OWLEmptyState(
           icon: Icons.sensors_off_rounded,
-          title: 'No signals yet',
-          subtitle: 'New signals will show up here when the strategy fires.',
+          title: _btcOnly ? 'No BTC signal yet' : 'No signals yet',
+          subtitle: _btcOnly
+              ? 'BTC is always watched with the same EMA50 cross as every coin. Its trades use 1000 USDT at 10x (paper). When BTC fires or is skipped, it shows here with the reason.'
+              : 'New signals will show up here when the strategy fires.',
         ),
       );
     }
@@ -280,7 +315,7 @@ class _SignalsScreenState extends State<SignalsScreen> {
             Row(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Text('TODAY', style: t.label.copyWith(fontWeight: FontWeight.w800, letterSpacing: 1.2)),
+                Text(_btcOnly ? 'BTC TODAY' : 'TODAY', style: t.label.copyWith(fontWeight: FontWeight.w800, letterSpacing: 1.2)),
                 const Spacer(),
                 Text('${fmtSigned(td.net)} USDT',
                     style: t.primary.copyWith(color: netColor, fontWeight: FontWeight.w800, fontSize: 20)),
@@ -301,6 +336,7 @@ class _SignalsScreenState extends State<SignalsScreen> {
               [
                 if (wr != null) 'Win rate today: ${wr.toStringAsFixed(0)}%' else 'No closed trade today yet',
                 'All loaded: ${s.all.total} signals, ${s.all.wins} won, ${s.all.losses} lost, net ${fmtSigned(s.all.net)} USDT',
+                if (_btcOnly) 'BTC paper size: 1000 USDT at 10x. Tap a trade for its chart, Details for the levels.',
               ].join('\n'),
               style: t.metadata.copyWith(height: 1.4),
             ),
@@ -442,9 +478,11 @@ class _SignalsScreenState extends State<SignalsScreen> {
 
     final plain = _plain(out);
     final skip = sg['skip_reason'];
-    final String? extra = skip != null
+    final String? baseExtra = skip != null
         ? 'Why skipped: $skip'
         : (plain == 'Open' || plain == 'New' || plain == 'Opened' ? null : plain);
+    // BTC rows carry a small tag, so they are easy to find in the all-coins list too.
+    final String? extra = '${sg['symbol']}' == 'BTCUSDT' ? (baseExtra == null ? 'BTC' : 'BTC · $baseExtra') : baseExtra;
 
     return TradeRowData(
       symbol: '${sg['symbol'] ?? 'UNKNOWN'}',

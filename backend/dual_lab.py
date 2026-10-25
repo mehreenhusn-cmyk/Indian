@@ -32,6 +32,14 @@ import time
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
+BTC_SYM, BTC_MARGIN = "BTCUSDT", 1000.0     # BTC is always in the Dual Bot and trades 1000 USDT (10x like the rest, paper only)
+
+
+def _mg(t):
+    """Margin (USDT) of ONE trade: BTC 1000, every other coin MARGIN."""
+    return BTC_MARGIN if (t or {}).get("s") == BTC_SYM else MARGIN
+
+
 LEV, MARGIN, FEE = 10.0, 100.0, 1.0          # same as the Tag Lab: 10x, 100 USDT margin, fee in ROI points
 TFS = ("5m", "15m")
 BOOT_DAYS = 7
@@ -272,7 +280,7 @@ def _what(t):
     status = t["status"]
     if status in ("closed", "skipped_done"):
         net = t.get("net") or 0.0
-        usdt = MARGIN * net / 100.0
+        usdt = _mg(t) * net / 100.0
         lead = ("" if status == "closed" else "It was skipped, but if taken: ")
         return (f"{lead}{WHY_WORD.get(t.get('end'), 'The trade ended')} after {_dur(t.get('bars') or 0, t['f'])}. "
                 f"Result {usdt:+.2f} USDT ({net:+.1f}% of margin, fee inside).",
@@ -282,9 +290,9 @@ def _what(t):
         return ("Waiting for the first candle after the entry.", f"Exit rule: {t['exit']}. First stop {_px(t['sl'])}.")
     lead = "Skipped, but if taken it would be " if status == "skipped" else "Open for "
     dur = _dur(t.get("lbars") or 0, t["f"])
-    txt = (f"{lead}{dur}. " if status == "open" else f"{lead}at {net * MARGIN / 100.0:+.2f} USDT after {dur}.")
+    txt = (f"{lead}{dur}. " if status == "open" else f"{lead}at {net * _mg(t) / 100.0:+.2f} USDT after {dur}.")
     if status == "open":
-        txt += f"Now {net * MARGIN / 100.0:+.2f} USDT ({net:+.1f}% of margin)."
+        txt += f"Now {net * _mg(t) / 100.0:+.2f} USDT ({net:+.1f}% of margin)."
     return (txt, f"Exit rule: {t['exit']}. {moves}; stop now {_px(now_sl)}.")
 
 
@@ -691,7 +699,7 @@ def _day_start_ms(now=None):
 
 
 def _usdt(t, key="net"):
-    return MARGIN * (t.get(key) or 0.0) / 100.0
+    return _mg(t) * (t.get(key) or 0.0) / 100.0
 
 
 def _day_items(trades, a, b):
@@ -758,7 +766,7 @@ def summary(data, model, exit_names):
     closed = [t for t in tr if t["status"] == "closed"]
     opens = [t for t in tr if t["status"] == "open"]
     skipped_done = [t for t in tr if t["status"] == "skipped_done"]
-    pnl = lambda t: MARGIN * (t.get("net") or 0.0) / 100.0
+    pnl = lambda t: _mg(t) * (t.get("net") or 0.0) / 100.0
     by_src = {}
     for t in closed:
         s = by_src.setdefault(t["src"], {"n": 0, "wins": 0, "pnl": 0.0})
@@ -768,7 +776,7 @@ def summary(data, model, exit_names):
     d0 = _day_start_ms()
     closed_today = [t for t in closed if (t.get("closed_at") or t["t"] / 1000.0) * 1000 >= d0]
     real_today = sum(pnl(t) for t in closed_today)
-    open_now = sum(MARGIN * (t.get("live") or 0.0) / 100.0 for t in opens)
+    open_now = sum(_mg(t) * (t.get("live") or 0.0) / 100.0 for t in opens)
     today = {"opened": sum(1 for t in tr if t["status"] in ("open", "closed") and t["t"] >= d0),
              "closed": len(closed_today), "wins": sum(1 for t in closed_today if (t.get("net") or 0) > 0),
              "losses": sum(1 for t in closed_today if (t.get("net") or 0) <= 0),
@@ -779,7 +787,7 @@ def summary(data, model, exit_names):
         "today": today,
         "closed": len(closed), "wins": sum(1 for t in closed if (t.get("net") or 0) > 0),
         "pnl": round(sum(pnl(t) for t in closed), 2), "open": len(opens),
-        "open_pnl": round(sum(MARGIN * (t.get("live") or 0.0) / 100.0 for t in opens), 2),
+        "open_pnl": round(sum(_mg(t) * (t.get("live") or 0.0) / 100.0 for t in opens), 2),
         "skipped_done": len(skipped_done), "skipped_pnl": round(sum(pnl(t) for t in skipped_done), 2),
         "skipped_open": sum(1 for t in tr if t["status"] == "skipped"),
         "by_src": {k: {"n": v["n"], "wins": v["wins"], "pnl": round(v["pnl"], 2)} for k, v in by_src.items()},
@@ -792,7 +800,7 @@ def slim(t):
     return {"s": t["s"], "f": t["f"], "d": t["d"], "src": t["src"], "exit": t["exit"], "mode": t["mode"], "why": t["why"],
             "status": t["status"], "net": t.get("net"), "live": t.get("live"), "end": t.get("end"), "bars": t.get("bars"),
             "t": t["t"], "ct": t.get("ct"), "entry": t["entry"], "sl": t["sl"], "tps": t.get("tps"),
-            "path": t.get("path") or [], "xpx": t.get("xpx"), "xt": t.get("xt"), "lpx": t.get("lpx"),
+            "margin": _mg(t), "path": t.get("path") or [], "xpx": t.get("xpx"), "xt": t.get("xt"), "lpx": t.get("lpx"),
             "scn": scn, "what1": w1, "what2": w2, "label": t.get("label"), "reason": t.get("reason"), "mem": t.get("mem"),
             "side": [(t.get("tg") or {}).get("side_main_pct"), (t.get("tg") or {}).get("side_z_pct")]}
 
@@ -807,7 +815,7 @@ def make_view(data, model, ins, exit_names, progress, err, enabled):
             "insights": {"best": ins.get("best", []), "worst": ins.get("worst", [])}, "scen": ins.get("scen") or {"status": "collecting", "days": 0.0, "cards": [], "tips": []}, "lessons": MD.lessons(data["trades"]), "review": day_review(data),
             "setups": ins.get("setups") or {"status": "collecting", "days": 0.0, "totals": {}, "use": [], "skip": [], "common": []},
             "recent": [dict(slim(t), stp=setup_of(t)) for t in ([t for t in tr if t["status"] == "open"] + [t for t in tr if t["status"] != "open"][:40])], "progress": progress, "error": err, "retest": retest_summary(data),
-            "margin": MARGIN, "lev": LEV, "started": data.get("started")}
+            "margin": MARGIN, "btc_margin": BTC_MARGIN, "lev": LEV, "started": data.get("started")}
 
 
 # ---------------------------------------------------------------- the worker (own process)
@@ -851,6 +859,8 @@ def cycle(data, st, fetch_limit, fetch_range, coins_fn):
         except Exception as e:
             st["err"] = f"Cannot get today's coin list from Binance ({type(e).__name__}: {str(e)[:90]})"
     coins = list(dict.fromkeys(st.get("coins", []) + [t["s"] for t in data["trades"] if t["status"] in ("open", "skipped")]))
+    if BTC_SYM not in coins:
+        coins.append(BTC_SYM)                                  # BTC is always read, whatever today top list is
     done = 0
     failed = 0
     total = len(coins) * len(TFS)
@@ -1017,7 +1027,7 @@ def _live_overlay(view):
             t["lpx_now"] = p
             t["live_now"] = round((p - t["entry"]) / t["entry"] * 100.0 * t["d"] * LEV - FEE, 2)
             if t.get("live") is not None:
-                delta += (t["live_now"] - t["live"]) * MARGIN / 100.0
+                delta += (t["live_now"] - t["live"]) * _mg(t) / 100.0
     sm = view.get("summary") or {}
     if delta and isinstance(sm, dict):                        # the open part of every total moves with the live price too
         td = sm.get("today")
@@ -1086,7 +1096,7 @@ def build_report(limit_trades=250):
     L.append(f"== TRADES (newest first, {len(trades)} of {len(data.get('trades') or [])}) ==")
     for t in trades:
         net = t.get("net") if t.get("status") in ("closed", "skipped_done") else t.get("live")
-        usdt = "-" if net is None else f"{MARGIN * net / 100.0:+.2f} USDT ({net:+.1f}% of margin)"
+        usdt = "-" if net is None else f"{_mg(t) * net / 100.0:+.2f} USDT ({net:+.1f}% of margin)"
         path = "; ".join(f"{_ts(a)} stop {_px(b)}" for a, b in (t.get("path") or [])) or "stop never moved"
         try:
             scn = _scenario(t)

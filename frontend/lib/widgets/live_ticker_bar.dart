@@ -149,9 +149,20 @@ class _LiveTickerBarState extends State<LiveTickerBar> with TickerProviderStateM
               const SizedBox(width: 8),
 
               // ---- 24h P&L ----
-              Text(
-                '${pnl >= 0 ? '+' : ''}${pnl.toStringAsFixed(2)}',
-                style: AppTypography.secondaryData.copyWith(color: pnlColor, fontSize: 12, fontWeight: FontWeight.w700),
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    provider.statsMode == 'live' ? 'OPEN P&L' : 'TODAY P&L',
+                    style: TextStyle(fontSize: 8, height: 1.1, letterSpacing: 0.4, color: context.palette.textMuted),
+                  ),
+                  Text(
+                    '${pnl >= 0 ? '+' : ''}${pnl.toStringAsFixed(2)}',
+                    style: AppTypography.secondaryData.copyWith(color: pnlColor, fontSize: 12.5, height: 1.15, fontWeight: FontWeight.w800),
+                  ),
+                ],
               ),
               const SizedBox(width: 10),
 
