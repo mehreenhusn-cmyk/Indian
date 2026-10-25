@@ -96,3 +96,43 @@ jobs:
         # Download it the same day. The Cleanup workflow also removes older ones.
         retention-days: 1
         compression-level: 0
+
+  # Browser version. Separate job + continue-on-error: if it ever fails, the APK build above is NOT affected.
+  # Result is force-pushed to the branch "web-build" (no history, so the repo never grows).
+  web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    continue-on-error: true
+    permissions:
+      contents: write
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        channel: 'stable'
+
+    - name: Install dependencies
+      working-directory: ./frontend
+      run: flutter pub get
+
+    - name: Add web platform files
+      working-directory: ./frontend
+      run: flutter create . --platforms=web
+
+    - name: Build web
+      working-directory: ./frontend
+      run: flutter build web --release --base-href /app/
+
+    - name: Publish to branch web-build
+      working-directory: ./frontend/build/web
+      run: |
+        git init -q
+        git config user.name "owl-ci"
+        git config user.email "owl-ci@users.noreply.github.com"
+        git checkout -q -b web-build
+        git add -A
+        git commit -q -m "web build"
+        git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" web-build
+

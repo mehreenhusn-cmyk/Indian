@@ -343,6 +343,9 @@ class _ChartPainter extends CustomPainter {
   /// these lines match the actual TP1-4 levels the strategy computes.
   final bool sdBands;
 
+  /// Dual Bot charts: hide the small SD band labels on the left edge (the lines stay).
+  final bool hideSdLabels;
+
   /// Wall-clock now + configured strategy timeframe, in ms - only used to
   /// draw the candle countdown chip under the current price tag (see
   /// paint() below). Left null (compact-card usage) skips the countdown
@@ -381,6 +384,7 @@ class _ChartPainter extends CustomPainter {
     this.priceShiftFrac,
     this.barTint,
     this.sdBands = false,
+    this.hideSdLabels = false,
     this.light = false,
   });
 
@@ -861,7 +865,7 @@ class _ChartPainter extends CustomPainter {
     // ---- outside the clip: labels, axis, crosshair, legend ----
     // SD Bands left-edge labels - small, unobtrusive, no background chip
     // (kept visually secondary to the Entry/SL/TP chips on the right).
-    if (!compact) {
+    if (!compact && !hideSdLabels) {
       for (final e in sdRefsDrawn) {
         final tp = _text(e.value, AppTypography.metadata.copyWith(color: _sdLevelColor(e.value, light).withOpacity(0.95), fontSize: 8, fontWeight: FontWeight.w600));
         tp.paint(canvas, Offset(6, e.key - tp.height / 2));
@@ -1078,6 +1082,7 @@ class _ChartPainter extends CustomPainter {
         old.priceZoom != priceZoom ||
         old.priceShiftFrac != priceShiftFrac ||
         old.sdBands != sdBands ||
+        old.hideSdLabels != hideSdLabels ||
         !identical(old.barTint, barTint) ||
         old.liveClose != liveClose ||
         old.timeframeMs != timeframeMs ||
@@ -1848,6 +1853,7 @@ class _CandleChartSheetContentState extends State<_CandleChartSheetContent>
                     priceZoom: _priceZoom,
                     priceShiftFrac: _priceShiftFrac,
                     sdBands: _sdBands,
+                    hideSdLabels: widget.dualStyle,
                     barTint: (_sm && _smSet.tsiOn && _smSet.b('curlBars')) ? _ensureSm(sr)?.barTint : null,
                     light: _chartLight(context),
                   ),

@@ -59,6 +59,18 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# --- Browser (desktop) version of the app, served at /app/ ---
+# Built by GitHub (branch web-build) and pulled onto the phone by web_update.sh
+# into ~/owl_web (or the folder in OWL_WEB_DIR). No folder = no browser version.
+try:
+    from fastapi.staticfiles import StaticFiles
+    _web_dir = os.environ.get("OWL_WEB_DIR") or os.path.join(os.path.expanduser("~"), "owl_web")
+    if os.path.isfile(os.path.join(_web_dir, "index.html")):
+        app.mount("/app", StaticFiles(directory=_web_dir, html=True), name="owl_web")
+        print(f"[startup] browser app served at /app/ from {_web_dir}")
+except Exception as _e:
+    print(f"[startup] browser app skipped: {_e}")
+
 @app.middleware("http")
 async def _ai_priority_touch(request, call_next):
     """Any AI screen request marks the app as 'in use', so background AI workers slow down while you look at it."""

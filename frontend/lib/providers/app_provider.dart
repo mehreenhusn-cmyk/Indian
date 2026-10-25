@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
@@ -55,11 +56,13 @@ class AppProvider extends ChangeNotifier {
   // relying on any hosts-file/DNS entry existing for 'localhost'. Candle
   // fetch (and every other /api/* call) now targets this by default.
   static const _defaultBaseUrl = 'http://127.0.0.1:8000';
+  // Browser version: talk to the same server the page was opened from.
+  static String get _startUrl => kIsWeb ? Uri.base.origin : _defaultBaseUrl;
 
   static const _quickTimeout = Duration(seconds: 5);
   static const _wakeTimeout = Duration(seconds: 45);
 
-  String baseUrl = _defaultBaseUrl;
+  String baseUrl = _startUrl;
 
   Map<String, dynamic> status = {};
 
@@ -360,7 +363,7 @@ class AppProvider extends ChangeNotifier {
   }
 
   Future<void> init() async {
-    baseUrl = prefs.getString(_backendUrlKey) ?? _defaultBaseUrl;
+    baseUrl = (kIsWeb ? null : prefs.getString(_backendUrlKey)) ?? _startUrl;
     await Future.wait([
       fetchStatus(),
       fetchSignals(),

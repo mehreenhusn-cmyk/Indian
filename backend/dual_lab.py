@@ -477,6 +477,185 @@ def scenarios(data, exit_names):
     return {"status": "ready", "days": round(days, 1), "cards": use_c + skip_c, "tips": tips}
 
 
+# ---------------------------------------------------------------- Part 2: the setup book
+# A "setup" = the full state of BOTH indicators at the entry (8 tags), counted the same way for every coin and both
+# timeframes. All tags are already relative to the trade side ("with the trade" / "against"), so a BUY and a SELL with the
+# same picture count as the same setup. Nothing is typed by hand: the bot counts what each picture earned.
+SETUP_DIMS = ("src", "tsi_zero", "tsi_line", "tsi_hist", "z_ema", "cloud", "zsm", "diverge")
+MIN_SETUP = 10             # trades a setup needs before it is judged
+_BOOK = {}                 # setup key -> small stats, used to tag every open trade with its setup
+
+
+def _short(dim, v):
+    """Short plain words for one tag value (display only, the stored tags stay as they are)."""
+    v = str(v)
+    if dim == "src":
+        return {"MAIN": "Main signal", "Z": "Z signal", "BOTH": "Both signals"}.get(v, v)
+    if dim == "tsi_zero":
+        return "TSI with trade" if v.startswith("TSI with") else "TSI against trade"
+    if dim == "tsi_line":
+        return "TSI line with trade" if "trade side" in v else "TSI line against trade"
+    if dim == "tsi_hist":
+        return "TSI histogram growing" if "growing" in v else "TSI histogram shrinking"
+    if dim == "z_ema":
+        return "Z beyond both EMAs" if "beyond" in v else "Z between its EMAs" if "between" in v else "Z against both EMAs"
+    if dim == "cloud":
+        return "Z cloud with trade" if "with the trade" in v else "Z cloud against trade"
+    if dim == "zsm":
+        return "Z with ZSM" if "trade side" in v else "Z against ZSM"
+    if dim == "diverge":
+        return "price and Z agree" if (v.endswith("agree") and "disagree" not in v) else "price and Z disagree"
+    return v
+
+
+def _skey(vals):
+    return "|".join(str(v) for v in vals)
+
+
+def _row_vals(r, TL):
+    return [r[4][TL.DIMS.index(d)] for d in SETUP_DIMS]
+
+
+def _trade_vals(t):
+    tg = t.get("tg") or {}
+    vals = [tg.get(d) for d in SETUP_DIMS]
+    return None if any(v is None for v in vals) else vals
+
+
+def setup_book(data, exit_names):
+    """Every setup seen in the memory with its own numbers. Counting only, judged on older and newer half like the scenarios."""
+    TL = _tl()
+    rows = sorted((r for r in data["rows"].values() if len(r) > 6), key=lambda r: r[2])
+    if len(rows) < 80:
+        _BOOK.clear()
+        return {"status": "collecting", "days": 0.0, "totals": {}, "use": [], "skip": [], "common": []}
+    days = (rows[-1][2] - rows[0][2]) / 86_400_000.0
+    bot_i, cut = exit_names.index(TL.BOT), len(rows) // 2
+    groups = {}
+    for idx, r in enumerate(rows):
+        groups.setdefault(_skey(_row_vals(r, TL)), []).append(idx)
+    book, cards = {}, []
+    tot = {"seen": len(groups), "judged": 0, "use": 0, "skip": 0, "unsure": 0, "few": 0}
+    for key, ix in groups.items():
+        rs = [rows[i] for i in ix]
+        n = len(rs)
+        bot = _avg([x[5][bot_i] for x in rs])
+        win = int(round(100.0 * sum(1 for x in rs if x[5][bot_i] > 0) / n))
+        if n < MIN_SETUP:
+            tot["few"] += 1
+            book[key] = {"n": n, "win": win, "avg": round(bot, 1), "verdict": "FEW"}
+            continue
+        o, nw = [rows[i] for i in ix if i < cut], [rows[i] for i in ix if i >= cut]
+        be = max(range(len(exit_names)), key=lambda e: _avg([x[5][e] for x in rs]))
+        ok = len(o) >= 4 and len(nw) >= 4
+        use = ok and _avg([x[5][be] for x in o]) > 0.5 and _avg([x[5][be] for x in nw]) > 0.5
+        skip = ok and _avg([x[5][bot_i] for x in o]) < -0.5 and _avg([x[5][bot_i] for x in nw]) < -0.5
+        verdict = "USE" if use else "SKIP" if skip else "UNSURE"
+        tot["judged"] += 1
+        tot[verdict.lower()] += 1
+        vals = key.split("|")
+        card = {"name": " + ".join(_short(d, v) for d, v in zip(SETUP_DIMS, vals)), "n": n,
+                "per_day": round(n / max(days, 1.0), 1), "bot_avg": round(bot, 1), "bot_win": win,
+                "best_avg": round(_avg([x[5][be] for x in rs]), 1), "best_exit": exit_names[be],
+                "best_win": int(round(100.0 * sum(1 for x in rs if x[5][be] > 0) / n)),
+                "mins": int(round(_avg([x[6][be] * TF_MIN.get(x[1], 5) for x in rs]))), "verdict": verdict}
+        cards.append(card)
+        book[key] = {"n": n, "win": win, "avg": round(bot, 1), "verdict": verdict}
+    _BOOK.clear()
+    _BOOK.update(book)
+    use_c = sorted((c for c in cards if c["verdict"] == "USE"), key=lambda c: -c["best_avg"])[:6]
+    skip_c = sorted((c for c in cards if c["verdict"] == "SKIP"), key=lambda c: c["bot_avg"])[:6]
+    common = sorted(cards, key=lambda c: -c["n"])[:5]
+    return {"status": "ready" if days >= SCEN_DAYS else "collecting", "days": round(days, 1), "totals": tot,
+            "use": use_c, "skip": skip_c, "common": common}
+
+
+def setup_of(t):
+    """The setup of one trade and what that setup did before (n = 0 means the bot never saw this picture)."""
+    vals = _trade_vals(t)
+    if vals is None or not _BOOK:
+        return None
+    b = _BOOK.get(_skey(vals))
+    if b is None:
+        return {"n": 0, "win": 0, "avg": 0.0, "verdict": "NEW"}
+    return b
+
+
+# ---------------------------------------------------------------- Part 3: today numbers + the daily review
+DAY_MS = 86_400_000
+REVIEW_DIMS = SETUP_DIMS + ("side_main", "side_z", "z_room")
+MIN_REV = 5                # trades a scenario needs inside one day before the review talks about it
+
+
+def _day_start_ms(now=None):
+    """Start of the trading day = crypto daily open, 00:00 UTC = 5:30 AM IST (the same day as Dashboard and Calendar)."""
+    ms = int((time.time() if now is None else now) * 1000)
+    return ms - ms % DAY_MS
+
+
+def _usdt(t, key="net"):
+    return MARGIN * (t.get(key) or 0.0) / 100.0
+
+
+def _day_items(trades, a, b):
+    """Finished PAPER trades whose entry was inside [a, b): (result in USDT, set of scenario words)."""
+    out = []
+    for t in trades:
+        if t.get("status") != "closed" or not (a <= t["t"] < b):
+            continue
+        tg = t.get("tg") or {}
+        names = set()
+        for d in REVIEW_DIMS:
+            if tg.get(d):
+                names.add(_short(d, tg[d]) if d in SETUP_DIMS else str(tg[d]))
+        out.append((_usdt(t), names))
+    return out
+
+
+def _by_name(items):
+    g = {}
+    for pnl, names in items:
+        for nm in names:
+            r = g.setdefault(nm, [0, 0.0, 0, 0.0])
+            r[0] += 1
+            r[1] += pnl
+            if pnl > 0:
+                r[2] += 1
+                r[3] += pnl
+    return g
+
+
+def day_review(data, now=None):
+    """Looks back at the last FULL day (5:30 AM to 5:30 AM IST). The bot took every signal that day. For each scenario:
+    what it earned, what skipping it would have saved (its losses), what skipping would have cost (its profits) and the net.
+    One day is a hint, not proof, so a scenario that was also bad the day before is marked."""
+    d0 = _day_start_ms(now)
+    a, b = d0 - DAY_MS, d0
+    trades = data["trades"]
+    cur, pre = _day_items(trades, a, b), _day_items(trades, a - DAY_MS, a)
+    left = sum(1 for t in trades if t.get("status") == "open" and a <= t["t"] < b)
+    day = time.strftime("%d %b", time.gmtime(a / 1000.0))
+    if len(cur) < 10:
+        return {"status": "collecting", "day": day, "n": len(cur), "open_left": left}
+    prev = _by_name(pre)
+    rows = []
+    wide = max(MIN_REV, int(0.6 * len(cur)))              # a tag on most trades is not a scenario you can skip
+    for nm, (n, pnl, won, gain) in _by_name(cur).items():
+        if n < MIN_REV or n > wide:
+            continue
+        pv = prev.get(nm)
+        rows.append({"name": nm, "n": n, "won": won, "pnl": round(pnl, 2), "saved": round(gain - pnl, 2), "missed": round(gain, 2),
+                     "net": round(-pnl, 2), "prev": round(pv[1], 2) if pv and pv[0] >= MIN_REV else None})
+    bad = sorted((r for r in rows if r["pnl"] < 0), key=lambda r: r["pnl"])[:5]
+    good = sorted((r for r in rows if r["pnl"] > 0), key=lambda r: -r["pnl"])[:3]
+    skipset = {r["name"] for r in bad}
+    kept = [p for p, names in cur if not (names & skipset)]
+    total = sum(p for p, _ in cur)
+    return {"status": "ready", "day": day, "n": len(cur), "won": sum(1 for p, _ in cur if p > 0), "pnl": round(total, 2), "open_left": left,
+            "bad": bad, "good": good,
+            "combo": {"skipped": len(cur) - len(kept), "with": round(sum(kept), 2), "without": round(total, 2)}}
+
+
 def summary(data, model, exit_names):
     tr = data["trades"]
     closed = [t for t in tr if t["status"] == "closed"]
@@ -489,7 +668,18 @@ def summary(data, model, exit_names):
         s["n"] += 1
         s["wins"] += 1 if (t.get("net") or 0) > 0 else 0
         s["pnl"] += pnl(t)
+    d0 = _day_start_ms()
+    closed_today = [t for t in closed if (t.get("closed_at") or t["t"] / 1000.0) * 1000 >= d0]
+    real_today = sum(pnl(t) for t in closed_today)
+    open_now = sum(MARGIN * (t.get("live") or 0.0) / 100.0 for t in opens)
+    today = {"opened": sum(1 for t in tr if t["status"] in ("open", "closed") and t["t"] >= d0),
+             "closed": len(closed_today), "wins": sum(1 for t in closed_today if (t.get("net") or 0) > 0),
+             "losses": sum(1 for t in closed_today if (t.get("net") or 0) <= 0),
+             "realized": round(real_today, 2), "open_pnl": round(open_now, 2), "total": round(real_today + open_now, 2),
+             "open": len(opens), "open_long": sum(1 for t in opens if t["d"] > 0),
+             "skipped": sum(1 for t in tr if t["status"] in ("skipped", "skipped_done") and t["t"] >= d0)}
     return {
+        "today": today,
         "closed": len(closed), "wins": sum(1 for t in closed if (t.get("net") or 0) > 0),
         "pnl": round(sum(pnl(t) for t in closed), 2), "open": len(opens),
         "open_pnl": round(sum(MARGIN * (t.get("live") or 0.0) / 100.0 for t in opens), 2),
@@ -517,7 +707,9 @@ def make_view(data, model, ins, exit_names, progress, err, enabled):
         mv = {"mode": model["mode"], "rows": model["rows"], "val": model["val"],
               "best_exit": exit_names[model["best_exit"]]}
     return {"enabled": enabled, "beat": time.time(), "model": mv, "rows": len(data["rows"]), "summary": summary(data, model, exit_names),
-            "insights": ins, "scen": ins.get("scen") or {"status": "collecting", "days": 0.0, "cards": [], "tips": []}, "lessons": MD.lessons(data["trades"]), "recent": [slim(t) for t in ([t for t in tr if t["status"] == "open"] + [t for t in tr if t["status"] != "open"][:40])], "progress": progress, "error": err,
+            "insights": {"best": ins.get("best", []), "worst": ins.get("worst", [])}, "scen": ins.get("scen") or {"status": "collecting", "days": 0.0, "cards": [], "tips": []}, "lessons": MD.lessons(data["trades"]), "review": day_review(data),
+            "setups": ins.get("setups") or {"status": "collecting", "days": 0.0, "totals": {}, "use": [], "skip": [], "common": []},
+            "recent": [dict(slim(t), stp=setup_of(t)) for t in ([t for t in tr if t["status"] == "open"] + [t for t in tr if t["status"] != "open"][:40])], "progress": progress, "error": err,
             "margin": MARGIN, "lev": LEV, "started": data.get("started")}
 
 
@@ -647,6 +839,7 @@ def worker():
                 if now - st["ins_t"] > 300:
                     st["ins"], st["ins_t"] = insights(data, exit_names), now
                     st["ins"]["scen"] = scenarios(data, exit_names)
+                    st["ins"]["setups"] = setup_book(data, exit_names)
                 _save("dual_lab_data.json", data)
                 err = st.get("err", "")
             except Exception as e:
