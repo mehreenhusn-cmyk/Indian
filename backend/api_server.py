@@ -287,6 +287,13 @@ async def on_startup():
             _t2.start()
         except Exception as e:
             print(f"[startup] smart_brain skipped: {e}")
+        try:                               # Price Action Light (version-2 observation layer): only watches and logs, own process, never trades
+            import pa_layer
+            _t3 = threading.Timer(25.0, pa_layer.ensure_running)
+            _t3.daemon = True
+            _t3.start()
+        except Exception as e:
+            print(f"[startup] pa_layer skipped: {e}")
         # The older AI modules (trackers, shadow lab, desk, coach, pick, ...) only start when legacy_ai_enabled is on.
         if settings_store.get("legacy_ai_enabled", False):
             try:
@@ -1705,6 +1712,17 @@ async def dual_lab_api(action: str = ""):
         return await asyncio.to_thread(dual_lab.status)
     except Exception as e:
         return {"running": False, "enabled": False, "error": f"{type(e).__name__}: {e}"}
+
+
+@app.get("/api/layers/pa")
+async def pa_layer_api():
+    """Price Action Light (pa_layer.py): what it logged and how its reading of the Dual Bot trades did. Reads one small file."""
+    try:
+        import pa_layer
+        await asyncio.to_thread(pa_layer.ensure_running)
+        return await asyncio.to_thread(pa_layer.status)
+    except Exception as e:
+        return {"running": False, "report": None, "error": f"{type(e).__name__}: {e}"}
 
 
 @app.get("/api/smart_brain")
