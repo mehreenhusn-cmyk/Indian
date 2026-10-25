@@ -391,6 +391,23 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     _scrollMemo[index] = <double>[];
   }
 
+  // ---- swipe between the main tabs (left = next tab, right = previous). A scrollable or a chart inside a tab wins its own
+  // swipe first; a swipe that starts at the very left edge is left to the side drawer.
+  double _swipeStartX = 0;
+  double _swipeDx = 0;
+
+  void _swipeTab(int dir) {
+    final next = (_currentIndex + dir).clamp(0, _screens.length - 1);
+    if (next == _currentIndex) return;
+    AppHaptics.light();
+    _saveScroll(_currentIndex);
+    JankMeter.instance.setTab(next);
+    setState(() => _currentIndex = next);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _currentIndex == next) _restoreScroll(next, <int, double>{});
+    });
+  }
+
   final List<Widget> _screens = [
     const DashboardScreen(),
     const MarketScreen(),
@@ -497,7 +514,20 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
             // RepaintBoundary keeps 1 Hz price updates on a tab from
             // repainting the ticker bar / banners / nav bar around it.
             Expanded(
-              child: RepaintBoundary(
+              child: GestureDetector(
+                behavior: HitTestBehavior.translucent,
+                onHorizontalDragStart: (d) {
+                  _swipeStartX = d.globalPosition.dx;
+                  _swipeDx = 0;
+                },
+                onHorizontalDragUpdate: (d) => _swipeDx += d.delta.dx,
+                onHorizontalDragEnd: (d) {
+                  final v = d.primaryVelocity ?? 0;
+                  if (_swipeStartX < 28) return;                       // left edge = side drawer
+                  if (_swipeDx.abs() < 70 || v.abs() < 500) return;     // a real flick, not a small drift
+                  _swipeTab(_swipeDx < 0 ? 1 : -1);
+                },
+                child: RepaintBoundary(
                 child: AnimatedSwitcher(
                   duration: const Duration(milliseconds: 120),
                   switchInCurve: AppMotion.standard,
@@ -525,6 +555,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
                     child: KeyedSubtree(key: _tabKeys[_currentIndex], child: _screens[_currentIndex]),
                   ),
                 ),
+              ),
               ),
             ),
           ],

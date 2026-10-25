@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
+import '../config_flags.dart';
 import '../widgets/owl_pressable.dart';
 import '../widgets/owl_route.dart';
 import 'ai_report_screen.dart';
@@ -35,8 +36,9 @@ class MoreScreen extends StatelessWidget {
             _label(context, 'TRADING TOOLS'),
             _row(context, Icons.hub_outlined, 'Tag Lab', 'Test ideas on old candles',
                 () => _open(context, 'Tag Lab', const TagLabScreen(), bare: true)),
-            _row(context, Icons.medical_services_outlined, 'Strategy Doctor', 'Why trades win or lose',
-                () => _open(context, 'Strategy Doctor', const StrategyDoctorScreen(), bare: true)),
+            if (kShowStrategyDoctor)   // hidden by default (config_flags.dart): it opens Strategy Lab / Scan Lab and wakes their background work
+              _row(context, Icons.medical_services_outlined, 'Strategy Doctor', 'Why trades win or lose',
+                  () => _open(context, 'Strategy Doctor', const StrategyDoctorScreen(), bare: true)),
             _row(context, Icons.description_outlined, 'AI Report', 'Save a report you can share with any AI',
                 () => _open(context, 'AI Report', const AiReportScreen(), bare: true)),
             const SizedBox(height: AppSpacing.l),

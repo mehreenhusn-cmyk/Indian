@@ -111,25 +111,36 @@ class DualTradeCard extends StatelessWidget {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Text(sym, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: p.textPrimary)),
+                  // Name + chips wrap onto a second line when they are too long, so the P&L on the right is never pushed off the card.
+                  Expanded(
+                    child: Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        Text(sym, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: p.textPrimary)),
+                        chip(long ? 'LONG' : 'SHORT', sideColor),
+                        chip('${row['f'] ?? ''}', p.textMuted),
+                        if (srcName.isNotEmpty) chip(srcName, p.accent),
+                      ],
+                    ),
+                  ),
                   const SizedBox(width: 8),
-                  chip(long ? 'LONG' : 'SHORT', sideColor),
-                  const SizedBox(width: 6),
-                  chip('${row['f'] ?? ''}', p.textMuted),
-                  if (srcName.isNotEmpty) ...[
-                    const SizedBox(width: 6),
-                    chip(srcName, p.accent),
-                  ],
-                  const Spacer(),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      Text(
-                        usdt == null ? '--' : '${fmtSigned(usdt)} USDT',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: pnlColor, fontFeatures: tab),
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerRight,
+                        child: Text(
+                          usdt == null ? '--' : '${fmtSigned(usdt)} USDT',
+                          maxLines: 1,
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: pnlColor, fontFeatures: tab),
+                        ),
                       ),
                       if (roi != null)
                         Text('${fmtSigned(roi, 1)}% of margin',
+                            maxLines: 1,
                             style: TextStyle(fontSize: 10.5, color: pnlColor, fontFeatures: tab)),
                     ],
                   ),

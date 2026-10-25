@@ -63,6 +63,7 @@ _defaults = {
     # left harmless if present in an existing settings file on someone's
     # device; nothing reads these keys anymore.
     "doctor_enabled": False,     # Strategy Doctor / Labs switch. False = their background jobs stay off and the app hides them. Nothing is deleted; set True to bring them back.
+    "old_labs_locked": True,     # MASTER LOCK: Strategy Lab, Scan Lab and the old AI Shadow Lab refuse to start while True (Vision AI, Dual Bot, Ping are not affected).
     "lab_enabled": True,         # Shadow Lab (ai_shadow_lab.py): read-only replay of the strategy on 3m/5m/15m for the AI to learn from. False = fully off.
     "lab_replay_days": 14,       # how many days back the one-time replay goes
     "lab_max_symbols": 40,       # most coins the lab scans (watchlist first, then the bot's most-traded coins)

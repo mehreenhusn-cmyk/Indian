@@ -131,8 +131,6 @@ class _AlertsScreenState extends State<AlertsScreen> {
                   // Title and filter chips share one row (no big title + empty space).
                   Row(
                     children: [
-                      Text('Alerts', style: context.type.hero.copyWith(fontSize: 20)),
-                      const SizedBox(width: AppSpacing.m),
                       Expanded(
                         child: SingleChildScrollView(
                           scrollDirection: Axis.horizontal,
@@ -150,7 +148,9 @@ class _AlertsScreenState extends State<AlertsScreen> {
                   ),
                   const _PeriodStrip(),
                   const SizedBox(height: 8),
-                  const DailyReportCard(),   // Yesterday's result: rebuilt from the permanent archive, never scrolls away
+                  // Yesterday's result from the permanent archive. Shown only when the list below has no "Yesterday" row,
+                  // so the same numbers are never printed twice.
+                  if (!rows.any((r) => r is _DayHeader && r.title == 'Yesterday')) const DailyReportCard(),
                   Expanded(
                     child: OWLRefresh(
                       onRefresh: () => context.read<AppProvider>().fetchStatus(),

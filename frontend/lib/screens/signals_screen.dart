@@ -169,9 +169,9 @@ class _SignalsScreenState extends State<SignalsScreen> {
                   final provider = context.read<AppProvider>();
                   return Row(
                     children: [
-                      Text('Signals', style: t.section.copyWith(fontSize: 22, fontWeight: FontWeight.bold)),
-                      const SizedBox(width: 10),
-                      _btcChip(context),
+                      _scopeChip(context, 'All', !_btcOnly, () => _setBtc(false)),
+                      const SizedBox(width: AppSpacing.s),
+                      _scopeChip(context, 'BTC', _btcOnly, () => _setBtc(true)),
                       const Spacer(),
                       if (provider.signals.isNotEmpty) Text('${provider.signals.length} total', style: t.metadata),
                     ],
@@ -201,29 +201,29 @@ class _SignalsScreenState extends State<SignalsScreen> {
     );
   }
 
-  /// Small "BTC" switch next to the title. On = only BTCUSDT signals (and their summary).
-  Widget _btcChip(BuildContext context) {
+  /// "All | BTC" scope chips, same size and style as the Alerts filter chips. BTC = only BTCUSDT signals (and their summary).
+  Widget _scopeChip(BuildContext context, String label, bool on, VoidCallback pick) {
     final p = context.palette;
-    final on = _btcOnly;
     return OWLPressable(
       onTap: () {
+        if (on) return;
         AppHaptics.light();
-        _setBtc(!_btcOnly);
+        pick();
       },
       child: AnimatedContainer(
         duration: AppMotion.base,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
         decoration: BoxDecoration(
-          color: on ? p.accent.withOpacity(0.16) : Colors.transparent,
+          color: on ? p.accent.withOpacity(0.25) : p.surfaceElevated,
           borderRadius: BorderRadius.circular(999),
-          border: Border.all(color: on ? p.accent.withOpacity(0.45) : p.border),
+          border: Border.all(color: on ? p.accent : p.border),
         ),
         child: Text(
-          'BTC',
+          label,
           style: AppTypography.secondaryData.copyWith(
             color: on ? p.accent : p.textSecondary,
             fontSize: 12,
-            fontWeight: FontWeight.w800,
+            fontWeight: FontWeight.w700,
           ),
         ),
       ),

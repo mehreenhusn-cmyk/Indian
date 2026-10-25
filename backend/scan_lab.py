@@ -695,6 +695,12 @@ def _worker(mode):
 def start(mode="quick"):
     """quick = 10 majors on 15m, 1h, 2h; full = majors + movers on 3m..2h (slow); sd = SD length 50/100/150/200 on majors, 3m..2h.
     Returns False if already running."""
+    try:
+        import variant_lab as _vl
+        if _vl.labs_locked():
+            return False
+    except Exception:
+        return False
     with _LOCK:
         if _STATE["running"]:
             return False
@@ -726,8 +732,13 @@ def status():
         except Exception:
             pass
     age = int((time.time() - _STATE["made"]) / 60) if _STATE["made"] else None
+    try:
+        import variant_lab as _vl
+        locked = _vl.labs_locked()
+    except Exception:
+        locked = True
     return {"running": _STATE["running"], "progress": _STATE["progress"], "mode": _STATE["mode"], "summary": _STATE["summary"], "age_min": age,
-            "sd": _STATE["sd"]}
+            "sd": _STATE["sd"], "locked": locked}
 
 
 def main(argv):

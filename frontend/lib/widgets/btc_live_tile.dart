@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../theme/app_theme.dart';
+import 'candle_chart.dart';
 import 'owl_pressable.dart';
 
 /// Dashboard tile: BTC live price (moves every second, green/red flash) and BTC's own result today.
@@ -74,7 +75,7 @@ class _BtcLiveTileState extends State<BtcLiveTile> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: OWLPressable(
-        onTap: () => context.read<AppProvider>().openBtcSignals(),
+        onTap: () => showCandleChartSheet(context, 'BTCUSDT'),   // tap the tile = BTC chart (full pan/zoom sheet)
         child: Container(
           width: double.infinity,
           padding: const EdgeInsets.all(14),
@@ -107,13 +108,19 @@ class _BtcLiveTileState extends State<BtcLiveTile> {
                 ),
               ]),
             ),
-            Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-              Text('BTC today', style: context.type.metadata),
-              Text('${_sg(today)} USDT', style: context.type.primary.copyWith(fontWeight: FontWeight.w800, color: todayColor)),
-              Text('$trades closed · $open open', style: context.type.metadata),
-            ]),
-            const SizedBox(width: 4),
-            Icon(Icons.chevron_right, color: p.textSecondary),
+            // Right part = BTC trades (the Signals tab with the BTC chip on). Left / middle = the chart.
+            OWLPressable(
+              onTap: () => context.read<AppProvider>().openBtcSignals(),
+              child: Row(children: [
+                Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                  Text('BTC today', style: context.type.metadata),
+                  Text('${_sg(today)} USDT', style: context.type.primary.copyWith(fontWeight: FontWeight.w800, color: todayColor)),
+                  Text('$trades closed · $open open', style: context.type.metadata),
+                ]),
+                const SizedBox(width: 4),
+                Icon(Icons.chevron_right, color: p.textSecondary),
+              ]),
+            ),
           ]),
         ),
       ),

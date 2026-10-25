@@ -93,6 +93,8 @@ def _cfg(name, default):
 
 
 def enabled():
+    if bool(_cfg("old_labs_locked", True)):
+        return False                       # master lock (settings old_labs_locked)
     return bool(_cfg("lab_enabled", True))
 
 

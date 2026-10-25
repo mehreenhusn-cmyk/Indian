@@ -623,8 +623,19 @@ def _worker(days, lev, fee):
         _STATE["running"] = False
 
 
+def labs_locked():
+    """True while the master lock old_labs_locked is on (default). Strategy Lab then never starts."""
+    try:
+        from recovered_bot import settings_store
+        return bool(settings_store.get("old_labs_locked", True))
+    except Exception:
+        return True
+
+
 def start(days=14, lev=10.0, fee=1.0):
     """starts 3m, 5m, 15m one after the other in ONE thread. Returns False if already running."""
+    if labs_locked():
+        return False
     with _LOCK:
         if _STATE["running"]:
             return False
@@ -638,7 +649,7 @@ def start(days=14, lev=10.0, fee=1.0):
 def status():
     if not _STATE["tfs"] and not _STATE["running"]:
         _load()
-    out = {"running": _STATE["running"], "progress": _STATE["progress"], "days": _STATE["days"], "tfs": {}}
+    out = {"running": _STATE["running"], "progress": _STATE["progress"], "days": _STATE["days"], "tfs": {}, "locked": labs_locked()}
     for tf in TFS:
         r = _STATE["tfs"].get(tf)
         if r is None:

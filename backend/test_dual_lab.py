@@ -220,3 +220,26 @@ check("stop path:" in rep and "situation:" in rep and "tags:" in rep, "each trad
 out = D.save_report()
 check(isinstance(out, dict) and out.get("bytes", 0) > 500 and out.get("path"), "report is written to a file")
 print(f"PASS part 8 (report {len(rep)} chars, {rep.count(chr(10)) + 1} lines, total {ok} checks)")
+
+# ---- Part 2: honest status states + the old-labs lock
+print("part 2 checks")
+V = {"progress": "", "error": ""}
+check(D._state_of(V, False, False, False, None)[0] == "stopped", "state stopped")
+check(D._state_of(V, True, False, False, None)[0] == "starting", "state starting (no beat, no pulse)")
+check(D._state_of(V, True, False, True, 3)[0] == "busy", "state busy (pulse alive, beat stale = long replay)")
+check(D._state_of(dict(V, progress="loading history ABC 5m (3/40)"), True, True, True, 3)[0] == "loading", "state loading")
+check(D._state_of(V, True, True, True, 3)[0] == "running", "state running")
+check(D._state_of(dict(V, error="x"), True, False, False, None)[0] == "error", "state error")
+D._save("dual_lab_pulse.json", {"t": time.time(), "pid": 1})
+D._SPAWN["t"] = 0.0
+check(D.ensure_running() is False, "no second worker while the pulse is alive")
+D._save("dual_lab_view.json", {"beat": time.time() - 400, "progress": "loading history X 5m (1/9)"})
+sv = D.status()
+check(sv["state"] == "busy" and sv["alive"] is True, "status() says busy, not Starting")
+import variant_lab as VLB, scan_lab as SCL
+from recovered_bot import settings_store as SS, ai_shadow_lab as SHL
+SS.update(old_labs_locked=True)
+check(VLB.start(3) is False and VLB.status()["locked"] is True, "Strategy Lab refuses to start while locked")
+check(SCL.start("quick") is False and SCL.status()["locked"] is True, "Scan Lab refuses to start while locked")
+check(SHL.enabled() is False, "old Shadow Lab off while locked")
+print("OK", ok, "checks")

@@ -909,6 +909,24 @@ def cycle(data, st, fetch_limit, fetch_range, coins_fn):
     return done
 
 
+PULSE_S = 8
+
+
+def _start_pulse():
+    """Daemon thread: writes the time into dual_lab_pulse.json every PULSE_S seconds. status() reads it, so the app can tell
+    'worker busy replaying history' from 'worker not running' (before, a long replay looked like 'Starting...')."""
+    import threading
+
+    def run():
+        while True:
+            try:
+                _save("dual_lab_pulse.json", {"t": time.time(), "pid": os.getpid()})
+            except Exception:
+                pass
+            time.sleep(PULSE_S)
+    threading.Thread(target=run, daemon=True, name="dual_pulse").start()
+
+
 def worker():
     lock = _lock()
     if lock is None:
@@ -927,6 +945,7 @@ def worker():
     from recovered_bot import ai_shadow_lab as LAB
     TL = _tl()
     exit_names = list(TL.EXITS.keys())
+    _start_pulse()                         # tiny "I am alive" signal every few seconds, even while a long history replay blocks the main loop
     data = _load("dual_lab_data.json", {})
     for k, v in (("rows", {}), ("trades", []), ("seen", {}), ("boot", {}), ("fetched", {})):
         if not isinstance(data.get(k), type(v)):
@@ -980,6 +999,8 @@ def ensure_running():
         view = _load("dual_lab_view.json", {})
         if time.time() - float(view.get("beat") or 0) < BEAT_STALE_S or time.time() - _SPAWN["t"] < 60:
             return False
+        if time.time() - float(_load("dual_lab_pulse.json", {}).get("t") or 0) < PULSE_S * 3:
+            return False                   # the worker is alive but busy (long replay): do not start a second copy
         _SPAWN["t"] = time.time()
         log = open(_p("dual_lab.log"), "a", encoding="utf-8")
         # no preexec_fn: it can hang inside a multi-threaded server. The worker lowers its own priority (os.nice) itself.
@@ -1151,25 +1172,47 @@ def save_report():
             "hint": "Phone Download folder is not reachable from Termux. Run  termux-setup-storage  once in Termux, allow storage, then press Download again."}
 
 
+def _state_of(view, enabled, running, alive, pulse_age):
+    """One plain word + sentence for the app: stopped / starting / busy / loading / running / error."""
+    prog = str(view.get("progress") or "")
+    if not enabled:
+        return "stopped", "Stopped. Tap Start to run it again."
+    if view.get("error") and not running and not alive:
+        return "error", "Not running. See the red line below."
+    if alive and not running:
+        return "busy", "Busy: reading old candles (can take a few minutes on a phone). It is alive, nothing to do."
+    if running and prog.startswith("loading history"):
+        return "loading", "Loading history... " + prog.replace("loading history ", "")
+    if running:
+        return "running", "Running"
+    return "starting", "Starting up. The backend starts it by itself, give it about a minute."
+
+
 def status():
     view = _load("dual_lab_view.json", {})
     ctl = _load("dual_lab_ctl.json", {"enabled": True})
     age = time.time() - float(view.get("beat") or 0) if view.get("beat") else None
+    pulse = _load("dual_lab_pulse.json", {})
+    pulse_age = time.time() - float(pulse.get("t") or 0) if pulse.get("t") else None
+    alive = pulse_age is not None and pulse_age < PULSE_S * 3          # the process itself is alive (even if the main loop is busy)
     view.setdefault("margin", MARGIN)
     view.setdefault("lev", LEV)
     view["enabled"] = bool(ctl.get("enabled", True))
     view["running"] = age is not None and age < BEAT_STALE_S
+    view["alive"] = bool(alive)
     view["age_s"] = int(age) if age is not None else None
     view["log_tail"] = _log_tail()
     try:
         _live_overlay(view)
     except Exception:
         pass
-    if view["enabled"] and not view["running"] and not view.get("error"):
+    if view["enabled"] and not view["running"] and not alive and not view.get("error"):
         if _SPAWN.get("err"):
             view["error"] = _SPAWN["err"]
         elif _SPAWN["t"] and time.time() - _SPAWN["t"] > 25:
             view["error"] = "The worker was started but sends no heartbeat. Last log: " + (view["log_tail"] or "(empty)")
+    st, txt = _state_of(view, view["enabled"], view["running"], alive, pulse_age)
+    view["state"], view["state_text"] = st, txt
     return view
 
 

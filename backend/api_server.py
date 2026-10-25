@@ -236,6 +236,14 @@ async def on_startup():
                 settings_store.update(legacy_ai_enabled=False, legacy_ai_off_oct11=True)
         except Exception as e:
             print(f"[startup] legacy AI switch-off skipped: {e}")
+        # MASTER LOCK (every start): while old_labs_locked is on, the old AI modules (and with them the Shadow Lab) stay off,
+        # even if a saved setting or an update switched them on. Vision AI, Dual Bot and Ping do not use this switch.
+        try:
+            if settings_store.get("old_labs_locked", True) and settings_store.get("legacy_ai_enabled", False):
+                settings_store.update(legacy_ai_enabled=False)
+                print("[startup] old_labs_locked: legacy_ai_enabled forced off")
+        except Exception as e:
+            print(f"[startup] old_labs_locked check skipped: {e}")
         try:                               # STAGE 2: the AI's own real account (older AI: only when legacy_ai_enabled)
             if not settings_store.get("legacy_ai_enabled", False):
                 raise RuntimeError("older AI is off - AI real-account worker not started")
@@ -272,6 +280,13 @@ async def on_startup():
             _t.start()
         except Exception as e:
             print(f"[startup] dual_lab skipped: {e}")
+        try:                               # Smart Brain (Dual Bot v2 side layer): read-only on Dual Bot data, paper only, own process
+            import smart_brain
+            _t2 = threading.Timer(75.0, smart_brain.ensure_running)
+            _t2.daemon = True
+            _t2.start()
+        except Exception as e:
+            print(f"[startup] smart_brain skipped: {e}")
         # The older AI modules (trackers, shadow lab, desk, coach, pick, ...) only start when legacy_ai_enabled is on.
         if settings_store.get("legacy_ai_enabled", False):
             try:
@@ -1690,6 +1705,23 @@ async def dual_lab_api(action: str = ""):
         return await asyncio.to_thread(dual_lab.status)
     except Exception as e:
         return {"running": False, "enabled": False, "error": f"{type(e).__name__}: {e}"}
+
+
+@app.get("/api/smart_brain")
+async def smart_brain_api(action: str = ""):
+    """Smart Brain (smart_brain.py): scores and explains Dual Bot setups. Only reads one small file; never touches Dual Bot v1.
+    action=start / stop switches the Brain only."""
+    try:
+        import smart_brain
+        if action == "start":
+            smart_brain.set_enabled(True)
+        elif action == "stop":
+            smart_brain.set_enabled(False)
+        await asyncio.to_thread(smart_brain.ensure_running)
+        return await asyncio.to_thread(smart_brain.status)
+    except Exception as e:
+        return {"running": False, "enabled": False, "state": "error", "state_text": "Smart Brain error", "error": f"{type(e).__name__}: {e}",
+                "signals": [], "hours": [], "repeat_loss": [], "patterns": [], "bands": [], "watch": [], "trust": {}}
 
 
 @app.get("/api/dual_lab/report")

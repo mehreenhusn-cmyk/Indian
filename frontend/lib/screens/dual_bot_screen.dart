@@ -10,6 +10,7 @@ import '../theme/app_theme.dart';
 import '../widgets/dual_trade_card.dart';
 import '../widgets/dual_trade_chart.dart';
 import '../widgets/report_download_card.dart';
+import '../widgets/smart_brain_view.dart';
 import '../widgets/owl_route.dart';
 import 'tag_lab_screen.dart';
 
@@ -28,6 +29,7 @@ class _DualBotScreenState extends State<DualBotScreen> {
   Map<String, dynamic> _st = {};
   String _err = '';
   bool _busy = false;
+  int _seg = 0; // 0 = Dual Bot, 1 = Smart Brain
   Timer? _timer;
 
   @override
@@ -107,9 +109,13 @@ class _DualBotScreenState extends State<DualBotScreen> {
   }
 
   Widget _statusCard(AppPalette p) {
-    final running = _st['running'] == true;
+    final state = '${_st['state'] ?? ''}';
+    final running = state == 'running' || state == 'loading' || (state.isEmpty && _st['running'] == true);
     final enabled = _st['enabled'] != false;
     final progress = '${_st['progress'] ?? ''}';
+    // One plain sentence from the backend (stopped / starting / busy / loading / running). Before the first reply: "Connecting...".
+    final stateText = _st.isEmpty ? (_err.isEmpty ? 'Connecting...' : 'Cannot reach the backend') : '${_st['state_text'] ?? (running ? 'Running' : 'Starting up...')}';
+    final dotColor = running ? p.profit : (state == 'busy' || state == 'starting' || _st.isEmpty ? p.warning : (state == 'error' ? p.loss : p.textMuted));
     final btcMargin = _n(_st['btc_margin']);
     final btcNote = btcMargin > 0 ? 'BTC is always included, with ${btcMargin.toStringAsFixed(0)} USDT per trade. ' : '';
     return _card(p, title: 'DUAL BOT (PAPER)', edge: p.accent, children: [
@@ -121,18 +127,18 @@ class _DualBotScreenState extends State<DualBotScreen> {
           style: context.type.metadata),
       const SizedBox(height: 8),
       Row(children: [
-        Icon(Icons.circle, size: 10, color: running ? p.profit : (enabled ? p.warning : p.textMuted)),
+        Icon(Icons.circle, size: 10, color: dotColor),
         const SizedBox(width: 6),
         Expanded(
             child: Text(
-                running ? 'Running' : (enabled ? (progress.isNotEmpty ? 'Loading history...' : 'Starting... (the backend starts it by itself)') : 'Stopped'),
+                stateText,
                 style: context.type.primary)),
         OutlinedButton(
           onPressed: _busy ? null : () => _toggle(!enabled),
           child: Text(enabled ? 'Stop' : 'Start'),
         ),
       ]),
-      if (progress.isNotEmpty && enabled) Padding(padding: const EdgeInsets.only(top: 6), child: Text(progress, style: context.type.metadata)),
+      if (progress.isNotEmpty && enabled && state != 'busy') Padding(padding: const EdgeInsets.only(top: 6), child: Text(progress, style: context.type.metadata)),
       if (_err.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 6), child: Text(_err, style: context.type.metadata.copyWith(color: p.loss))),
     ]);
   }
@@ -680,6 +686,26 @@ class _DualBotScreenState extends State<DualBotScreen> {
     ]);
   }
 
+  Widget _segRow(AppPalette p) {
+    Widget chip(String label, IconData icon, int i) {
+      final on = _seg == i;
+      return Padding(
+        padding: const EdgeInsets.only(right: 8),
+        child: ChoiceChip(
+          avatar: Icon(icon, size: 16, color: on ? p.accent : p.textMuted),
+          label: Text(label),
+          selected: on,
+          onSelected: (_) => setState(() => _seg = i),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(children: [chip('Dual Bot', Icons.swap_vert_rounded, 0), chip('Brain', Icons.psychology_outlined, 1)]),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final p = context.palette;
@@ -696,31 +722,36 @@ class _DualBotScreenState extends State<DualBotScreen> {
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              _statusCard(p),
-              _todayCard(p),
-              _btcDualCard(p),
-              _openCard(p),
-              _reviewCard(p),
-              _setupCard(p),
-              _retestCard(p),
-              _scenCard(p),
-              _lessonsCard(p),
-              _modelCard(p),
-              _resultCard(p),
-              _situationsCard(p),
-              _recentCard(p),
-              _howToReadCard(p),
-              OutlinedButton.icon(
-                onPressed: _openReport,
-                icon: const Icon(Icons.description_outlined, size: 18),
-                label: const Text('Download Dual Bot report'),
-              ),
-              const SizedBox(height: 8),
-              OutlinedButton.icon(
-                onPressed: () => Navigator.of(context).push(OwlRoute(builder: (_) => const TagLabScreen())),
-                icon: const Icon(Icons.hub_outlined, size: 18),
-                label: const Text('Open Tag Lab (full test on old candles)'),
-              ),
+              _segRow(p),
+              if (_seg == 1)
+                const SmartBrainView()
+              else ...[
+                _statusCard(p),
+                _todayCard(p),
+                _btcDualCard(p),
+                _openCard(p),
+                _reviewCard(p),
+                _setupCard(p),
+                _retestCard(p),
+                _scenCard(p),
+                _lessonsCard(p),
+                _modelCard(p),
+                _resultCard(p),
+                _situationsCard(p),
+                _recentCard(p),
+                _howToReadCard(p),
+                OutlinedButton.icon(
+                  onPressed: _openReport,
+                  icon: const Icon(Icons.description_outlined, size: 18),
+                  label: const Text('Download Dual Bot report'),
+                ),
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  onPressed: () => Navigator.of(context).push(OwlRoute(builder: (_) => const TagLabScreen())),
+                  icon: const Icon(Icons.hub_outlined, size: 18),
+                  label: const Text('Open Tag Lab (full test on old candles)'),
+                ),
+              ],
               const SizedBox(height: 16),
             ],
           ),
