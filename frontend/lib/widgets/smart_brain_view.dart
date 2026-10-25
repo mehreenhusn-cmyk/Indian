@@ -20,11 +20,14 @@ class SmartBrainView extends StatefulWidget {
 }
 
 class _SmartBrainViewState extends State<SmartBrainView> {
-  Map<String, dynamic> _st = {};
+  // Last good reply is kept for the whole app session, so re-opening the tab shows data at once.
+  static Map<String, dynamic> _cache = {};
+  Map<String, dynamic> _st = Map<String, dynamic>.from(_cache);
   String _err = '';
   bool _busy = false;
   bool _all = false;
   Timer? _timer;
+  Timer? _retry;
 
   @override
   void initState() {
@@ -36,6 +39,7 @@ class _SmartBrainViewState extends State<SmartBrainView> {
   @override
   void dispose() {
     _timer?.cancel();
+    _retry?.cancel();
     super.dispose();
   }
 
@@ -51,18 +55,17 @@ class _SmartBrainViewState extends State<SmartBrainView> {
       if (mounted) {
         setState(() {
           _st = Map<String, dynamic>.from(m);
+          _cache = _st;
           _err = '${_st['error'] ?? ''}';
         });
       }
     } catch (e) {
       if (mounted) setState(() => _err = '$e');
     }
-  }
-
-  Future<void> _setGate(bool on) async {
-    setState(() => _busy = true);
-    await _poll(action: on ? 'gate_on' : 'gate_off');
-    if (mounted) setState(() => _busy = false);
+    if (mounted && _st.isEmpty) {
+      _retry?.cancel();
+      _retry = Timer(const Duration(seconds: 3), () => _poll());
+    }
   }
 
   Future<void> _toggle(bool on) async {
@@ -186,21 +189,31 @@ class _SmartBrainViewState extends State<SmartBrainView> {
         OutlinedButton(onPressed: _busy ? null : () => _toggle(!enabled), child: Text(enabled ? 'Stop' : 'Start')),
       ]),
       if (_st.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 6), child: Text('Old setups read: ${_n(_st['rows']).toStringAsFixed(0)}', style: context.type.metadata)),
-      if (_st.isNotEmpty) ...[
-        const Divider(height: 18),
-        Row(children: [
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('Let the Brain skip bad signals', style: context.type.primary.copyWith(fontWeight: FontWeight.w700)),
-              Text('OFF = main bot takes every signal, as always. ON = the main bot skips a signal only when the Brain DISLIKES the matching setup, and only while trust is "earned" and the luck test says "Looks real". Unsure or unknown = the trade is taken.',
-                  style: context.type.metadata),
-            ]),
-          ),
-          Switch(value: _st['gate'] == true, onChanged: _busy ? null : (v) => _setGate(v)),
-        ]),
-      ],
+      if (_st.isNotEmpty) _trustLine(p),
       if (_err.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 6), child: Text(_err, style: context.type.metadata.copyWith(color: p.loss))),
     ]);
+  }
+
+  /// One line + thin bar: how many unseen trades the Brain has judged, out of the number it needs (100).
+  Widget _trustLine(AppPalette p) {
+    final t = _map(_st['trust']);
+    final need = _n(t['need']) <= 0 ? 100.0 : _n(t['need']);
+    final judged = _n(t['judged']);
+    final left = (need - judged).clamp(0.0, need).toInt();
+    final done = left == 0;
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(done ? 'Trust test: ${judged.toStringAsFixed(0)} of ${need.toStringAsFixed(0)} trades judged. Enough data, the meter can now decide.'
+                  : 'Trust test: ${judged.toStringAsFixed(0)} of ${need.toStringAsFixed(0)} trades judged ($left to go). At ${need.toStringAsFixed(0)} the meter can decide.',
+            style: context.type.metadata),
+        const SizedBox(height: 4),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(6),
+          child: LinearProgressIndicator(value: (judged / need).clamp(0.0, 1.0).toDouble(), minHeight: 5, color: done ? p.profit : p.accent, backgroundColor: p.border.withOpacity(0.4)),
+        ),
+      ]),
+    );
   }
 
   Widget _trustCard(AppPalette p) {
@@ -210,7 +223,7 @@ class _SmartBrainViewState extends State<SmartBrainView> {
     final c = v == 'earned' ? p.profit : (v == 'not_yet' ? p.loss : p.warning);
     final label = v == 'earned' ? 'TRUST EARNED' : (v == 'not_yet' ? 'NOT TRUSTED YET' : 'STILL LEARNING');
     final judged = _n(t['judged']);
-    final need = _n(t['need']) <= 0 ? 30.0 : _n(t['need']);
+    final need = _n(t['need']) <= 0 ? 100.0 : _n(t['need']);
     return _card(p, title: 'TRUST METER', edge: c, children: [
       _chip(label, c),
       const SizedBox(height: 8),

@@ -87,7 +87,7 @@ class SignalTile extends StatelessWidget {
           // Header: [S] SYMBOL #n  Perp · 10x            STATUS
           Row(
             children: [
-              _sidePill(isLong ? 'LONG' : 'SHORT', sideColor),
+              OwlSideBadge(isLong ? 'LONG' : 'SHORT', sideColor),
               const SizedBox(width: AppSpacing.s),
               Flexible(
                 child: Text(
@@ -120,15 +120,15 @@ class SignalTile extends StatelessWidget {
                 out.label,
                 style: t.metadata.copyWith(color: statusColor, fontWeight: FontWeight.w800, fontSize: 10, letterSpacing: 0.4),
               ),
-              if (out.pnl != null) ...[
-                const SizedBox(width: 6),
-                Text(
-                  fmtSigned(out.pnl!),
-                  style: t.metadata.copyWith(color: out.pnl! >= 0 ? p.profit : p.loss, fontWeight: FontWeight.w800, fontSize: 11),
-                ),
-              ],
             ],
           ),
+          if (out.pnl != null) ...[
+            const SizedBox(height: 6),
+            Text(
+              '${fmtSigned(out.pnl!)} USDT',
+              style: t.primary.copyWith(color: out.pnl! >= 0 ? p.profit : p.loss, fontWeight: FontWeight.w800, fontSize: 20),
+            ),
+          ],
           const SizedBox(height: AppSpacing.m),
           // Row 1: Entry | Stop Loss (%, price underneath) | R:R (TP1)
           Row(
@@ -206,20 +206,6 @@ class SignalTile extends StatelessWidget {
       lastPrice = price;
     }
     return out;
-  }
-
-  Widget _sidePill(String word, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(5),
-      ),
-      child: Text(
-        word,
-        style: const TextStyle(color: Colors.white, fontSize: 10.5, fontWeight: FontWeight.w800, height: 1.1, letterSpacing: 0.4),
-      ),
-    );
   }
 
   Widget _tag(AppPalette p, String text) {

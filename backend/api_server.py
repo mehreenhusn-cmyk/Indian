@@ -273,16 +273,16 @@ async def on_startup():
             ai_vision.start()
         except Exception as e:
             print(f"[Vision] start-up: {e}")
-        try:                               # Dual Bot (paper only, own low-priority process, no AI key): start its worker 45 s after boot
+        try:                               # Dual Bot (paper only, own low-priority process, no AI key): start its worker 8 s after boot
             import dual_lab
-            _t = threading.Timer(45.0, dual_lab.ensure_running)
+            _t = threading.Timer(8.0, dual_lab.ensure_running)
             _t.daemon = True
             _t.start()
         except Exception as e:
             print(f"[startup] dual_lab skipped: {e}")
         try:                               # Smart Brain (Dual Bot v2 side layer): read-only on Dual Bot data, paper only, own process
             import smart_brain
-            _t2 = threading.Timer(75.0, smart_brain.ensure_running)
+            _t2 = threading.Timer(15.0, smart_brain.ensure_running)
             _t2.daemon = True
             _t2.start()
         except Exception as e:

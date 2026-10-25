@@ -169,17 +169,7 @@ class TradeRow extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: sideColor.withOpacity(0.14),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    d.isLong ? 'LONG' : 'SHORT',
-                    style: t.metadata.copyWith(color: sideColor, fontWeight: FontWeight.w800, fontSize: 10),
-                  ),
-                ),
+                OwlSideBadge(d.isLong ? 'LONG' : 'SHORT', sideColor),
                 const SizedBox(width: 6),
                 OWLStatusPill.trade(context, d.status),
                 const Spacer(),

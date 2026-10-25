@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../widgets/glass_card.dart';
+import '../widgets/owl_card.dart';
 import '../widgets/candle_chart.dart';
 import '../widgets/trade_row.dart';
 import '../widgets/trade_chart.dart';
@@ -245,24 +246,9 @@ class _AlertsScreenState extends State<AlertsScreen> {
   }
 
   Widget _chip(BuildContext context, String label, String value, int n) {
-    final selected = _filter == value;
     return Padding(
       padding: const EdgeInsets.only(right: AppSpacing.s),
-      child: ChoiceChip(
-        label: Text('$label $n'),
-        selected: selected,
-        showCheckmark: false,
-        onSelected: (_) => setState(() => _filter = value),
-        selectedColor: context.palette.accent.withOpacity(0.25),
-        backgroundColor: context.palette.surfaceElevated,
-        side: BorderSide(color: selected ? context.palette.accent : context.palette.border),
-        labelStyle: AppTypography.secondaryData.copyWith(
-          color: selected ? context.palette.accent : context.palette.textSecondary,
-          fontSize: 12,
-          fontWeight: FontWeight.w700,
-        ),
-        visualDensity: VisualDensity.compact,
-      ),
+      child: OwlFilterChip(label: '$label $n', on: _filter == value, onTap: () => setState(() => _filter = value)),
     );
   }
 }
@@ -761,16 +747,7 @@ class _AlertCard extends StatelessWidget {
                       // ---- header: [S] SYMBOL  Perp · Cross 10x        PILL v ----
                       Row(
                         children: [
-                          Container(
-                            width: 22,
-                            height: 22,
-                            alignment: Alignment.center,
-                            decoration: BoxDecoration(color: sideColor, borderRadius: BorderRadius.circular(5)),
-                            child: Text(
-                              isBuy ? 'L' : 'S',
-                              style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w800, height: 1.0),
-                            ),
-                          ),
+                          OwlSideBadge(isBuy ? 'LONG' : 'SHORT', sideColor),
                           const SizedBox(width: 8),
                           Flexible(
                             child: Text(
@@ -1006,14 +983,15 @@ class _AlertCard extends StatelessWidget {
   }
 
   Widget _pillBox(BuildContext context, String text, Color color, {bool small = false}) {
+    if (!small) return OwlChip(text, color);
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: small ? 6 : 8, vertical: small ? 1 : 2),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
       decoration: BoxDecoration(
         color: color.withOpacity(0.16),
         borderRadius: BorderRadius.circular(AppSpacing.radiusSmall),
         border: Border.all(color: color.withOpacity(0.6)),
       ),
-      child: Text(text, style: AppTypography.metadata.copyWith(color: color, fontSize: small ? 10 : 11, fontWeight: FontWeight.w800)),
+      child: Text(text, style: AppTypography.metadata.copyWith(color: color, fontSize: 10, fontWeight: FontWeight.w800)),
     );
   }
 

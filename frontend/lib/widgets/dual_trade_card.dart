@@ -159,7 +159,7 @@ class DualTradeCard extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               SizedBox(
-                height: 34,
+                height: 44,
                 width: double.infinity,
                 child: CustomPaint(
                   painter: _LadderPainter(
@@ -273,21 +273,37 @@ class _LadderPainter extends CustomPainter {
       canvas.drawLine(Offset(x(entry!), y), Offset(x(live!), y), fill);
     }
 
-    void tick(double v, Color c, String label) {
+    // Collect every tick first: same-price ticks (TP3 = TP4) become ONE label ("TP3-4"), and a label that
+    // would touch its left neighbour (IN next to TP1) drops to a second row. Nothing is painted on top of anything.
+    final ticks = <_Tick>[];
+    void add(double v, Color c, String label) {
       final px = x(v).clamp(2.0, size.width - 2.0).toDouble();
-      canvas.drawLine(Offset(px, y - 6), Offset(px, y + 6), Paint()..color = c..strokeWidth = 2);
-      final tp = TextPainter(
-        text: TextSpan(text: label, style: TextStyle(fontSize: 9, color: c, fontWeight: FontWeight.w700)),
-        textDirection: TextDirection.ltr,
-      )..layout();
-      final lx = (px - tp.width / 2).clamp(0.0, size.width - tp.width).toDouble();
-      tp.paint(canvas, Offset(lx, y + 9));
+      final same = ticks.isNotEmpty && (ticks.last.px - px).abs() < 1.5 && ticks.last.c == c && label.startsWith('TP');
+      if (same) {
+        final first = ticks.last.label.split('-').first;
+        ticks.last.label = '$first-${label.substring(2)}';
+      } else {
+        ticks.add(_Tick(px, c, label));
+      }
     }
 
-    if (stop != null) tick(stop!, bad, 'SL');
-    tick(entry!, text, 'IN');
+    if (stop != null) add(stop!, bad, 'SL');
+    add(entry!, text, 'IN');
     for (var k = 0; k < tps.length && k < 4; k++) {
-      tick(tps[k], good, 'TP${k + 1}');
+      add(tps[k], good, 'TP${k + 1}');
+    }
+    ticks.sort((a, b) => a.px.compareTo(b.px));
+    final rowEnd = <double>[-100, -100]; // right edge of the last label on row 0 and row 1
+    for (final t in ticks) {
+      canvas.drawLine(Offset(t.px, y - 6), Offset(t.px, y + 6), Paint()..color = t.c..strokeWidth = 2);
+      final tp = TextPainter(
+        text: TextSpan(text: t.label, style: TextStyle(fontSize: 9, color: t.c, fontWeight: FontWeight.w700)),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      final lx = (t.px - tp.width / 2).clamp(0.0, size.width - tp.width).toDouble();
+      final r = lx >= rowEnd[0] + 2 ? 0 : 1;
+      rowEnd[r] = lx + tp.width;
+      tp.paint(canvas, Offset(lx, y + 9 + r * 10));
     }
 
     if (live != null) {
@@ -301,4 +317,11 @@ class _LadderPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _LadderPainter o) =>
       o.entry != entry || o.live != live || o.stop != stop || o.tps.length != tps.length || o.long != long;
+}
+
+class _Tick {
+  final double px;
+  final Color c;
+  String label;
+  _Tick(this.px, this.c, this.label);
 }

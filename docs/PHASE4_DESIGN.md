@@ -16,7 +16,7 @@ Why: one lucky week must not change a working bot.
 For each main-bot signal the Brain writes "would take / would skip" next to it. The bot still takes everything. The app shows, after 2 weeks, bot result vs bot-if-it-had-listened. Same idea as Bot vs AI, but with measured numbers.
 Needs: ~1 small file (a read-only hook), 1 card. About 150 lines.
 
-## Step C: Brain skips only the clearly bad ones (paper) - DONE as a switch in the Brain tab, default OFF (Part 10)
+## Step C: Brain skips only the clearly bad ones (paper) - code is in the backend but there is NO switch in the app (removed, so it cannot be turned on by mistake)
 Only when Step B shows the filtered version earned more AND had a smaller worst drop. The Brain may skip signals it scores as clean score low + win % low. It never opens its own trades here.
 A switch in Settings, default OFF, so you can turn it off in one tap.
 About 3 files, 200 lines.

@@ -27,9 +27,12 @@ class DualBotScreen extends StatefulWidget {
 }
 
 class _DualBotScreenState extends State<DualBotScreen> {
-  Map<String, dynamic> _st = {};
+  // Last good reply is kept for the whole app session, so re-opening the tab shows data at once (no "Connecting...").
+  static Map<String, dynamic> _cache = {};
+  Map<String, dynamic> _st = Map<String, dynamic>.from(_cache);
   String _err = '';
   bool _busy = false;
+  Timer? _retry;
   int _seg = 0; // 0 = Now, 1 = Learned, 2 = History, 3 = Brain
   Map<String, dynamic> _brainIds = {}; // Smart Brain opinion per trade (coin|timeframe|time), for the small badge on the open cards
   Timer? _timer;
@@ -44,6 +47,7 @@ class _DualBotScreenState extends State<DualBotScreen> {
   @override
   void dispose() {
     _timer?.cancel();
+    _retry?.cancel();
     super.dispose();
   }
 
@@ -59,11 +63,17 @@ class _DualBotScreenState extends State<DualBotScreen> {
       if (mounted) {
         setState(() {
           _st = Map<String, dynamic>.from(m);
+          _cache = _st;
           _err = '${_st['error'] ?? ''}';
         });
       }
     } catch (e) {
       if (mounted) setState(() => _err = '$e');
+    }
+    // Nothing to show yet (backend just started): ask again in 3 s instead of waiting for the 8 s timer.
+    if (mounted && _st.isEmpty) {
+      _retry?.cancel();
+      _retry = Timer(const Duration(seconds: 3), () => _poll());
     }
     await _pollBrain();
   }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
+import 'owl_pressable.dart';
 
 /// Standard OWL surface: solid card, thin border, optional profit/loss glow.
 /// Same premium look as GlassCard (soft rim in dark, soft shadow in light)
@@ -154,5 +155,134 @@ class OwlStat extends StatelessWidget {
       const SizedBox(height: 2),
       Text(label, style: context.type.metadata),
     ]);
+  }
+}
+
+/// Round filter chip (All | BTC ...). Same size on Signals and Alerts.
+class OwlFilterChip extends StatelessWidget {
+  final String label;
+  final bool on;
+  final VoidCallback onTap;
+
+  const OwlFilterChip({super.key, required this.label, required this.on, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    return OWLPressable(
+      onTap: () {
+        if (on) return;
+        AppHaptics.light();
+        onTap();
+      },
+      child: AnimatedContainer(
+        duration: AppMotion.base,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        decoration: BoxDecoration(
+          color: on ? p.accent.withOpacity(0.25) : p.surfaceElevated,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: on ? p.accent : p.border),
+        ),
+        child: Text(label,
+            style: AppTypography.secondaryData.copyWith(color: on ? p.accent : p.textSecondary, fontSize: 12, fontWeight: FontWeight.w700)),
+      ),
+    );
+  }
+}
+
+/// Segmented tabs (Running | Closed | Skipped). One look for every list screen.
+class OwlSegmented extends StatelessWidget {
+  final List<(String, String)> items; // (key, text)
+  final String active;
+  final ValueChanged<String> onPick;
+
+  const OwlSegmented({super.key, required this.items, required this.active, required this.onPick});
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    return Container(
+      margin: const EdgeInsets.only(bottom: AppSpacing.s),
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: p.surfaceHigher.withOpacity(0.6),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusMedium + 2),
+        border: Border.all(color: p.border),
+      ),
+      child: Row(children: [
+        for (final it in items)
+          Expanded(
+            child: OWLPressable(
+              onTap: () => onPick(it.$1),
+              pressedScale: 0.97,
+              child: AnimatedContainer(
+                duration: AppMotion.base,
+                alignment: Alignment.center,
+                padding: const EdgeInsets.symmetric(vertical: 9),
+                decoration: BoxDecoration(
+                  color: active == it.$1 ? p.accent.withOpacity(0.16) : Colors.transparent,
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusMedium),
+                  border: Border.all(color: active == it.$1 ? p.accent.withOpacity(0.45) : Colors.transparent),
+                ),
+                child: Text(it.$2,
+                    style: AppTypography.secondaryData.copyWith(
+                        color: active == it.$1 ? p.accent : p.textSecondary, fontSize: 13, fontWeight: FontWeight.w700)),
+              ),
+            ),
+          ),
+      ]),
+    );
+  }
+}
+
+/// A row of equal "big number over small label" stats.
+class OwlStatRow extends StatelessWidget {
+  final List<(String, String, Color)> stats; // (label, value, colour)
+  const OwlStatRow(this.stats, {super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.type;
+    return Row(children: [
+      for (final s in stats)
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(s.$1, style: t.label.copyWith(fontSize: 10)),
+            const SizedBox(height: 2),
+            Text(s.$2, style: t.primary.copyWith(color: s.$3, fontWeight: FontWeight.w800, fontSize: 17)),
+          ]),
+        ),
+    ]);
+  }
+}
+
+/// LONG / SHORT (or any) solid side badge, white text.
+class OwlSideBadge extends StatelessWidget {
+  final String word;
+  final Color color;
+  const OwlSideBadge(this.word, this.color, {super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(5)),
+      child: Text(word,
+          style: const TextStyle(color: Colors.white, fontSize: 10.5, fontWeight: FontWeight.w800, height: 1.1, letterSpacing: 0.4)),
+    );
+  }
+}
+
+/// Day heading between groups of cards ("Today  ·  5 signals ...").
+class OwlDayHeader extends StatelessWidget {
+  final String text;
+  const OwlDayHeader(this.text, {super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 10, bottom: 6),
+      child: Text(text, style: context.type.label.copyWith(fontWeight: FontWeight.w800)),
+    );
   }
 }

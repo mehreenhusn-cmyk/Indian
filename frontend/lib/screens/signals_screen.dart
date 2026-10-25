@@ -169,9 +169,9 @@ class _SignalsScreenState extends State<SignalsScreen> {
                   final provider = context.read<AppProvider>();
                   return Row(
                     children: [
-                      _scopeChip(context, 'All', !_btcOnly, () => _setBtc(false)),
+                      OwlFilterChip(label: 'All', on: !_btcOnly, onTap: () => _setBtc(false)),
                       const SizedBox(width: AppSpacing.s),
-                      _scopeChip(context, 'BTC', _btcOnly, () => _setBtc(true)),
+                      OwlFilterChip(label: 'BTC', on: _btcOnly, onTap: () => _setBtc(true)),
                       const Spacer(),
                       if (provider.signals.isNotEmpty) Text('${provider.signals.length} total', style: t.metadata),
                     ],
@@ -195,35 +195,6 @@ class _SignalsScreenState extends State<SignalsScreen> {
                 ),
               ),
             ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// "All | BTC" scope chips, same size and style as the Alerts filter chips. BTC = only BTCUSDT signals (and their summary).
-  Widget _scopeChip(BuildContext context, String label, bool on, VoidCallback pick) {
-    final p = context.palette;
-    return OWLPressable(
-      onTap: () {
-        if (on) return;
-        AppHaptics.light();
-        pick();
-      },
-      child: AnimatedContainer(
-        duration: AppMotion.base,
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-        decoration: BoxDecoration(
-          color: on ? p.accent.withOpacity(0.25) : p.surfaceElevated,
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(color: on ? p.accent : p.border),
-        ),
-        child: Text(
-          label,
-          style: AppTypography.secondaryData.copyWith(
-            color: on ? p.accent : p.textSecondary,
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
           ),
         ),
       ),
@@ -330,10 +301,7 @@ class _SignalsScreenState extends State<SignalsScreen> {
         if (row is _ChipsRow) return _tabs(context, row.counts, row.active);
         if (row == 'btc_days') return _btcDaysCard(context);
         if (row is String) {
-          return Padding(
-            padding: const EdgeInsets.only(top: 10, bottom: 6),
-            child: Text(row, style: t.label.copyWith(fontWeight: FontWeight.w800)),
-          );
+          return OwlDayHeader(row);
         }
         final it = row as _Item;
         final open = _expanded.contains(it.key);
@@ -395,12 +363,12 @@ class _SignalsScreenState extends State<SignalsScreen> {
                     Text('${fmtSigned(pnl)} USDT', style: t.primary.copyWith(color: c, fontWeight: FontWeight.w800, fontSize: 17)),
                   ]),
                   const SizedBox(height: 4),
-                  Row(children: [
-                    _stat(t, p, 'Signals', '${n(d['signals'])}', p.textPrimary),
-                    _stat(t, p, 'Opened', '${n(d['opened'])}', p.accent),
-                    _stat(t, p, 'Won', '${n(d['won'])}', p.profit),
-                    _stat(t, p, 'Lost', '${n(d['lost'])}', p.loss),
-                    _stat(t, p, 'Skipped', '${n(d['skipped'])}', p.textMuted),
+                  OwlStatRow([
+                    ('Signals', '${n(d['signals'])}', p.textPrimary),
+                    ('Opened', '${n(d['opened'])}', p.accent),
+                    ('Won', '${n(d['won'])}', p.profit),
+                    ('Lost', '${n(d['lost'])}', p.loss),
+                    ('Skipped', '${n(d['skipped'])}', p.textMuted),
                   ]),
                 ]);
               }),
@@ -435,19 +403,17 @@ class _SignalsScreenState extends State<SignalsScreen> {
                 Text(_btcOnly ? 'BTC TODAY' : 'TODAY', style: t.label.copyWith(fontWeight: FontWeight.w800, letterSpacing: 1.2)),
                 const Spacer(),
                 Text('${fmtSigned(td.net)} USDT',
-                    style: t.primary.copyWith(color: netColor, fontWeight: FontWeight.w800, fontSize: 20)),
+                    style: t.primary.copyWith(color: netColor, fontWeight: FontWeight.w800, fontSize: 24)),
               ],
             ),
             const SizedBox(height: AppSpacing.m),
-            Row(
-              children: [
-                _stat(t, p, 'Signals', '${td.total}', p.textPrimary),
-                _stat(t, p, 'Opened', '${td.opened}', p.accent),
-                _stat(t, p, 'Won', '${td.wins}', p.profit),
-                _stat(t, p, 'Lost', '${td.losses}', p.loss),
-                _stat(t, p, 'Skipped', '${td.skipped}', p.textMuted),
-              ],
-            ),
+            OwlStatRow([
+              ('Signals', '${td.total}', p.textPrimary),
+              ('Opened', '${td.opened}', p.accent),
+              ('Won', '${td.wins}', p.profit),
+              ('Lost', '${td.losses}', p.loss),
+              ('Skipped', '${td.skipped}', p.textMuted),
+            ]),
             const SizedBox(height: AppSpacing.s + 2),
             Text(
               [
@@ -463,59 +429,15 @@ class _SignalsScreenState extends State<SignalsScreen> {
     );
   }
 
-  Widget _stat(AppText t, AppPalette p, String label, String value, Color color) {
-    return Expanded(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label, style: t.label.copyWith(fontSize: 10)),
-          const SizedBox(height: 2),
-          Text(value, style: t.primary.copyWith(color: color, fontWeight: FontWeight.w800, fontSize: 17)),
-        ],
-      ),
-    );
-  }
-
   Widget _tabs(BuildContext context, Map<String, int> counts, String active) {
-    const labels = [('running', 'Running'), ('closed', 'Closed'), ('skipped', 'Skipped')];
-    final p = context.palette;
-    return Container(
-      margin: const EdgeInsets.only(bottom: AppSpacing.s),
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: p.surfaceHigher.withOpacity(0.6),
-        borderRadius: BorderRadius.circular(AppSpacing.radiusMedium + 2),
-        border: Border.all(color: p.border),
-      ),
-      child: Row(
-        children: [
-          for (final l in labels)
-            Expanded(
-              child: OWLPressable(
-                onTap: () => setState(() => _filter = l.$1),
-                pressedScale: 0.97,
-                child: AnimatedContainer(
-                  duration: AppMotion.base,
-                  alignment: Alignment.center,
-                  padding: const EdgeInsets.symmetric(vertical: 9),
-                  decoration: BoxDecoration(
-                    color: active == l.$1 ? p.accent.withOpacity(0.16) : Colors.transparent,
-                    borderRadius: BorderRadius.circular(AppSpacing.radiusMedium),
-                    border: Border.all(color: active == l.$1 ? p.accent.withOpacity(0.45) : Colors.transparent),
-                  ),
-                  child: Text(
-                    '${l.$2}  ${counts[l.$1] ?? 0}',
-                    style: AppTypography.secondaryData.copyWith(
-                      color: active == l.$1 ? p.accent : p.textSecondary,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-        ],
-      ),
+    return OwlSegmented(
+      items: [
+        ('running', 'Running  ${counts['running'] ?? 0}'),
+        ('closed', 'Closed  ${counts['closed'] ?? 0}'),
+        ('skipped', 'Skipped  ${counts['skipped'] ?? 0}'),
+      ],
+      active: active,
+      onPick: (k) => setState(() => _filter = k),
     );
   }
 

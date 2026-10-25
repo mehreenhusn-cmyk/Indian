@@ -43,7 +43,7 @@ MIN_SIM = 9                  # a look-alike must share at least this many tags (
 MIN_GROUP = 15               # a tag mix / hour needs this many old trades before it is named
 LOSS_WARN = 65               # % lost = repeat-loss mix
 WIN_GOOD = 65                # % won = good pattern
-TRUST_MIN = 30               # judged trades needed before the trust meter says anything
+TRUST_MIN = 100              # judged trades needed before the trust meter says anything
 TRUST_LAST = 150             # the trust meter looks at the newest this-many closed trades
 SHOW_TRADES = 40
 ROLL_HALF = 400              # rolling memory: an old trade counts half as much for every this-many newer setups
@@ -739,6 +739,7 @@ def worker():
         pass
     from recovered_bot import ai_shadow_lab as LAB
     watch, scan_t, scan_list = [], 0.0, []
+    first = True                       # first round: skip the slow coin scan so the numbers appear within seconds
     print("smart_brain worker started", flush=True)
     while True:
         err = ""
@@ -746,7 +747,7 @@ def worker():
             enabled = bool(_load("smart_brain_ctl.json", {"enabled": True}).get("enabled", True))
             if enabled:
                 rows, trades = read_v1()
-                if time.time() - scan_t > SCAN_S and len(rows) >= 4 * MIN_GROUP:
+                if not first and time.time() - scan_t > SCAN_S and len(rows) >= 4 * MIN_GROUP:
                     coins = [k.split("|")[0] for k in (_load("dual_lab_data.json", {}).get("fetched") or {}) if k.endswith("|" + SCAN_TF)]
                     scan_list = list(dict.fromkeys(coins))[:SCAN_COINS]
                     watch, scan_t = scan(rows, scan_list, LAB._fetch_limit), time.time()
@@ -773,7 +774,8 @@ def worker():
                 _save("smart_brain_view.json", v)
             except Exception:
                 pass
-        time.sleep(CYCLE_S)
+        time.sleep(8 if first else CYCLE_S)   # 8 s after the first quick round, then the normal minute
+        first = False
 
 
 # ---------------------------------------------------------------- 11. backend side (starts the worker, reads the view)
