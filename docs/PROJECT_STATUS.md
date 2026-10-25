@@ -24,6 +24,11 @@ Rule for anyone working on this repo: do NOT break the running bot, Dual Bot v1 
 | 11 | Fixes 25 Oct: tab keeps last reply (no "Connecting..."), TP ladder labels no longer overlap, workers start earlier (Dual Bot 8 s, Brain 15 s) and Brain's first round skips the slow coin scan, trust needs 100 judged trades with a progress line on the Brain tab | dual_bot_screen.dart, smart_brain_view.dart, dual_trade_card.dart, api_server.py, smart_brain.py |
 | 12 | Brain's OWN paper trades, separate book (`smart_brain_own.json`). When the 5-minute scan finds a setup it likes it opens a pretend trade (same stop, targets and exit rule as Dual Bot), follows it to the end, shows open / finished trades and USDT on the Brain tab. Max 20 open. Never touches Dual Bot or the main bot. | brain_own.py, smart_brain.py, smart_brain_view.dart, test_brain_own.py |
 | 13 | Brain learns WHICH EXIT works (FULL TP / HALF TP / HOLD) from old setups (their results for every exit style are already in Dual Bot's memory). Its own pretend trades use the style that was clearly best among look-alikes, else the bot's exit. Shown on the Brain tab with results by exit style. Advice for the Brain's own pretend trades only. | brain_exit_pick.py, brain_own.py, smart_brain.py, smart_brain_view.dart, test_brain_exit_pick.py |
+| A | Sideways report card on the Brain tab: Trending / Mixed / Sideways, trades, win%, real USDT, "sideways cost you X USDT", "what if skipped" story, hold-off table, older/newer half check. REPORT ONLY, nothing is skipped. | smart_brain.py, smart_brain_view.dart, test_sideways_report.py |
+| 14 | Dual Bot Now tab: status bar (bot state, today P&L, trust, open count), 3 summary cards (Today / Quality / Open Risk), filter All / Good only / Long / Short, trade cards with left colour accent (Brain clean 70+ green, under 40 red, else grey), "open 42m" chip and Brain one-line reason. Flutter, not built here. | dual_summary_strip.dart (new), dual_trade_card.dart, dual_bot_screen.dart |
+| 15a | Dual Bot tab "Opportunities": Brain watch list (best first) + Brain's own pretend trades (open, last finished). | opportunities_tab.dart (new), dual_bot_screen.dart |
+| 15b | Dual Bot tab "Performance": equity curve, win-rate trend (last 20 trades), daily results; old History cards sit below. Tabs are now Now / Opportunities / Learned / Performance / Brain. | performance_tab.dart (new), smart_brain.py (performance()), test_brain_perf.py, dual_bot_screen.dart |
+| 16 | Signals and Alerts: smaller top gap, smaller TODAY number. | signals_screen.dart, alerts_screen.dart |
 | - | tools/old_check.sh restored (report only; `move` puts old main.py / config.py in backend/_old/, never deletes) | tools/old_check.sh |
 
 ## NOT DONE - waiting for DATA (do not build early)
@@ -31,6 +36,10 @@ Rule for anyone working on this repo: do NOT break the running bot, Dual Bot v1 
 |---|---|---|
 | Step D: use Brain exit advice to trail the stop | 2 files, ~120 lines | Exit advice has 10+ checked opinions AND hit-rate is above 60% |
 | Step C live: let Brain skip bad signals in the main bot | 2-3 files, ~100 lines | Trust meter says "earned" AND luck test says "Looks real" AND the "What if the bot had listened?" card shows SKIP DISLIKED clearly better than TAKE ALL (30+ judged trades) |
+
+## NOT DONE - on hold
+- Dual Bot stays in full explore mode for the next 2-3 weeks (owner decision 26 Oct 2026). Do NOT touch dual_lab.py. Decide on a 'never skip' switch after that.
+- SQLite and WebSocket: on hold (check the size of dual_lab_data.json first, wait if under about 20 MB).
 
 ## NOT DONE - later
 - Break up `api_server.py` and `backend/main.py` (old Kivy app, looks dead). First run the check in docs/BACKEND_AUDIT.md. Move to `_old/`, never delete.

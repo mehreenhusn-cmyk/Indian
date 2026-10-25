@@ -7,8 +7,11 @@ import 'package:provider/provider.dart';
 
 import '../providers/app_provider.dart';
 import '../theme/app_theme.dart';
+import '../widgets/dual_summary_strip.dart';
 import '../widgets/dual_trade_card.dart';
 import '../widgets/dual_trade_chart.dart';
+import '../widgets/opportunities_tab.dart';
+import '../widgets/performance_tab.dart';
 import '../widgets/report_download_card.dart';
 import '../widgets/smart_brain_view.dart';
 import '../widgets/owl_card.dart';
@@ -33,8 +36,11 @@ class _DualBotScreenState extends State<DualBotScreen> {
   String _err = '';
   bool _busy = false;
   Timer? _retry;
-  int _seg = 0; // 0 = Now, 1 = Learned, 2 = History, 3 = Brain
+  int _seg = 0; // 0 = Now, 1 = Opportunities, 2 = Learned, 3 = Performance (+ history), 4 = Brain
+  Map<String, dynamic> _brain = {}; // last full Smart Brain reply (watch list, own trades, performance) for the Opportunities and Performance tabs
   Map<String, dynamic> _brainIds = {}; // Smart Brain opinion per trade (coin|timeframe|time), for the small badge on the open cards
+  String _brainTrust = ''; // Smart Brain trust verdict (earned / not_yet / learning) for the status bar
+  int _filter = 0; // Now tab filter: 0 = All, 1 = Good only, 2 = Long, 3 = Short
   Timer? _timer;
 
   @override
@@ -86,7 +92,13 @@ class _DualBotScreenState extends State<DualBotScreen> {
       final res = await http.get(Uri.parse('$base/api/smart_brain')).timeout(const Duration(seconds: 15));
       if (res.statusCode != 200) return;
       final m = jsonDecode(utf8.decode(res.bodyBytes));
-      if (m is Map && m['by_key'] is Map && mounted) setState(() => _brainIds = Map<String, dynamic>.from(m['by_key'] as Map));
+      if (m is Map && m['by_key'] is Map && mounted) {
+        setState(() {
+          _brain = Map<String, dynamic>.from(m);
+          _brainIds = Map<String, dynamic>.from(m['by_key'] as Map);
+          _brainTrust = m['trust'] is Map ? '${(m['trust'] as Map)['verdict'] ?? ''}' : '';
+        });
+      }
     } catch (_) {}
   }
 
@@ -555,14 +567,76 @@ class _DualBotScreenState extends State<DualBotScreen> {
     );
   }
 
+  Map<String, dynamic>? _brainOf(Map<String, dynamic> t) {
+    final o = _brainIds['${t['s']}|${t['f']}|${t['t']}'];
+    return o is Map ? Map<String, dynamic>.from(o) : null;
+  }
+
+  /// Now tab filter: All / Good only (Brain clean score 70+) / Long / Short.
+  bool _passFilter(Map<String, dynamic> t) {
+    switch (_filter) {
+      case 1:
+        return DualTradeCard.quality(_brainOf(t)) == 'good';
+      case 2:
+        return (t['d'] ?? 1) > 0;
+      case 3:
+        return (t['d'] ?? 1) < 0;
+      default:
+        return true;
+    }
+  }
+
+  Widget _filterRow(AppPalette p, int total, int shown) {
+    const names = ['All', 'Good only', 'Long', 'Short'];
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(children: [
+            for (var i = 0; i < names.length; i++)
+              Padding(
+                padding: const EdgeInsets.only(right: 6),
+                child: ChoiceChip(
+                  label: Text(names[i], style: const TextStyle(fontSize: 12)),
+                  visualDensity: VisualDensity.compact,
+                  selected: _filter == i,
+                  onSelected: (_) => setState(() => _filter = i),
+                ),
+              ),
+          ]),
+        ),
+        if (_filter != 0) Text('Showing $shown of $total open trades.', style: context.type.metadata),
+      ]),
+    );
+  }
+
+  Widget _stripCard(AppPalette p) {
+    final state = '${_st['state'] ?? ''}';
+    final running = state == 'running' || state == 'loading' || (state.isEmpty && _st['running'] == true);
+    final stateText = _st.isEmpty ? (_err.isEmpty ? 'Connecting...' : 'Cannot reach the backend') : '${_st['state_text'] ?? 'Starting up...'}';
+    return DualSummaryStrip(
+      running: running,
+      learned: '${_map(_st['model'])['mode']}' == 'LEARNED',
+      stateText: stateText,
+      trust: _brainTrust,
+      today: _map(_map(_st['summary'])['today']),
+      open: _maps(_st['recent']).where((t) => '${t['status']}' == 'open').toList(),
+      brain: _brainIds,
+    );
+  }
+
   Widget _openCard(AppPalette p) {
-    final open = _maps(_st['recent']).where((t) => '${t['status']}' == 'open').toList();
+    final allOpen = _maps(_st['recent']).where((t) => '${t['status']}' == 'open').toList();
+    final open = allOpen.where(_passFilter).toList();
     final nMain = open.where((t) => '${t['src']}' == 'MAIN').length;
     final nZ = open.where((t) => '${t['src']}' == 'Z').length;
     final nBoth = open.where((t) => '${t['src']}' == 'BOTH').length;
     final nLong = open.where((t) => (t['d'] ?? 1) > 0).length;
     return _card(p, title: 'OPEN TRADES (LIVE)', edge: open.isEmpty ? null : p.profit, children: [
-      if (open.isEmpty) Text('No open trade right now. Tap any trade below to see its chart.', style: context.type.secondary),
+      if (allOpen.isNotEmpty) _filterRow(p, allOpen.length, open.length),
+      if (allOpen.isEmpty) Text('No open trade right now. Tap any trade below to see its chart.', style: context.type.secondary),
+      if (allOpen.isNotEmpty && open.isEmpty) Padding(padding: const EdgeInsets.only(bottom: 6), child: Text('No open trade matches this filter.', style: context.type.secondary)),
       if (open.isNotEmpty)
         Padding(
           padding: const EdgeInsets.only(bottom: 4),
@@ -714,9 +788,10 @@ class _DualBotScreenState extends State<DualBotScreen> {
 
     const hints = [
       'Live status, today, BTC and the trades that are open right now.',
+      'What the Brain is watching and the pretend trades it opened itself.',
       'What the bot learned: daily review, setups, retest check, scenarios, lessons, model.',
-      'Past results, finished and skipped signals, how to read it, reports.',
-      'The Smart Brain: scores, probability, trust meter. Analysis only, no trades.',
+      'Equity curve, win-rate trend, daily results, past trades and reports.',
+      'The Smart Brain: scores, probability, trust meter. Analysis only, no real trades.',
     ];
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
@@ -725,13 +800,14 @@ class _DualBotScreenState extends State<DualBotScreen> {
           scrollDirection: Axis.horizontal,
           child: Row(children: [
             chip('Now', Icons.bolt_rounded, 0),
-            chip('Learned', Icons.school_outlined, 1),
-            chip('History', Icons.history_rounded, 2),
-            chip('Brain', Icons.psychology_outlined, 3),
+            chip('Opportunities', Icons.travel_explore_rounded, 1),
+            chip('Learned', Icons.school_outlined, 2),
+            chip('Performance', Icons.show_chart_rounded, 3),
+            chip('Brain', Icons.psychology_outlined, 4),
           ]),
         ),
         const SizedBox(height: 4),
-        Text(hints[_seg.clamp(0, 3)], style: context.type.metadata),
+        Text(hints[_seg.clamp(0, 4)], style: context.type.metadata),
       ]),
     );
   }
@@ -754,18 +830,22 @@ class _DualBotScreenState extends State<DualBotScreen> {
             children: [
               _segRow(p),
               if (_seg == 0) ...[
+                _stripCard(p),
                 _statusCard(p),
                 _todayCard(p),
                 _btcDualCard(p),
                 _openCard(p),
               ] else if (_seg == 1) ...[
+                OpportunitiesTab(brain: _brain),
+              ] else if (_seg == 2) ...[
                 _reviewCard(p),
                 _setupCard(p),
                 _retestCard(p),
                 _scenCard(p),
                 _lessonsCard(p),
                 _modelCard(p),
-              ] else if (_seg == 2) ...[
+              ] else if (_seg == 3) ...[
+                PerformanceTab(brain: _brain),
                 _resultCard(p),
                 _situationsCard(p),
                 _recentCard(p),

@@ -679,6 +679,113 @@ def _follow_view(rows, trades):
         return {"status": "error", "text": "Follow report error: %s" % str(e)[:80], "judged": 0, "need": 30, "stories": [], "dislike_avg": None}
 
 
+# ---------------------------------------------------------------- 8d. sideways report (report only, never blocks a trade)
+SIDE_MIN_N = 30              # sideways trades needed before the report gives a verdict
+SIDE_NAMES = {"trending": "Trending", "mixed": "Mixed", "sideways": "Sideways"}
+
+
+def side_avg(tg):
+    """How sideways was the market at entry: average of the two panes, 0 trending - 100 sideways."""
+    return (_side(tg, "main") + _side(tg, "z")) / 2.0
+
+
+def side_group(tg):
+    a = side_avg(tg)
+    return "trending" if a < 34 else "mixed" if a < 67 else "sideways"
+
+
+def sideways_report(trades):
+    """What did sideways markets do to Dual Bot's finished trades? Uses real USDT (each trade's own margin, fee inside).
+    Report only: nothing is skipped or blocked. -> dict for the app."""
+    import dual_lab
+    done = [t for t in trades if t.get("status") == "closed" and t.get("net") is not None and t.get("tg")]
+    done.sort(key=lambda t: t["t"])
+    usdt = lambda t: dual_lab._mg(t) * t["net"] / 100.0
+    groups, tot = [], round(sum(usdt(t) for t in done), 2)
+    for key in ("trending", "mixed", "sideways"):
+        g = [t for t in done if side_group(t["tg"]) == key]
+        n, w = len(g), sum(1 for t in g if t["net"] > 0)
+        pnl = round(sum(usdt(t) for t in g), 2)
+        groups.append({"key": key, "name": SIDE_NAMES[key], "n": n, "wins": w, "win_pct": int(round(100.0 * w / n)) if n else None,
+                       "pnl": pnl, "avg": round(sum(usdt(t) for t in g) / n, 2) if n else None})
+    sw = next(g for g in groups if g["key"] == "sideways")
+    out = {"status": "collecting", "done": len(done), "need": SIDE_MIN_N, "total": tot, "groups": groups, "cuts": [], "steady": None,
+           "cost": None, "story": ""}
+    if sw["n"] < SIDE_MIN_N:
+        out["text"] = "Collecting: %d sideways trades finished, the report needs %d. %d finished trades read so far." % (sw["n"], SIDE_MIN_N, len(done))
+        return out
+    out["status"] = "ready"
+    sws = [t for t in done if side_group(t["tg"]) == "sideways"]
+    half = len(sws) // 2
+    a, b = sum(usdt(t) for t in sws[:half]), sum(usdt(t) for t in sws[half:])
+    out["steady"] = (a < 0) == (b < 0)          # the older half and the newer half of the sideways trades point the same way
+    for cut in (50, 60, 70, 80):
+        g = [t for t in done if side_avg(t["tg"]) >= cut]
+        out["cuts"].append({"cut": cut, "n": len(g), "pnl": round(sum(usdt(t) for t in g), 2)})
+    if sw["pnl"] < 0:
+        out["cost"] = round(-sw["pnl"], 2)
+        out["text"] = "Sideways markets cost you %.2f USDT over %d trades (won %d%%)." % (-sw["pnl"], sw["n"], sw["win_pct"])
+        out["story"] = ("If the bot had skipped those %d sideways trades, the total would have been %+.2f USDT instead of %+.2f USDT. "
+                        "Nothing was skipped - this is only a report." % (sw["n"], round(tot - sw["pnl"], 2), tot))
+    else:
+        out["text"] = "Sideways trades did not lose: %+.2f USDT over %d trades (won %d%%). Skipping them would not have helped." % (sw["pnl"], sw["n"], sw["win_pct"])
+        out["story"] = "Sideways trades are not the problem in this data. Nothing was skipped - this is only a report."
+    out["story"] += (" The older and the newer half of the sideways trades agree." if out["steady"]
+                     else " Careful: the older and the newer half of the sideways trades disagree, so wait for more data.")
+    return out
+
+
+# ---------------------------------------------------------------- 8e. performance (equity curve, win-rate trend, daily results; read only)
+PERF_PTS = 60                # curve points sent to the app (the line is thinned, the totals are exact)
+PERF_WIN = 20                # win-rate trend looks at this many trades at a time
+PERF_DAYS = 14
+
+
+def _thin(xs, n):
+    if len(xs) <= n:
+        return list(xs)
+    step = (len(xs) - 1) / float(n - 1)
+    return [xs[int(round(i * step))] for i in range(n)]
+
+
+def performance(trades):
+    """Dual Bot's finished trades as one curve (real USDT, each trade's own margin, fee inside), a rolling win rate and daily results.
+    Trading day = 00:00 UTC = 5:30 AM IST. Report only."""
+    import dual_lab
+    done = [t for t in trades if t.get("status") == "closed" and t.get("net") is not None]
+    ct = lambda t: (t.get("closed_at") or t["t"] / 1000.0)
+    done.sort(key=ct)
+    out = {"n": len(done), "status": "collecting", "text": "", "equity": [], "winrate": [], "days": []}
+    if len(done) < 5:
+        out["text"] = "Collecting: %d finished trades. The curve starts at 5." % len(done)
+        return out
+    pnls = [dual_lab._mg(t) * t["net"] / 100.0 for t in done]
+    cum, run = [], 0.0
+    for x in pnls:
+        run += x
+        cum.append(round(run, 2))
+    wins = [1 if t["net"] > 0 else 0 for t in done]
+    wr = []
+    if len(done) >= PERF_WIN:
+        for i in range(PERF_WIN - 1, len(done)):
+            wr.append(int(round(100.0 * sum(wins[i - PERF_WIN + 1:i + 1]) / PERF_WIN)))
+    by_day = {}
+    for t, x in zip(done, pnls):
+        d = int(ct(t) // 86400)
+        r = by_day.setdefault(d, [0, 0, 0.0])
+        r[0] += 1
+        r[1] += 1 if t["net"] > 0 else 0
+        r[2] += x
+    days = [{"day": time.strftime("%Y-%m-%d", time.gmtime(d * 86400)), "n": r[0], "wins": r[1], "pnl": round(r[2], 2)}
+            for d, r in sorted(by_day.items(), reverse=True)[:PERF_DAYS]]
+    out.update(status="ready", equity=_thin(cum, PERF_PTS), winrate=_thin(wr, PERF_PTS), days=days,
+               total=round(cum[-1], 2), win_pct=int(round(100.0 * sum(wins) / len(wins))), max_dd=round(_max_dd(pnls), 2),
+               best_day=max(d["pnl"] for d in days), worst_day=min(d["pnl"] for d in days),
+               win_now=wr[-1] if wr else None, win_before=wr[0] if wr else None)
+    out["text"] = "%d finished trades, %+.2f USDT in total, %d%% won. Biggest drop on the way: %.2f USDT." % (len(done), out["total"], out["win_pct"], out["max_dd"])
+    return out
+
+
 # ---------------------------------------------------------------- 9. the view for the app
 def _exitpick_view(rows):
     try:
@@ -686,6 +793,20 @@ def _exitpick_view(rows):
         return XP.exit_table(rows)
     except Exception:
         return None
+
+
+def _sideways_view(trades):
+    try:
+        return sideways_report(trades)
+    except Exception as e:
+        return {"status": "error", "text": "Sideways report error: %s" % str(e)[:80], "groups": [], "cuts": [], "done": 0, "need": SIDE_MIN_N}
+
+
+def _perf_view(trades):
+    try:
+        return performance(trades)
+    except Exception as e:
+        return {"status": "error", "text": "Performance error: %s" % str(e)[:80], "n": 0, "equity": [], "winrate": [], "days": []}
 
 
 def _own_view(own):
@@ -715,6 +836,8 @@ def build_view(rows=None, trades=None, watch=None, scan_t=0, progress="", err=""
             "follow": _follow_view(rows, trades),
             "own": _own_view(own),
             "exit_pick": _exitpick_view(rows),
+            "sideways": _sideways_view(trades),
+            "perf": _perf_view(trades),
             "by_key": {"%s|%s|%s" % (x["s"], x["f"], x["t"]): {"clean": x["clean"], "div": x["div"], "verdict": x["verdict"], "text": x["verdict_text"]} for x in sigs},
             "hours": hours_table(rows), "repeat_loss": rl, "patterns": gp, "speed": fast_slow(rows),
             "bands": bands(rows) if len(rows) >= 3 * MIN_GROUP else [], "trust": tv,

@@ -159,7 +159,7 @@ class _SignalsScreenState extends State<SignalsScreen> {
     return Scaffold(
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.l),
+          padding: const EdgeInsets.fromLTRB(AppSpacing.l, AppSpacing.s, AppSpacing.l, 0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -178,7 +178,7 @@ class _SignalsScreenState extends State<SignalsScreen> {
                   );
                 },
               ),
-              const SizedBox(height: AppSpacing.m),
+              const SizedBox(height: AppSpacing.s),
               Expanded(
                 child: OWLRefresh(
                   onRefresh: () => _btcOnly ? _loadBtc() : context.read<AppProvider>().fetchSignals(),
@@ -403,7 +403,7 @@ class _SignalsScreenState extends State<SignalsScreen> {
                 Text(_btcOnly ? 'BTC TODAY' : 'TODAY', style: t.label.copyWith(fontWeight: FontWeight.w800, letterSpacing: 1.2)),
                 const Spacer(),
                 Text('${fmtSigned(td.net)} USDT',
-                    style: t.primary.copyWith(color: netColor, fontWeight: FontWeight.w800, fontSize: 24)),
+                    style: t.primary.copyWith(color: netColor, fontWeight: FontWeight.w800, fontSize: 20)),
               ],
             ),
             const SizedBox(height: AppSpacing.m),

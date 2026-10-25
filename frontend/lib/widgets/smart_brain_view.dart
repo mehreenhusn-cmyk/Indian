@@ -606,6 +606,56 @@ class _SmartBrainViewState extends State<SmartBrainView> {
     ]);
   }
 
+  /// Sideways report: what sideways markets did to Dual Bot's finished trades. Report only, nothing is skipped.
+  Widget _sidewaysCard(AppPalette p) {
+    final x = _map(_st['sideways']);
+    if (x.isEmpty) return const SizedBox.shrink();
+    final groups = _maps(x['groups']);
+    final cuts = _maps(x['cuts']);
+    final ready = '${x['status']}' == 'ready';
+    final cost = x['cost'];
+    String sg(num v) => '${v >= 0 ? '+' : ''}${v.toStringAsFixed(2)}';
+    final edge = !ready ? p.textMuted : (cost is num ? p.loss : p.profit);
+    return _card(p, title: 'SIDEWAYS REPORT', edge: edge, children: [
+      Text('${x['text'] ?? ''}', style: context.type.primary),
+      if (groups.isNotEmpty) ...[
+        const SizedBox(height: 8),
+        for (final g in groups)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: Row(children: [
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text('${g['name']}', style: context.type.secondary.copyWith(fontWeight: g['key'] == 'sideways' ? FontWeight.w800 : FontWeight.w500)),
+                  Text(g['win_pct'] == null ? 'no trades yet' : '${_n(g['n']).toInt()} trades - ${_n(g['win_pct']).toInt()}% won', style: context.type.metadata),
+                ]),
+              ),
+              if (g['n'] != 0)
+                Text('${sg(_n(g['pnl']))} USDT', style: context.type.secondary.copyWith(color: _n(g['pnl']) >= 0 ? p.profit : p.loss, fontWeight: FontWeight.w700)),
+            ]),
+          ),
+      ],
+      if (ready && '${x['story'] ?? ''}'.isNotEmpty) ...[
+        const SizedBox(height: 6),
+        Text('${x['story']}', style: context.type.secondary),
+      ],
+      if (ready && cuts.isNotEmpty) ...[
+        const SizedBox(height: 8),
+        Text('When to hold off: trades that started this sideways or more', style: context.type.label.copyWith(fontWeight: FontWeight.w700)),
+        for (final c in cuts)
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Row(children: [
+              Expanded(child: Text('${_n(c['cut']).toInt()}% or more - ${_n(c['n']).toInt()} trades', style: context.type.secondary)),
+              Text('${sg(_n(c['pnl']))} USDT', style: context.type.secondary.copyWith(color: _n(c['pnl']) >= 0 ? p.profit : p.loss, fontWeight: FontWeight.w700)),
+            ]),
+          ),
+      ],
+      const SizedBox(height: 6),
+      Text('0% = clear trend, 100% = fully sideways (average of the Main chart and the Z pane at entry). Real USDT of finished Dual Bot trades, fee inside. Report only: Dual Bot still takes every trade.', style: context.type.metadata),
+    ]);
+  }
+
   /// The Brain's OWN pretend trades (paper only, separate book). It never touches Dual Bot or the main bot.
   Widget _ownCard(AppPalette p) {
     final o = _map(_st['own']);
@@ -673,6 +723,7 @@ class _SmartBrainViewState extends State<SmartBrainView> {
       _exitCard(p),
       _followCard(p),
       _exitPickCard(p),
+      _sidewaysCard(p),
       _ownCard(p),
       _bookCard(p),
       _riskCard(p),

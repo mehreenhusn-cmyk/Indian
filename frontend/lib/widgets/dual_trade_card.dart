@@ -24,6 +24,19 @@ class DualTradeCard extends StatelessWidget {
 
   static double? _n(dynamic v) => v is num ? v.toDouble() : null;
 
+  /// Brain's quick grade of one trade, from its clean score: 'good' (70+), 'bad' (under 40), else 'unclear' (also when no opinion yet).
+  static String quality(Map<String, dynamic>? brain) {
+    final c = brain == null ? null : _n(brain['clean']);
+    if (c == null) return 'unclear';
+    return c >= 70 ? 'good' : (c < 40 ? 'bad' : 'unclear');
+  }
+
+  /// "42m", "2h 5m" or "now": how long the trade has been open.
+  static String openFor(dynamic tMs) {
+    final a = _age(tMs);
+    return a == 'just now' ? 'now' : a;
+  }
+
   static String _age(dynamic tMs) {
     final t = _n(tMs);
     if (t == null) return '';
@@ -95,6 +108,10 @@ class DualTradeCard extends StatelessWidget {
         );
 
     final age = _age(row['t']);
+    final grade = quality(brain);
+    final accent = grade == 'good' ? p.profit : (grade == 'bad' ? p.loss : p.border);
+    final openLabel = openFor(row['t']);
+    final reason = brain == null ? '' : '${brain!['text'] ?? ''}';
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
@@ -102,13 +119,19 @@ class DualTradeCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+          clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
             color: p.surface,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: p.border, width: 1),
           ),
-          child: Column(
+          child: IntrinsicHeight(
+            child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              Container(width: 4, color: accent),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 12, 14, 12),
+                  child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
@@ -125,6 +148,7 @@ class DualTradeCard extends StatelessWidget {
                         chip(long ? 'LONG' : 'SHORT', sideColor),
                         chip('${row['f'] ?? ''}', p.textMuted),
                         if (srcName.isNotEmpty) chip(srcName, p.accent),
+                        if (openLabel.isNotEmpty) chip('open $openLabel', p.textMuted),
                       ],
                     ),
                   ),
@@ -207,11 +231,19 @@ class DualTradeCard extends StatelessWidget {
                   ]);
                 }),
               ],
+              if (reason.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text(reason, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 11, color: p.textMuted, height: 1.3)),
+              ],
               if (setupLine != null) ...[
                 const SizedBox(height: 4),
                 setupLine!,
               ],
             ],
+                  ),
+                ),
+              ),
+            ]),
           ),
         ),
       ),

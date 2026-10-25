@@ -83,7 +83,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
     return Scaffold(
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(AppSpacing.l, AppSpacing.l, AppSpacing.l, 0),
+          padding: const EdgeInsets.fromLTRB(AppSpacing.l, AppSpacing.s, AppSpacing.l, 0),
           child: Selector<AppProvider, int>(
             selector: (_, p) => p.alertsRev,
             builder: (context, _rev, child) {
