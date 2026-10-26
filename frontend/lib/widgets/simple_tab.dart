@@ -202,9 +202,9 @@ class _SimpleTabState extends State<SimpleTab> {
     return InkWell(
       onTap: () => widget.onOpen(t),
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
+        padding: const EdgeInsets.symmetric(vertical: 5),
         child: Row(children: [
-          Icon(Icons.circle, size: 10, color: dot),
+          Icon(Icons.circle, size: 9, color: dot),
           const SizedBox(width: 8),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -213,7 +213,8 @@ class _SimpleTabState extends State<SimpleTab> {
                 const SizedBox(width: 6),
                 Text(buy ? 'BUY' : 'SELL', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: buy ? p.profit : p.loss)),
               ]),
-              Text('${t['f'] ?? ''}${src.isNotEmpty ? '  ·  $src' : ''}  ·  ${DualTradeCard.openFor(t['t']) == 'now' ? 'opened just now' : 'opened ${DualTradeCard.openFor(t['t'])} ago'}', style: context.type.metadata),
+              Text('${t['f'] ?? ''}${src.isNotEmpty ? '  ·  $src' : ''}  ·  ${DualTradeCard.openFor(t['t']) == 'now' ? 'just now' : '${DualTradeCard.openFor(t['t'])} ago'}', style: context.type.metadata),
+              Padding(padding: const EdgeInsets.only(top: 2), child: DualTradeCard.badgeRow(p, brain: _brain(t), label: t['label'])),
             ]),
           ),
           Text('${_sg(u)} USDT', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: u >= 0 ? p.profit : p.loss, fontFeatures: _tab)),
@@ -231,8 +232,8 @@ class _SimpleTabState extends State<SimpleTab> {
     return OwlSectionCard(title: 'OPEN TRADES (${open.length})', children: [
       if (open.isEmpty) Text('Nothing is open right now.', style: context.type.secondary),
       if (open.isNotEmpty) ...[
-        Text('$up in profit, ${open.length - up} in loss right now. Best first. Green dot = Brain likes it, red = dislikes it. Tap a trade for the chart.', style: context.type.metadata),
-        const SizedBox(height: 4),
+        Text('$up in profit, ${open.length - up} in loss. Best first. Tap for the chart.', style: context.type.metadata),
+        const SizedBox(height: 2),
         for (final t in shown) _openRow(p, t),
         if (open.length > _showFirst)
           TextButton(
@@ -249,9 +250,14 @@ class _SimpleTabState extends State<SimpleTab> {
     return InkWell(
       onTap: () => widget.onOpen(t),
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 6),
+        padding: const EdgeInsets.symmetric(vertical: 4),
         child: Row(children: [
-          Expanded(child: Text('${_coin(t['s'])}  ${buy ? 'BUY' : 'SELL'}  ${t['f'] ?? ''}', style: context.type.secondary.copyWith(fontWeight: FontWeight.w700))),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('${_coin(t['s'])}  ${buy ? 'BUY' : 'SELL'}  ${t['f'] ?? ''}', style: context.type.secondary.copyWith(fontWeight: FontWeight.w700)),
+              Padding(padding: const EdgeInsets.only(top: 2), child: DualTradeCard.badgeRow(p, brain: _brain(t), label: t['label'])),
+            ]),
+          ),
           Text('${_sg(u)} USDT', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: u >= 0 ? p.profit : p.loss, fontFeatures: _tab)),
         ]),
       ),
@@ -269,12 +275,12 @@ class _SimpleTabState extends State<SimpleTab> {
     return OwlSectionCard(title: 'BEST AND WORST FINISHED TRADES', children: [
       Text('Out of the latest ${done.length} finished trades.', style: context.type.metadata),
       if (best.isNotEmpty) ...[
-        const SizedBox(height: 6),
+        const SizedBox(height: 4),
         Text('Best', style: context.type.label.copyWith(fontWeight: FontWeight.w700)),
         for (final t in best) _doneRow(p, t),
       ],
       if (worst.isNotEmpty) ...[
-        const SizedBox(height: 8),
+        const SizedBox(height: 6),
         Text('Worst', style: context.type.label.copyWith(fontWeight: FontWeight.w700)),
         for (final t in worst) _doneRow(p, t),
       ],
@@ -291,7 +297,7 @@ class _SimpleTabState extends State<SimpleTab> {
       _openCard(p),
       _doneCard(p),
       Padding(
-        padding: const EdgeInsets.only(top: 4, bottom: 8),
+        padding: const EdgeInsets.only(top: 2, bottom: 4),
         child: Text('Want more detail? Now has the full trade cards, Brain has the scores and reports.', style: context.type.metadata),
       ),
     ]);

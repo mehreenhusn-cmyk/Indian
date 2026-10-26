@@ -62,8 +62,30 @@ class AppTheme {
           side: const BorderSide(color: AppColors.border, width: 1),
         ),
       ),
+      elevatedButtonTheme: ElevatedButtonThemeData(style: _btn()),
+      filledButtonTheme: FilledButtonThemeData(style: _btn()),
+      outlinedButtonTheme: OutlinedButtonThemeData(style: _btn(side: const BorderSide(color: AppColors.border))),
+      textButtonTheme: TextButtonThemeData(style: _btn(pad: const EdgeInsets.symmetric(horizontal: 10, vertical: 6))),
     );
   }
+
+  /// E5: the one button look shared by both themes (shape, minimum height, label). Colors stay the theme's own.
+  /// Uses styleFrom only, so it works on every Flutter 3.x version.
+  static ButtonStyle _btn({BorderSide? side, EdgeInsetsGeometry? pad}) => side == null
+      ? TextButton.styleFrom(
+          shape: AppButtons.shape,
+          minimumSize: const Size(0, AppButtons.minHeight),
+          padding: pad ?? AppButtons.padding,
+          textStyle: AppButtons.label,
+          elevation: 0,
+        )
+      : OutlinedButton.styleFrom(
+          shape: AppButtons.shape,
+          minimumSize: const Size(0, AppButtons.minHeight),
+          padding: pad ?? AppButtons.padding,
+          textStyle: AppButtons.label,
+          side: side,
+        );
 
   /// Clean white "institutional" theme - matches the older app version's
   /// look (Positions tab, Dashboard equity card): white cards, crisp black
@@ -107,6 +129,10 @@ class AppTheme {
           side: BorderSide(color: AppPalette.light.glassBorder, width: 1),
         ),
       ),
+      elevatedButtonTheme: ElevatedButtonThemeData(style: _btn()),
+      filledButtonTheme: FilledButtonThemeData(style: _btn()),
+      outlinedButtonTheme: OutlinedButtonThemeData(style: _btn(side: BorderSide(color: AppPalette.light.border))),
+      textButtonTheme: TextButtonThemeData(style: _btn(pad: const EdgeInsets.symmetric(horizontal: 10, vertical: 6))),
     );
   }
 }

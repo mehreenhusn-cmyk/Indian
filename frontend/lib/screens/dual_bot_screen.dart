@@ -774,15 +774,36 @@ class _DualBotScreenState extends State<DualBotScreen> {
   }
 
   Widget _segRow(AppPalette p) {
+    // E2: clean underline pills (no boxed chips). Selected = accent text + 2px accent line.
     Widget chip(String label, IconData icon, int i) {
       final on = _seg == i;
-      return Padding(
-        padding: const EdgeInsets.only(right: 8),
-        child: ChoiceChip(
-          avatar: Icon(icon, size: 16, color: on ? p.accent : p.textMuted),
-          label: Text(label),
-          selected: on,
-          onSelected: (_) => setState(() => _seg = i),
+      final c = on ? p.accent : p.textMuted;
+      return GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => setState(() => _seg = i),
+        child: Padding(
+          padding: const EdgeInsets.only(right: 16),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(icon, size: 15, color: c),
+                const SizedBox(width: 5),
+                AnimatedDefaultTextStyle(
+                  duration: const Duration(milliseconds: 180),
+                  style: TextStyle(fontSize: 13, color: c, fontWeight: on ? FontWeight.w700 : FontWeight.w500),
+                  child: Text(label),
+                ),
+              ]),
+            ),
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              curve: Curves.easeOut,
+              height: 2,
+              width: on ? 26 : 0,
+              decoration: BoxDecoration(color: p.accent, borderRadius: BorderRadius.circular(2)),
+            ),
+          ]),
         ),
       );
     }
@@ -796,7 +817,7 @@ class _DualBotScreenState extends State<DualBotScreen> {
       'The Smart Brain: scores, probability, trust meter. Analysis only, no real trades.',
     ];
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.only(bottom: 8),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
@@ -815,6 +836,56 @@ class _DualBotScreenState extends State<DualBotScreen> {
     );
   }
 
+  /// Body of the selected Dual Bot tab (moved out of build() so E2 can fade between tabs).
+  List<Widget> _segBody(AppPalette p) {
+    return [
+            if (_seg == 0) ...[
+              SimpleTab(
+                today: _map(_map(_st['summary'])['today']),
+                recent: _maps(_st['recent']),
+                brainIds: _brainIds,
+                sideways: _map(_brain['sideways']),
+                bySrc: _map(_map(_st['summary'])['by_src']),
+                marginOf: _mg,
+                onOpen: (t) => showDualTradeChart(context, row: t, margin: _mg(t), lev: _n(_st['lev'])),
+              ),
+            ] else if (_seg == 1) ...[
+              _stripCard(p),
+              _statusCard(p),
+              _todayCard(p),
+              _btcDualCard(p),
+              _openCard(p),
+            ] else if (_seg == 2) ...[
+              OpportunitiesTab(brain: _brain),
+            ] else if (_seg == 3) ...[
+              _reviewCard(p),
+              _setupCard(p),
+              _retestCard(p),
+              _scenCard(p),
+              _lessonsCard(p),
+              _modelCard(p),
+            ] else if (_seg == 4) ...[
+              PerformanceTab(brain: _brain),
+              _resultCard(p),
+              _situationsCard(p),
+              _recentCard(p),
+              _howToReadCard(p),
+              OutlinedButton.icon(
+                onPressed: _openReport,
+                icon: const Icon(Icons.description_outlined, size: 18),
+                label: const Text('Download Dual Bot report'),
+              ),
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                onPressed: () => Navigator.of(context).push(OwlRoute(builder: (_) => const TagLabScreen())),
+                icon: const Icon(Icons.hub_outlined, size: 18),
+                label: const Text('Open Tag Lab (full test on old candles)'),
+              ),
+            ] else
+              const SmartBrainView(),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     final p = context.palette;
@@ -829,54 +900,27 @@ class _DualBotScreenState extends State<DualBotScreen> {
         child: RefreshIndicator(
           onRefresh: _poll,
           child: ListView(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(12, 6, 12, 12),
             children: [
               _segRow(p),
-              if (_seg == 0) ...[
-                SimpleTab(
-                  today: _map(_map(_st['summary'])['today']),
-                  recent: _maps(_st['recent']),
-                  brainIds: _brainIds,
-                  sideways: _map(_brain['sideways']),
-                  bySrc: _map(_map(_st['summary'])['by_src']),
-                  marginOf: _mg,
-                  onOpen: (t) => showDualTradeChart(context, row: t, margin: _mg(t), lev: _n(_st['lev'])),
+              OwlDensity(
+                compact: true,
+                child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 220),
+                switchInCurve: Curves.easeOut,
+                transitionBuilder: (child, anim) => FadeTransition(opacity: anim, child: child),
+                layoutBuilder: (cur, prev) => Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [if (cur != null) cur],
                 ),
-              ] else if (_seg == 1) ...[
-                _stripCard(p),
-                _statusCard(p),
-                _todayCard(p),
-                _btcDualCard(p),
-                _openCard(p),
-              ] else if (_seg == 2) ...[
-                OpportunitiesTab(brain: _brain),
-              ] else if (_seg == 3) ...[
-                _reviewCard(p),
-                _setupCard(p),
-                _retestCard(p),
-                _scenCard(p),
-                _lessonsCard(p),
-                _modelCard(p),
-              ] else if (_seg == 4) ...[
-                PerformanceTab(brain: _brain),
-                _resultCard(p),
-                _situationsCard(p),
-                _recentCard(p),
-                _howToReadCard(p),
-                OutlinedButton.icon(
-                  onPressed: _openReport,
-                  icon: const Icon(Icons.description_outlined, size: 18),
-                  label: const Text('Download Dual Bot report'),
+                child: Column(
+                  key: ValueKey<int>(_seg),
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: _segBody(p),
                 ),
-                const SizedBox(height: 8),
-                OutlinedButton.icon(
-                  onPressed: () => Navigator.of(context).push(OwlRoute(builder: (_) => const TagLabScreen())),
-                  icon: const Icon(Icons.hub_outlined, size: 18),
-                  label: const Text('Open Tag Lab (full test on old candles)'),
-                ),
-              ] else
-                const SmartBrainView(),
-              const SizedBox(height: 16),
+              ),
+              ),
+              const SizedBox(height: 8),
             ],
           ),
         ),

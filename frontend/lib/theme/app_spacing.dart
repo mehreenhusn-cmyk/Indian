@@ -1,3 +1,5 @@
+import 'package:flutter/material.dart';
+
 /// Spacing and radius scale shared by all OWL widgets.
 class AppSpacing {
   AppSpacing._();
@@ -13,12 +15,22 @@ class AppSpacing {
 
   // Layout rhythm (screens use these instead of ad-hoc 14/18/22 values)
   static const double screenPad = 16.0; // horizontal page padding
-  static const double cardGap = 12.0; // gap between stacked cards
-  static const double cardPad = 14.0; // inner padding of a compact card
+  static const double cardGap = 10.0; // gap between stacked cards (E5: 12 -> 10)
+  static const double cardPad = 12.0; // inner padding of a compact card (E5: 14 -> 12)
 
   // Radii
   static const double radiusSmall = 8.0; // controls
   static const double radiusMedium = 14.0; // cards
   static const double radiusLarge = 20.0; // major surfaces
   static const double radiusPill = 100.0; // status badges
+}
+
+/// E5: one shape and size for every button on every screen (Dashboard, Positions, Signals, Alerts, Dual Bot).
+class AppButtons {
+  AppButtons._();
+
+  static const double minHeight = 40.0;
+  static const EdgeInsets padding = EdgeInsets.symmetric(horizontal: 14, vertical: 8);
+  static final RoundedRectangleBorder shape = RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppSpacing.radiusSmall + 2));
+  static const TextStyle label = TextStyle(fontSize: 13, fontWeight: FontWeight.w700, letterSpacing: 0.2);
 }

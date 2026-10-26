@@ -20,6 +20,7 @@ class SmartBrainView extends StatefulWidget {
 }
 
 class _SmartBrainViewState extends State<SmartBrainView> {
+  bool _more = false; // E4: secondary reports are folded until the owner opens them
   // Last good reply is kept for the whole app session, so re-opening the tab shows data at once.
   static Map<String, dynamic> _cache = {};
   Map<String, dynamic> _st = Map<String, dynamic>.from(_cache);
@@ -950,6 +951,34 @@ class _SmartBrainViewState extends State<SmartBrainView> {
     String side(dynamic d) => _n(d) > 0 ? 'BUY' : 'SELL';
     return _card(p, title: "THE BRAIN'S OWN PAPER TRADES", edge: n == 0 ? p.textMuted : (pnl >= 0 ? p.profit : p.loss), children: [
       Text('${o['text'] ?? ''}', style: context.type.primary),
+      if (_map(o['side_rule'])['text'] != null) ...[
+        const SizedBox(height: 6),
+        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          _chip(_map(o['side_rule'])['active'] == true ? 'SIDEWAYS LIMIT ON' : 'SIDEWAYS LIMIT OFF', _map(o['side_rule'])['active'] == true ? p.warning : p.textMuted),
+          const SizedBox(width: 6),
+          Expanded(child: Text('${_map(o['side_rule'])['text']}${_n(_map(o['side_rule'])['skipped']) > 0 ? ' Skipped today: ${_n(_map(o['side_rule'])['skipped']).toInt()}.' : ''}', style: context.type.metadata)),
+        ]),
+      ],
+      if (_map(o['retest_book'])['text'] != null) ...[
+        const SizedBox(height: 8),
+        Builder(builder: (_) {
+          final rb = _map(o['retest_book']);
+          final st = '${rb['status']}';
+          final gain = _n(rb['gain']);
+          final c = st == 'better' ? p.profit : (st == 'worse' ? p.loss : (st == 'early' || st == 'unsteady' ? p.warning : p.textMuted));
+          final label = st == 'better' ? 'WAITING IS BETTER' : (st == 'worse' ? 'WAITING IS WORSE' : (st == 'early' ? 'RETEST: EARLY HINT' : (st == 'unsteady' ? 'RETEST: NOT STEADY' : 'RETEST BOOK: COLLECTING')));
+          return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              _chip(label, c),
+              const SizedBox(width: 8),
+              if (rb['gain'] is num) Text('${gain >= 0 ? '+' : ''}${gain.toStringAsFixed(2)} USDT vs normal', style: context.type.secondary.copyWith(color: gain >= 0 ? p.profit : p.loss, fontWeight: FontWeight.w700)),
+            ]),
+            const SizedBox(height: 4),
+            Text('${rb['text']}', style: context.type.metadata),
+            if (rb['came'] is num) Text('Came back to the retest: ${_n(rb['came']).toInt()} of ${_n(rb['need_came']).toInt()} needed for a verdict. Pretend trades only.', style: context.type.metadata),
+          ]);
+        }),
+      ],
       if (open.isNotEmpty) ...[
         const SizedBox(height: 8),
         Text('Open now', style: context.type.label.copyWith(fontWeight: FontWeight.w700)),
@@ -992,6 +1021,23 @@ class _SmartBrainViewState extends State<SmartBrainView> {
     ]);
   }
 
+  /// E4: one tap row that opens / folds the 17 secondary Brain reports. Nothing is removed.
+  Widget _moreToggle(AppPalette p) => Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(10),
+          onTap: () => setState(() => _more = !_more),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+            decoration: BoxDecoration(border: Border.all(color: p.border), borderRadius: BorderRadius.circular(10)),
+            child: Row(children: [
+              Expanded(child: Text(_more ? 'Hide the other reports' : 'More reports (17): luck test, exit, retest, sideways, hours, how to read...', style: context.type.secondary.copyWith(fontWeight: FontWeight.w700))),
+              Icon(_more ? Icons.expand_less_rounded : Icons.expand_more_rounded, color: p.textMuted),
+            ]),
+          ),
+        ),
+      );
+
   @override
   Widget build(BuildContext context) {
     final p = context.palette;
@@ -1000,25 +1046,28 @@ class _SmartBrainViewState extends State<SmartBrainView> {
       _nowCard(p),
       _timingCard(p),
       _tpHoldCard(p),
-      _learnCard(p),
-      _signalsCard(p),
-      _statusCard(p),
       _trustCard(p),
-      _luckCard(p),
-      _exitCard(p),
-      _followCard(p),
-      _exitPickCard(p),
-      _sidewaysCard(p),
-      _retestCard(p),
-      _layersCard(p),
       _ownCard(p),
-      _bookCard(p),
-      _riskCard(p),
-      _watchCard(p),
-      _patternsCard(p),
-      _hoursCard(p),
-      _bandsCard(p),
-      _howCard(p),
+      _moreToggle(p),
+      if (_more) ...[
+        _learnCard(p),
+        _signalsCard(p),
+        _statusCard(p),
+        _luckCard(p),
+        _exitCard(p),
+        _followCard(p),
+        _exitPickCard(p),
+        _sidewaysCard(p),
+        _retestCard(p),
+        _layersCard(p),
+        _bookCard(p),
+        _riskCard(p),
+        _watchCard(p),
+        _patternsCard(p),
+        _hoursCard(p),
+        _bandsCard(p),
+        _howCard(p),
+      ],
     ]);
   }
 }

@@ -73,6 +73,19 @@ class OWLCard extends StatelessWidget {
 /// Shared building blocks, so every screen uses the same card, title, chip and number style.
 
 /// A titled card: small bold caps title, optional one-line hint, then the content. One look for every section on every screen.
+/// E4: wrap a screen body in OwlDensity(compact: true) and every OwlSectionCard below it uses
+/// smaller inner padding and a smaller gap between cards. Outside it nothing changes.
+class OwlDensity extends InheritedWidget {
+  final bool compact;
+  const OwlDensity({super.key, required this.compact, required super.child});
+
+  static bool isCompact(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<OwlDensity>()?.compact ?? false;
+
+  @override
+  bool updateShouldNotify(OwlDensity old) => old.compact != compact;
+}
+
 class OwlSectionCard extends StatelessWidget {
   final String title;
   final String? hint;
@@ -94,12 +107,13 @@ class OwlSectionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = context.palette;
+    final dense = OwlDensity.isCompact(context);
     return Container(
       width: double.infinity,
-      margin: margin,
+      margin: dense && margin == const EdgeInsets.only(bottom: AppSpacing.cardGap) ? const EdgeInsets.only(bottom: 8) : margin,
       child: OWLCard(
         edge: edge,
-        padding: const EdgeInsets.all(AppSpacing.cardPad),
+        padding: EdgeInsets.all(dense ? 11 : AppSpacing.cardPad),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
             Expanded(child: Text(title, style: context.type.label.copyWith(fontWeight: FontWeight.w800, letterSpacing: 0.6))),
@@ -109,7 +123,7 @@ class OwlSectionCard extends StatelessWidget {
             const SizedBox(height: 2),
             Text(hint!, style: context.type.metadata.copyWith(color: p.textMuted)),
           ],
-          const SizedBox(height: AppSpacing.s),
+          SizedBox(height: dense ? 6 : AppSpacing.s),
           ...children,
         ]),
       ),

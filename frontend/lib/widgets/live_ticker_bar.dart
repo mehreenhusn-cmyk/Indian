@@ -92,8 +92,8 @@ class _LiveTickerBarState extends State<LiveTickerBar> with TickerProviderStateM
         // shrinks; the right side (mode, timeframe, P&L, PANIC) never moves.
         final compact = box.maxWidth < 560;
         return Container(
-          height: 40,
-          padding: const EdgeInsets.symmetric(horizontal: 10),
+          height: 36,
+          padding: const EdgeInsets.symmetric(horizontal: 8),
           decoration: BoxDecoration(
             color: context.palette.surface.withOpacity(0.92),
             border: Border(bottom: BorderSide(color: context.palette.glassBorder, width: 0.5)),
@@ -102,7 +102,7 @@ class _LiveTickerBarState extends State<LiveTickerBar> with TickerProviderStateM
             children: [
               // ---- Market switch: one tap, same spot in both markets (no swipe needed) ----
               const MarketModeSwitch(),
-              const SizedBox(width: 8),
+              const SizedBox(width: 6),
               // ---- Left group: shrinks first when space runs out ----
               Expanded(
                 child: Align(
@@ -130,7 +130,7 @@ class _LiveTickerBarState extends State<LiveTickerBar> with TickerProviderStateM
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 6),
 
               // ---- LIVE/PAPER + timeframe pills ----
               // Issue #5: tap-to-toggle - opens a confirm dialog rather than
@@ -144,9 +144,9 @@ class _LiveTickerBarState extends State<LiveTickerBar> with TickerProviderStateM
                   filled: true,
                 ),
               ),
-              const SizedBox(width: 6),
+              const SizedBox(width: 4),
               _pill(text: timeframe, color: context.palette.textMuted, filled: false),
-              const SizedBox(width: 8),
+              const SizedBox(width: 6),
 
               // ---- 24h P&L ----
               Column(
@@ -164,7 +164,7 @@ class _LiveTickerBarState extends State<LiveTickerBar> with TickerProviderStateM
                   ),
                 ],
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 8),
 
               // ---- Hold-to-confirm PANIC button ----
               _PanicButton(onConfirmed: () => provider.panicFlatten()),
@@ -258,7 +258,7 @@ class _LiveTickerBarState extends State<LiveTickerBar> with TickerProviderStateM
           netText,
           style: AppTypography.metadata.copyWith(
             color: context.palette.textPrimary,
-            fontSize: 15,
+            fontSize: 13,
             fontWeight: FontWeight.w800,
           ),
         ),
@@ -268,13 +268,13 @@ class _LiveTickerBarState extends State<LiveTickerBar> with TickerProviderStateM
 
   Widget _pill({required String text, required Color color, required bool filled}) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
         color: filled ? color.withOpacity(0.9) : color.withOpacity(0.12),
         borderRadius: BorderRadius.circular(5),
         border: filled ? null : Border.all(color: color.withOpacity(0.5)),
         boxShadow: filled
-            ? [BoxShadow(color: color.withOpacity(0.35), blurRadius: 6, spreadRadius: 0.5)]
+            ? [BoxShadow(color: color.withOpacity(0.18), blurRadius: 4)]
             : null,
       ),
       child: Text(

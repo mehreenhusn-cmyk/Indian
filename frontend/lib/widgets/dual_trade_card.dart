@@ -31,6 +31,34 @@ class DualTradeCard extends StatelessWidget {
     return c >= 70 ? 'good' : (c < 40 ? 'bad' : 'unclear');
   }
 
+  /// E3: one-line badges for a trade: Brain grade (clean / dislike / unclear), Main-Z agreement, and REAL / FAKE once finished.
+  /// Stays on one line (scales down on narrow phones). Returns an empty box when there is nothing to show.
+  static Widget badgeRow(AppPalette p, {Map<String, dynamic>? brain, dynamic label}) {
+    Widget b(String text, Color c) => Container(
+          margin: const EdgeInsets.only(right: 5),
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+          decoration: BoxDecoration(color: c.withOpacity(0.12), borderRadius: BorderRadius.circular(5)),
+          child: Text(text, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: c)),
+        );
+    final items = <Widget>[];
+    if (brain != null && brain.isNotEmpty) {
+      final cl = _n(brain['clean']);
+      final dv = _n(brain['div']);
+      if (cl != null) {
+        final g = quality(brain);
+        items.add(b(g == 'good' ? 'clean ${cl.toStringAsFixed(0)}' : (g == 'bad' ? 'dislike ${cl.toStringAsFixed(0)}' : 'unclear ${cl.toStringAsFixed(0)}'),
+            g == 'good' ? p.profit : (g == 'bad' ? p.loss : p.warning)));
+      }
+      if (dv != null) {
+        items.add(b(dv <= 14 ? 'agree' : (dv <= 42 ? 'mixed' : 'disagree'), dv <= 14 ? p.profit : (dv <= 42 ? p.warning : p.loss)));
+      }
+    }
+    if ('$label' == 'fake') items.add(b('FAKE', p.loss));
+    if ('$label' == 'real') items.add(b('REAL', p.profit));
+    if (items.isEmpty) return const SizedBox.shrink();
+    return FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Row(mainAxisSize: MainAxisSize.min, children: items));
+  }
+
   /// "42m", "2h 5m" or "now": how long the trade has been open.
   static String openFor(dynamic tMs) {
     final a = _age(tMs);
@@ -114,7 +142,7 @@ class DualTradeCard extends StatelessWidget {
     final reason = brain == null ? '' : '${brain!['text'] ?? ''}';
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.only(bottom: 8),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
         onTap: onTap,
@@ -130,7 +158,7 @@ class DualTradeCard extends StatelessWidget {
               Container(width: 4, color: accent),
               Expanded(
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 12, 14, 12),
+                  padding: const EdgeInsets.fromLTRB(11, 9, 12, 9),
                   child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -173,7 +201,7 @@ class DualTradeCard extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 8),
               Row(
                 children: [
                   stat('Entry', fmtPrice(entry)),
@@ -181,9 +209,9 @@ class DualTradeCard extends StatelessWidget {
                   stat('Stop now', fmtPrice(slNow), color: p.loss),
                 ],
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 8),
               SizedBox(
-                height: 44,
+                height: 40,
                 width: double.infinity,
                 child: CustomPaint(
                   painter: _LadderPainter(
@@ -200,7 +228,7 @@ class DualTradeCard extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 4),
               Row(
                 children: [
                   Icon(Icons.schedule_rounded, size: 13, color: p.textMuted),
@@ -215,21 +243,9 @@ class DualTradeCard extends StatelessWidget {
                   Icon(Icons.chevron_right_rounded, size: 18, color: p.textMuted),
                 ],
               ),
-              if (brain != null && brain!.isNotEmpty) ...[
-                const SizedBox(height: 6),
-                Builder(builder: (_) {
-                  final cl = _n(brain!['clean']) ?? 0;
-                  final dv = _n(brain!['div']) ?? 0;
-                  final cc = cl >= 70 ? p.profit : (cl >= 40 ? p.warning : p.loss);
-                  final dc = dv <= 14 ? p.profit : (dv <= 42 ? p.warning : p.loss);
-                  return Row(children: [
-                    Icon(Icons.psychology_outlined, size: 14, color: p.textMuted),
-                    const SizedBox(width: 4),
-                    chip('Brain: clean ${cl.toStringAsFixed(0)}', cc),
-                    const SizedBox(width: 6),
-                    chip(dv <= 14 ? 'Main and Z agree' : (dv <= 42 ? 'Mixed' : 'Main and Z disagree'), dc),
-                  ]);
-                }),
+              if ((brain != null && brain!.isNotEmpty) || '${row['label'] ?? ''}' == 'fake' || '${row['label'] ?? ''}' == 'real') ...[
+                const SizedBox(height: 5),
+                badgeRow(p, brain: brain, label: row['label']),
               ],
               if (reason.isNotEmpty) ...[
                 const SizedBox(height: 4),
