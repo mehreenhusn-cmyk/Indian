@@ -34,7 +34,7 @@ sys.path.insert(0, HERE)
 
 CYCLE_S = 60                 # recompute the numbers every minute (cheap: reads one file)
 SCAN_S = 300                 # opportunity scan every 5 minutes (downloads candles for a few coins)
-SCAN_COINS = 12              # how many coins one scan reads
+SCAN_COINS = 20              # how many coins one scan reads (today's top-10 gainers + top-10 losers)
 SCAN_TF = "15m"
 BEAT_STALE_S = 180
 MIN_N = 20                   # fewer look-alikes than this = "not enough data"
@@ -409,15 +409,69 @@ def signals_view(rows, trades):
     return out
 
 
+def today_coins(old, now=None, state={"t": 0.0, "c": []}):
+    """Today's top-10 gainers + top-10 losers (same list Dual Bot uses), refreshed every 30 minutes. If Binance fails, the last good list is kept.
+    Falls back to `old` (the coins Dual Bot has read) only when no list was ever read."""
+    now = time.time() if now is None else now
+    if not state["c"] or now - state["t"] > 1800:
+        try:
+            import filter_lab as FL
+            got = list(FL.default_coins(log=lambda m: None))
+            if got:
+                state["c"], state["t"] = got, now
+        except Exception:
+            state["t"] = now - 1500                      # try again in 5 minutes, keep the old list meanwhile
+    return list(state["c"] or old)
+
+
+# ---------------------------------------------------------------- 8a. auto-learning from its OWN trades (lessons)
+LESSON_HALF = 30             # an own trade counts half as much for every this-many newer own trades (recent matters more)
+LESSON_MIN = 3               # own trades with the same setup mix needed before a lesson is drawn
+LESSON_BAD, LESSON_GOOD = 35, 60   # weighted % won: below = "burnt" (do not repeat), above = "worked" (do it again)
+
+
+def _lesson_key(tg):
+    return tuple(tg.get(k) for k in KEY_DIMS)
+
+
+def lessons(own):
+    """What the Brain learnt from its OWN finished paper trades: setup mix -> [weighted trades, weighted wins, trades]. Newer trades weigh more."""
+    cl = sorted([t for t in (own or {}).get("closed", []) if t.get("net") is not None and t.get("tg")], key=lambda t: t.get("closed_at", 0))
+    out, last = {}, len(cl) - 1
+    for pos, t in enumerate(cl):
+        w = 0.5 ** ((last - pos) / float(LESSON_HALF))
+        b = out.setdefault(_lesson_key(t["tg"]), [0.0, 0.0, 0])
+        b[0] += w
+        b[1] += w if t["net"] > 0 else 0.0
+        b[2] += 1
+    return out
+
+
+def lesson_for(les, tg):
+    """-> ('burnt' | 'worked' | None, one plain sentence). Needs LESSON_MIN own trades of the same setup mix."""
+    b = les.get(_lesson_key(tg))
+    if not b or b[2] < LESSON_MIN:
+        return None, ""
+    pct = int(round(100.0 * b[1] / b[0]))
+    if pct < LESSON_BAD:
+        return "burnt", "Own trades with this mix: %d, only %d%% won (recent count more). Not repeating it." % (b[2], pct)
+    if pct >= LESSON_GOOD:
+        return "worked", "Own trades with this mix: %d, %d%% won (recent count more). Doing it again." % (b[2], pct)
+    return None, ""
+
+
 # ---------------------------------------------------------------- 8. opportunity scan (watch list, no trades)
-def scan(rows, coins, fetch_limit):
-    """Reads the newest closed candle of a few coins and scores BUY and SELL as if a signal fired now. Only good-looking setups are listed.
+def scan(rows, coins, fetch_limit, own=None):
+    """Reads the newest closed candle of a few coins and scores BUY and SELL as if a signal fired now. Only setups that pass the Brain's
+    CURRENT stage are listed (learning = loose, then medium, then quality; see brain_own.STAGES). Setups it was burnt by (own lessons) are dropped.
     This never places a trade and never writes into Dual Bot."""
     TL = _tl()
     from recovered_bot import ai_ind_features as F
     import brain_own as BO
     from recovered_bot.strategy import ABCDStrategy
     strat = ABCDStrategy()
+    stage, c_min, w_min, d_max = BO.stage_for(BO.judged(own))
+    les = lessons(own)
     found = []
     for sym in coins[:SCAN_COINS]:
         try:
@@ -435,15 +489,22 @@ def scan(rows, coins, fetch_limit):
                     continue
                 sc = score_setup(rows, tg)
                 pr = sc["prob"]
-                if pr and sc["clean"] >= 70 and pr["win_pct"] >= 55 and sc["div"] <= 29:
-                    sc.update({"s": sym, "f": SCAN_TF, "d": d, "t": int(time.time() * 1000)})
-                    sc["_plan"], sc["_tg"] = BO.plan_levels(S, i, d, strat), tg   # used by brain_own, removed before the view is saved
-                    found.append(sc)
+                lv, ltxt = lesson_for(les, tg)
+                if lv == "burnt" or sc["clean"] < c_min or sc["div"] > d_max:
+                    continue
+                if lv != "worked":
+                    if pr is None and stage != "learning":
+                        continue                             # later stages need look-alikes; learning stage may explore
+                    if pr is not None and pr["win_pct"] < w_min:
+                        continue
+                sc.update({"s": sym, "f": SCAN_TF, "d": d, "t": int(time.time() * 1000), "stage": stage, "lesson": ltxt})
+                sc["_plan"], sc["_tg"] = BO.plan_levels(S, i, d, strat), tg   # used by brain_own, removed before the view is saved
+                found.append(sc)
         except Exception:
             continue
         time.sleep(0.05)
-    found.sort(key=lambda x: (-x["prob"]["win_pct"], -x["clean"]))
-    return found[:8]
+    found.sort(key=lambda x: (-(x["prob"] or {"win_pct": 50})["win_pct"], -x["clean"]))
+    return found[:15]
 
 
 # ---------------------------------------------------------------- 8b. the Brain's own paper book (forward only, frozen at signal time)
@@ -895,9 +956,9 @@ def worker():
             if enabled:
                 rows, trades = read_v1()
                 if not first and time.time() - scan_t > SCAN_S and len(rows) >= 4 * MIN_GROUP:
-                    coins = [k.split("|")[0] for k in (_load("dual_lab_data.json", {}).get("fetched") or {}) if k.endswith("|" + SCAN_TF)]
-                    scan_list = list(dict.fromkeys(coins))[:SCAN_COINS]
-                    watch, scan_t = scan(rows, scan_list, LAB._fetch_limit), time.time()
+                    old_coins = [k.split("|")[0] for k in (_load("dual_lab_data.json", {}).get("fetched") or {}) if k.endswith("|" + SCAN_TF)]
+                    scan_list = list(dict.fromkeys(today_coins(old_coins)))[:SCAN_COINS]        # TODAY's coins, not the oldest ones
+                    watch, scan_t = scan(rows, scan_list, LAB._fetch_limit, _load("smart_brain_own.json", {})), time.time()
                     scanned = True
                 own = _load("smart_brain_own.json", {})
                 try:                                           # the Brain's own pretend trades: any problem here is ignored

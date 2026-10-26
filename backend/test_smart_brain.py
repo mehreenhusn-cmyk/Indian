@@ -133,7 +133,7 @@ def candles(tf, n, seed):
 fetch = lambda sym, tf, limit: candles(tf, limit, sum(map(ord, sym + tf)))[-limit:]
 before = open(path, "rb").read()
 found = B.scan(rows, ["AAAUSDT", "BBBUSDT", "CCCUSDT", "DDDUSDT"], fetch)
-check(isinstance(found, list) and all(w["clean"] >= 70 and w["prob"]["win_pct"] >= 55 and w["div"] <= 29 for w in found), "scan only lists strong setups")
+check(isinstance(found, list) and all(w["clean"] >= 45 and w["div"] <= 55 and (w["prob"] is None or w["prob"]["win_pct"] >= 45) and w["stage"] == "learning" for w in found), "scan in learning stage lists loose setups only")
 check(B.scan(rows, ["X"], lambda *a: (_ for _ in ()).throw(RuntimeError("net down"))) == [], "a broken download never stops the scan")
 check(open(path, "rb").read() == before, "scan did not touch Dual Bot data")
 
@@ -229,5 +229,56 @@ vr = B.build_view(r2, alltr, [], 0, book=book)
 check(vr["luck"] and vr["risk"]["picks"] and "drift" in vr, "luck, risk and drift are in the view")
 json.dumps(vr)
 check(open(path, "rb").read() == before, "dual_lab_data.json still untouched after Part 3")
+
+
+# 12. Part 1 of auto-learning: stages, today's coins, lessons from own trades, daily limit
+import brain_own as BO
+check(BO.stage_for(0)[0] == "learning" and BO.stage_for(99)[0] == "learning" and BO.stage_for(100)[0] == "medium" and BO.stage_for(300)[0] == "quality", "stages follow judged own trades")
+check(BO.stage_for(0)[1:] == (45, 45, 55) and BO.stage_for(300)[1:] == (60, 55, 43), "loose at first, strict later")
+check(BO.next_stage(40) == ("medium", 60) and BO.next_stage(500) == (None, 0), "next stage counter")
+st_dead = {"t": 0.0, "c": []}
+import filter_lab as _FL
+_keep = _FL.default_coins
+_FL.default_coins = lambda log=None: (_ for _ in ()).throw(RuntimeError("binance down"))
+check(B.today_coins(["OLD1"], now=5e9, state=st_dead) == ["OLD1"], "Binance down: falls back to old coins, never raises")
+_FL.default_coins = lambda log=None: ["TODAY1USDT", "TODAY2USDT"]
+check(B.today_coins(["OLD1"], now=6e9, state=st_dead) == ["TODAY1USDT", "TODAY2USDT"], "today's coins replace the old ones")
+_FL.default_coins = lambda log=None: (_ for _ in ()).throw(RuntimeError("binance down"))
+check(B.today_coins(["OLD1"], now=6e9 + 4000, state=st_dead) == ["TODAY1USDT", "TODAY2USDT"], "a failed refresh keeps today's last good list")
+_FL.default_coins = _keep
+
+def own_trade(i, net, tg):
+    return {"id": "x%d" % i, "s": "AAAUSDT", "f": "15m", "d": 1, "net": net, "closed_at": 1000 + i, "tg": tg, "t": 1000 + i}
+bad_tg, good_tg = clean, dict(clean, side_main="main chart sideways")
+own_t = {"closed": [own_trade(i, -5.0, bad_tg) for i in range(4)] + [own_trade(10 + i, 8.0, good_tg) for i in range(4)]}
+les = B.lessons(own_t)
+check(B.lesson_for(les, bad_tg)[0] == "burnt" and B.lesson_for(les, good_tg)[0] == "worked", "burnt and worked lessons")
+check(B.lesson_for(les, dirty)[0] is None, "no lesson for a mix it never traded")
+check(B.lesson_for(B.lessons({"closed": [own_trade(0, -5.0, bad_tg), own_trade(1, -5.0, bad_tg)]}), bad_tg)[0] is None, "2 trades are too few for a lesson")
+# recent counts more: old losses, newest wins -> not burnt any more
+mix = {"closed": [own_trade(i, -5.0, bad_tg) for i in range(6)] + [own_trade(100 + i, 9.0, bad_tg) for i in range(60)]}
+check(B.lesson_for(B.lessons(mix), bad_tg)[0] == "worked", "newest results weigh more than old mistakes")
+# a burnt mix is dropped by the scan
+orig_lf = B.lesson_for
+B.lesson_for = lambda l, t: ("burnt", "x")
+check(B.scan(rows, ["AAAUSDT", "BBBUSDT"], fetch, own_t) == [], "scan drops a burnt setup")
+B.lesson_for = orig_lf
+
+# own book: stage + lesson saved on the trade, daily limit, summary shows the stage
+now_ms = 1_700_000_000_000
+def wi(k):
+    return {"s": "C%dUSDT" % k, "f": "15m", "d": 1, "clean": 50, "div": 20, "prob": None, "stage": "learning", "lesson": "l",
+            "_plan": {"entry": 1.0, "sl": 0.9, "tps": [1.1], "ct": now_ms + k}, "_tg": clean}
+book_o = {}
+n_open = BO.open_from(book_o, [wi(k) for k in range(5)], now_ms=now_ms)
+check(n_open == 5 and book_o["open"][0]["stage"] == "learning" and book_o["open"][0]["lesson"] == "l", "own trade keeps stage and lesson")
+BO.MAX_OPEN_KEEP, BO.MAX_DAY, BO.MAX_OPEN = BO.MAX_OPEN, 6, 99
+n2 = BO.open_from(book_o, [wi(k) for k in range(5, 12)], now_ms=now_ms + 1000)
+check(n2 == 1 and len(book_o["open"]) == 6, "daily limit of new own trades")
+n3 = BO.open_from(book_o, [wi(k) for k in range(12, 14)], now_ms=now_ms + 86_400_000)
+check(n3 == 2, "a new trading day starts the count again")
+BO.MAX_DAY, BO.MAX_OPEN = 40, BO.MAX_OPEN_KEEP
+sm = BO.summary(dict(book_o, closed=[]))
+check(sm["stage"] == "learning" and sm["next_stage"] == "medium" and sm["next_in"] == 100, "summary shows stage and what is left")
 
 print("OK %d checks" % ok)

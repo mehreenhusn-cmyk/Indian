@@ -12,6 +12,33 @@ KEEP_CLOSED = 300        # finished trades kept in the file
 MAX_FETCH = 6            # coins re-checked per round (candles are downloaded, so keep it small)
 EXIT_NAME = "BOT exit (TP4, main cross)"   # default exit = what Dual Bot uses; brain_exit_pick can choose another style per trade
 LEV, FEE = 10.0, 1.0     # same as Dual Bot: 10x, fee in ROI points
+MAX_DAY = 40             # most new own trades per trading day (day = 5:30 AM IST = 00:00 UTC); keeps learning from turning into noise
+# The Brain starts loose and gets pickier by itself as its own judged trades grow: (judged trades needed, stage, min clean, min win %, max divergence)
+STAGES = ((0, "learning", 45, 45, 55), (100, "medium", 55, 50, 48), (300, "quality", 60, 55, 43))
+
+
+def judged(own):
+    return len([t for t in (own or {}).get("closed", []) if t.get("net") is not None])
+
+
+def stage_for(n):
+    """-> (stage name, min clean, min win %, max divergence) for n finished own trades."""
+    cur = STAGES[0]
+    for st in STAGES:
+        if n >= st[0]:
+            cur = st
+    return cur[1], cur[2], cur[3], cur[4]
+
+
+def next_stage(n):
+    for st in STAGES:
+        if n < st[0]:
+            return st[1], st[0] - n
+    return None, 0
+
+
+def _day_start_ms(now_ms):
+    return now_ms - now_ms % 86_400_000
 
 
 def plan_levels(S, i, d, strat):
@@ -40,6 +67,8 @@ def open_from(own, watch, now_ms=None, pick_fn=None):
     own.setdefault("closed", [])
     own.setdefault("seen", {})
     opened = 0
+    day0 = _day_start_ms(now_ms)
+    today = len([t for t in own["open"] + own["closed"] if t.get("t", 0) >= day0])
     for w in watch or []:
         plan, tg = w.pop("_plan", None), w.pop("_tg", None)
         if not plan or not tg:
@@ -48,6 +77,8 @@ def open_from(own, watch, now_ms=None, pick_fn=None):
         if key in own["seen"]:
             continue
         own["seen"][key] = 1
+        if today + opened >= MAX_DAY:
+            continue
         if len(own["open"]) >= MAX_OPEN or any(t["s"] == w["s"] and t["d"] == w["d"] for t in own["open"]):
             continue
         ex, why = EXIT_NAME, ""
@@ -60,6 +91,7 @@ def open_from(own, watch, now_ms=None, pick_fn=None):
             "id": key, "s": w["s"], "f": w["f"], "d": w["d"], "ct": plan["ct"], "t": now_ms, "entry": plan["entry"], "sl": plan["sl"],
             "tps": plan["tps"], "exit": ex, "why_exit": why, "clean": w.get("clean"), "div": w.get("div"),
             "win_pct": (w.get("prob") or {}).get("win_pct"), "n": (w.get("prob") or {}).get("n"), "tg": tg,
+            "stage": w.get("stage"), "lesson": w.get("lesson") or "",
             "status": "open", "live": None, "chk": 0})
         opened += 1
     if len(own["seen"]) > 2000:
@@ -152,5 +184,7 @@ def summary(own):
                "No own trade yet. The Brain opens one only when its scan finds a setup it really likes."
     else:
         text = "Own pretend trades finished: %d. Won %d%% of them. Total %+.2f USDT (fee inside)." % (n, round(100.0 * wins / n), pnl)
-    return {"since": own.get("since"), "open": op, "n": n, "wins": wins, "pnl": pnl, "avg": round(sum(t["net"] for t in cl) / n, 2) if n else 0.0,
+    stg = stage_for(n)[0]
+    nxt, left = next_stage(n)
+    return {"stage": stg, "next_stage": nxt, "next_in": left, "since": own.get("since"), "open": op, "n": n, "wins": wins, "pnl": pnl, "avg": round(sum(t["net"] for t in cl) / n, 2) if n else 0.0,
             "recent": rec, "text": text, "exit": EXIT_NAME, "by_exit": sorted(by.values(), key=lambda x: -x["pnl"])}
