@@ -82,9 +82,11 @@ class PerformanceTab extends StatelessWidget {
     final up = total >= 0;
     final wNow = f['win_now'], wBefore = f['win_before'];
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      OwlSectionCard(title: 'EQUITY CURVE (ALL FINISHED TRADES)', edge: up ? p.profit : p.loss, children: [
+      OwlSectionCard(title: 'EQUITY CURVE (ALT COINS, BTC NOT INCLUDED)', edge: up ? p.profit : p.loss, children: [
         Text('${_sg(total)} USDT', style: context.type.primary.copyWith(fontWeight: FontWeight.w900, fontSize: 24, color: up ? p.profit : p.loss)),
         Text('${f['text'] ?? ''}', style: context.type.metadata),
+        if (_n(_map(f['btc'])['n']) > 0)
+          Text('BTC alone (own 1000 USDT margin, not in this curve): ${_n(_map(f['btc'])['n']).toInt()} trades, ${_sg(_n(_map(f['btc'])['pnl']))} USDT.', style: context.type.metadata),
         const SizedBox(height: 8),
         if (eq.length >= 2) _line(p, eq, up ? p.profit : p.loss, flatY: 0),
         const SizedBox(height: 4),

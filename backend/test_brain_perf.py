@@ -43,7 +43,7 @@ big = [tr(i, 1.0) for i in range(500)]
 r = B.performance(big)
 check(len(r["equity"]) == B.PERF_PTS and r["equity"][-1] == 500.0 and r["total"] == 500.0 and r["n"] == 500, "thinned, exact total")
 r = B.performance([tr(i, 1.0, sym="BTCUSDT") for i in range(5)])
-check(r["total"] == 50.0, "BTC margin 1000")
+check(r["n"] == 0 and r["btc"]["pnl"] == 50.0, "BTC margin 1000, counted apart (not in the alt curve)")
 r = B.performance([tr(i, 5.0) for i in range(5)] + [tr(9, 5.0, status="open"), tr(10, 5.0, status="skipped_done")])
 check(r["n"] == 5, "only finished bot trades")
 
@@ -51,4 +51,14 @@ check(r["n"] == 5, "only finished bot trades")
 snap = [dict(t) for t in t40]
 v = B.build_view(rows=[], trades=t40)
 check(v["perf"]["status"] == "ready" and t40 == snap, "in view, read only")
+
+# BTC is never mixed into the alt-coin curve (own margin, own totals)
+import dual_lab
+mixed = [tr(i, 5.0) for i in range(10)] + [tr(100 + i, -2.0, sym="BTCUSDT") for i in range(3)]
+rb = B.performance(mixed)
+check(rb["n"] == 10 and rb["btc"]["n"] == 3 and rb["btc"]["wins"] == 0, "BTC trades are counted apart")
+check(abs(rb["btc"]["pnl"] - (-2.0 * 3 * dual_lab.BTC_MARGIN / 100.0)) < 0.01, "BTC uses its own 1000 USDT margin")
+check(abs(rb["total"] - 10 * 5.0 * dual_lab.MARGIN / 100.0) < 0.01, "alt curve total has no BTC in it")
+check(B.performance([tr(i, 5.0) for i in range(3)])["btc"]["n"] == 0, "btc key exists even when collecting")
+
 print("performance: %d checks passed" % ok)

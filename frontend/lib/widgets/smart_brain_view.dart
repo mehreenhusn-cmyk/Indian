@@ -158,7 +158,7 @@ class _SmartBrainViewState extends State<SmartBrainView> {
     final scanN = _n(l['scan_n']);
     return _card(p, title: 'WHAT IT IS LEARNING', children: [
       _bar(p, 'Old setups read', _n(l['rows']), _n(l['need_rows']), p.accent),
-      _bar(p, 'Unseen trades judged (for trust)', _n(l['judged']), _n(l['need_judged']), p.warning),
+      _bar(p, 'Unseen trades judged (for trust)', _n(l['judged']) > _n(l['need_judged']) && _n(l['need_judged']) > 0 ? _n(l['need_judged']) : _n(l['judged']), _n(l['need_judged']), p.warning),
       Text('Where it has too little data', style: context.type.label),
       const SizedBox(height: 3),
       if (thin.isEmpty) Text('Nothing thin right now.', style: context.type.metadata),
@@ -204,7 +204,7 @@ class _SmartBrainViewState extends State<SmartBrainView> {
     return Padding(
       padding: const EdgeInsets.only(top: 8),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(done ? 'Trust test: ${judged.toStringAsFixed(0)} of ${need.toStringAsFixed(0)} trades judged. Enough data, the meter can now decide.'
+        Text(done ? 'Trust test: ${need.toStringAsFixed(0)} of ${need.toStringAsFixed(0)} trades judged${judged > need ? ' (${judged.toStringAsFixed(0)} read)' : ''}. Enough data. The meter decides now; until it says "earned" the Brain is still checked.'
                   : 'Trust test: ${judged.toStringAsFixed(0)} of ${need.toStringAsFixed(0)} trades judged ($left to go). At ${need.toStringAsFixed(0)} the meter can decide.',
             style: context.type.metadata),
         const SizedBox(height: 4),

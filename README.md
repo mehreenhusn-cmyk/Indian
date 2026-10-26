@@ -1,6 +1,6 @@
 # Owl Terminal - MASTER NOTES (the ONLY notes file in this repo)
 
-OWL MASTER NOTES v2 - last updated: 27 Oct 2026
+OWL MASTER NOTES v3 - last updated: 27 Oct 2026
 
 Crypto paper-trading app (Flutter) + Python backend. Dual Bot v1 collects trades. Smart Brain learns on the side, paper only.
 
@@ -41,15 +41,16 @@ Crypto paper-trading app (Flutter) + Python backend. Dual Bot v1 collects trades
 | R1-1 | Brain own trades now loose + today's coins + auto-learning lessons + stages + daily limit (27 Oct) | smart_brain.py, brain_own.py |
 | R1-2 | Retest report: two numbers apart (came back / never came back) + Trending / Mixed / Sideways split (27 Oct) | smart_brain.py, smart_brain_view.dart |
 | R1-3 | Simple tab: LOCKED / FLOATING / NET boxes + Brain dislike %; "Old setups read" bar can no longer say "5000 of 60" (27 Oct) | simple_tab.dart, smart_brain_view.dart |
+| A1-A3 | Honest trust bar (never 150 of 100), header says MAIN bot P&L, Performance tab without BTC (BTC own line), Simple tab 'which signal type pays' card + open rows say 'opened 5m ago' | smart_brain_view.dart, live_ticker_bar.dart, performance_tab.dart, simple_tab.dart, dual_bot_screen.dart, smart_brain.py |
 | N1 | This single notes file; old notes removed with tools/clean_old_notes.sh (27 Oct) | README.md |
 
 ## 4. ROAD AHEAD (Part A, B, C ... in this order; start a part only when its "start when" is true AND the owner says ok)
 Sources: owner's 3 prompt files (Brain strong modules, Owl FINAL master, FINAL FORM all problems) and his phone screenshots of 27 Oct.
 | Part | What | Files | Lines | Start when | Status |
 |---|---|---|---|---|---|
-| A1 | Honest numbers: trust bar shows "100 of 100, earned check pending" (never 150 of 100); top header label says it is the MAIN bot's P&L (it showed -139 while Dual Bot locked was -744 = confusing) | smart_brain_view.dart, live_ticker_bar.dart | ~35 | NOW | TODO |
-| A2 | Performance tab: BTC left out of the alt curve (it is now mixed in: 479 trades vs 464 on the Today card, equity -892 = -744 alts + -148 BTC). BTC shown as its own line | smart_brain.py, test_brain_perf.py | ~30 | NOW | TODO |
-| A3 | Simple tab: always-visible mini summary "Both same candle / Z only / Main only" (data shows Both = green, Main only = worst) + check every open-trade row shows age (5m / 1h) | simple_tab.dart | ~60 | NOW | TODO |
+| A1 | Honest numbers: trust bar shows "100 of 100, earned check pending" (never 150 of 100); top header label says it is the MAIN bot's P&L (it showed -139 while Dual Bot locked was -744 = confusing) | smart_brain_view.dart, live_ticker_bar.dart | ~35 | NOW | DONE 27 Oct (zip owl_A) |
+| A2 | Performance tab: BTC left out of the alt curve (it is now mixed in: 479 trades vs 464 on the Today card, equity -892 = -744 alts + -148 BTC). BTC shown as its own line | smart_brain.py, test_brain_perf.py, performance_tab.dart | ~40 | NOW | DONE 27 Oct (zip owl_A) |
+| A3 | Simple tab: always-visible mini summary "Both same candle / Z only / Main only" (data shows Both = green, Main only = worst) + check every open-trade row shows age (5m / 1h) | simple_tab.dart, dual_bot_screen.dart | ~65 | NOW | DONE 27 Oct (zip owl_A) |
 | B1 | Indicator Timing Sync report: SAME candle / Z first then Main (1-2 or 3-5 candles) / Main first then Z / Z only / Main only, with count, win %, USDT, TSI state, sideways; plus 5-10 plain "how to use both indicators" lessons; defines "deep clean setup" from data. Uses the existing "order" tag, Dual Bot untouched | brain_lessons.py (new), test_brain_lessons.py (new), smart_brain.py | ~230 | NOW (Dual data is enough) | TODO |
 | B2 | Brain tab card for B1 (one strong block, plain words) | smart_brain_view.dart | ~110 | after B1 | TODO |
 | B3 | Brain OWN trades softly prefer "deep clean" setups | brain_own.py, smart_brain.py, test | ~50 | B1 numbers stable for 3+ days | WAIT FOR DATA |
@@ -103,6 +104,7 @@ A: Brain only watches (now). B: shadow "would take / would skip" - DONE as the "
 - Not seen: Claude never ran the app; a file started by a Termux script outside the repo would look dead.
 
 ## 10. CHANGE LOG (newest first)
+- 27 Oct 2026 (v3): Part A done (A1 honest numbers + header label, A2 BTC out of the alt curve, A3 signal-type card + open age). Next: Part B (Timing Sync + lessons).
 - 27 Oct 2026 (v2): lettered Parts A-G plan from the 3 prompts + screenshots, data truth section, Termux paste command, naming rule. Round 1 (old Parts 1-3: Brain learning, retest report, Simple tab boxes) confirmed applied by owner.
 - 27 Oct 2026 (v1): N1 single notes file.
 - 26 Oct 2026: Brain own trades, exit learning, observation layers, Simple tab, performance tab, trust 100 trades.

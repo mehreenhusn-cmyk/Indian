@@ -15,6 +15,7 @@ class SimpleTab extends StatefulWidget {
   final List<Map<String, dynamic>> recent; // open + latest finished trades
   final Map<String, dynamic> brainIds; // Brain opinion per trade key (coin|timeframe|time)
   final Map<String, dynamic> sideways; // Brain's sideways report (may be empty)
+  final Map<String, dynamic> bySrc; // summary.by_src from /api/dual_lab: finished trades by signal type (alt coins)
   final double Function(Map<String, dynamic>) marginOf;
   final void Function(Map<String, dynamic>) onOpen;
 
@@ -24,6 +25,7 @@ class SimpleTab extends StatefulWidget {
     required this.recent,
     required this.brainIds,
     required this.sideways,
+    this.bySrc = const {},
     required this.marginOf,
     required this.onOpen,
   });
@@ -160,6 +162,37 @@ class _SimpleTabState extends State<SimpleTab> {
     ]);
   }
 
+  /// Finished trades by signal type: both indicators on the same candle versus one indicator alone (alt coins, closed trades only).
+  Widget _signalTypeCard(AppPalette p) {
+    if (widget.bySrc.isEmpty) return const SizedBox.shrink();
+    const names = {'BOTH': 'Both on the same candle', 'Z': 'Z black candle only', 'MAIN': 'Main chart only'};
+    final rows = <Widget>[];
+    for (final k in const ['BOTH', 'Z', 'MAIN']) {
+      final v = widget.bySrc[k];
+      if (v is! Map) continue;
+      final n = _n(v['n']).toInt();
+      final w = _n(v['wins']).toInt();
+      final pnl = _n(v['pnl']);
+      rows.add(Padding(
+        padding: const EdgeInsets.only(bottom: 6),
+        child: Row(children: [
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(names[k] ?? k, style: context.type.secondary.copyWith(fontWeight: FontWeight.w700)),
+              Text(n == 0 ? 'no finished trade yet' : '$n trades, ${(100 * w / n).round()}% won', style: context.type.metadata),
+            ]),
+          ),
+          if (n > 0) Text('${_sg(pnl)} USDT', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: pnl >= 0 ? p.profit : p.loss, fontFeatures: _tab)),
+        ]),
+      ));
+    }
+    if (rows.isEmpty) return const SizedBox.shrink();
+    return OwlSectionCard(title: 'WHICH SIGNAL TYPE PAYS (FINISHED TRADES)', children: [
+      ...rows,
+      Text('Closed trades only, alt coins. Open trades are not counted here.', style: context.type.metadata),
+    ]);
+  }
+
   Widget _openRow(AppPalette p, Map<String, dynamic> t) {
     final buy = _n(t['d']) > 0;
     final u = _openUsdt(t);
@@ -180,7 +213,7 @@ class _SimpleTabState extends State<SimpleTab> {
                 const SizedBox(width: 6),
                 Text(buy ? 'BUY' : 'SELL', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: buy ? p.profit : p.loss)),
               ]),
-              Text('${t['f'] ?? ''}${src.isNotEmpty ? '  ·  $src' : ''}  ·  open ${DualTradeCard.openFor(t['t'])}', style: context.type.metadata),
+              Text('${t['f'] ?? ''}${src.isNotEmpty ? '  ·  $src' : ''}  ·  ${DualTradeCard.openFor(t['t']) == 'now' ? 'opened just now' : 'opened ${DualTradeCard.openFor(t['t'])} ago'}', style: context.type.metadata),
             ]),
           ),
           Text('${_sg(u)} USDT', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: u >= 0 ? p.profit : p.loss, fontFeatures: _tab)),
@@ -254,6 +287,7 @@ class _SimpleTabState extends State<SimpleTab> {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       _threeBoxes(p),
       _health(p),
+      _signalTypeCard(p),
       _openCard(p),
       _doneCard(p),
       Padding(

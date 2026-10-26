@@ -872,10 +872,13 @@ def performance(trades):
     """Dual Bot's finished trades as one curve (real USDT, each trade's own margin, fee inside), a rolling win rate and daily results.
     Trading day = 00:00 UTC = 5:30 AM IST. Report only."""
     import dual_lab
-    done = [t for t in trades if t.get("status") == "closed" and t.get("net") is not None]
+    fin = [t for t in trades if t.get("status") == "closed" and t.get("net") is not None]
+    done = [t for t in fin if t.get("s") != dual_lab.BTC_SYM]          # BTC has its own margin and totals: never mixed into the alt-coin curve
+    btc = [t for t in fin if t.get("s") == dual_lab.BTC_SYM]
     ct = lambda t: (t.get("closed_at") or t["t"] / 1000.0)
     done.sort(key=ct)
-    out = {"n": len(done), "status": "collecting", "text": "", "equity": [], "winrate": [], "days": []}
+    out = {"n": len(done), "status": "collecting", "text": "", "equity": [], "winrate": [], "days": [],
+           "btc": {"n": len(btc), "wins": sum(1 for t in btc if t["net"] > 0), "pnl": round(sum(dual_lab._mg(t) * t["net"] / 100.0 for t in btc), 2)}}
     if len(done) < 5:
         out["text"] = "Collecting: %d finished trades. The curve starts at 5." % len(done)
         return out

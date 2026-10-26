@@ -838,6 +838,7 @@ class _DualBotScreenState extends State<DualBotScreen> {
                   recent: _maps(_st['recent']),
                   brainIds: _brainIds,
                   sideways: _map(_brain['sideways']),
+                  bySrc: _map(_map(_st['summary'])['by_src']),
                   marginOf: _mg,
                   onOpen: (t) => showDualTradeChart(context, row: t, margin: _mg(t), lev: _n(_st['lev'])),
                 ),

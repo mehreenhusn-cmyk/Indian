@@ -155,7 +155,7 @@ class _LiveTickerBarState extends State<LiveTickerBar> with TickerProviderStateM
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    provider.statsMode == 'live' ? 'OPEN P&L' : 'TODAY P&L',
+                    provider.statsMode == 'live' ? 'MAIN OPEN P&L' : 'MAIN TODAY P&L',
                     style: TextStyle(fontSize: 8, height: 1.1, letterSpacing: 0.4, color: context.palette.textMuted),
                   ),
                   Text(
