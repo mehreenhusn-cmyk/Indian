@@ -1,5 +1,5 @@
 #!/data/data/com.termux/files/usr/bin/bash
-# OWL auto-deploy v5d (2026-10-27) for Termux.
+# OWL auto-deploy v5e (2026-10-27) for Termux.
 #
 #   bash ~/owl_auto.sh            start the watcher (only ONE can run; a 2nd copy refuses)
 #   bash ~/owl_auto.sh status     full report -> screen + ~/owl_status.txt + Download/owl_status.txt
@@ -62,8 +62,8 @@
 # Settings / trades live outside the code folder, so a new zip never touches them.
 # Needs once:  termux-setup-storage
 
-BUILD=3     # v5c: the watcher replaces itself when a zip brings a tools/owl_auto.sh with a HIGHER BUILD number
-VERSION="v5d 2026-10-27"
+BUILD=40    # self-update number: a zip replaces this script only if its BUILD is a bigger whole number (v5c=2, v5d=3, v5e=40)
+VERSION="v5e 2026-10-27"
 DL_LIST() {   # every Download folder that exists (no duplicates)
   for d in "$OWL_DL" "$HOME/storage/downloads" "$HOME/storage/shared/Download" "/sdcard/Download" "/storage/emulated/0/Download"; do
     [ -n "$d" ] && [ -d "$d" ] && echo "$(cd "$d" 2>/dev/null && pwd -P)"
@@ -381,7 +381,7 @@ self_update_file() {
   [ -f "$new" ] || return 0
   head -n 3 "$new" | grep -q "OWL auto-deploy" || return 0
   bash -n "$new" 2>/dev/null || { log "self-update: the new owl_auto.sh has a syntax error - NOT used"; return 0; }
-  nb="$(grep -m1 '^BUILD=' "$new" | tr -dc '0-9' | head -c 6)"; cb="$(grep -m1 '^BUILD=' "$me" | tr -dc '0-9' | head -c 6)"
+  nb="$(sed -n 's/^BUILD=\([0-9][0-9]*\).*/\1/p' "$new" | head -n 1)"; cb="$(sed -n 's/^BUILD=\([0-9][0-9]*\).*/\1/p' "$me" | head -n 1)"
   [ "${nb:-0}" -gt "${cb:-0}" ] 2>/dev/null || return 0
   cp "$new" "$me.new" && mv "$me.new" "$me" && : > "$HOME/.owl_self_update" && log "self-update: owl_auto.sh BUILD ${cb:-0} -> $nb, the watcher restarts itself"
 }
