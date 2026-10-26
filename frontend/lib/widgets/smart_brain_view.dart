@@ -606,6 +606,142 @@ class _SmartBrainViewState extends State<SmartBrainView> {
     ]);
   }
 
+  /// Part C1: READY CHECK on top of the Brain tab. Which checks are true before the Brain is trusted with more. Report only.
+  Widget _readyCard(AppPalette p) {
+    final x = _map(_st['ready']);
+    final rows = _maps(x['rows']);
+    if (rows.isEmpty) return const SizedBox.shrink();
+    final good = x['skip_ok'] == true || x['exit_ok'] == true;
+    return _card(p, title: 'READY CHECK', edge: good ? p.profit : p.textMuted, children: [
+      Text('${x['text'] ?? ''}', style: context.type.primary.copyWith(fontWeight: FontWeight.w700)),
+      const SizedBox(height: 8),
+      for (final r in rows)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 6),
+          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            if (r['gate'] == true)
+              Icon(r['ok'] == true ? Icons.check_circle_rounded : (r['ok'] == false ? Icons.cancel_rounded : Icons.hourglass_empty_rounded),
+                  size: 18, color: r['ok'] == true ? p.profit : (r['ok'] == false ? p.loss : p.textMuted))
+            else
+              Icon(Icons.info_outline_rounded, size: 18, color: p.textMuted),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('${r['name']}', style: context.type.secondary.copyWith(fontWeight: FontWeight.w700)),
+                Text('${r['text'] ?? ''}', style: context.type.metadata),
+              ]),
+            ),
+          ]),
+        ),
+      Text('Checks 1-3 true = ask Claude about Brain skip. Check 4 true = ask about the exit trail. Both stay paper only and OFF by default. Nothing here changes a trade.', style: context.type.metadata),
+    ]);
+  }
+
+  /// Part D2: which exit style (TP) fits which setup mix and how long trades last. Report only, nothing is changed.
+  Widget _tpHoldCard(AppPalette p) {
+    final x = _map(_st['tp_hold']);
+    if (x.isEmpty) return const SizedBox.shrink();
+    final ready = '${x['status']}' == 'ready';
+    final mixes = _maps(x['mixes']);
+    final lines = (x['lines'] is List) ? (x['lines'] as List).map((e) => '$e').toList() : <String>[];
+    String sg(num v) => '${v >= 0 ? '+' : ''}${v.toStringAsFixed(1)}';
+    String mins(dynamic v) => v == null ? '-' : '${_n(v).toInt()} min';
+    return _card(p, title: 'EXIT STYLE AND HOLD TIME', edge: ready ? null : p.textMuted, children: [
+      Text('${x['text'] ?? ''}', style: context.type.primary),
+      if (ready && mixes.isNotEmpty) ...[
+        const SizedBox(height: 8),
+        for (final m in mixes)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text('${m['name']} (${_n(m['n']).toInt()} setups)', style: context.type.secondary.copyWith(fontWeight: FontWeight.w700)),
+                  Text('Best: ${m['best']} - ${m['best_kind']}', style: context.type.metadata),
+                  Text('Winners last ${mins(_map(m['hold'])['win_min'])}, losers ${mins(_map(m['hold'])['loss_min'])}${m['steady'] == false ? ' - halves disagree' : ''}', style: context.type.metadata),
+                ]),
+              ),
+              Text(m['clearly'] == true ? '${sg(_n(m['gain']))} pts' : 'bot exit ok',
+                  style: context.type.secondary.copyWith(color: m['clearly'] == true ? p.profit : p.textMuted, fontWeight: FontWeight.w700)),
+            ]),
+          ),
+      ],
+      if (lines.isNotEmpty) ...[
+        const SizedBox(height: 4),
+        for (final l in lines)
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text('- $l', style: context.type.secondary),
+          ),
+      ],
+      const SizedBox(height: 6),
+      Text('pts = % of margin per setup, fee inside, compared with the bot\'s own exit. Alt coins only (BTC left out). Report only: Dual Bot keeps its own exit.', style: context.type.metadata),
+    ]);
+  }
+
+  /// Part B2: Timing Sync. Which indicator spoke first and how far apart, with plain lessons. Report only, Dual Bot still takes every signal.
+  Widget _timingCard(AppPalette p) {
+    final x = _map(_st['timing']);
+    if (x.isEmpty) return const SizedBox.shrink();
+    final ready = '${x['status']}' == 'ready';
+    final groups = _maps(x['groups']);
+    final lessons = _maps(x['lessons']);
+    final deep = _map(x['deep']);
+    String sg(num v) => '${v >= 0 ? '+' : ''}${v.toStringAsFixed(2)}';
+    Color tone(String t) => t == 'good' ? p.profit : (t == 'bad' ? p.loss : p.textMuted);
+    return _card(p, title: 'TIMING SYNC - WHO SPOKE FIRST', edge: ready ? null : p.textMuted, children: [
+      Text('${x['text'] ?? ''}', style: context.type.primary),
+      if (groups.isNotEmpty) ...[
+        const SizedBox(height: 8),
+        for (final g in groups)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: Row(children: [
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text('${g['name']}', style: context.type.secondary.copyWith(fontWeight: g['key'] == 'same' ? FontWeight.w800 : FontWeight.w500)),
+                  Text(
+                    g['ready'] == true
+                        ? '${_n(g['n']).toInt()} trades - ${_n(g['win_pct']).toInt()}% won${g['steady'] == false ? ' - halves disagree' : ''}'
+                        : '${_n(g['n']).toInt()} trades - too few yet',
+                    style: context.type.metadata,
+                  ),
+                ]),
+              ),
+              if (_n(g['n']) > 0)
+                Text('${sg(_n(g['pnl']))} USDT',
+                    style: context.type.secondary.copyWith(color: _n(g['pnl']) >= 0 ? p.profit : p.loss, fontWeight: FontWeight.w700)),
+            ]),
+          ),
+      ],
+      if (ready && deep.isNotEmpty) ...[
+        const SizedBox(height: 8),
+        Text('DEEP CLEAN CANDIDATE', style: context.type.label.copyWith(fontWeight: FontWeight.w700)),
+        Text('${deep['rule'] ?? ''}', style: context.type.metadata),
+        Text(
+          deep['ready'] == true
+              ? '${_n(deep['n']).toInt()} trades - ${_n(deep['win_pct']).toInt()}% won - ${sg(_n(deep['pnl']))} USDT (all other trades: ${sg(_n(_map(deep['rest'])['avg']))} per trade)'
+              : '${_n(deep['n']).toInt()} trades so far - too few yet',
+          style: context.type.secondary,
+        ),
+      ],
+      if (ready && lessons.isNotEmpty) ...[
+        const SizedBox(height: 8),
+        Text('WHAT THE DATA SAYS', style: context.type.label.copyWith(fontWeight: FontWeight.w700)),
+        for (final l in lessons)
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('- ', style: context.type.secondary.copyWith(color: tone('${l['tone']}'), fontWeight: FontWeight.w800)),
+              Expanded(child: Text('${l['text'] ?? ''}', style: context.type.secondary)),
+            ]),
+          ),
+      ],
+      const SizedBox(height: 6),
+      Text('Real USDT of finished Dual Bot trades (alt coins, BTC left out), fee inside. A hint from counting, not advice. Report only: Dual Bot still takes every signal.', style: context.type.metadata),
+    ]);
+  }
+
   /// Sideways report: what sideways markets did to Dual Bot's finished trades. Report only, nothing is skipped.
   Widget _sidewaysCard(AppPalette p) {
     final x = _map(_st['sideways']);
@@ -678,7 +814,11 @@ class _SmartBrainViewState extends State<SmartBrainView> {
         );
     final total = _n(x['total_gain']);
     return _card(p, title: 'RETEST REPORT', edge: total >= 0 ? p.profit : p.loss, children: [
-      Text('${x['text'] ?? ''}', style: context.type.primary),
+      Text('WAITING IS ${total >= 0 ? 'BETTER' : 'WORSE'} BY ${sg(total.abs())} USDT', style: context.type.primary.copyWith(fontWeight: FontWeight.w800, color: total >= 0 ? p.profit : p.loss)),
+      Text('Best wait: ${_n(x['wait']).toInt()} candles. Waiting made ${sg(_n(x['entered_retest']))} USDT in total; entering at every signal made ${sg(_n(x['entered_signal']) + _n(x['missed_signal']))} USDT.', style: context.type.secondary),
+      Text('Honest note: ${sg(_n(x['avoided']))} of it comes from skipping signals that never came back (a trade not taken), ${sg(_n(x['entered_gain']))} from a better entry.', style: context.type.metadata),
+      const SizedBox(height: 8),
+      Text('${x['text'] ?? ''}', style: context.type.secondary),
       const SizedBox(height: 8),
       two('1) Came back to the retest (${_n(x['entered']).toInt()})', 'Same trades: entering at the retest instead of at the signal', _n(x['entered_gain'])),
       two('2) Never came back (${_n(x['missed']).toInt()})', 'Skipping them avoided (+) or lost (-) this much', _n(x['avoided'])),
@@ -856,7 +996,10 @@ class _SmartBrainViewState extends State<SmartBrainView> {
   Widget build(BuildContext context) {
     final p = context.palette;
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      _readyCard(p),
       _nowCard(p),
+      _timingCard(p),
+      _tpHoldCard(p),
       _learnCard(p),
       _signalsCard(p),
       _statusCard(p),

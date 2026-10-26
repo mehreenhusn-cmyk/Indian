@@ -1,6 +1,6 @@
 # Owl Terminal - MASTER NOTES (the ONLY notes file in this repo)
 
-OWL MASTER NOTES v3 - last updated: 27 Oct 2026
+OWL MASTER NOTES v7 - last updated: 27 Oct 2026
 
 Crypto paper-trading app (Flutter) + Python backend. Dual Bot v1 collects trades. Smart Brain learns on the side, paper only.
 
@@ -12,6 +12,10 @@ Crypto paper-trading app (Flutter) + Python backend. Dual Bot v1 collects trades
 5. Flutter cannot be compiled in Claude's sandbox. Say so, and ask the owner to send any build error.
 6. NAMING (owner asked, so he never gets confused): "Round 1" = old Parts 1, 2, 3 (finished and already pushed by the owner). All new work is Part A, Part B, Part C ... and steps inside a part are A1, A2, A3 / B1, B2 ... Never reuse old numbers. Name the zip after the part, e.g. owl_A1.zip.
 7. EVERY TIME a zip is delivered, end the reply with the ONE copy-paste Termux command from section 11 (with the right zip name and commit message filled in). The owner just copies, pastes, done.
+8. SAVE EFFORT: do NOT scan the whole repo. Open section 12 (CODE MAP), go straight to the files listed for the feature, read only the function you need. Line numbers there are approximate (they drift): search by function name.
+9. KEEP FILES SMALL: new backend modules under ~250 lines, one job each; never add big blocks into api_server.py, main.py or smart_brain.py if a new small file can hold it (smart_brain.py only gets a thin hook, like the other brain_*.py files). Small files = small zips = small cost to read next time. If you add or move a feature, update section 12 in the same zip.
+10. OWNER ORDER (27 Oct): N2, Parts A, B, C, D are DONE. Next, one at a time and only when the owner says: E (modern UI, 5 small zips). F/G wait for data. B3 waits for data (see section 4).
+11b. ZIP RULE: each new zip is CUMULATIVE for the files changed since the owner last confirmed applying (the owner often applies several zips at once), always with README.md. Say in the reply which earlier zips it already contains.
 
 ## 1. OWNER RULES (strict)
 - Do NOT touch: dual_lab.py, tag_lab.py, dual_lab_data.json, Dual Bot trading / exits. Dual Bot v1 stays in full explore mode (no filter, no skip, no block). Brain only READS its data (read-only) and writes only its own json files.
@@ -43,21 +47,26 @@ Crypto paper-trading app (Flutter) + Python backend. Dual Bot v1 collects trades
 | R1-3 | Simple tab: LOCKED / FLOATING / NET boxes + Brain dislike %; "Old setups read" bar can no longer say "5000 of 60" (27 Oct) | simple_tab.dart, smart_brain_view.dart |
 | A1-A3 | Honest trust bar (never 150 of 100), header says MAIN bot P&L, Performance tab without BTC (BTC own line), Simple tab 'which signal type pays' card + open rows say 'opened 5m ago' | smart_brain_view.dart, live_ticker_bar.dart, performance_tab.dart, simple_tab.dart, dual_bot_screen.dart, smart_brain.py |
 | N1 | This single notes file; old notes removed with tools/clean_old_notes.sh (27 Oct) | README.md |
+| D1-D2 | Exit style + hold time per setup mix (same Timing Sync mixes): best of the 9 exit rules vs the bot's own exit, winners vs losers minutes, share of fast winners, older-vs-newer half check, up to 3 'clearly better' lines (needs +3 points). Brain tab card 'EXIT STYLE AND HOLD TIME'. Report only (27 Oct, zip owl_D = cumulative: also contains N2, B, C) | brain_tp_hold.py, test_brain_tp_hold.py, smart_brain.py (hook), smart_brain_view.dart |
+| C1-C2 | READY CHECK card on top of the Brain tab (trust, luck, what-if, exit hit-rate = the 4 gates; retest, timing sync, own stage = info rows; headline says if Brain skip / exit trail can be asked about). Retest card headline 'WAITING IS BETTER/WORSE BY X USDT' + total of waiting vs total at the signal + honest note about skipped signals (27 Oct, zip owl_C = also contains N2 and B) | brain_ready.py, test_brain_ready.py, smart_brain.py (hook), smart_brain_view.dart |
+| N2 | Section 12 CODE MAP (which feature lives in which file) + rules 8-10 (27 Oct) | README.md |
+| B1-B2 | Timing Sync report (Same candle / Z first / Main first 1-2 and 3-5 candles / Z only / Main only / opposite: count, win %, USDT, TSI with/against, sideways, older-vs-newer half check, BTC left out), a 'deep clean candidate' measure, up to 10 plain lessons. Brain tab card 'TIMING SYNC - WHO SPOKE FIRST' (27 Oct, zip owl_B) | brain_lessons.py, test_brain_lessons.py, smart_brain.py (hook), smart_brain_view.dart |
 
 ## 4. ROAD AHEAD (Part A, B, C ... in this order; start a part only when its "start when" is true AND the owner says ok)
+OWNER ORDER NOW: Parts A, B, C, D are DONE. Next E (modern UI, small zips), only when the owner says. Still open from B: B3 (Brain own trades prefer deep clean setups) needs the Timing Sync numbers to stay stable for 3+ days; nothing else of B is missing.
 Sources: owner's 3 prompt files (Brain strong modules, Owl FINAL master, FINAL FORM all problems) and his phone screenshots of 27 Oct.
 | Part | What | Files | Lines | Start when | Status |
 |---|---|---|---|---|---|
 | A1 | Honest numbers: trust bar shows "100 of 100, earned check pending" (never 150 of 100); top header label says it is the MAIN bot's P&L (it showed -139 while Dual Bot locked was -744 = confusing) | smart_brain_view.dart, live_ticker_bar.dart | ~35 | NOW | DONE 27 Oct (zip owl_A) |
 | A2 | Performance tab: BTC left out of the alt curve (it is now mixed in: 479 trades vs 464 on the Today card, equity -892 = -744 alts + -148 BTC). BTC shown as its own line | smart_brain.py, test_brain_perf.py, performance_tab.dart | ~40 | NOW | DONE 27 Oct (zip owl_A) |
 | A3 | Simple tab: always-visible mini summary "Both same candle / Z only / Main only" (data shows Both = green, Main only = worst) + check every open-trade row shows age (5m / 1h) | simple_tab.dart, dual_bot_screen.dart | ~65 | NOW | DONE 27 Oct (zip owl_A) |
-| B1 | Indicator Timing Sync report: SAME candle / Z first then Main (1-2 or 3-5 candles) / Main first then Z / Z only / Main only, with count, win %, USDT, TSI state, sideways; plus 5-10 plain "how to use both indicators" lessons; defines "deep clean setup" from data. Uses the existing "order" tag, Dual Bot untouched | brain_lessons.py (new), test_brain_lessons.py (new), smart_brain.py | ~230 | NOW (Dual data is enough) | TODO |
-| B2 | Brain tab card for B1 (one strong block, plain words) | smart_brain_view.dart | ~110 | after B1 | TODO |
+| B1 | Indicator Timing Sync report: SAME candle / Z first then Main (1-2 or 3-5 candles) / Main first then Z / Z only / Main only, with count, win %, USDT, TSI state, sideways; plus 5-10 plain "how to use both indicators" lessons; defines "deep clean setup" from data. Uses the existing "order" tag, Dual Bot untouched | brain_lessons.py (new), test_brain_lessons.py (new), smart_brain.py | ~230 | NOW (Dual data is enough) | DONE 27 Oct (zip owl_B) |
+| B2 | Brain tab card for B1 (one strong block, plain words) | smart_brain_view.dart | ~110 | after B1 | DONE 27 Oct (zip owl_B) |
 | B3 | Brain OWN trades softly prefer "deep clean" setups | brain_own.py, smart_brain.py, test | ~50 | B1 numbers stable for 3+ days | WAIT FOR DATA |
-| C1 | READY CHECK card on top of Brain tab: trust, luck, what-if, exit hit-rate, retest, timing sync, own stage + trades to next stage | smart_brain_view.dart, smart_brain.py | ~110 | after A | TODO |
-| C2 | Retest card headline: "Waiting is better by +X USDT" with best wait, and the honest note that part of it is skipping signals | smart_brain_view.dart | ~30 | with C1 | TODO |
-| D1 | TP + hold time per setup mix (best exit, bars held in wins vs losses, fast vs slow). Report only | brain_tp_hold.py (new), test_brain_tp_hold.py (new), smart_brain.py | ~200 | NOW | TODO |
-| D2 | Brain tab card for D1 | smart_brain_view.dart | ~75 | after D1 | TODO |
+| C1 | READY CHECK card on top of Brain tab: trust, luck, what-if, exit hit-rate, retest, timing sync, own stage + trades to next stage | smart_brain_view.dart, smart_brain.py | ~110 | after A | DONE 27 Oct (zip owl_C) |
+| C2 | Retest card headline: "Waiting is better by +X USDT" with best wait, and the honest note that part of it is skipping signals | smart_brain_view.dart | ~30 | with C1 | DONE 27 Oct (zip owl_C) |
+| D1 | TP + hold time per setup mix (best exit, bars held in wins vs losses, fast vs slow). Report only | brain_tp_hold.py (new), test_brain_tp_hold.py (new), smart_brain.py | ~200 | NOW | DONE 27 Oct (zip owl_D) |
+| D2 | Brain tab card for D1 | smart_brain_view.dart | ~75 | after D1 | DONE 27 Oct (zip owl_D) |
 | E1 | Modern look 1: one compact header row (CRYPTO/INDIA, latency, PAPER, TF, P&L, power), less padding | live_ticker_bar.dart, app_theme.dart | ~80 | after A, B | TODO |
 | E2 | Modern look 2: Dual Bot tabs as clean segmented / underline pills, smooth switch | dual_bot_screen.dart, owl_card.dart | ~100 | after E1 | TODO |
 | E3 | Modern look 3: Simple tab polish, tighter trade rows with one-line badges (clean / agree / dislike / FAKE) | simple_tab.dart, dual_trade_card.dart | ~150 | after E2 | TODO |
@@ -104,6 +113,10 @@ A: Brain only watches (now). B: shadow "would take / would skip" - DONE as the "
 - Not seen: Claude never ran the app; a file started by a Termux script outside the repo would look dead.
 
 ## 10. CHANGE LOG (newest first)
+- 27 Oct 2026 (v7): Part D done: D1 brain_tp_hold.py (best exit + hold time per mix) + D2 Brain card. zip owl_D is cumulative (contains N2, B, C too) because the owner had applied none of them yet. Next: E when the owner says.
+- 27 Oct 2026 (v6): Part C done: C1 READY CHECK card (brain_ready.py) + C2 retest headline. zip owl_C is cumulative: it also contains N2 (README map) and Part B, because the owner had not applied owl_B yet. Next: D when the owner says.
+- 27 Oct 2026 (v5): Part B done: B1 brain_lessons.py (Timing Sync + lessons) + B2 Brain tab card. Owner had not applied the N2 zip, so owl_B also carries the README. Next: Part C only when the owner says.
+- 27 Oct 2026 (v4): N2 code map (section 12) + rules 8-10. Next: Part B (Timing Sync + lessons), then C only when owner says.
 - 27 Oct 2026 (v3): Part A done (A1 honest numbers + header label, A2 BTC out of the alt curve, A3 signal-type card + open age). Next: Part B (Timing Sync + lessons).
 - 27 Oct 2026 (v2): lettered Parts A-G plan from the 3 prompts + screenshots, data truth section, Termux paste command, naming rule. Round 1 (old Parts 1-3: Brain learning, retest report, Simple tab boxes) confirmed applied by owner.
 - 27 Oct 2026 (v1): N1 single notes file.
@@ -118,3 +131,44 @@ Command template (Claude fills in NAME and MESSAGE every time; this discards any
 cd ~/Indian-main && git fetch origin && git reset --hard origin/main && rm -rf ~/up && mkdir -p ~/up && unzip -oq ~/storage/downloads/NAME.zip -d ~/up && cp -r ~/up/Indian-main/. . && git add -A && git commit -m "MESSAGE" && git push origin main
 ```
 Only the FIRST time (old notes cleanup), add `bash tools/clean_old_notes.sh &&` right before `git add -A`. The script deletes old notes files (docs/PROJECT_STATUS.md, BACKEND_AUDIT.md, PHASE4_DESIGN.md, CHANGES*.md) only if README.md is this file, and never touches code. After a push, GitHub builds the app (flutter-build.yml); backend files need the usual restart.
+
+## 12. CODE MAP (open ONLY what the feature needs; line numbers approximate - search the function name)
+Data dir: dual_lab._dir() (phone: ~/owl_data). Backend tests: `cd backend && python3 test_X.py` (no network). Flutter is not compiled by Claude.
+
+HOW BRAIN DATA REACHES THE APP (the one road every Brain feature uses)
+1. smart_brain.worker() (~L1023) loops, reads Dual Bot data (read_v1 ~L89 reads dual_lab_data.json, read-only), calls build_view() (~L967) and saves smart_brain_view.json.
+2. api_server.py route GET /api/smart_brain (~L1746) returns smart_brain.status() (~L1175), which includes that view.
+3. dual_bot_screen.dart _pollBrain() (~L89) stores it in `_brain` (a Map). Tabs get slices: SimpleTab, OpportunitiesTab(brain), PerformanceTab(brain), SmartBrainView.
+NEW BRAIN REPORT = (a) new small backend file with one function returning a plain dict, (b) one hook line in build_view() under a new key, (c) one card in smart_brain_view.dart reading brain['key'], (d) one small test, (e) tick section 4 + update this map.
+
+BACKEND (backend/)
+| File | Job | Notes |
+|---|---|---|
+| dual_lab.py (1234) | Dual Bot v1: paper bot, takes every signal, saves dual_lab_data.json | DO NOT TOUCH. make_view ~L816, status ~L1191, day_review ~L733, retest_summary ~L447 |
+| tag_lab.py (675) | Builds the setup TAGS for each entry (DIMS ~L47). "order" tag = who came first: _order ~L111 (values: both on the same candle / main chart came first (1-2 or 3-5 candles before) / Z candle came first ... / gave the OPPOSITE signal / gave nothing) | DO NOT TOUCH. make_tags ~L124 |
+| smart_brain.py (1184) | The Brain core: clean_score ~L152, divergence ~L110, probability ~L202, trust ~L352, scan ~L464, luck_test ~L640, risk_stats ~L666, sideways_report ~L758, retest_report ~L803, performance ~L871, build_view ~L967, worker ~L1023, gate ~L1120-1154, status ~L1175 | Big file: add only thin hooks here. Constants at top (MIN_N, TRUST_MIN=100, ROLL_HALF=400, KEY_DIMS) |
+| brain_own.py (190) | Brain OWN paper trades: stage_for ~L24 (learning 0-99 / medium 100+ / quality 300+), open_from ~L60, settle ~L102, summary ~L155 | file smart_brain_own.json |
+| brain_lessons.py (153) | B1 Timing Sync: classify() reads the 'order' tag, timing_report(trades) -> groups, deep clean candidate, lessons(). Hook: smart_brain._timing_view -> view key "timing" | report only, BTC left out. test_brain_lessons.py |
+| brain_ready.py (53) | C1 READY CHECK: ready_check(view) -> 7 rows (4 gates + retest, timing, own book) + headline. Hook: smart_brain._ready_view, runs last in build_view -> view key "ready" | report only. test_brain_ready.py |
+| brain_tp_hold.py (83) | D1 exit style + hold time: report(rows) -> all + per-mix best exit vs bot exit, hold minutes, steady check, lines. Hook: smart_brain._tphold_view -> view key "tp_hold" | report only, BTC left out. test_brain_tp_hold.py |
+| brain_exit.py (126) / brain_exit_pick.py (79) | Exit learning (FULL TP / HALF TP / HOLD), advice only | smart_brain_exit.json |
+| brain_follow.py (64) | "What if the bot had listened?" report | |
+| pa_layer.py (332) / vol_layer.py (248) / layers_join.py (77) | Price Action + Volume observation layers and their join report (report only) | own *_log.json, *_view.json; routes /api/layers/pa, /api/layers/vol |
+| api_server.py (2560) | All routes. Brain: ~L1746. Dual Bot: ~L1708. Startup timers that launch dual_lab/smart_brain/pa/vol: ~L277-303 | Never add logic here, only routes |
+| recovered_bot/ | Main (crypto) bot, strategy, India terminal, old AI tabs | Not needed for Brain work. Section 9 for cleanup |
+| filter_lab / variant_lab / scan_lab / doctor_extra | Old labs (locked off) | ignore |
+Data files (all in the data dir): dual_lab_data.json (Dual Bot, READ ONLY for Brain), smart_brain_view.json, smart_brain_book.json, smart_brain_own.json, smart_brain_exit.json, smart_brain_ctl.json, pa_layer_*.json, vol_layer_*.json.
+Tests that matter: test_brain_tp_hold.py, test_brain_ready.py, test_brain_lessons.py, test_smart_brain.py, test_brain_own.py, test_brain_exit*.py, test_brain_follow.py, test_brain_gate.py, test_brain_perf.py, test_sideways_report.py, test_pa_layer.py, test_vol_layer.py, test_layers_join.py, test_dual_lab.py, test_btc.py.
+
+FLUTTER (frontend/lib/)
+| File | Job | Notes |
+|---|---|---|
+| screens/dual_bot_screen.dart (886) | Dual Bot screen. 6 chips: 0 Simple, 1 Now, 2 Opportunities, 3 Learned, 4 Performance, 5 Brain (_segRow ~L800, tab bodies ~L836-870). _poll ~L61 (/api/dual_lab), _pollBrain ~L89 (/api/smart_brain) | Tab 3 "Learned" cards (_reviewCard, _setupCard, _retestCard, _scenCard, _lessonsCard, _modelCard) are inside this file |
+| widgets/smart_brain_view.dart (881) | Brain tab (chip 5): one card method per report: _nowCard ~L124, _trustCard ~L219, _luckCard ~L247, _exitCard ~L269, _followCard ~L311, _riskCard ~L352, _readyCard ~L610 (Ready Check, key 'ready', top of tab), _tpHoldCard ~L641 (Exit style + hold, key 'tp_hold'), _timingCard ~L683 (Timing Sync, key 'timing'), _sidewaysCard ~L746, _retestCard ~L796 (has the C2 headline), _layersCard ~L921, _ownCard ~L942 | New Brain cards go here (use _card(), _chip(), _bar() helpers at the top) |
+| widgets/simple_tab.dart (299) | Simple tab: LOCKED / FLOATING / NET, signal-type card, recent trades | |
+| widgets/performance_tab.dart (128) / opportunities_tab.dart (113) / dual_summary_strip.dart (166) | Performance, Opportunities, summary strip | |
+| widgets/dual_trade_card.dart / dual_trade_chart.dart | One Dual Bot trade row / its chart | |
+| widgets/live_ticker_bar.dart (547) | Top header row (MAIN bot P&L etc.) | |
+| widgets/owl_card.dart, theme/app_theme.dart, app_colors/typography/spacing | Shared look (cards, chips, colors) | Part E works here |
+| providers/app_provider.dart (2020), screens/*, other widgets | Main app, positions, signals, alerts, India, AI tabs | Not needed for Brain work |
+Other: tools/clean_old_notes.sh (one-time notes cleanup), tools/old_check.sh (dead-file report), .github/workflows/flutter-build.yml (builds the app after push).

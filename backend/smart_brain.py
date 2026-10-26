@@ -925,6 +925,30 @@ def _sideways_view(trades):
         return {"status": "error", "text": "Sideways report error: %s" % str(e)[:80], "groups": [], "cuts": [], "done": 0, "need": SIDE_MIN_N}
 
 
+def _timing_view(trades):
+    try:
+        import brain_lessons as BL
+        return BL.timing_report(trades)
+    except Exception as e:
+        return {"status": "error", "text": "Timing report error: %s" % str(e)[:80], "groups": [], "lessons": [], "done": 0, "need": 30}
+
+
+def _tphold_view(rows):
+    try:
+        import brain_tp_hold as TH
+        return TH.report(rows)
+    except Exception as e:
+        return {"status": "error", "text": "Exit and hold report error: %s" % str(e)[:80], "mixes": [], "lines": [], "n": 0, "need": 30}
+
+
+def _ready_view(v):
+    try:
+        import brain_ready as BR
+        return BR.ready_check(v)
+    except Exception as e:
+        return {"rows": [], "n_true": 0, "skip_ok": False, "exit_ok": False, "text": "Ready check error: %s" % str(e)[:80]}
+
+
 def _perf_view(trades):
     try:
         return performance(trades)
@@ -947,7 +971,7 @@ def build_view(rows=None, trades=None, watch=None, scan_t=0, progress="", err=""
     rl, gp = patterns(rows)
     sigs = signals_view(rows, trades) if rows else []
     tv = tv or trust(rows, trades)
-    return {"beat": time.time(), "enabled": True, "rows": len(rows), "min_n": MIN_N,
+    v = {"beat": time.time(), "enabled": True, "rows": len(rows), "min_n": MIN_N,
             "status": "ready" if len(rows) >= 4 * MIN_GROUP else "collecting",
             "status_text": ("Ready." if len(rows) >= 4 * MIN_GROUP else
                             f"Collecting: {len(rows)} old setups read. Needs about {4 * MIN_GROUP} for the first patterns."),
@@ -962,11 +986,15 @@ def build_view(rows=None, trades=None, watch=None, scan_t=0, progress="", err=""
             "sideways": _sideways_view(trades),
             "retest": _retest_view(),
             "perf": _perf_view(trades),
+            "timing": _timing_view(trades),
+            "tp_hold": _tphold_view(rows),
             "by_key": {"%s|%s|%s" % (x["s"], x["f"], x["t"]): {"clean": x["clean"], "div": x["div"], "verdict": x["verdict"], "text": x["verdict_text"]} for x in sigs},
             "hours": hours_table(rows), "repeat_loss": rl, "patterns": gp, "speed": fast_slow(rows),
             "bands": bands(rows) if len(rows) >= 3 * MIN_GROUP else [], "trust": tv,
             "watch": watch or [], "scan_t": scan_t, "progress": progress, "error": err,
             "book": book_summary(book, trades) if book and book.get("picks") is not None else None}
+    v["ready"] = _ready_view(v)
+    return v
 
 
 # ---------------------------------------------------------------- 10. worker (own low-priority process)
