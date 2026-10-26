@@ -30,6 +30,8 @@ Rule for anyone working on this repo: do NOT break the running bot, Dual Bot v1 
 | 15b | Dual Bot tab "Performance": equity curve, win-rate trend (last 20 trades), daily results; old History cards sit below. Tabs are now Now / Opportunities / Learned / Performance / Brain. | performance_tab.dart (new), smart_brain.py (performance()), test_brain_perf.py, dual_bot_screen.dart |
 | 16 | Signals and Alerts: smaller top gap, smaller TODAY number. | signals_screen.dart, alerts_screen.dart |
 | V2-1 | Price Action Light (observation layer, version 2). Watches every Dual Bot trade: signal candle strength, rejection wicks, break of previous high/low, candle size, retest of EMA50 in the next 6 candles. Gives ONE verdict per trade (supports / unclear / against) and later compares it with what the trade really earned. Own process, own log `pa_layer_log.json`, only READS Dual Bot data, never trades or skips. App card comes in V2-2. | pa_layer.py, test_pa_layer.py, api_server.py (start + /api/layers/pa) |
+| V2-2 | Volume Context layer (version 2): relative volume of the signal candle (low / normal / high / climax), volume trend, candle direction, follow-through of the next 3 candles. Verdict supports / unclear / against, checked later against real results. Own process and log `vol_layer_log.json`, reads Dual Bot only. Brain tab gets one card "OBSERVATION LAYERS" showing both layers (data via smart_brain.status()["layers"]). | vol_layer.py, test_vol_layer.py, smart_brain.py, smart_brain_view.dart, api_server.py (start + /api/layers/vol) |
+| V2-3 | Join report: Price Action + Volume + Brain clean score on the SAME finished trades ("both layers support", "a layer is against", and the same split among trades the Brain already likes). Stays "collecting" until 100 finished trades read by both layers AND 10 days of data; only calls the layers useful if the gain shows in both halves of the data. Made by the Brain worker at most every 10 minutes, shown inside the OBSERVATION LAYERS card. Report only. | layers_join.py, test_layers_join.py, smart_brain.py (worker), smart_brain_view.dart |
 | - | tools/old_check.sh restored (report only; `move` puts old main.py / config.py in backend/_old/, never deletes) | tools/old_check.sh |
 
 ## NOT DONE - waiting for DATA (do not build early)
@@ -39,8 +41,7 @@ Rule for anyone working on this repo: do NOT break the running bot, Dual Bot v1 
 | Step C live: let Brain skip bad signals in the main bot | 2-3 files, ~100 lines | Trust meter says "earned" AND luck test says "Looks real" AND the "What if the bot had listened?" card shows SKIP DISLIKED clearly better than TAKE ALL (30+ judged trades) |
 
 ## NEXT (owner agreed 26 Oct 2026)
-- V2-2: Volume Context layer (same idea, own file `vol_layer.py`) + one Brain-tab card for both layers.
-- After 1.5-2 weeks of data: join Price Action + Volume with the Brain (report first, switch default OFF). Do not join earlier.
+- After 10+ days of data: read the joined view. If it says the layers add value, the owner decides about a switch (default OFF). Do not join into trading earlier.
 
 ## NOT DONE - on hold
 - Dual Bot stays in full explore mode for the next 2-3 weeks (owner decision 26 Oct 2026). Do NOT touch dual_lab.py. Decide on a 'never skip' switch after that.

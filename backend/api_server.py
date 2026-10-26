@@ -294,6 +294,13 @@ async def on_startup():
             _t3.start()
         except Exception as e:
             print(f"[startup] pa_layer skipped: {e}")
+        try:                               # Volume Context (version-2 observation layer): only watches and logs, own process, never trades
+            import vol_layer
+            _t4 = threading.Timer(35.0, vol_layer.ensure_running)
+            _t4.daemon = True
+            _t4.start()
+        except Exception as e:
+            print(f"[startup] vol_layer skipped: {e}")
         # The older AI modules (trackers, shadow lab, desk, coach, pick, ...) only start when legacy_ai_enabled is on.
         if settings_store.get("legacy_ai_enabled", False):
             try:
@@ -1721,6 +1728,17 @@ async def pa_layer_api():
         import pa_layer
         await asyncio.to_thread(pa_layer.ensure_running)
         return await asyncio.to_thread(pa_layer.status)
+    except Exception as e:
+        return {"running": False, "report": None, "error": f"{type(e).__name__}: {e}"}
+
+
+@app.get("/api/layers/vol")
+async def vol_layer_api():
+    """Volume Context (vol_layer.py): what it logged and how its reading of the Dual Bot trades did. Reads one small file."""
+    try:
+        import vol_layer
+        await asyncio.to_thread(vol_layer.ensure_running)
+        return await asyncio.to_thread(vol_layer.status)
     except Exception as e:
         return {"running": False, "report": None, "error": f"{type(e).__name__}: {e}"}
 

@@ -883,6 +883,7 @@ def worker():
     except Exception:
         pass
     from recovered_bot import ai_shadow_lab as LAB
+    join, join_t = None, 0.0           # the join report reads two big logs, so it is made at most every 10 minutes
     watch, scan_t, scan_list = [], 0.0, []
     first = True                       # first round: skip the slow coin scan so the numbers appear within seconds
     print("smart_brain worker started", flush=True)
@@ -925,6 +926,15 @@ def worker():
                 view = build_view(rows, trades, watch, scan_t, book=book, tv=tv, scan_coins=scan_list, exit_state=ex, own=own)
             else:
                 view = dict(build_view([], []), enabled=False, status="stopped", status_text="Stopped.")
+            if enabled and time.time() - join_t > 600:
+                try:
+                    import layers_join
+                    join = layers_join.report(trades, _load("pa_layer_log.json", {}), _load("vol_layer_log.json", {}))
+                except Exception as e:
+                    join = {"status": "error", "text": "Join report error: %s" % str(e)[:80], "groups": [], "on_brain": [], "judged": 0}
+                join_t = time.time()
+            if join is not None:
+                view["join"] = join
             _save("smart_brain_view.json", view)
         except Exception as e:
             err = f"{type(e).__name__}: {str(e)[:120]}"
@@ -1024,7 +1034,20 @@ def status():
     out = dict(view) if view else {"signals": [], "hours": [], "repeat_loss": [], "patterns": [], "bands": [], "watch": [],
                                     "trust": {"verdict": "learning", "text": "No data yet."}, "rows": 0, "min_n": MIN_N}
     out.update({"gate": gate_on(), "enabled": enabled, "running": running, "state": state, "state_text": text,
-                "error": _SPAWN["err"] or out.get("error", "")})
+                "error": _SPAWN["err"] or out.get("error", ""), "layers": layers_status()})
+    return out
+
+
+def layers_status():
+    """The version-2 observation layers (Price Action Light, Volume Context): only reads the small view file each one writes."""
+    out = {}
+    for key, name in (("pa", "pa_layer_view.json"), ("vol", "vol_layer_view.json")):
+        try:
+            v = _load(name, {})
+            beat = float(v.get("beat") or 0)
+            out[key] = {"running": bool(beat) and time.time() - beat < 240, "report": v.get("report"), "error": v.get("error", "")}
+        except Exception:
+            out[key] = {"running": False, "report": None, "error": ""}
     return out
 
 

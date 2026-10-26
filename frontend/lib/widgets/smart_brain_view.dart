@@ -656,6 +656,107 @@ class _SmartBrainViewState extends State<SmartBrainView> {
     ]);
   }
 
+  /// One observation layer (Price Action Light or Volume Context): what it has logged and how its reading of the trades did.
+  Widget _layerBlock(AppPalette p, String name, String what, dynamic layer, List<List<String>> groups) {
+    final l = _map(layer);
+    final r = _map(l['report']);
+    final running = l['running'] == true;
+    final ready = '${r['status']}' == 'ready';
+    String sg(num v) => '${v >= 0 ? '+' : ''}${v.toStringAsFixed(2)}';
+    final edge = r['edge'];
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Icon(Icons.circle, size: 9, color: running ? p.profit : p.textMuted),
+          const SizedBox(width: 6),
+          Expanded(child: Text(name, style: context.type.primary.copyWith(fontWeight: FontWeight.w800))),
+          Text(running ? 'watching' : 'starting', style: context.type.metadata),
+        ]),
+        Text(what, style: context.type.metadata),
+        const SizedBox(height: 6),
+        if (r.isEmpty) Text('No data yet. It starts a minute after the backend starts.', style: context.type.secondary),
+        if (r.isNotEmpty) ...[
+          Text('${_n(r['logged']).toInt()} trades watched, ${_n(r['judged']).toInt()} finished, ${_n(r['days'])} days of data.', style: context.type.secondary),
+          const SizedBox(height: 2),
+          Text('${r['text'] ?? ''}', style: context.type.primary.copyWith(color: ready && edge is num ? (edge >= 0 ? p.profit : p.loss) : null)),
+          for (final g in groups) ...[
+            Padding(padding: const EdgeInsets.only(top: 8), child: Text(g[1], style: context.type.label.copyWith(fontWeight: FontWeight.w700))),
+            for (final row in _maps(r[g[0]]))
+              if (_n(row['n']) > 0)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Row(children: [
+                    Expanded(child: Text('${row['name']}  (${_n(row['n']).toInt()} trades, ${_n(row['win_pct']).toInt()}% won)', style: context.type.secondary)),
+                    Text('${sg(_n(row['pnl']))} USDT', style: context.type.secondary.copyWith(color: _n(row['pnl']) >= 0 ? p.profit : p.loss, fontWeight: FontWeight.w700)),
+                  ]),
+                ),
+          ],
+        ],
+      ]),
+    );
+  }
+
+  /// Brain + both layers on the same finished trades: do the layers add anything on top of the Brain? Report only.
+  Widget _joinBlock(AppPalette p) {
+    final j = _map(_st['join']);
+    if (j.isEmpty) return const SizedBox.shrink();
+    final ready = '${j['status']}' == 'ready';
+    final adds = j['adds_value'] == true;
+    String sg(num v) => '${v >= 0 ? '+' : ''}${v.toStringAsFixed(2)}';
+    Widget rows(String title, dynamic list) {
+      final items = _maps(list).where((g) => _n(g['n']) > 0).toList();
+      if (items.isEmpty) return const SizedBox.shrink();
+      return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Padding(padding: const EdgeInsets.only(top: 8), child: Text(title, style: context.type.label.copyWith(fontWeight: FontWeight.w700))),
+        for (final g in items)
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Row(children: [
+              Expanded(child: Text('${g['name']}  (${_n(g['n']).toInt()} trades, ${_n(g['win_pct']).toInt()}% won)', style: context.type.secondary)),
+              Text('${sg(_n(g['pnl']))} USDT', style: context.type.secondary.copyWith(color: _n(g['pnl']) >= 0 ? p.profit : p.loss, fontWeight: FontWeight.w700)),
+            ]),
+          ),
+      ]);
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Icon(Icons.hub_outlined, size: 16, color: ready ? (adds ? p.profit : p.warning) : p.textMuted),
+          const SizedBox(width: 6),
+          Expanded(child: Text('Joined view: Brain + both layers', style: context.type.primary.copyWith(fontWeight: FontWeight.w800))),
+        ]),
+        const SizedBox(height: 4),
+        Text('${j['text'] ?? ''}', style: context.type.primary.copyWith(color: ready ? (adds ? p.profit : p.warning) : null)),
+        rows('Both layers together', j['groups']),
+        rows('On top of the Brain', j['on_brain']),
+      ]),
+    );
+  }
+
+  /// The version-2 observation layers. They only watch and write their own logs; nothing here trades or skips.
+  Widget _layersCard(AppPalette p) {
+    final ly = _map(_st['layers']);
+    if (ly.isEmpty) return const SizedBox.shrink();
+    return _card(p, title: 'OBSERVATION LAYERS', edge: p.accent, children: [
+      Text('Two helpers watch every Dual Bot trade and note what they see. They never trade and never skip. After 1.5 to 2 weeks of data we check if they read the market right, then join them with the Brain.', style: context.type.metadata),
+      const SizedBox(height: 10),
+      _layerBlock(p, 'Price Action Light', 'Candle strength, rejection wicks, retest of EMA50.', ly['pa'], [
+        ['verdicts', 'What it said, and what the trades really earned'],
+        ['retests', 'Retest of EMA50 after the signal'],
+      ]),
+      _layerBlock(p, 'Volume Context', 'Volume against normal, volume trend, follow-through.', ly['vol'], [
+        ['verdicts', 'What it said, and what the trades really earned'],
+        ['levels', 'Volume at the signal'],
+        ['follows', 'Volume after the signal'],
+      ]),
+      _joinBlock(p),
+      Text('Real USDT of finished Dual Bot trades, fee inside. Report only.', style: context.type.metadata),
+    ]);
+  }
+
   /// The Brain's OWN pretend trades (paper only, separate book). It never touches Dual Bot or the main bot.
   Widget _ownCard(AppPalette p) {
     final o = _map(_st['own']);
@@ -724,6 +825,7 @@ class _SmartBrainViewState extends State<SmartBrainView> {
       _followCard(p),
       _exitPickCard(p),
       _sidewaysCard(p),
+      _layersCard(p),
       _ownCard(p),
       _bookCard(p),
       _riskCard(p),
