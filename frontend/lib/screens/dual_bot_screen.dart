@@ -12,6 +12,7 @@ import '../widgets/dual_trade_card.dart';
 import '../widgets/dual_trade_chart.dart';
 import '../widgets/opportunities_tab.dart';
 import '../widgets/performance_tab.dart';
+import '../widgets/simple_tab.dart';
 import '../widgets/report_download_card.dart';
 import '../widgets/smart_brain_view.dart';
 import '../widgets/owl_card.dart';
@@ -36,7 +37,7 @@ class _DualBotScreenState extends State<DualBotScreen> {
   String _err = '';
   bool _busy = false;
   Timer? _retry;
-  int _seg = 0; // 0 = Now, 1 = Opportunities, 2 = Learned, 3 = Performance (+ history), 4 = Brain
+  int _seg = 0; // 0 = Simple, 1 = Now, 2 = Opportunities, 3 = Learned, 4 = Performance (+ history), 5 = Brain
   Map<String, dynamic> _brain = {}; // last full Smart Brain reply (watch list, own trades, performance) for the Opportunities and Performance tabs
   Map<String, dynamic> _brainIds = {}; // Smart Brain opinion per trade (coin|timeframe|time), for the small badge on the open cards
   String _brainTrust = ''; // Smart Brain trust verdict (earned / not_yet / learning) for the status bar
@@ -787,6 +788,7 @@ class _DualBotScreenState extends State<DualBotScreen> {
     }
 
     const hints = [
+      'The simple view: is the bot OK, the open trades, best and worst trades.',
       'Live status, today, BTC and the trades that are open right now.',
       'What the Brain is watching and the pretend trades it opened itself.',
       'What the bot learned: daily review, setups, retest check, scenarios, lessons, model.',
@@ -799,15 +801,16 @@ class _DualBotScreenState extends State<DualBotScreen> {
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: Row(children: [
-            chip('Now', Icons.bolt_rounded, 0),
-            chip('Opportunities', Icons.travel_explore_rounded, 1),
-            chip('Learned', Icons.school_outlined, 2),
-            chip('Performance', Icons.show_chart_rounded, 3),
-            chip('Brain', Icons.psychology_outlined, 4),
+            chip('Simple', Icons.dashboard_customize_outlined, 0),
+            chip('Now', Icons.bolt_rounded, 1),
+            chip('Opportunities', Icons.travel_explore_rounded, 2),
+            chip('Learned', Icons.school_outlined, 3),
+            chip('Performance', Icons.show_chart_rounded, 4),
+            chip('Brain', Icons.psychology_outlined, 5),
           ]),
         ),
         const SizedBox(height: 4),
-        Text(hints[_seg.clamp(0, 4)], style: context.type.metadata),
+        Text(hints[_seg.clamp(0, 5)], style: context.type.metadata),
       ]),
     );
   }
@@ -830,21 +833,30 @@ class _DualBotScreenState extends State<DualBotScreen> {
             children: [
               _segRow(p),
               if (_seg == 0) ...[
+                SimpleTab(
+                  today: _map(_map(_st['summary'])['today']),
+                  recent: _maps(_st['recent']),
+                  brainIds: _brainIds,
+                  sideways: _map(_brain['sideways']),
+                  marginOf: _mg,
+                  onOpen: (t) => showDualTradeChart(context, row: t, margin: _mg(t), lev: _n(_st['lev'])),
+                ),
+              ] else if (_seg == 1) ...[
                 _stripCard(p),
                 _statusCard(p),
                 _todayCard(p),
                 _btcDualCard(p),
                 _openCard(p),
-              ] else if (_seg == 1) ...[
-                OpportunitiesTab(brain: _brain),
               ] else if (_seg == 2) ...[
+                OpportunitiesTab(brain: _brain),
+              ] else if (_seg == 3) ...[
                 _reviewCard(p),
                 _setupCard(p),
                 _retestCard(p),
                 _scenCard(p),
                 _lessonsCard(p),
                 _modelCard(p),
-              ] else if (_seg == 3) ...[
+              ] else if (_seg == 4) ...[
                 PerformanceTab(brain: _brain),
                 _resultCard(p),
                 _situationsCard(p),

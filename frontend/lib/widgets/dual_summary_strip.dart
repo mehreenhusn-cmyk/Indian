@@ -69,10 +69,11 @@ class DualSummaryStrip extends StatelessWidget {
 
     // ---- Today ----
     final total = _n(today['total']);
+    final locked = today.containsKey('realized') ? _n(today['realized']) : total;
     final closed = _n(today['closed']).toInt();
     final wins = _n(today['wins']).toInt();
     final winPct = closed > 0 ? (100 * wins / closed).round() : null;
-    final todayColor = total >= 0 ? p.profit : p.loss;
+    final todayColor = locked >= 0 ? p.profit : p.loss;
 
     // ---- Quality: how many open trades the Brain rates good, and their average clean score ----
     var good = 0, bad = 0, rated = 0;
@@ -122,10 +123,11 @@ class DualSummaryStrip extends StatelessWidget {
                 FittedBox(
                   fit: BoxFit.scaleDown,
                   alignment: Alignment.centerLeft,
-                  child: Text('${fmtSigned(total)} USDT',
+                  child: Text('${fmtSigned(locked)} USDT',
                       maxLines: 1, style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: todayColor, fontFeatures: _tab)),
                 ),
-                Text('today', style: TextStyle(fontSize: 10.5, color: p.textMuted)),
+                Text('closed today (locked in)', style: TextStyle(fontSize: 10.5, color: p.textMuted)),
+                if (nOpen > 0) Text('open trades now ${fmtSigned(floating)} (not locked) = ${fmtSigned(total)} in total', style: TextStyle(fontSize: 10.5, color: p.textMuted)),
               ]),
             ),
             Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
@@ -137,7 +139,8 @@ class DualSummaryStrip extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         // ---- 3 summary cards ----
-        Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        IntrinsicHeight(
+          child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           _mini(p,
               label: 'TODAY',
               big: winPct == null ? '--' : '$winPct% won',
@@ -151,11 +154,12 @@ class DualSummaryStrip extends StatelessWidget {
               small: rated == 0 ? 'Brain has no opinion yet' : 'avg clean $avgClean, $bad bad of $rated'),
           const SizedBox(width: 8),
           _mini(p,
-              label: 'OPEN RISK',
+              label: 'OPEN NOW (NOT LOCKED)',
               big: '${fmtSigned(floating)}',
               bigColor: nOpen == 0 ? p.textMuted : floatColor,
               small: nOpen == 0 ? 'nothing open' : '$nOpen open: $nLong long, ${nOpen - nLong} short'),
-        ]),
+          ]),
+        ),
       ]),
     );
   }
