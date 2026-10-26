@@ -281,4 +281,26 @@ BO.MAX_DAY, BO.MAX_OPEN = 40, BO.MAX_OPEN_KEEP
 sm = BO.summary(dict(book_o, closed=[]))
 check(sm["stage"] == "learning" and sm["next_stage"] == "medium" and sm["next_in"] == 100, "summary shows stage and what is left")
 
+
+# 13. retest report: two numbers apart, split by market, read only
+import dual_lab as DL
+check(B.retest_report({})["status"] == "collecting", "retest: too few signals -> collecting")
+def rt_data(side_word):
+    d = {"rt": {}, "rows": {}}
+    for i in range(30):
+        key = "AAA|5m|%d" % i
+        tgl = [side_word if n in ("side_main", "side_z") else "x" for n in TL.DIMS]
+        d["rows"][key] = ["AAA", "5m", i, 1, tgl, [0] * nx, [1] * nx]
+        # 10 signals came back at candle 2 (signal -10, retest +5), 20 never came back (signal -4)
+        d["rt"][key] = [i, 1, "MAIN", 1, 1, -10.0, 5.0, 2] if i < 10 else [i, 1, "MAIN", 1, 1, -4.0, None, None]
+    return d
+rep = B.retest_report(rt_data("main chart sideways"))
+k100 = DL.MARGIN / 100.0
+check(rep["status"] == "ok" and rep["entered"] == 10 and rep["missed"] == 20, "retest: came back vs never came back")
+check(abs(rep["entered_gain"] - 150 * k100) < 0.01 and abs(rep["avoided"] - 80 * k100) < 0.01, "retest: the two numbers are kept apart")
+check(abs(rep["total_gain"] - (rep["entered_gain"] + rep["avoided"])) < 0.02, "retest: the two numbers add up to the total")
+check(any(g["key"] == "sideways" and g["ready"] for g in rep["groups"]) and not any(g["key"] == "trending" and g["ready"] for g in rep["groups"]), "retest: sideways / trending split")
+json.dumps(rep)
+check(open(path, "rb").read() == before, "retest report did not touch Dual Bot data")
+
 print("OK %d checks" % ok)

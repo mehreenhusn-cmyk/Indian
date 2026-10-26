@@ -142,7 +142,7 @@ class _SmartBrainViewState extends State<SmartBrainView> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('$label: ${v.toStringAsFixed(0)} of ${need.toStringAsFixed(0)}', style: context.type.secondary),
+        Text(need > 0 && v >= need ? '$label: ${v.toStringAsFixed(0)} (enough, it needs ${need.toStringAsFixed(0)})' : '$label: ${v.toStringAsFixed(0)} of ${need.toStringAsFixed(0)}', style: context.type.secondary),
         const SizedBox(height: 3),
         ClipRRect(borderRadius: BorderRadius.circular(6), child: LinearProgressIndicator(value: f, minHeight: 6, color: c, backgroundColor: p.border.withOpacity(0.4))),
       ]),
@@ -656,6 +656,47 @@ class _SmartBrainViewState extends State<SmartBrainView> {
     ]);
   }
 
+  /// Retest report: two numbers kept apart (signals that came back to the retest / signals that never came back) and the market split. Report only.
+  Widget _retestCard(AppPalette p) {
+    final x = _map(_st['retest']);
+    if (x.isEmpty) return const SizedBox.shrink();
+    String sg(num v) => '${v >= 0 ? '+' : ''}${v.toStringAsFixed(2)}';
+    if ('${x['status']}' != 'ok') {
+      return _card(p, title: 'RETEST REPORT', edge: p.textMuted, children: [Text('${x['text'] ?? ''}', style: context.type.primary)]);
+    }
+    Widget two(String a, String b, num v) => Padding(
+          padding: const EdgeInsets.only(bottom: 6),
+          child: Row(children: [
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(a, style: context.type.secondary.copyWith(fontWeight: FontWeight.w700)),
+                Text(b, style: context.type.metadata),
+              ]),
+            ),
+            Text('${sg(v)} USDT', style: context.type.secondary.copyWith(color: v >= 0 ? p.profit : p.loss, fontWeight: FontWeight.w800)),
+          ]),
+        );
+    final total = _n(x['total_gain']);
+    return _card(p, title: 'RETEST REPORT', edge: total >= 0 ? p.profit : p.loss, children: [
+      Text('${x['text'] ?? ''}', style: context.type.primary),
+      const SizedBox(height: 8),
+      two('1) Came back to the retest (${_n(x['entered']).toInt()})', 'Same trades: entering at the retest instead of at the signal', _n(x['entered_gain'])),
+      two('2) Never came back (${_n(x['missed']).toInt()})', 'Skipping them avoided (+) or lost (-) this much', _n(x['avoided'])),
+      two('Total difference', 'Waiting ${_n(x['wait']).toInt()} candles for the retest', total),
+      const SizedBox(height: 4),
+      Text('By market (same wait)', style: context.type.label.copyWith(fontWeight: FontWeight.w700)),
+      for (final g in _maps(x['groups']))
+        if (g['ready'] == true)
+          two('${g['name']}: ${_n(g['n']).toInt()} signals', '1) ${sg(_n(g['entered_gain']))}   2) ${sg(_n(g['avoided']))}', _n(g['total_gain']))
+        else
+          Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: Text('${g['name']}: ${_n(g['n']).toInt()} signals, too few yet', style: context.type.metadata),
+          ),
+      Text('Part of the gain comes from skipping signals, not from a better entry, so read 1) and 2) separately. Report only: Dual Bot still enters at every signal.', style: context.type.metadata),
+    ]);
+  }
+
   /// One observation layer (Price Action Light or Volume Context): what it has logged and how its reading of the trades did.
   Widget _layerBlock(AppPalette p, String name, String what, dynamic layer, List<List<String>> groups) {
     final l = _map(layer);
@@ -825,6 +866,7 @@ class _SmartBrainViewState extends State<SmartBrainView> {
       _followCard(p),
       _exitPickCard(p),
       _sidewaysCard(p),
+      _retestCard(p),
       _layersCard(p),
       _ownCard(p),
       _bookCard(p),

@@ -6,7 +6,7 @@ import '../theme/app_theme.dart';
 import 'dual_trade_card.dart';
 import 'owl_card.dart';
 
-/// Dual Bot "Simple" tab: the whole picture in 4 small blocks, no jargon.
+/// Dual Bot "Simple" tab: the whole picture in 5 small blocks, no jargon. Block 0: Locked / Floating / Net + Brain dislike %.
 /// 1) Is the bot OK today (one colour, one sentence)  2) open trades, one line each, tap = chart
 /// 3) best and worst finished trades  4) one line about what the sideways market cost.
 /// Only shows numbers the screen already has. Nothing here trades or changes anything.
@@ -49,6 +49,59 @@ class _SimpleTabState extends State<SimpleTab> {
   Map<String, dynamic>? _brain(Map<String, dynamic> t) {
     final o = widget.brainIds['${t['s']}|${t['f']}|${t['t']}'];
     return o is Map ? Map<String, dynamic>.from(o) : null;
+  }
+
+  /// Three big numbers for today (5:30 AM IST day) + how often the Brain disliked the latest trades.
+  Widget _threeBoxes(AppPalette p) {
+    final td = widget.today;
+    if (td.isEmpty) return const SizedBox.shrink();
+    final total = _n(td['total']);
+    final locked = td.containsKey('realized') ? _n(td['realized']) : total;
+    final floating = _n(td['open_pnl']);
+    var rated = 0, bad = 0, badDone = 0;
+    double badUsdt = 0;
+    for (final t in widget.recent) {
+      final o = _brain(t);
+      if (o == null) continue;
+      rated++;
+      if (DualTradeCard.quality(o) == 'bad') {
+        bad++;
+        if ('${t['status']}' == 'closed' && t['net'] is num) {
+          badDone++;
+          badUsdt += _n(t['net']) * widget.marginOf(t) / 100.0;
+        }
+      }
+    }
+    Widget box(String label, double v, String note) => Expanded(
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 3),
+            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
+            decoration: BoxDecoration(border: Border.all(color: p.border), borderRadius: BorderRadius.circular(10)),
+            child: Column(children: [
+              Text(label, style: context.type.label.copyWith(fontWeight: FontWeight.w800)),
+              const SizedBox(height: 4),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(_sg(v), style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: v >= 0 ? p.profit : p.loss, fontFeatures: _tab)),
+              ),
+              const SizedBox(height: 2),
+              Text(note, textAlign: TextAlign.center, style: context.type.metadata),
+            ]),
+          ),
+        );
+    return OwlSectionCard(title: 'TODAY IN USDT (5:30 AM IST TO 5:30 AM IST)', edge: total >= 0 ? p.profit : p.loss, children: [
+      Row(children: [
+        box('LOCKED', locked, 'closed trades, final'),
+        box('FLOATING', floating, 'open trades, can change'),
+        box('NET', total, 'locked + floating'),
+      ]),
+      if (rated > 0) ...[
+        const SizedBox(height: 8),
+        Text('Brain dislikes ${(100 * bad / rated).round()}% of the latest $rated trades.', style: context.type.primary),
+        if (badDone > 0)
+          Text('The disliked ones that finished made ${_sg(badUsdt)} USDT ($badDone trades).', style: context.type.secondary),
+      ],
+    ]);
   }
 
   Widget _health(AppPalette p) {
@@ -199,6 +252,7 @@ class _SimpleTabState extends State<SimpleTab> {
   Widget build(BuildContext context) {
     final p = context.palette;
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      _threeBoxes(p),
       _health(p),
       _openCard(p),
       _doneCard(p),

@@ -796,6 +796,65 @@ def sideways_report(trades):
     return out
 
 
+# ---------------------------------------------------------------- 8f. retest report (two numbers apart, plus Trending / Sideways split; report only)
+RT_MIN = 10                  # signals needed before the retest report (or one of its groups) gives numbers
+
+
+def retest_report(data):
+    """Wait for a retest of EMA50 or enter at the signal? Reads Dual Bot's 'rt' and 'rows' (read only) and keeps TWO numbers apart:
+    1) trades that DID come back to the retest: what they made entering there versus entering at the signal.
+    2) signals that never came back: what they made at the signal (a loss here = the retest rule avoided it).
+    The two add up to the total gain. Split by market: Trending / Mixed / Sideways (same rule as the sideways report)."""
+    import dual_lab as DL
+    TL = _tl()
+    rt, rows = (data or {}).get("rt") or {}, (data or {}).get("rows") or {}
+    items = []
+    for key, r in rt.items():
+        if not isinstance(r, list) or len(r) != 8:
+            continue
+        row = rows.get(key)
+        grp = side_group(dict(zip(TL.DIMS, row[4]))) if row and len(row[4]) == len(TL.DIMS) else None
+        items.append((r, grp))
+    if len(items) < RT_MIN:
+        return {"status": "collecting", "n": len(items), "need": RT_MIN, "text": "Collecting: %d finished signals checked, the report needs %d." % (len(items), RT_MIN)}
+    k = DL.MARGIN / 100.0
+
+    def block(rs, W):
+        ent = [r for r in rs if r[6] is not None and r[7] is not None and r[7] <= W]
+        mis = [r for r in rs if not (r[6] is not None and r[7] is not None and r[7] <= W)]
+        sig_e, ret_e, mis_s = sum(r[5] for r in ent) * k, sum(r[6] for r in ent) * k, sum(r[5] for r in mis) * k
+        return {"wait": W, "n": len(rs), "entered": len(ent), "missed": len(mis), "entered_signal": round(sig_e, 2), "entered_retest": round(ret_e, 2),
+                "entered_gain": round(ret_e - sig_e, 2), "missed_signal": round(mis_s, 2), "avoided": round(-mis_s, 2), "total_gain": round(ret_e - sig_e - mis_s, 2)}
+    allr = [r for r, _g in items]
+    best = max((block(allr, W) for W in DL.RT_WAITS), key=lambda b: b["total_gain"])
+    W = best["wait"]
+    groups = []
+    for key in ("trending", "mixed", "sideways"):
+        rs = [r for r, g in items if g == key]
+        b = block(rs, W) if len(rs) >= RT_MIN else {"n": len(rs)}
+        b.update({"key": key, "name": SIDE_NAMES[key], "ready": len(rs) >= RT_MIN})
+        groups.append(b)
+    out = dict(best)
+    out.update({"status": "ok", "groups": groups})
+    out["text"] = ("Best wait: %d candles. %d of %d signals came back to the retest. Entering there made %+.2f USDT more than entering at the signal. "
+                   "%d signals never came back; entering them at the signal made %+.2f USDT, so skipping them %s %.2f USDT. Total difference: %+.2f USDT."
+                   % (W, best["entered"], best["n"], best["entered_gain"], best["missed"], best["missed_signal"],
+                      "saved" if best["avoided"] >= 0 else "cost", abs(best["avoided"]), best["total_gain"]))
+    return out
+
+
+_RT_CACHE = {"t": 0.0, "v": None}
+
+
+def _retest_view():
+    try:
+        if _RT_CACHE["v"] is None or time.time() - _RT_CACHE["t"] > 120:
+            _RT_CACHE["v"], _RT_CACHE["t"] = retest_report(_load("dual_lab_data.json", {})), time.time()
+        return _RT_CACHE["v"]
+    except Exception as e:
+        return {"status": "error", "text": "Retest report error: %s" % str(e)[:80]}
+
+
 # ---------------------------------------------------------------- 8e. performance (equity curve, win-rate trend, daily results; read only)
 PERF_PTS = 60                # curve points sent to the app (the line is thinned, the totals are exact)
 PERF_WIN = 20                # win-rate trend looks at this many trades at a time
@@ -898,6 +957,7 @@ def build_view(rows=None, trades=None, watch=None, scan_t=0, progress="", err=""
             "own": _own_view(own),
             "exit_pick": _exitpick_view(rows),
             "sideways": _sideways_view(trades),
+            "retest": _retest_view(),
             "perf": _perf_view(trades),
             "by_key": {"%s|%s|%s" % (x["s"], x["f"], x["t"]): {"clean": x["clean"], "div": x["div"], "verdict": x["verdict"], "text": x["verdict_text"]} for x in sigs},
             "hours": hours_table(rows), "repeat_loss": rl, "patterns": gp, "speed": fast_slow(rows),
