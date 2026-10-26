@@ -1,5 +1,5 @@
 #!/data/data/com.termux/files/usr/bin/bash
-# OWL auto-deploy v5c (2026-10-27) for Termux.
+# OWL auto-deploy v5d (2026-10-27) for Termux.
 #
 #   bash ~/owl_auto.sh            start the watcher (only ONE can run; a 2nd copy refuses)
 #   bash ~/owl_auto.sh status     full report -> screen + ~/owl_status.txt + Download/owl_status.txt
@@ -56,11 +56,14 @@
 #     .github/, README.md, pubspec*). An APK / release-apk.zip / any other zip is never pushed (v5 pushed a 66 MB APK once),
 #     and a single file over 20 MB is skipped. (b) Self-update: a zip (or the repo zip) that holds tools/owl_auto.sh with a
 #     higher BUILD number replaces ~/owl_auto.sh and the watcher restarts itself, so this script never needs a manual copy again.
+# 14. NEW v5d: ONE repo only. The owner also downloads zips of other repos/projects into the same Download folder. Only a zip
+#     whose files ALL sit in the top folder Indian-main/ (Claude zips and the GitHub zip of this repo) is used for overlay,
+#     self-update or GitHub push; every other zip is ignored (logged once as "zip ignored").
 # Settings / trades live outside the code folder, so a new zip never touches them.
 # Needs once:  termux-setup-storage
 
-BUILD=2     # v5c: the watcher replaces itself when a zip brings a tools/owl_auto.sh with a HIGHER BUILD number
-VERSION="v5c 2026-10-27"
+BUILD=3     # v5c: the watcher replaces itself when a zip brings a tools/owl_auto.sh with a HIGHER BUILD number
+VERSION="v5d 2026-10-27"
 DL_LIST() {   # every Download folder that exists (no duplicates)
   for d in "$OWL_DL" "$HOME/storage/downloads" "$HOME/storage/shared/Download" "/sdcard/Download" "/storage/emulated/0/Download"; do
     [ -n "$d" ] && [ -d "$d" ] && echo "$(cd "$d" 2>/dev/null && pwd -P)"
@@ -399,6 +402,18 @@ PY
   return 0
 }
 
+is_owl_zip() {   # v5d: 0 only if every file in the zip is inside the top folder Indian-main/
+  python3 - "$1" <<'PY' 2>/dev/null
+import sys, zipfile
+try:
+    names = [n for n in zipfile.ZipFile(sys.argv[1]).namelist() if n.strip("/")]
+    ok = bool(names) and all(n.split("/")[0] == "Indian-main" for n in names)
+except Exception:
+    ok = False
+sys.exit(0 if ok else 1)
+PY
+}
+
 check_overlays() {
   [ -f "$MARK" ] || return 0
   [ -d "$LIVE/backend" ] || return 0
@@ -416,6 +431,7 @@ check_overlays() {
       sleep 3; s2="$(stamp "$f")"
       [ "$s1" = "$s2" ] || continue          # still downloading
       echo "$key" >> "$OVDONE"
+      is_owl_zip "$f" || { log "zip ignored (not an Indian-main/ zip, so not this repo): $(basename "$f")"; continue; }
       self_update_zip "$f"
       overlay_zip "$f"; orc=$?
       [ "$orc" -eq 0 ] && echo applied > "$HOME/.owl_overlay_flag"
