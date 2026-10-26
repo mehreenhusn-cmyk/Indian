@@ -1,5 +1,5 @@
 #!/data/data/com.termux/files/usr/bin/bash
-# OWL auto-deploy v5 (2026-10-27) for Termux.
+# OWL auto-deploy v5c (2026-10-27) for Termux.
 #
 #   bash ~/owl_auto.sh            start the watcher (only ONE can run; a 2nd copy refuses)
 #   bash ~/owl_auto.sh status     full report -> screen + ~/owl_status.txt + Download/owl_status.txt
@@ -52,10 +52,15 @@
 #     writing old numbers after a deploy. Now every restart stops each python process that lives in the OWL code folders
 #     (found by its folder, not by its name), and every ~5 minutes the watcher checks that no worker is older than the code
 #     (a stale one is stopped and the backend starts it again). Git sync now uses ~/Indian-main (one repo) when it exists.
+# 13. NEW v5c: (a) GitHub push filter: only code zips are pushed (backend/, frontend/, tools/, test/, scanner/, android/,
+#     .github/, README.md, pubspec*). An APK / release-apk.zip / any other zip is never pushed (v5 pushed a 66 MB APK once),
+#     and a single file over 20 MB is skipped. (b) Self-update: a zip (or the repo zip) that holds tools/owl_auto.sh with a
+#     higher BUILD number replaces ~/owl_auto.sh and the watcher restarts itself, so this script never needs a manual copy again.
 # Settings / trades live outside the code folder, so a new zip never touches them.
 # Needs once:  termux-setup-storage
 
-VERSION="v5 2026-10-27"
+BUILD=2     # v5c: the watcher replaces itself when a zip brings a tools/owl_auto.sh with a HIGHER BUILD number
+VERSION="v5c 2026-10-27"
 DL_LIST() {   # every Download folder that exists (no duplicates)
   for d in "$OWL_DL" "$HOME/storage/downloads" "$HOME/storage/shared/Download" "/sdcard/Download" "/storage/emulated/0/Download"; do
     [ -n "$d" ] && [ -d "$d" ] && echo "$(cd "$d" 2>/dev/null && pwd -P)"
@@ -367,6 +372,33 @@ PY
   esac
 }
 
+# v5c: self-update. A zip with tools/owl_auto.sh of a higher BUILD number replaces this script; the main loop then restarts the watcher.
+self_update_file() {
+  local new="$1" me="$HOME/owl_auto.sh" nb cb
+  [ -f "$new" ] || return 0
+  head -n 3 "$new" | grep -q "OWL auto-deploy" || return 0
+  bash -n "$new" 2>/dev/null || { log "self-update: the new owl_auto.sh has a syntax error - NOT used"; return 0; }
+  nb="$(grep -m1 '^BUILD=' "$new" | tr -dc '0-9' | head -c 6)"; cb="$(grep -m1 '^BUILD=' "$me" | tr -dc '0-9' | head -c 6)"
+  [ "${nb:-0}" -gt "${cb:-0}" ] 2>/dev/null || return 0
+  cp "$new" "$me.new" && mv "$me.new" "$me" && : > "$HOME/.owl_self_update" && log "self-update: owl_auto.sh BUILD ${cb:-0} -> $nb, the watcher restarts itself"
+}
+
+self_update_zip() {
+  local zip="$1" tmp="$HOME/.owl_auto.new"
+  python3 - "$zip" "$tmp" <<'PY' 2>/dev/null
+import sys, zipfile
+try:
+    z = zipfile.ZipFile(sys.argv[1])
+    for n in z.namelist():
+        if n.endswith("tools/owl_auto.sh") and ".." not in n.split("/"):
+            open(sys.argv[2], "wb").write(z.read(n)); break
+except Exception:
+    pass
+PY
+  [ -f "$tmp" ] && { self_update_file "$tmp"; rm -f "$tmp"; }
+  return 0
+}
+
 check_overlays() {
   [ -f "$MARK" ] || return 0
   [ -d "$LIVE/backend" ] || return 0
@@ -384,6 +416,7 @@ check_overlays() {
       sleep 3; s2="$(stamp "$f")"
       [ "$s1" = "$s2" ] || continue          # still downloading
       echo "$key" >> "$OVDONE"
+      self_update_zip "$f"
       overlay_zip "$f"; orc=$?
       [ "$orc" -eq 0 ] && echo applied > "$HOME/.owl_overlay_flag"
       case "$orc" in 0|5) sync_repo "$f" ;; esac       # good backend overlay, or a frontend-only zip -> GitHub
@@ -422,9 +455,16 @@ tops = {n.split("/")[0] for n in names}
 pre = ""
 if len(tops) == 1 and list(tops)[0] not in ("backend", "frontend", ".github", "test", "scanner") and all("/" in n for n in names):
     pre = list(tops)[0] + "/"          # one wrapper folder (like Indian-main/) -> strip it
+ALLOWED = {"backend", "frontend", "tools", "test", "scanner", "android", ".github", "README.md", "pubspec.yaml",
+           "pubspec.lock", "analysis_options.yaml", "web_update.sh", ".gitignore", ".metadata"}
+BLOCKED_EXT = (".apk", ".aab", ".ipa", ".zip", ".so", ".jks", ".keystore")
 n_ok = 0
+n_skip = 0
 for n in names:
     rel = n[len(pre):] if n.startswith(pre) else n
+    if rel and (rel.split("/")[0] not in ALLOWED or rel.lower().endswith(BLOCKED_EXT) or z.getinfo(n).file_size > 20 * 1024 * 1024):
+        n_skip += 1
+        continue
     if (not rel or rel.startswith("/") or ".." in rel.split("/") or rel.startswith(".git/")
             or "__pycache__" in rel or rel.endswith(".pyc") or rel == "backend/.env"):
         continue
@@ -433,10 +473,14 @@ for n in names:
     with open(dst, "wb") as f:
         f.write(z.read(n))
     n_ok += 1
-print("OK", n_ok)
+print("OK", n_ok) if n_ok else print("NONE", n_skip)
 PY
   )"
-  case "$out" in OK*) ;; *) log "github sync: could not unpack $(basename "$zip"): $out"; return 1 ;; esac
+  case "$out" in
+    OK*) ;;
+    NONE*) log "github sync skipped: $(basename "$zip") has no code files for the repo (APK / other zips are never pushed)"; return 0 ;;
+    *) log "github sync: could not unpack $(basename "$zip"): $out"; return 1 ;;
+  esac
   git -C "$REPO" add -A >>"$LOG" 2>&1
   if git -C "$REPO" diff --cached --quiet; then log "github sync: nothing new in $(basename "$zip") (repo already has it)"; return 0; fi
   local ident=()
@@ -649,10 +693,16 @@ while true; do
     if [ "$s1" = "$s2" ] && [ "$s1" != "$(cat "$MARK" 2>/dev/null)" ]; then
       log "new full zip found: $z"
       deploy_full "$z"
+      self_update_file "$LIVE/tools/owl_auto.sh"
       status_report >/dev/null 2>&1
     fi
   fi
   check_overlays
+  if [ -f "$HOME/.owl_self_update" ]; then        # v5c: a newer owl_auto.sh was installed by a zip -> restart this watcher with it
+    rm -f "$HOME/.owl_self_update"; date +%s > "$CLEANF"; rm -rf "$LOCKD"
+    log "watcher restarts itself with the new owl_auto.sh"
+    exec bash "$HOME/owl_auto.sh"
+  fi
   [ $((n % 18)) -eq 0 ] && web_check_bg                 # about every 3 min: new browser build on GitHub? -> ~/owl_web
   # backend not running (first start, phone killed it)? start it
   if [ -d "$LIVE/backend" ] && ! pgrep -f "start_forever.sh" >/dev/null 2>&1; then
