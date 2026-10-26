@@ -1,6 +1,6 @@
 # Owl Terminal - MASTER NOTES (the ONLY notes file in this repo)
 
-OWL MASTER NOTES v12 - last updated: 27 Oct 2026
+OWL MASTER NOTES v14 - last updated: 27 Oct 2026
 
 Crypto paper-trading app (Flutter) + Python backend. Dual Bot v1 collects trades. Smart Brain learns on the side, paper only.
 
@@ -11,10 +11,12 @@ Crypto paper-trading app (Flutter) + Python backend. Dual Bot v1 collects trades
 4. After ANY work: update this file in the same zip: tick the step in section 4, add a row to section 3 (DONE) and section 10 (change log), change the date above. Never leave this file stale.
 5. Flutter cannot be compiled in Claude's sandbox. Say so, and ask the owner to send any build error.
 6. NAMING (owner asked, so he never gets confused): "Round 1" = old Parts 1, 2, 3 (finished and already pushed by the owner). All new work is Part A, Part B, Part C ... and steps inside a part are A1, A2, A3 / B1, B2 ... Never reuse old numbers. Name the zip after the part, e.g. owl_A1.zip.
+6b. HOW TO TALK TO THE OWNER (he said it all bounces off his head otherwise): at the end of EVERY reply give 2-4 numbered steps in very simple Hinglish: (1) what to download, (2) what to paste in Termux, (3) what he should see, (4) what to send back if it looks different. Never ask him to run something that is not in those steps. Explain any new word in one line. If nothing is needed from him, say "abhi kuch nahi karna".
 7. EVERY TIME a zip is delivered, end the reply with the ONE copy-paste Termux command from section 11 (with the right zip name and commit message filled in). The owner just copies, pastes, done.
 8. SAVE EFFORT: do NOT scan the whole repo. Open section 12 (CODE MAP), go straight to the files listed for the feature, read only the function you need. Line numbers there are approximate (they drift): search by function name.
 9. KEEP FILES SMALL: new backend modules under ~250 lines, one job each; never add big blocks into api_server.py, main.py or smart_brain.py if a new small file can hold it (smart_brain.py only gets a thin hook, like the other brain_*.py files). Small files = small zips = small cost to read next time. If you add or move a feature, update section 12 in the same zip.
-10. OWNER ORDER (27 Oct): N2, Parts A, B, C, D, E (E1-E5), F1, F2, F3 are DONE (owner applied up to F2 on 27 Oct; F3 is the newest zip). Next, one at a time and only when the owner says: G1, G2 (they wait for data, see section 4). F/G wait for data. B3 waits for data (see section 4).
+10. OWNER ORDER (27 Oct): N2, Parts A, B, C, D, E (E1-E5), F1, F2, F3 are DONE (owner applied up to F2 on 27 Oct; F3 is the newest zip). Next, one at a time and only when the owner says: G1, G2 (they wait for data, see section 4). F/G wait for data. B3 waits for data (see section 4). READY CHECK on 27 Oct (live): 1 of 4 true (only "what if the bot had listened" is true; exit hit-rate 50% < 60%; trust not earned; luck untestable; own book 0 finished trades) = do NOT build G1/G2 yet. B3: Timing Sync best = same candle (+1.33 USDT/trade, 61 trades), worst = Z first then Main 1-2 candles (-4.98, 27 trades); compare again about 30 Oct (needs 3+ days stable). If own book still shows 0 finished trades on 28 Oct, find out why before anything else.
+11c. DEPLOY RULE (27 Oct): the owner NEVER kills processes by hand. Phone side is tools/owl_auto.sh v5, see section 13. If you change how the backend starts workers, change owl_auto.sh in the same zip.
 11b. ZIP RULE: each new zip is CUMULATIVE for the files changed since the owner last confirmed applying (the owner often applies several zips at once), always with README.md. Say in the reply which earlier zips it already contains.
 
 ## 1. OWNER RULES (strict)
@@ -119,6 +121,8 @@ A: Brain only watches (now). B: shadow "would take / would skip" - DONE as the "
 - Not seen: Claude never ran the app; a file started by a Termux script outside the repo would look dead.
 
 ## 10. CHANGE LOG (newest first)
+- 27 Oct 2026 (v14): owl_v5b = v13 content + section 14 (owner flow for backend + app build) + rule 6b (how to talk to the owner). Owner installed owl_auto.sh v5 on his phone (status showed v5, watcher RUNNING). Zip is cumulative: README.md + tools/owl_auto.sh.
+- 27 Oct 2026 (v13): owl_v5 = deploy fix. tools/owl_auto.sh v5 + this README (section 13). Cause found: the Brain, Dual Bot, PA and Vol workers are separate python processes started by the backend; owl_auto.sh restarts did not stop them, so an old Brain kept running after a new zip (Ready Check / Timing / Week keys were missing). v5 stops every python process in the OWL code folders on each deploy/restart and checks every ~5 min for workers older than the code. One-time owner step: copy owl_auto.sh to ~ (see section 13). No app or backend code changed.
 - 27 Oct 2026 (v12): F3 done. zip owl_F3 has only the F3 files (README, brain_week.py, test_brain_week.py, brain_own.py, smart_brain_view.dart) because the owner applied owl_EFG. Backend changed: restart the backend after the push. Flutter not built here. Next: G1 / G2 only when READY CHECK allows and the owner says.
 - 27 Oct 2026 (v11): F2 done. zip owl_EFG is cumulative: it also holds E1-E5 and F1 (owner had applied none yet). 14 files. Backend changed (brain_retest.py new, brain_own.py): restart the backend after the push. Flutter not built here. Next: F3 only when data is ready and the owner says.
 - 27 Oct 2026 (v10): E5 + F1 done. zip owl_EF is cumulative: it also holds E1-E4 (owner had applied none of E). 12 files. Backend changed (brain_side.py, brain_own.py): restart the backend after the push. Flutter not built here. Next: F2 only when data is ready and the owner says.
@@ -185,4 +189,26 @@ FLUTTER (frontend/lib/)
 | widgets/live_ticker_bar.dart (547) | Top header row (MAIN bot P&L etc.) | |
 | widgets/owl_card.dart (OwlSectionCard, OwlChip, OwlDensity), theme/app_theme.dart, app_colors/typography/spacing | Shared look (cards, chips, colors) | Part E works here. DualTradeCard.badgeRow (dual_trade_card.dart) = the one-line trade badges |
 | providers/app_provider.dart (2020), screens/*, other widgets | Main app, positions, signals, alerts, India, AI tabs | Not needed for Brain work |
-Other: tools/clean_old_notes.sh (one-time notes cleanup), tools/old_check.sh (dead-file report), .github/workflows/flutter-build.yml (builds the app after push).
+Other: tools/owl_auto.sh (phone watcher v5, section 13), tools/clean_old_notes.sh (one-time notes cleanup), tools/old_check.sh (dead-file report), .github/workflows/flutter-build.yml (builds the app after push).
+
+## 13. PHONE DEPLOY (how the owner's phone picks up a new zip - owl_auto.sh v5)
+Owner facts: browser/GitHub downloads land in ~/storage/downloads. The watcher ~/owl_auto.sh (started by Termux:Boot too) looks there every 10 s. Data lives OUTSIDE the code (~/storage/shared/owl_data), so a deploy never touches trades or settings. The owner does not want to kill or restart anything by hand.
+- LIVE CODE = ~/owl_code (backend + frontend). NOT ~/Indian-main (that folder is only for git push). Check: `ls ~/owl_code/backend/brain_ready.py`.
+- Zip named Indian-main*.zip (full repo from GitHub) = FULL deploy: swapped in as ~/owl_code (old one kept as ~/owl_code_prev), everything restarted.
+- Any other zip (owl_X.zip) = OVERLAY: only its backend/ files are copied on top, and only if the zip is NEWER than the full zip in use; python files are compile-checked and rolled back if bad. A zip without backend/ files (README, tools, Flutter only) is skipped for the backend and just pushed to GitHub.
+- v5 fix: workers (smart_brain.py, dual_lab.py, pa_layer.py, vol_layer.py, ping_worker.py) are separate python processes started by api_server.py timers (8/15/25/35 s after boot) and by the API calls. On every deploy/restart the script now stops every python process whose folder is inside ~/owl_code, ~/Indian-main or ~/Indian-cleanup (by folder, not by name), then starts the backend. Every ~5 min stale_check stops any worker that started before the newest backend .py file; the backend starts it again by itself (a worker only restarts when its heartbeat is older than 3 min, so allow up to ~3 min).
+- Git sync (owl_auto.sh -> GitHub) now uses ~/Indian-main when it has .git, else ~/Indian-cleanup. If the owner also pushes by hand with the section 11 command, the second push finds nothing new and simply stops; that is fine.
+- Quick truth check after any deploy (wait ~4 min): `curl -s localhost:8000/api/smart_brain | python3 -c "import sys,json;v=json.load(sys.stdin);print(sorted(v.keys()))"` must list the keys of the newest Brain features (ready, timing, retest, tp_hold, week). Missing = an old worker is alive: `bash ~/owl_auto.sh restart`, wait 4 min, check again.
+- Logs: `bash ~/owl_auto.sh status` (also saved to Download/owl_status.txt), `bash ~/owl_auto.sh logs`. Look for "DEPLOYED", "OVERLAY applied", "stopped N old python process(es)", "stale check".
+- Not tested by Claude: the script ran only in a sandbox with fake processes (kill by folder and stale check both worked), never on the phone.
+
+## 14. OWNER FLOW IN SIMPLE STEPS (what the owner really does - keep this true)
+BACKEND (runs by itself on the phone):
+1. Claude gives a zip (owl_X.zip) or the owner downloads the repo zip from GitHub (Indian-main*.zip). It lands in ~/storage/downloads.
+2. The watcher (owl_auto.sh v5, started by Termux:Boot) sees it within about 10 s, puts the backend files in ~/owl_code, stops every old python process, starts the backend + workers. Nothing to type.
+3. About 4 min later all Brain workers run the new code. The owner can check with the truth-check command in section 13.
+APP (Flutter, built by GitHub, never on the phone):
+1. The same zip is pushed to GitHub, either by the watcher itself (log line "github sync: pushed", see `bash ~/owl_auto.sh logs`) or by the section 11 command.
+2. A push to main makes GitHub Actions (.github/workflows/flutter-build.yml) build the app; the browser version is downloaded by the watcher about 10 min later into ~/owl_web (just refresh). Claude cannot compile Flutter: a build error from the owner is the only test.
+3. A Flutter-only change needs no backend restart. A backend change needs nothing by hand: the watcher restarts it.
+WHEN SOMETHING LOOKS OLD: (1) `bash ~/owl_auto.sh status` (2) `bash ~/owl_auto.sh restart`, wait 4 min (3) send Claude the output. Normal noise, ignore: "Terminated ... nohup python ping_worker.py" and "/proc/NNN/cmdline: No such file" printed during stop = old processes ending.
