@@ -1021,7 +1021,55 @@ class _SmartBrainViewState extends State<SmartBrainView> {
     ]);
   }
 
-  /// E4: one tap row that opens / folds the 17 secondary Brain reports. Nothing is removed.
+  /// F3: last 7 days of the Brain's own pretend trades + the time-of-day limit status. Reads own['week'].
+  Widget _weekCard(AppPalette p) {
+    final w = _map(_map(_st['own'])['week']);
+    if (w.isEmpty || w['text'] == null) return const SizedBox.shrink();
+    final st = '${w['status']}';
+    final tot = _n(w['week_usdt']);
+    final c = st == 'limit_on' ? p.warning : (st == 'limit_off' ? p.profit : p.textMuted);
+    String sg(num v) => '${v >= 0 ? '+' : ''}${v.toStringAsFixed(2)}';
+    final days = _maps(w['days']).where((d) => _n(d['n']) > 0).toList();
+    final blocks = _maps(w['blocks']).where((b) => _n(b['n']) > 0).toList();
+    return _card(p, title: 'WEEK REPORT CARD (BRAIN OWN TRADES)', edge: tot >= 0 ? p.profit : p.loss, children: [
+      Row(children: [
+        _chip(st == 'limit_on' ? 'TIME LIMIT ON' : (st == 'limit_off' ? 'TIME LIMIT OFF' : 'COLLECTING'), c),
+        const SizedBox(width: 8),
+        Text('${sg(tot)} USDT in 7 days', style: context.type.secondary.copyWith(color: tot >= 0 ? p.profit : p.loss, fontWeight: FontWeight.w700)),
+      ]),
+      const SizedBox(height: 4),
+      Text('${w['text']}${_n(w['skipped']) > 0 ? ' Skipped today: ${_n(w['skipped']).toInt()}.' : ''}', style: context.type.metadata),
+      if (days.isNotEmpty) ...[
+        const SizedBox(height: 8),
+        Text('Day by day (5:30 AM IST day)', style: context.type.label.copyWith(fontWeight: FontWeight.w700)),
+        for (final d in days)
+          Padding(
+            padding: const EdgeInsets.only(top: 3),
+            child: Row(children: [
+              Expanded(child: Text('${d['day']}  ·  ${_n(d['n']).toInt()} trades, ${_n(d['win_pct']).toInt()}% won', style: context.type.secondary)),
+              Text('${sg(_n(d['usdt']))} USDT', style: context.type.secondary.copyWith(color: _n(d['usdt']) >= 0 ? p.profit : p.loss, fontWeight: FontWeight.w700)),
+            ]),
+          ),
+      ],
+      if (blocks.isNotEmpty) ...[
+        const SizedBox(height: 8),
+        Text('Time of day (own finished trades)', style: context.type.label.copyWith(fontWeight: FontWeight.w700)),
+        for (final b in blocks)
+          Padding(
+            padding: const EdgeInsets.only(top: 3),
+            child: Row(children: [
+              Expanded(child: Text('${b['block']}  ·  ${_n(b['n']).toInt()} trades, ${_n(b['win_pct']).toInt()}% won', style: context.type.secondary)),
+              if (b['bad'] == true) Padding(padding: const EdgeInsets.only(right: 6), child: _chip('limited', p.warning)),
+              Text('${sg(_n(b['usdt']))} USDT', style: context.type.secondary.copyWith(color: _n(b['usdt']) >= 0 ? p.profit : p.loss, fontWeight: FontWeight.w700)),
+            ]),
+          ),
+      ],
+      const SizedBox(height: 4),
+      Text('Pretend money only. The limit only caps new own trades in a losing block; it never touches Dual Bot or the main bot.', style: context.type.metadata),
+    ]);
+  }
+
+  /// E4: one tap row that opens / folds the 18 secondary Brain reports. Nothing is removed.
   Widget _moreToggle(AppPalette p) => Padding(
         padding: const EdgeInsets.only(bottom: 8),
         child: InkWell(
@@ -1031,7 +1079,7 @@ class _SmartBrainViewState extends State<SmartBrainView> {
             padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
             decoration: BoxDecoration(border: Border.all(color: p.border), borderRadius: BorderRadius.circular(10)),
             child: Row(children: [
-              Expanded(child: Text(_more ? 'Hide the other reports' : 'More reports (17): luck test, exit, retest, sideways, hours, how to read...', style: context.type.secondary.copyWith(fontWeight: FontWeight.w700))),
+              Expanded(child: Text(_more ? 'Hide the other reports' : 'More reports (18): luck test, exit, retest, sideways, hours, how to read...', style: context.type.secondary.copyWith(fontWeight: FontWeight.w700))),
               Icon(_more ? Icons.expand_less_rounded : Icons.expand_more_rounded, color: p.textMuted),
             ]),
           ),
@@ -1050,6 +1098,7 @@ class _SmartBrainViewState extends State<SmartBrainView> {
       _ownCard(p),
       _moreToggle(p),
       if (_more) ...[
+        _weekCard(p),
         _learnCard(p),
         _signalsCard(p),
         _statusCard(p),

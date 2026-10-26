@@ -68,7 +68,9 @@ def open_from(own, watch, now_ms=None, pick_fn=None):
     own.setdefault("seen", {})
     opened = 0
     opened_side = 0   # F1: sideways own trades opened in this round (see brain_side.py)
+    opened_blk = 0    # F3: own trades opened in this round (all in the same 6-hour block, see brain_week.py)
     import brain_side as BS
+    import brain_week as BW
     day0 = _day_start_ms(now_ms)
     today = len([t for t in own["open"] + own["closed"] if t.get("t", 0) >= day0])
     for w in watch or []:
@@ -82,6 +84,8 @@ def open_from(own, watch, now_ms=None, pick_fn=None):
         if today + opened >= MAX_DAY:
             continue
         if BS.blocked(own, tg, now_ms, opened_side):   # F1: only active after 100+ own trades and a losing sideways book
+            continue
+        if BW.blocked(own, now_ms, opened_blk):   # F3: only after 7+ days, 300+ own trades and a block that loses in both halves
             continue
         if len(own["open"]) >= MAX_OPEN or any(t["s"] == w["s"] and t["d"] == w["d"] for t in own["open"]):
             continue
@@ -99,6 +103,7 @@ def open_from(own, watch, now_ms=None, pick_fn=None):
             "status": "open", "live": None, "chk": 0})
         opened += 1
         opened_side += 1 if BS.is_side(tg) else 0
+        opened_blk += 1
     if len(own["seen"]) > 2000:
         own["seen"] = {k: 1 for k in list(own["seen"])[-1000:]}
     return opened
@@ -172,6 +177,14 @@ def _side_rule(own):
         return None
 
 
+def _week(own):
+    try:
+        import brain_week as BW
+        return BW.report(own)
+    except Exception:
+        return None
+
+
 def _retest_book(own):
     try:
         import brain_retest as BR
@@ -215,4 +228,4 @@ def summary(own):
     stg = stage_for(n)[0]
     nxt, left = next_stage(n)
     return {"stage": stg, "next_stage": nxt, "next_in": left, "since": own.get("since"), "open": op, "n": n, "wins": wins, "pnl": pnl, "avg": round(sum(t["net"] for t in cl) / n, 2) if n else 0.0,
-            "recent": rec, "text": text, "side_rule": _side_rule(own), "retest_book": _retest_book(own), "exit": EXIT_NAME, "by_exit": sorted(by.values(), key=lambda x: -x["pnl"])}
+            "recent": rec, "text": text, "side_rule": _side_rule(own), "retest_book": _retest_book(own), "week": _week(own), "exit": EXIT_NAME, "by_exit": sorted(by.values(), key=lambda x: -x["pnl"])}
