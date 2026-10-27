@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import '../utils/format.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 
@@ -391,7 +392,7 @@ class _DualBotScreenState extends State<DualBotScreen> {
             ]),
             const SizedBox(height: 2),
             Text(
-                'Seen ${c['per_day']} times a day (${c['n']} trades). Takes about ${c['mins']} min with "${c['best_exit']}". '
+                'Seen ${c['per_day']} times a day (${c['n']} trades). Takes about ${fmtMins(c['mins'])} with "${c['best_exit']}". '
                 'Best exit: ${_n(c['best_avg']).toStringAsFixed(1)}% per trade, ${c['best_win']}% win. '
                 'Bot exit: ${_n(c['bot_avg']).toStringAsFixed(1)}% per trade, ${c['bot_win']}% win.',
                 style: context.type.metadata.copyWith(height: 1.35)),
@@ -423,7 +424,7 @@ class _DualBotScreenState extends State<DualBotScreen> {
             Text('${c['name']}', style: context.type.primary.copyWith(height: 1.3, fontSize: 13)),
             Text(
                 '${c['n']} trades, seen ${c['per_day']}x a day. Bot exit: ${c['bot_win']}% won, avg ${_n(c['bot_avg']).toStringAsFixed(1)}%. '
-                'Best exit "${c['best_exit']}": ${c['best_win']}% won, avg ${_n(c['best_avg']).toStringAsFixed(1)}%, about ${c['mins']} min.',
+                'Best exit "${c['best_exit']}": ${c['best_win']}% won, avg ${_n(c['best_avg']).toStringAsFixed(1)}%, about ${fmtMins(c['mins'])}.',
                 style: context.type.metadata.copyWith(height: 1.35, color: _verdictColor(p, '${c['verdict']}'))),
           ]),
         ),

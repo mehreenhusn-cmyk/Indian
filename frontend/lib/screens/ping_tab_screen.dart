@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import '../utils/format.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 
@@ -303,7 +304,7 @@ class _PingTabScreenState extends State<PingTabScreen> with AutomaticKeepAliveCl
           return Padding(
             padding: const EdgeInsets.symmetric(vertical: 3),
             child: Text(
-              '${e['symbol']} ${e['kind']}  ${had ? "lead ${e['lead_min']} min" : "no ping"}',
+              '${e['symbol']} ${e['kind']}  ${had ? "lead ${fmtMins(e['lead_min'])}" : "no ping"}',
               style: AppTypography.metadata.copyWith(color: p.textSecondary),
             ),
           );

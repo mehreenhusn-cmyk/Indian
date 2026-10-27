@@ -250,7 +250,7 @@ class _TradeSummary extends StatelessWidget {
       if (bp != null && ap != null) {
         final d = ap - bp;
         final when = (bs != null && as_ != null && (bs - as_).abs() >= 60)
-            ? (as_ < bs ? 'AI left ${((bs - as_) / 60).round()} min earlier. ' : 'AI stayed ${((as_ - bs) / 60).round()} min longer. ')
+            ? (as_ < bs ? 'AI left ${fmtSpan(bs - as_)} earlier. ' : 'AI stayed ${fmtSpan(as_ - bs)} longer. ')
             : '';
         verdict = d.abs() < 0.005 ? '${when}Same result.' : '$when${d > 0 ? 'AI did better' : 'Bot did better'} by ${d.abs().toStringAsFixed(2)} USDT.';
       }

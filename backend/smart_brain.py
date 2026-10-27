@@ -38,7 +38,7 @@ except Exception:
 
 CYCLE_S = 60                 # recompute the numbers every minute (cheap: reads one file)
 SCAN_S = 300                 # opportunity scan every 5 minutes (downloads candles for a few coins)
-SCAN_COINS = 20              # how many coins one scan reads (today's top-10 gainers + top-10 losers)
+SCAN_COINS = 50              # how many coins one scan reads: today's top-10 gainers + top-10 losers (20) + up to 30 names from the last 7 days (Part U2, cap in universe_ctl.json)
 SCAN_TF = "15m"
 BEAT_STALE_S = 180
 MIN_N = 20                   # fewer look-alikes than this = "not enough data"
@@ -421,6 +421,11 @@ def today_coins(old, now=None, state={"t": 0.0, "c": []}):
         try:
             import filter_lab as FL
             got = list(FL.default_coins(log=lambda m: None))
+            try:                                         # Part U2: add the last-7-days names (reads the saved file only, never starts a download)
+                import universe_7d as U7
+                got = U7.with_extras(got)
+            except Exception:
+                pass
             if got:
                 state["c"], state["t"] = got, now
         except Exception:

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/format.dart';
 import 'package:provider/provider.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
@@ -498,7 +499,7 @@ class _CatchUpLine extends StatelessWidget {
     final checked = (info['checked'] as num?)?.toInt() ?? 0;
     final closed = (info['closed'] as num?)?.toInt() ?? 0;
     final gap = (info['gap_s'] as num?)?.toInt() ?? 0;
-    final gapText = gap >= 60 ? '${gap ~/ 60}m gap' : '${gap}s gap';
+    final gapText = '${fmtSpan(gap)} gap';
     return Padding(
       padding: const EdgeInsets.only(top: 6),
       child: Text(

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../utils/format.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../theme/app_theme.dart';
@@ -75,9 +76,7 @@ class _AiTrailTradesCardState extends State<AiTrailTradesCard> {
   static String _ago(dynamic ts) {
     if (ts is! num || ts <= 0) return '';
     final s = (DateTime.now().millisecondsSinceEpoch / 1000.0 - ts.toDouble()).round();
-    if (s < 3600) return '${(s / 60).round()} min ago';
-    if (s < 86400) return '${(s / 3600).round()} h ago';
-    return '${(s / 86400).round()} d ago';
+    return '${fmtSpan(s)} ago';
   }
 
   static String _end(dynamic r) {

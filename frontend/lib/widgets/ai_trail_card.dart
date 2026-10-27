@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../utils/format.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../theme/app_theme.dart';
@@ -77,9 +78,7 @@ class _AiTrailCardState extends State<AiTrailCard> {
   static String _ago(dynamic ts) {
     if (ts is! num) return 'a while ago';
     final s = (DateTime.now().millisecondsSinceEpoch / 1000.0 - ts.toDouble()).round();
-    if (s < 90) return '${s < 0 ? 0 : s}s ago';
-    if (s < 5400) return '${(s / 60).round()} min ago';
-    return '${(s / 3600).toStringAsFixed(1)} h ago';
+    return '${fmtSpan(s)} ago';
   }
 
   Map<String, dynamic> _pol(String key) {

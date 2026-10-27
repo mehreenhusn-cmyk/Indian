@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../utils/format.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../theme/app_theme.dart';
@@ -111,7 +112,7 @@ class _AiOwnCardState extends State<AiOwnCard> {
   Widget _liveLine(BuildContext context, Map<String, dynamic> r) => Padding(
         padding: const EdgeInsets.only(bottom: 5),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('${r['sym']}  ${r['side'] == 'BUY' ? 'LONG' : 'SHORT'}  ·  ${_i(r['age_min'])} min', style: context.type.secondary.copyWith(fontSize: 12, fontWeight: FontWeight.w700)),
+          Text('${r['sym']}  ${r['side'] == 'BUY' ? 'LONG' : 'SHORT'}  ·  ${fmtMins(r['age_min'])}', style: context.type.secondary.copyWith(fontSize: 12, fontWeight: FontWeight.w700)),
           Text((r['why'] ?? '').toString(), style: context.type.metadata),
         ]),
       );
@@ -137,7 +138,7 @@ class _AiOwnCardState extends State<AiOwnCard> {
         dense: true,
         title: Row(children: [
           Expanded(
-              child: Text('${r['sym']}  ${long ? 'LONG' : 'SHORT'}  ·  ${_i(r['age_min'])} min',
+              child: Text('${r['sym']}  ${long ? 'LONG' : 'SHORT'}  ·  ${fmtMins(r['age_min'])}',
                   style: context.type.secondary.copyWith(fontSize: 12, fontWeight: FontWeight.w700))),
           Text('${_s(pnl, d: 1)}%', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: pnl >= 0 ? p.profit : p.loss)),
         ]),

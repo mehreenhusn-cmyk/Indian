@@ -40,15 +40,34 @@ String fmtRR(double? rr) => rr == null ? '--' : '1:${rr.toStringAsFixed(1)}';
 
 String fmtPctVal(double? p, [int dp = 2]) => p == null ? '--' : '${p.toStringAsFixed(dp)}%';
 
-/// 1m 05s / 27m 30s / 2h 05m.
+/// ONE place for time text (owner rule 27 Oct): under 1 min "45 s", under 1 h "12 min", 1 h or more "2 h 10 min"
+/// (never "220 min"), 1 day or more "1 d 4 h". Use this everywhere a duration or age is shown.
+String fmtSpan(num? secs, {bool withSeconds = false}) {
+  if (secs == null || secs.isNaN || secs.isInfinite) return '--';
+  final s = secs < 0 ? 0 : secs.round();
+  if (s < 60) return '$s s';
+  final m = s ~/ 60;
+  if (m < 60) return withSeconds && s % 60 != 0 ? '$m min ${s % 60} s' : '$m min';
+  final h = m ~/ 60;
+  if (h < 24) return m % 60 == 0 ? '$h h' : '$h h ${m % 60} min';
+  final d = h ~/ 24;
+  return h % 24 == 0 ? '$d d' : '$d d ${h % 24} h';
+}
+
+/// Same, from minutes that may arrive as num or text (backend numbers).
+String fmtMins(dynamic mins) {
+  final v = mins is num ? mins : num.tryParse('${mins ?? ''}');
+  return v == null ? '--' : fmtSpan(v * 60);
+}
+
+/// 1m 05s / 27m 30s / 2 h 05 min.
 String fmtDuration(double? secs) {
   if (secs == null) return '--';
   final s = secs.round();
   if (s < 60) return '${s}s';
   final m = s ~/ 60;
   if (m < 60) return '${m}m ${(s % 60).toString().padLeft(2, '0')}s';
-  final h = m ~/ 60;
-  return '${h}h ${(m % 60).toString().padLeft(2, '0')}m';
+  return fmtSpan(s);
 }
 
 /// 1,000.00 style number with thousands separators.

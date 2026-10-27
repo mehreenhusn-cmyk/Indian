@@ -164,7 +164,11 @@ def _meta_of(con, k):
 
 def _ago(sec):
     sec = int(max(0, sec))
-    return "%d s ago" % sec if sec < 90 else "%d min ago" % (sec // 60) if sec < 5400 else "%d h ago" % (sec // 3600)
+    try:                                     # owner rule: over 60 min = hours + minutes
+        from timefmt import span
+        return span(sec) + " ago"
+    except Exception:
+        return "%d s ago" % sec if sec < 90 else "%d min ago" % (sec // 60) if sec < 5400 else "%d h ago" % (sec // 3600)
 
 
 def status(base=None):

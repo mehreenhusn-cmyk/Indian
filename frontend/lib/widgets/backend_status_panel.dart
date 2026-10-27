@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../utils/format.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
@@ -52,10 +53,7 @@ class _BackendStatusPanelState extends State<BackendStatusPanel> {
 
   static String _dur(num s) {
     final n = s.toInt();
-    if (n < 90) return '${n}s';
-    if (n < 5400) return '${(n / 60).round()} min';
-    if (n < 172800) return '${(n / 3600).toStringAsFixed(1)} h';
-    return '${(n / 86400).toStringAsFixed(1)} d';
+    return fmtSpan(n);
   }
 
   static String _when(num epoch) {

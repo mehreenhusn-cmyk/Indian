@@ -32,6 +32,11 @@ def fake_klines(n=30):
     return out
 
 
+def threading_count():
+    import threading
+    return threading.active_count()
+
+
 def main():
     check("day_start is 00:00 UTC", TODAY % U.DAY_MS == 0 and TODAY <= NOW * 1000 < TODAY + U.DAY_MS)
     g, l = U.top_lists({"A": 5, "B": -3, "C": 1, "D": 9, "E": -8, "F": 2, "G": 0, "H": 4, "I": -1, "J": 3, "K": -6, "L": 7}, 3)
@@ -79,6 +84,14 @@ def main():
         out = U.coins_for_dual(["T1USDT", "T2USDT"], base, NOW)
         check("dual list = today first, then extras (cap 7)", out[:2] == ["T1USDT", "T2USDT"] and len(out) == 9 and len(set(out)) == 9)
         check("status shows days and cap", U.status(base, NOW)["cap"] == 7 and U.status(base, NOW)["saved_days"] >= 7)
+
+    with tempfile.TemporaryDirectory() as base:      # Brain helper: read-only, starts no download
+        U._save("universe_days.json", days, base)
+        t0 = threading_count()
+        w = U.with_extras(["T1USDT"], base, NOW)
+        check("with_extras = today + 7-day names", w[0] == "T1USDT" and len(w) == 11 and len(set(w)) == 11)
+        check("with_extras starts no thread", threading_count() == t0)
+        check("with_extras never raises", U.with_extras(None, base, NOW) != [] or True)
 
     with tempfile.TemporaryDirectory() as base:
         U._S["last"] = time.time()          # background read blocked: only today's list comes back

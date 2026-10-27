@@ -12,6 +12,15 @@ MARGIN = 3.0         # ROI points an exit must beat the bot's exit by to be call
 FAST = 6             # a winner is "fast" if it ends within this many candles
 
 
+def _mt(m):
+    """minutes -> text, over 60 min = hours + minutes (owner rule)"""
+    try:
+        from timefmt import mins as _fm
+        return _fm(m)
+    except Exception:
+        return "%s min" % m
+
+
 def _med(xs):
     xs = sorted(xs)
     return xs[len(xs) // 2] if xs else None
@@ -71,8 +80,8 @@ def report(rows):
         "Over all %d old setups '%s' (%s) did best: %+.1f%% per setup against %+.1f%% for the bot's exit." % (a["n"], a["best"], a["best_kind"], a["best_avg"], a["bot_avg"])
     h = a["hold_bot"]
     if h["win_min"] is not None and h["loss_min"] is not None:
-        out["lines"].append("With the bot's exit, winners last a median of %d min and losers %d min. %d%% of winners finish within %d candles." % (
-            h["win_min"], h["loss_min"], h["fast_pct"], FAST))
+        out["lines"].append("With the bot's exit, winners last a median of %s and losers %s. %d%% of winners finish within %d candles." % (
+            _mt(h["win_min"]), _mt(h["loss_min"]), h["fast_pct"], FAST))
     better = [m for m in out["mixes"] if m["clearly"]]
     for m in sorted(better, key=lambda m: -m["gain"])[:3]:
         out["lines"].append("%s: '%s' (%s) earned %+.1f%% per setup, %+.1f%% more than the bot's exit.%s" % (

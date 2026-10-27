@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../utils/format.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../theme/app_theme.dart';
@@ -143,9 +144,7 @@ class _AiVerdictCardState extends State<AiVerdictCard> with AutomaticKeepAliveCl
   static String _ago(dynamic ms) {
     if (ms is! num) return 'a while ago';
     final s = ((DateTime.now().millisecondsSinceEpoch - ms.toInt()) / 1000).round();
-    if (s < 90) return '${s < 0 ? 0 : s}s ago';
-    if (s < 5400) return '${(s / 60).round()} min ago';
-    return '${(s / 3600).toStringAsFixed(1)} h ago';
+    return '${fmtSpan(s)} ago';
   }
 
   Color _statusColor(AppPalette p, String s) => s == 'READY' ? p.profit : (s == 'NO' ? p.loss : p.warning);

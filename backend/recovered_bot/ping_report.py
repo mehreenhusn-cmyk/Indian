@@ -97,6 +97,15 @@ def _rules_text():
     )
 
 
+def _mt(m):
+    """minutes -> text, over 60 min = hours + minutes (owner rule)"""
+    try:
+        from timefmt import mins as _fm
+        return _fm(m) if _fm(m) != "-" else "--"
+    except Exception:
+        return _f(m, 1) + " min"
+
+
 def _f(v, d=2):
     try:
         return f"{float(v):.{d}f}"
@@ -147,7 +156,7 @@ def _stat_line(label, st):
     if not st["n"]:
         return f"  {label}: 0 closed trades"
     return (f"  {label}: {st['n']} closed, win {_f(st['win_pct'], 0)}%, gross {_f(st['gross_pct'])}% , "
-            f"after est. fees {_f(st['net_pct'])}% (sum of trade %), approx {_f(st['usdt'])} USDT, avg hold {_f(st['avg_hold'], 1)} min")
+            f"after est. fees {_f(st['net_pct'])}% (sum of trade %), approx {_f(st['usdt'])} USDT, avg hold {_mt(st['avg_hold'])}")
 
 
 def _bot_section(closed, snap_bot):

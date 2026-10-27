@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import '../utils/format.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
@@ -145,10 +146,7 @@ class _PositionCardState extends State<PositionCard> {
   String _duration(num? openedAtTs) {
     if (openedAtTs == null) return '';
     final secs = (DateTime.now().millisecondsSinceEpoch / 1000 - openedAtTs).round();
-    if (secs < 0) return '0s';
-    final m = secs ~/ 60;
-    final s = secs % 60;
-    return m > 0 ? '${m}m ${s}s' : '${s}s';
+    return fmtSpan(secs, withSeconds: true);
   }
 
   @override

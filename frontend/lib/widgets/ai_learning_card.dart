@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../utils/format.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../theme/app_theme.dart';
@@ -87,9 +88,7 @@ class _AiLearningCardState extends State<AiLearningCard> {
     if (t <= 0) return '-';
     final s = DateTime.now().millisecondsSinceEpoch / 1000.0 - t;
     if (s < 90) return 'abhi';
-    if (s < 5400) return '${(s / 60).round()} min pehle';
-    if (s < 172800) return '${(s / 3600).round()} ghante pehle';
-    return '${(s / 86400).round()} din pehle';
+    return '${fmtSpan(s)} pehle';
   }
 
   // ----------------------------------------------------------- build

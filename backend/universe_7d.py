@@ -176,6 +176,20 @@ def coins_for_dual(today_coins, base=None, now_s=None):
         return today_coins
 
 
+def with_extras(today_coins, base=None, now_s=None):
+    """Read-only twin of coins_for_dual: today's list + 7-day names from the saved file. Starts no download (the Brain worker uses this).
+    Never raises."""
+    today_coins = list(today_coins or [])
+    try:
+        now_s = time.time() if now_s is None else now_s
+        today_ms = day_start_ms(now_s)
+        days = _load("universe_days.json", {}, base)
+        extra = [s for s in extra_coins(days, today_coins, cap_now(base), today_ms) if s not in today_coins]
+        return today_coins + extra
+    except Exception:
+        return today_coins
+
+
 def is_extra(sym):
     """True when the coin is on the list ONLY because of the 7-day names (not in today's list). The Dual Bot then skips the history replay."""
     return sym in _S["extra"]

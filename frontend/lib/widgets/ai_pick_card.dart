@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../utils/format.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../theme/app_theme.dart';
@@ -74,10 +75,7 @@ class _AiPickCardState extends State<AiPickCard> {
   static String _ago(dynamic ts) {
     if (ts is! num) return 'a while ago';
     final s = (DateTime.now().millisecondsSinceEpoch / 1000.0 - ts.toDouble()).round();
-    if (s < 90) return '${s < 0 ? 0 : s}s ago';
-    if (s < 5400) return '${(s / 60).round()} min ago';
-    if (s < 172800) return '${(s / 3600).toStringAsFixed(1)} h ago';
-    return '${(s / 86400).toStringAsFixed(1)} days ago';
+    return '${fmtSpan(s)} ago';
   }
 
   Color _pnl(AppPalette p, double v) => v > 0 ? p.profit : (v < 0 ? p.loss : p.textMuted);

@@ -61,6 +61,15 @@ _last = {"save": 0.0}
 _bar_done = {}        # (sym, tf_min) -> open time (ms) of the last candle already processed
 
 
+def _fm_min(m):
+    """minutes -> text, over 60 min = hours + minutes (owner rule)"""
+    try:
+        from timefmt import mins as _fm
+        return _fm(m)
+    except Exception:
+        return "%s min" % m
+
+
 def _cfg(name, default):
     try:
         from . import settings_store
@@ -630,8 +639,8 @@ def _copy_one(b, now, px_map):
             _memo(b["symbol"], "%s %s SKIPPED: no free margin (%.0f of %.0f used) and no AI trade is sideways, so nothing could be closed to make room" % (
                 b["symbol"], "LONG" if side == "BUY" else "SHORT", sum(x["inv"] for x in _state["open"].values()), _balance(v["inv"])))
             return
-        _close(victim, prices[victim["sym"]], "MARGIN: closed to make room for a new signal (%s); this trade had been sideways for %d min" % (
-            b["symbol"], round((time.time() - victim["t0"]) / 60.0)), "MARGIN")
+        _close(victim, prices[victim["sym"]], "MARGIN: closed to make room for a new signal (%s); this trade had been sideways for %s" % (
+            b["symbol"], _fm_min(round((time.time() - victim["t0"]) / 60.0))), "MARGIN")
     _state["open"][bid] = v
     _live("open", v)
     _memo(b["symbol"], "%s %s opened (same entry as the bot, the AI manages its own exit)" % (b["symbol"], "LONG" if side == "BUY" else "SHORT"))

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/format.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../theme/app_theme.dart';
@@ -510,13 +511,13 @@ class _AiInsightsScreenState extends State<AiInsightsScreen> {
       final lad = (ho['ladder'] is List) ? ho['ladder'] as List : const [];
       for (final g in lad) {
         if (g is Map) {
-          out.add(_line(context, 'TP${_i(g['level'])}: aam taur par ~${_d(g['p50']).toStringAsFixed(0)} min, 8/10 ~${_d(g['p80']).toStringAsFixed(0)} min me (${_i(g['n'])} trades)'));
+          out.add(_line(context, 'TP${_i(g['level'])}: aam taur par ~${fmtMins(_d(g['p50']))}, 8/10 ~${fmtMins(_d(g['p80']))} me (${_i(g['n'])} trades)'));
         }
       }
       final waits = (ho['waits'] is List) ? ho['waits'] as List : const [];
       for (final w in waits) {
         if (w is Map) {
-          out.add(_line(context, 'TP1 ke ${_i(w['wait'])} min baad bhi khule: ${_i(w['n'])} -> ${_i(w['tp2_plus'])} TP2+ gaye, ${_i(w['reversed'])} SL/TSL pe band'));
+          out.add(_line(context, 'TP1 ke ${fmtMins(w['wait'])} baad bhi khule: ${_i(w['n'])} -> ${_i(w['tp2_plus'])} TP2+ gaye, ${_i(w['reversed'])} SL/TSL pe band'));
         }
       }
     }
@@ -614,7 +615,7 @@ class _AiInsightsScreenState extends State<AiInsightsScreen> {
         for (final k in keys) {
           final g = tm[k];
           if (g is Map) {
-            out.add(_line(context, 'TP$k pehli baar: ~${_d(g['p50']).toStringAsFixed(0)} min me, 8/10 ~${_d(g['p80']).toStringAsFixed(0)} min me (${_i(g['n'])} trades)'));
+            out.add(_line(context, 'TP$k pehli baar: ~${fmtMins(_d(g['p50']))} me, 8/10 ~${fmtMins(_d(g['p80']))} me (${_i(g['n'])} trades)'));
           }
         }
         final nw = (ps['no_tp1_wait'] is List) ? ps['no_tp1_wait'] as List : const [];
@@ -622,7 +623,7 @@ class _AiInsightsScreenState extends State<AiInsightsScreen> {
           if (w is Map) {
             out.add(_line(
               context,
-              '${_i(w['after'])} min tak TP1 nahi aaya (${_i(w['n'])} trades): ${_i(w['later_tp1'])} ne baad me TP1 chhua, '
+              '${fmtMins(w['after'])} tak TP1 nahi aaya (${_i(w['n'])} trades): ${_i(w['later_tp1'])} ne baad me TP1 chhua, '
               '${_i(w['won'])} profit me band, avg ${_signed(_d(w['avg_roi']), digits: 1)}%',
             ));
           }

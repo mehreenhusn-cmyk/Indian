@@ -16,10 +16,7 @@ String istHm(double? sec) {
 
 String _shortDur(double secs) {
   final s = secs < 0 ? 0 : secs.round();
-  if (s < 60) return '${s}s';
-  final m = s ~/ 60;
-  if (m < 60) return '${m}m';
-  return '${m ~/ 60}h ${(m % 60).toString().padLeft(2, '0')}m';
+  return fmtSpan(s);
 }
 
 /// Everything one row needs. The screen builds it from its own data, so the

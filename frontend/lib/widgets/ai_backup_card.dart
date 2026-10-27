@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/format.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../theme/app_theme.dart';
@@ -34,9 +35,7 @@ class _AiBackupCardState extends State<AiBackupCard> {
     if (ts is! num) return 'never';
     final s = DateTime.now().millisecondsSinceEpoch / 1000.0 - ts.toDouble();
     if (s < 90) return 'just now';
-    if (s < 5400) return '${(s / 60).round()} min ago';
-    if (s < 172800) return '${(s / 3600).round()} h ago';
-    return '${(s / 86400).round()} days ago';
+    return '${fmtSpan(s)} ago';
   }
 
   Future<void> _backupNow() async {

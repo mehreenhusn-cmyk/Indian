@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import '../utils/format.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/app_provider.dart';
@@ -137,14 +138,7 @@ String _istFull(int ms) {
 }
 
 String _fmtDur(int ms) {
-  var m = (ms / 60000).round();
-  if (m < 1) return '0m';
-  final d = m ~/ 1440;
-  m -= d * 1440;
-  final h = m ~/ 60;
-  m -= h * 60;
-  final parts = <String>[if (d > 0) '${d}d', if (h > 0) '${h}h', if (m > 0 && d == 0) '${m}m'];
-  return parts.join(' ');
+  return ms < 60000 ? '0 min' : fmtSpan(ms / 1000);
 }
 
 String _fmtVol(double v) {

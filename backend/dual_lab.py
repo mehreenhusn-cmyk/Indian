@@ -254,9 +254,21 @@ def _bits(S, i, step, r, live=False):
     return out
 
 
+def _mtxt(m):
+    try:
+        from timefmt import mins as _fm
+        return _fm(m)
+    except Exception:
+        return "%s min" % m
+
+
 def _dur(candles, tf):
     m = int(candles) * TF_MIN.get(tf, 5)
-    return f"{m} min" if m < 120 else f"{m // 60}h {m % 60:02d}m"
+    try:                                     # owner rule: over 60 min = hours + minutes (display text only)
+        from timefmt import mins as _fm
+        return _fm(m)
+    except Exception:
+        return f"{m} min" if m < 120 else f"{m // 60}h {m % 60:02d}m"
 
 
 def _px(x):
@@ -584,7 +596,7 @@ def scenarios(data, exit_names):
                       "mins": int(round(mins)), "verdict": "USE" if use else "SKIP" if skip else "UNSURE", "singles": len(key) == 1})
     use_c = sorted((c for c in cards if c["verdict"] == "USE"), key=lambda c: -c["best_avg"])[:6]
     skip_c = sorted((c for c in cards if c["verdict"] == "SKIP"), key=lambda c: c["bot_avg"])[:6]
-    tips = [f"Use: {c['name']}. About {c['best_avg']:+.1f}% per trade with '{c['best_exit']}', takes about {c['mins']} min, seen {c['per_day']}x a day."
+    tips = [f"Use: {c['name']}. About {c['best_avg']:+.1f}% per trade with '{c['best_exit']}', takes about {_mtxt(c['mins'])}, seen {c['per_day']}x a day."
             for c in use_c if c["singles"]][:3]
     tips += [f"Skip: {c['name']}. The bot's exit loses {c['bot_avg']:+.1f}% per trade here ({c['n']} trades)." for c in skip_c if c["singles"]][:3]
     return {"status": "ready", "days": round(days, 1), "cards": use_c + skip_c, "tips": tips}

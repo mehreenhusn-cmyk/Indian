@@ -984,7 +984,7 @@ class _VisionTabScreenState extends State<VisionTabScreen> {
         Text(
           'Open now ${n('open')}  -  closed ${n('closed')} (won ${n('wins')})  -  profit ${fmtSigned(net)} USDT\n'
           'AI calls this hour ${n('hour_calls')} of ${n('hour_limit') == 0 ? 'no limit' : n('hour_limit')}'
-          '${n('hour_next_min') > 0 ? '  -  next slot in ${n('hour_next_min')} min' : ''}',
+          '${n('hour_next_min') > 0 ? '  -  next slot in ${fmtMins(n('hour_next_min'))}' : ''}',
           style: context.type.metadata.copyWith(height: 1.4),
         ),
         if (n('errors') > 0)
@@ -1356,7 +1356,7 @@ class _VisionTabScreenState extends State<VisionTabScreen> {
     }
     String aiChip = 'AI: $word';
     if (delay != null) {
-      aiChip += ' (${delay >= 60 ? '${(delay / 60).toStringAsFixed(0)} min' : '${delay.toStringAsFixed(0)}s'})';
+      aiChip += ' (${fmtSpan(delay)})';
     }
     if (trade['status'] == 'closed' && trade['pnl'] != null) {
       aiChip = 'AI: $word ${fmtSigned(_d(trade['pnl']) ?? 0)}';

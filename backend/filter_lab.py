@@ -600,7 +600,12 @@ def job_status(tf="5m", days=7, lev=10.0, fee=1.0, restart=False):
         return (f"FILTER LAB {tf}: running ({j['progress']}).\nIt downloads candles one coin at a time, about 1-3 minutes.\n"
                 f"Reload this page in a minute.")
     age = int((time.time() - j["t"]) / 60)
-    return j["text"] + f"\n\n(result computed {age} min ago; add &restart=1 to the link to run it again)"
+    try:
+        from timefmt import mins as _fm
+        age = _fm(age)
+    except Exception:
+        age = f"{age} min"
+    return j["text"] + f"\n\n(result computed {age} ago; add &restart=1 to the link to run it again)"
 
 
 _ALL = {"running": False}

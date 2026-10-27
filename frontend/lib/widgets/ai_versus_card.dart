@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import '../utils/format.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../theme/app_motion.dart';
@@ -143,13 +144,7 @@ class _AiVersusCardState extends State<AiVersusCard> with AutomaticKeepAliveClie
   static String _pct(num v) => '${v >= 0 ? '+' : ''}${v.toStringAsFixed(1)}%';
 
   static String _dur(num sec) {
-    final s = sec.round();
-    if (s < 90) return '${s}s';
-    final m = (s / 60).round();
-    if (m < 90) return '$m min';
-    final h = s ~/ 3600;
-    final mm = (s % 3600) ~/ 60;
-    return mm == 0 ? '${h}h' : '${h}h ${mm}m';
+    return fmtSpan(sec);
   }
 
   static String _hm(dynamic ts) {

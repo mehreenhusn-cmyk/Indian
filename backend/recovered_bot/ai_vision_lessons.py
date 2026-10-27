@@ -312,7 +312,8 @@ _SYS_LESSON = ("You keep a trading notebook for a crypto paper-trading bot. You 
 def _hold_text(tr):
     try:
         m = max(0, int(((tr.get("closed_at") or 0) - (tr.get("opened_at") or 0)) / 60))
-        return f"{m} min"
+        from timefmt import mins as _fm
+        return _fm(m)
     except Exception:
         return "?"
 

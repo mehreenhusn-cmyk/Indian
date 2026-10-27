@@ -11,6 +11,15 @@ LEAD_CAP = 500
 MIN_SIGNALS_RELIABLE = 30
 
 
+def _mt(m):
+    """minutes -> text, over 60 min = hours + minutes (owner rule)"""
+    try:
+        from timefmt import mins as _fm
+        return _fm(m)
+    except Exception:
+        return "%.1f min" % m
+
+
 def _utc_day_start(ts=None):
     ts = ts if ts is not None else time.time()
     return int(ts // 86400) * 86400
@@ -167,7 +176,7 @@ class PingTracker:
         pct = (100.0 * len(with_ping) / len(today_ev)) if today_ev else 0.0
         sentence = (
             f"Today {len(today_ev)} top-10 entries; {pct:.0f}% had a same-side ping"
-            + (f"; average lead {avg:.1f} min." if avg is not None else ".")
+            + (f"; average lead {_mt(avg)}." if avg is not None else ".")
         )
         return {
             "today_count": len(today_ev),
