@@ -1147,6 +1147,117 @@ class _SmartBrainViewState extends State<SmartBrainView> {
   }
 
   /// E4: one tap row that opens / folds the 18 secondary Brain reports. Nothing is removed.
+  // ---- B3b: Trade Edge / Edge Health (observation only; data = _st['edge'] from backend brain_edge.report) ----
+  final Set<String> _edgeOpen = <String>{}; // trade rows whose raw numbers are open
+
+  Color _edgeColor(AppPalette p, String st) => st == 'STRONG'
+      ? p.profit
+      : st == 'STABLE'
+          ? p.accent
+          : st == 'WEAKENING'
+              ? p.warning
+              : st == 'REVERSED'
+                  ? p.loss
+                  : p.textMuted;
+
+  static String _sg(dynamic v, [int nd = 1]) => v is num ? '${v >= 0 ? '+' : ''}${v.toStringAsFixed(nd)}' : 'n/a';
+
+  Widget _edgeRow(AppPalette p, Map<String, dynamic> it) {
+    final st = '${it['st'] ?? 'UNKNOWN'}';
+    final c = _edgeColor(p, st);
+    final buy = _n(it['d']) > 0;
+    final key = '${it['s']}|${it['f']}|${it['t']}';
+    final open = _edgeOpen.contains(key);
+    final sc = it['sc'], s0 = it['s0'];
+    String reasons = '';
+    if (sc is num) {
+      reasons = '${sc.toInt()} of 6 reasons still with this trade';
+      if (s0 is num) reasons += '  (was ${s0.toInt()} \u2192 now ${sc.toInt()})';
+    }
+    final lines = (it['lines'] is List) ? (it['lines'] as List).map((e) => '$e').toList() : <String>[];
+    final ev = it['ev'] is List ? (it['ev'] as List) : const [];
+    final raw = <String>[
+      'reasons now ${it['sc'] ?? 'n/a'} / at entry ${it['s0'] ?? 'n/a'} / candles since entry ${it['n'] ?? 'n/a'}',
+      'ROI ${_sg(it['roi'])}  MFE ${_sg(it['mfe'])}  giveback ${it['gb'] is num ? _n(it['gb']).toStringAsFixed(1) : 'n/a'}',
+      if (it['zv'] != null) 'Z ${_sg(it['zv'], 2)} (change ${_sg(it['zs'], 2)})  TSI hist ${_sg(it['th'], 2)} (change ${_sg(it['ths'], 2)})',
+      if (it['wd'] != null) 'SD width change ${_sg(it['wd'])}%  EMA50 dist ${_sg(it['ed'], 2)}  slope ${_sg(it['es'], 2)}',
+      if ('${it['hs'] ?? ''}'.isNotEmpty) 'state history (old \u2192 new): ${it['hs']}',
+    ];
+    return Container(
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(color: c.withOpacity(0.07), border: Border.all(color: c.withOpacity(0.35)), borderRadius: BorderRadius.circular(12)),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Wrap(spacing: 6, runSpacing: 2, crossAxisAlignment: WrapCrossAlignment.center, children: [
+          Text(_coin(it['s']), style: context.type.primary.copyWith(fontWeight: FontWeight.w800)),
+          _chip(buy ? 'BUY' : 'SELL', buy ? p.profit : p.loss),
+          Text('${it['f'] ?? ''}', style: context.type.metadata),
+          const SizedBox(width: 2),
+          _chip(st, c),
+          if (it['pg'] != null) Text('${it['pg']}', style: context.type.metadata),
+        ]),
+        if (reasons.isNotEmpty) ...[const SizedBox(height: 4), Text(reasons, style: context.type.secondary.copyWith(fontWeight: FontWeight.w700))],
+        for (final l in lines) Padding(padding: const EdgeInsets.only(top: 2), child: Text(l, style: context.type.secondary)),
+        if (ev.length >= 3)
+          Padding(
+            padding: const EdgeInsets.only(top: 2),
+            child: Text(
+                'Events since entry: opposite EMA50 cross ${_n(ev[0]).toInt()}, opposite Z candle ${_n(ev[1]).toInt()}, warning arrow ${_n(ev[2]).toInt()}',
+                style: context.type.secondary),
+          ),
+        const SizedBox(height: 4),
+        Text('ROI ${_sg(it['roi'])}%  |  MFE ${_sg(it['mfe'])}%  |  Giveback ${it['gb'] is num ? _n(it['gb']).toStringAsFixed(1) : 'n/a'}%',
+            style: context.type.primary.copyWith(fontWeight: FontWeight.w700)),
+        InkWell(
+          onTap: () => setState(() => open ? _edgeOpen.remove(key) : _edgeOpen.add(key)),
+          child: Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Row(children: [
+              Text(open ? 'Hide raw numbers' : 'Raw numbers', style: context.type.metadata.copyWith(fontWeight: FontWeight.w700)),
+              Icon(open ? Icons.expand_less_rounded : Icons.expand_more_rounded, size: 16, color: p.textMuted),
+            ]),
+          ),
+        ),
+        if (open) for (final r in raw) Text(r, style: context.type.metadata),
+      ]),
+    );
+  }
+
+  Widget _edgeCard(AppPalette p) {
+    final x = _map(_st['edge']);
+    if (x.isEmpty) return const SizedBox.shrink();
+    final counts = _map(x['counts']);
+    final items = _maps(x['items']);
+    final sc = _map(x['score']);
+    final groups = _maps(sc['groups']);
+    final ready = '${sc['status']}' == 'ready';
+    Map<String, dynamic> g(String k) => groups.firstWhere((e) => '${e['key']}' == k, orElse: () => <String, dynamic>{});
+    final weak = g('weak_or_reversed'), other = g('never_weak');
+    String res(Map<String, dynamic> m) => m['avg_net'] == null ? 'n/a' : '${_sg(m['avg_net'])}% (${m['n']} trades, ${m['win_pct']}% won)';
+    return _card(p, title: 'TRADE EDGE (OPEN TRADES)', edge: p.textMuted, children: [
+      Text('${_n(x['open']).toInt()} open trade${_n(x['open']).toInt() == 1 ? '' : 's'} watched. Updated once per closed candle.', style: context.type.primary),
+      const SizedBox(height: 6),
+      Wrap(spacing: 6, runSpacing: 4, children: [
+        for (final k in const ['STRONG', 'STABLE', 'WEAKENING', 'REVERSED', 'NEW'])
+          if (_n(counts[k]) > 0) _chip('$k ${_n(counts[k]).toInt()}', _edgeColor(p, k)),
+      ]),
+      if (items.isEmpty) Padding(padding: const EdgeInsets.only(top: 8), child: Text('No open Dual trade with edge data yet. It appears after the next closed candle.', style: context.type.metadata)),
+      for (final it in items) _edgeRow(p, it),
+      const SizedBox(height: 10),
+      Text('SCORECARD', style: context.type.metadata.copyWith(fontWeight: FontWeight.w800)),
+      const SizedBox(height: 4),
+      if (!ready)
+        Text('${sc['text'] ?? 'Collecting finished trades.'}', style: context.type.secondary)
+      else ...[
+        Text('WEAKENING trades ended: ${res(weak)}', style: context.type.secondary.copyWith(fontWeight: FontWeight.w700)),
+        Text('Other trades ended: ${res(other)}', style: context.type.secondary.copyWith(fontWeight: FontWeight.w700)),
+      ],
+      const SizedBox(height: 6),
+      Text('This is observation only. It is not yet a proven predictive signal.', style: context.type.metadata.copyWith(fontWeight: FontWeight.w700)),
+      Text('${x['note'] ?? ''}', style: context.type.metadata),
+    ]);
+  }
+
   Widget _moreToggle(AppPalette p) => Padding(
         padding: const EdgeInsets.only(bottom: 8),
         child: InkWell(
@@ -1173,9 +1284,9 @@ class _SmartBrainViewState extends State<SmartBrainView> {
       _nowCard(p),
       OwlFold(
         title: 'REPORTS',
-        headline: 'Timing sync  ·  Exit style and hold time  ·  Edge by universe',
+        headline: 'Trade edge  ·  Timing sync  ·  Exit style and hold time  ·  Edge by universe',
         bare: true,
-        children: [_timingCard(p), _tpHoldCard(p), _universeCard(p)],
+        children: [_edgeCard(p), _timingCard(p), _tpHoldCard(p), _universeCard(p)],
       ),
       _ownCard(p),
       _moreToggle(p),
