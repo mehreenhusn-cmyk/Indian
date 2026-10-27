@@ -1731,6 +1731,16 @@ async def archive_api():
         return {"state": "error", "text": f"Archive problem: {type(e).__name__}: {e}"}
 
 
+@app.get("/api/dual_universe")
+async def dual_universe_api():
+    """Dual Bot coin sources (universe_7d.py): which 7-day lists are saved, the cap, the last error. Read-only, small."""
+    try:
+        import universe_7d
+        return await asyncio.to_thread(universe_7d.status)
+    except Exception as e:
+        return {"days": [], "err": f"{type(e).__name__}: {e}"}
+
+
 @app.get("/api/layers/pa")
 async def pa_layer_api():
     """Price Action Light (pa_layer.py): what it logged and how its reading of the Dual Bot trades did. Reads one small file."""

@@ -35,6 +35,10 @@ try:                                    # Part U1: long-term archive (append-onl
     import trade_archive as _TA
 except Exception:
     _TA = None
+try:                                    # Part U2: 7-day coin names (+ live-only rule for them). Missing file = today's list only, as before
+    import universe_7d as _U7
+except Exception:
+    _U7 = None
 
 BTC_SYM, BTC_MARGIN = "BTCUSDT", 1000.0     # BTC is always in the Dual Bot and trades 1000 USDT (10x like the rest, paper only)
 
@@ -887,6 +891,8 @@ def cycle(data, st, fetch_limit, fetch_range, coins_fn):
             if now_ms - (latest + step) < 4000:               # give Binance a moment to close the candle
                 continue
             boot = key not in data["boot"]
+            live = boot and bool(_U7 and _U7.is_extra(sym))     # Part U2 hook 2: 7-day-only coin = live signals only, no 7-day candle replay
+            boot = boot and not live
             st["progress"] = f"{'loading history' if boot else 'reading'} {sym} {tf} ({done + 1}/{total})"
             candles = fetch_range(sym, tf, now_ms - BOOT_DAYS * 86_400_000 - 450 * step) if boot else fetch_limit(sym, tf, 470)
             if not candles:
@@ -895,7 +901,7 @@ def cycle(data, st, fetch_limit, fetch_range, coins_fn):
                 continue
             process(data, sym, tf, candles, boot, now_ms, st.get("model"), exit_names)
             data["fetched"][key] = latest
-            if boot:
+            if boot or live:
                 data["boot"][key] = 1
             done += 1
             if st.get("push") and time.time() - st.get("push_t", 0) > 2:     # the app sees progress while history loads
@@ -967,7 +973,7 @@ def worker():
         if enabled:
             try:
                 st["err"] = ""
-                cycle(data, st, LAB._fetch_limit, LAB._fetch_range, lambda: FL.default_coins(log=lambda m: None))
+                cycle(data, st, LAB._fetch_limit, LAB._fetch_range, lambda: _U7.coins_for_dual(FL.default_coins(log=lambda m: None)) if _U7 else FL.default_coins(log=lambda m: None))   # Part U2 hook 1: today's list + 7-day names
                 if _TA:
                     _TA.save_dual(data, st)            # Part U1: copy everything to the archive BEFORE trim() can drop anything (never raises)
                 trim(data)
