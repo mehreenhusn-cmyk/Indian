@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import 'dual_trade_card.dart';
 import 'owl_card.dart';
+import 'universe_strip.dart';
 
 /// Dual Bot "Simple" tab: the whole picture in 5 small blocks, no jargon. Block 0: Locked / Floating / Net + Brain dislike %.
 /// 1) Is the bot OK today (one colour, one sentence)  2) open trades, one line each, tap = chart
@@ -16,6 +17,7 @@ class SimpleTab extends StatefulWidget {
   final Map<String, dynamic> brainIds; // Brain opinion per trade key (coin|timeframe|time)
   final Map<String, dynamic> sideways; // Brain's sideways report (may be empty)
   final Map<String, dynamic> bySrc; // summary.by_src from /api/dual_lab: finished trades by signal type (alt coins)
+  final Map<String, dynamic> desk; // /api/dual_desk (today vs last 7 days coins, Z2b)
   final double Function(Map<String, dynamic>) marginOf;
   final void Function(Map<String, dynamic>) onOpen;
 
@@ -26,6 +28,7 @@ class SimpleTab extends StatefulWidget {
     required this.brainIds,
     required this.sideways,
     this.bySrc = const {},
+    this.desk = const {},
     required this.marginOf,
     required this.onOpen,
   });
@@ -293,6 +296,7 @@ class _SimpleTabState extends State<SimpleTab> {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       _threeBoxes(p),
       _health(p),
+      UniverseStrip(desk: widget.desk),
       _signalTypeCard(p),
       _openCard(p),
       _doneCard(p),

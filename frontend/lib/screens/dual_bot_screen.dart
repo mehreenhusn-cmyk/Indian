@@ -41,6 +41,7 @@ class _DualBotScreenState extends State<DualBotScreen> {
   int _seg = 0; // 0 = Simple, 1 = Now, 2 = Opportunities, 3 = Learned, 4 = Performance (+ history), 5 = Brain
   Map<String, dynamic> _brain = {}; // last full Smart Brain reply (watch list, own trades, performance) for the Opportunities and Performance tabs
   Map<String, dynamic> _brainIds = {}; // Smart Brain opinion per trade (coin|timeframe|time), for the small badge on the open cards
+  Map<String, dynamic> _desk = {}; // /api/dual_desk: today / last-7-days numbers for the strip on the Simple tab (Z2b)
   String _brainTrust = ''; // Smart Brain trust verdict (earned / not_yet / learning) for the status bar
   int _filter = 0; // Now tab filter: 0 = All, 1 = Good only, 2 = Long, 3 = Short
   Timer? _timer;
@@ -84,6 +85,19 @@ class _DualBotScreenState extends State<DualBotScreen> {
       _retry = Timer(const Duration(seconds: 3), () => _poll());
     }
     await _pollBrain();
+    await _pollDesk();
+  }
+
+  /// Small desk numbers from the archive. A failure is silent: the strip just keeps its last answer.
+  Future<void> _pollDesk() async {
+    if (!mounted) return;
+    try {
+      final base = context.read<AppProvider>().baseUrl;
+      final res = await http.get(Uri.parse('$base/api/dual_desk')).timeout(const Duration(seconds: 10));
+      if (res.statusCode != 200) return;
+      final m = jsonDecode(utf8.decode(res.bodyBytes));
+      if (m is Map && mounted) setState(() => _desk = Map<String, dynamic>.from(m));
+    } catch (_) {}
   }
 
   /// Only the small per-trade opinion map. A failure here is silent: the cards just show no badge.
@@ -847,6 +861,7 @@ class _DualBotScreenState extends State<DualBotScreen> {
                 brainIds: _brainIds,
                 sideways: _map(_brain['sideways']),
                 bySrc: _map(_map(_st['summary'])['by_src']),
+                desk: _desk,
                 marginOf: _mg,
                 onOpen: (t) => showDualTradeChart(context, row: t, margin: _mg(t), lev: _n(_st['lev'])),
               ),
