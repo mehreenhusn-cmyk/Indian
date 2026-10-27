@@ -7,6 +7,7 @@ import '../widgets/ai_advice_badge.dart';
 import '../widgets/position_glance.dart';
 import '../widgets/owl_empty_state.dart';
 import '../widgets/owl_skeleton.dart';
+import '../widgets/owl_status_pill.dart';
 import '../widgets/owl_refresh.dart';
 import '../theme/app_theme.dart';
 import '../utils/format.dart';
@@ -271,6 +272,7 @@ class PositionsScreen extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: AppSpacing.xs),
+              const _TopSummary(),
               const PositionsTopBar(),
               const PositionsSearchBar(),
               // Stack, not Column: the summary bar below is a true floating
@@ -464,6 +466,61 @@ class PositionsScreen extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// UI3a: one slim line at the very top = the answer in 2 seconds. Big open P&L (green / red), then how many
+/// trades are up and how many are down. Same numbers as the floating bar below, just first. Shows nothing
+/// when no position is open, and only rebuilds when the shown numbers change.
+class _TopSummary extends StatelessWidget {
+  const _TopSummary();
+
+  @override
+  Widget build(BuildContext context) {
+    return Selector<AppProvider, int>(
+      selector: (_, p) {
+        double pnl = 0.0;
+        int up = 0;
+        for (final x in p.positions) {
+          if (x is! Map) continue;
+          final v = (x['pnl_usdt'] as num?)?.toDouble() ?? 0.0;
+          pnl += v;
+          if (v >= 0) up++;
+        }
+        return Object.hash(p.positions.length, (pnl * 100).round(), up);
+      },
+      builder: (context, _, child) {
+        final positions = context.read<AppProvider>().positions;
+        if (positions.isEmpty) return const SizedBox.shrink();
+        double pnl = 0.0;
+        int up = 0, down = 0;
+        for (final x in positions) {
+          if (x is! Map) continue;
+          final v = (x['pnl_usdt'] as num?)?.toDouble() ?? 0.0;
+          pnl += v;
+          if (v >= 0) {
+            up++;
+          } else {
+            down++;
+          }
+        }
+        final c = pnl >= 0 ? _green : _red;
+        return Padding(
+          padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Text('${fmtSigned(pnl)} USDT',
+                  style: context.type.hero.copyWith(fontSize: 24, fontWeight: FontWeight.w800, color: c)),
+              const SizedBox(width: 10),
+              OWLStatusPill(text: '$up UP', color: _green, showDot: false),
+              const SizedBox(width: 6),
+              OWLStatusPill(text: '$down DOWN', color: _red, showDot: false),
+            ],
+          ),
+        );
+      },
     );
   }
 }

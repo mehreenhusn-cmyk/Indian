@@ -20,6 +20,9 @@ class ReportDownloadCard extends StatefulWidget {
   final String description;
   final String textPath;
   final String savePath;
+  /// Name and type used by the Share button (UI-D: the Trades CSV shares as owl_trades.csv).
+  final String fileName;
+  final String mimeType;
 
   const ReportDownloadCard({
     super.key,
@@ -28,6 +31,8 @@ class ReportDownloadCard extends StatefulWidget {
         'One text file with what the app is, dashboard, signals, alerts, AI Vision / AI Own, backend health and errors, your settings (no keys) and known problems. Send it to any AI.',
     this.textPath = '/api/report/app',
     this.savePath = '/api/report/app_save',
+    this.fileName = 'owl_app_report.txt',
+    this.mimeType = 'text/plain',
   });
 
   @override
@@ -85,16 +90,16 @@ class _ReportDownloadCardState extends State<ReportDownloadCard> {
   Future<void> _share() => _run(() async {
         final res = await _fetch();
         final dir = await getTemporaryDirectory();
-        final file = File('${dir.path}/owl_app_report.txt');
+        final file = File('${dir.path}/${widget.fileName}');
         await file.writeAsBytes(res.bodyBytes);
-        await Share.shareXFiles([XFile(file.path, mimeType: 'text/plain')], subject: 'Owl Terminal report');
+        await Share.shareXFiles([XFile(file.path, mimeType: widget.mimeType)], subject: 'Owl Terminal report');
         _say('Shared.');
       });
 
   Future<void> _copy() => _run(() async {
         final res = await _fetch();
         await Clipboard.setData(ClipboardData(text: utf8.decode(res.bodyBytes)));
-        _say('Report copied. Paste it into any AI chat.');
+        _say('Copied. Paste it into any AI chat.');
       });
 
   @override

@@ -15,6 +15,8 @@ import '../widgets/ai_own_card.dart';
 import '../widgets/ai_tab_summary.dart';
 import '../widgets/ai_learning_card.dart';
 import '../widgets/owl_eye_dot.dart';
+import '../widgets/owl_card.dart';
+import '../widgets/owl_status_pill.dart';
 import '../widgets/owl_pressable.dart';
 import '../widgets/owl_refresh.dart';
 import '../widgets/ai_story_card.dart';
@@ -419,7 +421,15 @@ class _Overview extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const _Label('BOT  ·  ALL-TIME NET P&L'),
+                Row(children: [
+                  const Expanded(child: _Label('BOT  ·  ALL-TIME NET P&L')),
+                  // UI4b: one clear status chip. Too few trades = amber, else green / red by the net result.
+                  OWLStatusPill(
+                    text: n < minSample ? 'TOO EARLY' : (net >= 0 ? 'IN PROFIT' : 'IN LOSS'),
+                    color: n < minSample ? p.warning : win,
+                    showDot: false,
+                  ),
+                ]),
                 const SizedBox(height: 6),
                 TweenAnimationBuilder<double>(
                   tween: Tween<double>(begin: 0, end: net),
@@ -538,7 +548,12 @@ class _Overview extends StatelessWidget {
 
           // ---- daily bars ----
           if (days.isNotEmpty) ...[
-            _Card(child: _dayBars(context, p, days)),
+            OwlFold(
+              title: 'LAST DAYS',
+              headline: '${days.length} days  ·  today ${fmtSigned(tPnl)} USDT',
+              headlineColor: tPnl >= 0 ? p.profit : p.loss,
+              children: [_dayBars(context, p, days)],
+            ),
             const SizedBox(height: AppSpacing.cardGap),
           ],
 
@@ -550,14 +565,20 @@ class _Overview extends StatelessWidget {
 
           // ---- exit reasons ----
           if (reasons.isNotEmpty) ...[
-            _Card(child: _reasonRows(context, p, reasons)),
+            OwlFold(
+              title: 'HOW TRADES CLOSED',
+              headline: '${reasons.first['reason']}  ·  ${_i(reasons.first['n'])} trades  ·  ${fmtSigned(_d(reasons.first['pnl']))} USDT',
+              children: [_reasonRows(context, p, reasons)],
+            ),
             const SizedBox(height: AppSpacing.cardGap),
           ],
 
 
           // ---- facts ----
-          _Card(
-            child: Wrap(
+          OwlFold(
+            title: 'MORE NUMBERS',
+            headline: 'Best ${fmtSigned(_d(s['best']))}  ·  Worst ${fmtSigned(_d(s['worst']))} USDT',
+            children: [Wrap(
               spacing: 22,
               runSpacing: 14,
               children: [
@@ -569,7 +590,7 @@ class _Overview extends StatelessWidget {
                 SizedBox(width: 130, child: _Stat('LAGATAR HAAR', '${_i(s['max_loss_streak'])}')),
                 SizedBox(width: 130, child: _Stat('AVG HOLD', fmtDuration(_d(s['avg_duration_s'])))),
               ],
-            ),
+            )],
           ),
           const SizedBox(height: AppSpacing.cardGap),
 

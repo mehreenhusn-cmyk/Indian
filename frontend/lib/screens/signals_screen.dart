@@ -388,7 +388,6 @@ class _SignalsScreenState extends State<SignalsScreen> {
     final p = context.palette;
     final t = context.type;
     final td = s.today;
-    final netColor = td.net > 0 ? p.profit : (td.net < 0 ? p.loss : p.textSecondary);
     final wr = td.winRate;
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.cardGap),
@@ -397,14 +396,11 @@ class _SignalsScreenState extends State<SignalsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(_btcOnly ? 'BTC TODAY' : 'TODAY', style: t.label.copyWith(fontWeight: FontWeight.w800, letterSpacing: 1.2)),
-                const Spacer(),
-                Text('${fmtSigned(td.net)} USDT',
-                    style: t.primary.copyWith(color: netColor, fontWeight: FontWeight.w800, fontSize: 20)),
-              ],
+            // UI3a/b: the day's net result is the big number (same 34px hero as Dashboard), win rate is its note.
+            OwlHero(
+              label: _btcOnly ? 'BTC TODAY' : 'TODAY',
+              value: td.net,
+              note: wr != null ? 'Win rate ${wr.toStringAsFixed(0)}%  ·  ${td.decided} closed' : 'No closed trade today yet',
             ),
             const SizedBox(height: AppSpacing.m),
             OwlStatRow([
@@ -417,7 +413,6 @@ class _SignalsScreenState extends State<SignalsScreen> {
             const SizedBox(height: AppSpacing.s + 2),
             Text(
               [
-                if (wr != null) 'Win rate today: ${wr.toStringAsFixed(0)}%' else 'No closed trade today yet',
                 'All loaded: ${s.all.total} signals, ${s.all.wins} won, ${s.all.losses} lost, net ${fmtSigned(s.all.net)} USDT',
                 if (_btcOnly) 'BTC paper size: 1000 USDT at 10x. Tap a trade for its chart, Details for the levels.',
               ].join('\n'),

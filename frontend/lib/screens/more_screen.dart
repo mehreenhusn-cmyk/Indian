@@ -4,6 +4,7 @@ import '../theme/app_theme.dart';
 import '../config_flags.dart';
 import '../widgets/owl_pressable.dart';
 import '../widgets/owl_route.dart';
+import '../widgets/report_download_card.dart';
 import 'ai_report_screen.dart';
 import 'ping_tab_screen.dart';
 import 'settings_screen.dart';
@@ -19,6 +20,15 @@ class MoreScreen extends StatelessWidget {
   void _open(BuildContext context, String title, Widget screen, {bool bare = false}) {
     Navigator.of(context).push(
       OwlRoute(builder: (_) => bare ? screen : _SubPage(title: title, child: screen)),
+    );
+  }
+
+  /// UI-D: opens one download card in a bottom sheet (same card the Dual Bot and Settings use).
+  void _download(BuildContext context, ReportDownloadCard card) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => Padding(padding: const EdgeInsets.all(12), child: SafeArea(child: card)),
     );
   }
 
@@ -41,6 +51,33 @@ class MoreScreen extends StatelessWidget {
                   () => _open(context, 'Strategy Doctor', const StrategyDoctorScreen(), bare: true)),
             _row(context, Icons.description_outlined, 'AI Report', 'Save a report you can share with any AI',
                 () => _open(context, 'AI Report', const AiReportScreen(), bare: true)),
+            const SizedBox(height: AppSpacing.l),
+            _label(context, 'DOWNLOADS'),
+            _row(context, Icons.article_outlined, 'App report', 'One text file about the whole app',
+                () => _download(context, const ReportDownloadCard())),
+            _row(context, Icons.smart_toy_outlined, 'Dual Bot report', 'Every trade, setups and lessons',
+                () => _download(
+                    context,
+                    const ReportDownloadCard(
+                      title: 'Dual Bot report',
+                      description:
+                          'One text file for any AI: every Dual Bot trade with its exit and situation, the retest check, setups, lessons and totals.',
+                      textPath: '/api/dual_lab/report',
+                      savePath: '/api/dual_lab/report_save',
+                      fileName: 'owl_dualbot_report.txt',
+                    ))),
+            _row(context, Icons.table_chart_outlined, 'Trades CSV', 'All finished trades, opens in any sheet app',
+                () => _download(
+                    context,
+                    const ReportDownloadCard(
+                      title: 'Trades CSV',
+                      description:
+                          'All finished trades from the archive (nothing is ever deleted there) as one CSV file. Open it in Sheets or Excel, or send it to any AI.',
+                      textPath: '/api/archive_export',
+                      savePath: '/api/archive_export_save',
+                      fileName: 'owl_trades.csv',
+                      mimeType: 'text/csv',
+                    ))),
             const SizedBox(height: AppSpacing.l),
             _label(context, 'LIVE DATA'),
             _row(context, Icons.bolt_rounded, 'Ping Lab', 'Volume pings: which coins are heating up',

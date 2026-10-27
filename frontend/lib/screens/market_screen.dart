@@ -42,9 +42,15 @@ class _MarketScreenState extends State<MarketScreen> {
                       color: p.accent.withOpacity(0.12),
                       borderRadius: BorderRadius.circular(AppSpacing.radiusPill),
                     ),
-                    child: Text(
-                      'LIVE',
-                      style: t.metadata.copyWith(color: p.accent, fontWeight: FontWeight.bold),
+                    child: Selector<AppProvider, int>(
+                      selector: (_, pr) => pr.moversRev,
+                      builder: (context, _rev, child) {
+                        final c = _counts(context.read<AppProvider>());
+                        return Text(
+                          'LIVE  ·  ${c.$1} up  ·  ${c.$2} down',
+                          style: t.metadata.copyWith(color: p.accent, fontWeight: FontWeight.bold),
+                        );
+                      },
                     ),
                   ),
                 ],
@@ -56,7 +62,11 @@ class _MarketScreenState extends State<MarketScreen> {
             // endpoint yet, so no timeframe chips are shown here).
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: AppSpacing.l),
-              child: Row(
+              child: Selector<AppProvider, int>(
+                selector: (_, pr) => pr.moversRev,
+                builder: (context, _rev, child) {
+                  final c = _counts(context.read<AppProvider>());
+                  return Row(
                 children: _MarketFilter.values.map((f) {
                   final selected = f == _filter;
                   return Expanded(
@@ -75,7 +85,7 @@ class _MarketScreenState extends State<MarketScreen> {
                           ),
                         ),
                         child: Text(
-                          _filterLabel(f),
+                          _filterLabel(f) + (f == _MarketFilter.gainers ? '  ${c.$1}' : f == _MarketFilter.losers ? '  ${c.$2}' : '  ${c.$1 + c.$2}'),
                           textAlign: TextAlign.center,
                           style: t.secondary.copyWith(
                             color: selected ? p.textPrimary : p.textMuted,
@@ -86,6 +96,8 @@ class _MarketScreenState extends State<MarketScreen> {
                     ),
                   );
                 }).toList(),
+                  );
+                },
               ),
             ),
             // Table header
@@ -165,6 +177,21 @@ class _MarketScreenState extends State<MarketScreen> {
         ),
       ),
     );
+  }
+
+  /// (up, down) over the same movers list the table shows. Same rule as the filter: change >= 0 is up.
+  (int, int) _counts(AppProvider provider) {
+    int up = 0, down = 0;
+    for (final x in provider.movers) {
+      if (x is! Map) continue;
+      final ch = x['change_pct'];
+      if (ch is num && ch < 0) {
+        down++;
+      } else {
+        up++;
+      }
+    }
+    return (up, down);
   }
 
   String _filterLabel(_MarketFilter f) {

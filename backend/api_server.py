@@ -1763,6 +1763,26 @@ async def archive_export_api(days: int = 0, all_states: int = 0):
         return {"state": "error", "text": f"Archive export error: {type(e).__name__}: {e}"}
 
 
+@app.get("/api/archive_export_save")
+async def archive_export_save():
+    """App button (More > Downloads): writes owl_trades_<date>.csv into the phone Download folder. Same CSV as /api/archive_export."""
+    try:
+        import os, archive_tools
+        from datetime import datetime
+        from recovered_bot import ai_report
+        text = await asyncio.to_thread(archive_tools.export_csv, None, None, True)
+        name = "owl_trades_" + datetime.now().strftime("%Y%m%d_%H%M") + ".csv"
+        for d in ai_report._download_dirs():
+            if os.path.isdir(d) and os.access(d, os.W_OK):
+                path = os.path.join(d, name)
+                with open(path, "w", encoding="utf-8") as f:
+                    f.write(text)
+                return {"ok": True, "path": path, "bytes": len(text.encode("utf-8")), "hint": ""}
+        return {"ok": False, "path": "", "bytes": len(text.encode("utf-8")), "hint": "No Download folder found. Use Share or Copy instead."}
+    except Exception as e:
+        return {"ok": False, "path": "", "bytes": 0, "hint": f"CSV export failed: {type(e).__name__}: {e}"}
+
+
 @app.get("/api/dual_universe")
 async def dual_universe_api():
     """Dual Bot coin sources (universe_7d.py): which 7-day lists are saved, the cap, the last error. Read-only, small."""
