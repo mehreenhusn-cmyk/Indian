@@ -61,3 +61,39 @@ class OWLEmptyState extends StatelessWidget {
     );
   }
 }
+
+/// UI5: one calm loading / failed note for every card and screen (small spinner + one line).
+/// [inline] = left aligned, for inside a card; otherwise centered.
+class OwlLoading extends StatelessWidget {
+  final String text;
+  final bool failed;
+  final String failedText;
+  final bool inline;
+
+  const OwlLoading({
+    super.key,
+    this.text = 'Loading...',
+    this.failed = false,
+    this.failedText = 'No data from the backend. Pull down to try again.',
+    this.inline = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    final row = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (!failed) ...[
+          SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: p.textMuted)),
+          const SizedBox(width: 10),
+        ] else ...[
+          Icon(Icons.cloud_off_rounded, size: 16, color: p.textMuted),
+          const SizedBox(width: 8),
+        ],
+        Flexible(child: Text(failed ? failedText : text, style: context.type.secondary.copyWith(color: p.textMuted))),
+      ],
+    );
+    return inline ? row : Center(child: Padding(padding: const EdgeInsets.all(AppSpacing.xl), child: row));
+  }
+}

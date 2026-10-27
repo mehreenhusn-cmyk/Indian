@@ -1,6 +1,6 @@
 # Owl Terminal - MASTER NOTES (the ONLY notes file in this repo)
 
-OWL MASTER NOTES v39 - last updated: 27 Oct 2026
+OWL MASTER NOTES v40 - last updated: 27 Oct 2026
 
 Crypto paper-trading app (Flutter) + Python backend. Dual Bot v1 collects trades. Smart Brain learns on the side, paper only.
 
@@ -70,6 +70,7 @@ Crypto paper-trading app (Flutter) + Python backend. Dual Bot v1 collects trades
 | UI3b | Premium UI step 3b (Signals): the TODAY card already had Signals / Opened / Won / Lost / Skipped, so only its top changed: the day's net result is now the OwlHero (34px, green / red) with the win rate as its note; the 3-line text under the numbers is cut to the All-loaded line (+ the BTC note in BTC view). Tabs, day headers and rows unchanged. Phone check pending | signals_screen.dart |
 | UI4a | Premium UI step 4a (Market): LIVE chip now says LIVE · N up · N down, filter tabs show their counts (All / Gainers / Losers). More already has the new DOWNLOADS group and Settings is already grouped (Trading / Account / Alerts & AI / App), so both were left unchanged on purpose. Phone check pending | market_screen.dart |
 | UI4b | Premium UI step 4b (AI tab, Overview): status chip next to the all-time net (TOO EARLY amber / IN PROFIT / IN LOSS), daily bars, exit reasons and the 7 small stats are folds with the key number in the headline (LAST DAYS, HOW TRADES CLOSED, MORE NUMBERS). Hero, today / total tiles, equity line and Ask AI button unchanged. Phone check pending | ai_tab_screen.dart |
+| UI5 | Premium UI step 5 (final pass): new OwlLoading (small spinner + one line, or a cloud-off note when failed; inline or centered) in owl_empty_state.dart, replacing the plain Hinglish 'Load ho raha hai...' in the AI tab overview, the ML shadow card and the Performance tab; Market filter now uses OwlSegmented (same active look as Signals / AI tabs). The other loading texts in cards were left as they are (they work). Phone check pending | owl_empty_state.dart, ai_tab_screen.dart, performance_tab.dart, market_screen.dart |
 | v5-v5e | Phone deploy: kills old workers by folder, self-update by BUILD, one-repo zip rule, no APK push (section 13) | tools/owl_auto.sh |
 
 ## 4. ROAD AHEAD (start a part only when its "start when" is true AND the owner says ok)
@@ -145,6 +146,7 @@ A: Brain only watches (now). B: shadow "would take / would skip" - DONE as the "
 - Not seen: Claude never ran the app; a file started by a Termux script outside the repo would look dead.
 
 ## 10. CHANGE LOG (newest first)
+- 27 Oct 2026 (v40): UI5 (owner said "Ok"); owl_UI5_all.zip is CUMULATIVE: UI-D + UI3a + UI3b + UI4a + UI4b + UI5 (10 files, Indian-main/ top folder). New in UI5: OwlLoading widget; ai_tab_screen.dart, widgets/performance_tab.dart use it; market_screen.dart filter = OwlSegmented. Not done on purpose: card peek (ListView.builder already shows the next card edge), the 10+ other loading texts in AI cards. Premium UI plan UI1-UI5 is now finished once the owner checks the phone. Flutter NOT compiled here: if the build fails send the error.
 - 27 Oct 2026 (v39): ONE cumulative zip owl_UI_all.zip = UI-D + UI3a + UI3b + UI4a + UI4b (the owner had applied up to UI2b only). Reason: owl_UI-D.zip had its files at the zip root, so is_owl_zip ignored it (no auto push, no GitHub run) - this zip has the Indian-main/ top folder (rule 11b fixed). New in this zip: ai_tab_screen.dart (import owl_card + owl_status_pill; hero row with status pill; OwlFold for daily bars / exit reasons / facts). Files: README.md, backend/api_server.py, frontend/lib/screens/{more,positions,signals,market,ai_tab}_screen.dart, frontend/lib/widgets/report_download_card.dart. Flutter NOT compiled here: if the build fails send the error. Next: UI5 (empty / loading states, final pass).
 - 27 Oct 2026 (v38): UI4a (owner said "Ok"); only UI4a files (UI3b is the zip before). market_screen.dart: _counts() (up = change >= 0, down = change < 0, same rule as the filter) feeds the header chip and the three filter labels, both inside Selector on moversRev. more_screen.dart and settings_screen.dart NOT changed (already ordered). Backend, API, polling untouched. Flutter NOT compiled here: if the build fails send the error. Next: UI4b (AI tab).
 - 27 Oct 2026 (v37): UI3b (owner said "Ok"); only UI3b files (UI3a is the zip before). signals_screen.dart _summaryCard: OwlHero(net, note = win rate and closed count) replaces the small net text + header row; the Win rate line moved into the hero note; netColor removed. Backend, API, polling untouched. Flutter NOT compiled here: if the build fails send the error. Next: UI4a (Market, More, Settings).

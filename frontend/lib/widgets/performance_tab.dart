@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
 import 'owl_card.dart';
+import 'owl_empty_state.dart';
 
 /// Dual Bot "Performance" tab: equity curve, win-rate trend and daily results of the finished paper trades.
 /// Numbers come from the Smart Brain reply ("perf"). Real USDT (each trade's own margin, fee inside). Report only.
@@ -70,7 +71,7 @@ class PerformanceTab extends StatelessWidget {
     final p = context.palette;
     final f = _map(brain['perf']);
     if (f.isEmpty) {
-      return OwlSectionCard(title: 'PERFORMANCE', children: [Text('Loading...', style: context.type.secondary)]);
+      return OwlSectionCard(title: 'PERFORMANCE', children: [const OwlLoading(inline: true)]);
     }
     if ('${f['status']}' != 'ready') {
       return OwlSectionCard(title: 'PERFORMANCE', edge: p.textMuted, children: [Text('${f['text'] ?? 'Collecting.'}', style: context.type.secondary)]);

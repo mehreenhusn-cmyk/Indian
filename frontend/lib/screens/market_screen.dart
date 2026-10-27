@@ -6,6 +6,7 @@ import '../widgets/owl_empty_state.dart';
 import '../widgets/owl_skeleton.dart';
 import '../widgets/candle_chart.dart';
 import '../widgets/owl_refresh.dart';
+import '../widgets/owl_card.dart';
 import '../theme/app_theme.dart';
 
 class MarketScreen extends StatefulWidget {
@@ -66,36 +67,19 @@ class _MarketScreenState extends State<MarketScreen> {
                 selector: (_, pr) => pr.moversRev,
                 builder: (context, _rev, child) {
                   final c = _counts(context.read<AppProvider>());
-                  return Row(
-                children: _MarketFilter.values.map((f) {
-                  final selected = f == _filter;
-                  return Expanded(
-                    child: GestureDetector(
-                      onTap: () {
-                        if (f != _filter) AppHaptics.light();
-                        setState(() => _filter = f);
-                      },
-                      child: AnimatedContainer(
-                        duration: AppMotion.fast,
-                        margin: const EdgeInsets.only(right: AppSpacing.xs + 2),
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        decoration: BoxDecoration(
-                          border: Border(
-                            bottom: BorderSide(color: selected ? p.accent : Colors.transparent, width: 2),
-                          ),
-                        ),
-                        child: Text(
-                          _filterLabel(f) + (f == _MarketFilter.gainers ? '  ${c.$1}' : f == _MarketFilter.losers ? '  ${c.$2}' : '  ${c.$1 + c.$2}'),
-                          textAlign: TextAlign.center,
-                          style: t.secondary.copyWith(
-                            color: selected ? p.textPrimary : p.textMuted,
-                            fontWeight: selected ? FontWeight.bold : FontWeight.normal,
-                          ),
-                        ),
-                      ),
-                    ),
-                  );
-                }).toList(),
+                  // UI5: same segmented look as Signals / AI tabs.
+                  return OwlSegmented(
+                    items: [
+                      ('all', 'All  ${c.$1 + c.$2}'),
+                      ('gainers', 'Gainers  ${c.$1}'),
+                      ('losers', 'Losers  ${c.$2}'),
+                    ],
+                    active: _filter.name,
+                    onPick: (k) {
+                      final f = _MarketFilter.values.firstWhere((e) => e.name == k);
+                      if (f != _filter) AppHaptics.light();
+                      setState(() => _filter = f);
+                    },
                   );
                 },
               ),

@@ -16,6 +16,7 @@ import '../widgets/ai_tab_summary.dart';
 import '../widgets/ai_learning_card.dart';
 import '../widgets/owl_eye_dot.dart';
 import '../widgets/owl_card.dart';
+import '../widgets/owl_empty_state.dart';
 import '../widgets/owl_status_pill.dart';
 import '../widgets/owl_pressable.dart';
 import '../widgets/owl_refresh.dart';
@@ -357,11 +358,7 @@ class _Overview extends StatelessWidget {
       return OWLRefresh(
         onRefresh: onRefresh,
         child: OWLPullEmpty(
-          child: Text(
-            failed ? 'Backend se data nahi aaya. Neeche kheench ke dobara try karo.' : 'Load ho raha hai...',
-            textAlign: TextAlign.center,
-            style: context.type.secondary.copyWith(color: p.textMuted),
-          ),
+          child: OwlLoading(failed: failed),
         ),
       );
     }
@@ -1139,7 +1136,7 @@ class _ShadowCardState extends State<_ShadowCard> {
         const _Label('ML SHADOW LOG (sirf aapke liye)'),
         const SizedBox(height: 4),
         if (d == null)
-          Text('Load ho raha hai...', style: context.type.metadata)
+          const OwlLoading(inline: true)
         else ...[
           Text(
             '${_d(d['matched']).toInt()} trades match hue · ${_d(d['open']).toInt()} abhi khule · '
