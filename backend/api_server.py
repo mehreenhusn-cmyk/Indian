@@ -1721,6 +1721,16 @@ async def dual_lab_api(action: str = ""):
         return {"running": False, "enabled": False, "error": f"{type(e).__name__}: {e}"}
 
 
+@app.get("/api/archive")
+async def archive_api():
+    """Long-term archive (trade_archive.py): how many trades and learning rows are saved for ever, and when the last save was. Read-only, small."""
+    try:
+        import trade_archive
+        return await asyncio.to_thread(trade_archive.status)
+    except Exception as e:
+        return {"state": "error", "text": f"Archive problem: {type(e).__name__}: {e}"}
+
+
 @app.get("/api/layers/pa")
 async def pa_layer_api():
     """Price Action Light (pa_layer.py): what it logged and how its reading of the Dual Bot trades did. Reads one small file."""

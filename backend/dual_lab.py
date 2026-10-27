@@ -31,6 +31,10 @@ import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
+try:                                    # Part U1: long-term archive (append-only). If the file is missing the bot runs exactly as before
+    import trade_archive as _TA
+except Exception:
+    _TA = None
 
 BTC_SYM, BTC_MARGIN = "BTCUSDT", 1000.0     # BTC is always in the Dual Bot and trades 1000 USDT (10x like the rest, paper only)
 
@@ -964,6 +968,8 @@ def worker():
             try:
                 st["err"] = ""
                 cycle(data, st, LAB._fetch_limit, LAB._fetch_range, lambda: FL.default_coins(log=lambda m: None))
+                if _TA:
+                    _TA.save_dual(data, st)            # Part U1: copy everything to the archive BEFORE trim() can drop anything (never raises)
                 trim(data)
                 now = time.time()
                 if (len(data["rows"]) - st["rows_at_train"] >= 100 or now - st["train_t"] > 900) and len(data["rows"]) >= MIN_TRAIN:

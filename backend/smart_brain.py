@@ -31,6 +31,10 @@ import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
+try:                                    # Part U1: long-term archive (append-only). If the file is missing the Brain runs exactly as before
+    import trade_archive as _TA
+except Exception:
+    _TA = None
 
 CYCLE_S = 60                 # recompute the numbers every minute (cheap: reads one file)
 SCAN_S = 300                 # opportunity scan every 5 minutes (downloads candles for a few coins)
@@ -1075,6 +1079,8 @@ def worker():
                     _save("smart_brain_exit.json", ex)
                 except Exception:
                     ex = None
+                if _TA:
+                    _TA.save_brain(own, ex, book)      # Part U1: finished own trades, frozen picks and exit opinions go to the archive (never raises)
                 view = build_view(rows, trades, watch, scan_t, book=book, tv=tv, scan_coins=scan_list, exit_state=ex, own=own)
             else:
                 view = dict(build_view([], []), enabled=False, status="stopped", status_text="Stopped.")
