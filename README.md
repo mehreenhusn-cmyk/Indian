@@ -1,6 +1,6 @@
 # Owl Terminal - MASTER NOTES (the ONLY notes file in this repo)
 
-OWL MASTER NOTES v17 - last updated: 27 Oct 2026
+OWL MASTER NOTES v19 - last updated: 27 Oct 2026
 
 Crypto paper-trading app (Flutter) + Python backend. Dual Bot v1 collects trades. Smart Brain learns on the side, paper only.
 
@@ -15,9 +15,10 @@ Crypto paper-trading app (Flutter) + Python backend. Dual Bot v1 collects trades
 7. EVERY TIME a zip is delivered, end the reply with the ONE copy-paste Termux command from section 11 (with the right zip name and commit message filled in). The owner just copies, pastes, done.
 8. SAVE EFFORT: do NOT scan the whole repo. Open section 12 (CODE MAP), go straight to the files listed for the feature, read only the function you need. Line numbers there are approximate (they drift): search by function name.
 9. KEEP FILES SMALL: new backend modules under ~250 lines, one job each; never add big blocks into api_server.py, main.py or smart_brain.py if a new small file can hold it (smart_brain.py only gets a thin hook, like the other brain_*.py files). Small files = small zips = small cost to read next time. If you add or move a feature, update section 12 in the same zip.
-10. OWNER ORDER (27 Oct): N2, Parts A, B, C, D, E (E1-E5), F1, F2, F3 are DONE (owner applied up to F2 on 27 Oct; F3 is the newest zip). Next, one at a time and only when the owner says: G1, G2 (they wait for data, see section 4). F/G wait for data. B3 waits for data (see section 4). READY CHECK on 27 Oct (live): 1 of 4 true (only "what if the bot had listened" is true; exit hit-rate 50% < 60%; trust not earned; luck untestable; own book 0 finished trades) = do NOT build G1/G2 yet. B3: Timing Sync best = same candle (+1.33 USDT/trade, 61 trades), worst = Z first then Main 1-2 candles (-4.98, 27 trades); compare again about 30 Oct (needs 3+ days stable). If own book still shows 0 finished trades on 28 Oct, find out why before anything else.
+10. OWNER ORDER (27 Oct): N2, Parts A, B, C, D, E (E1-E5), F1, F2, F3 are DONE (owner applied up to F2 on 27 Oct; F3 is the newest zip). Next, one at a time and only when the owner says: G1, G2 (they wait for data, see section 4). F/G wait for data. B3 waits for data (see section 4). READY CHECK on 27 Oct (live): 1 of 4 true (only "what if the bot had listened" is true; exit hit-rate 50% < 60%; trust not earned; luck untestable; own book 0 finished trades) = do NOT build G1/G2 yet. B3: Timing Sync best = same candle (+1.33 USDT/trade, 61 trades), worst = Z first then Main 1-2 candles (-4.98, 27 trades); compare again about 30 Oct (needs 3+ days stable). If own book still shows 0 finished trades on 28 Oct, find out why before anything else. NEW (27 Oct): Part U1-U5 = Dual Bot 7-day universe + desk, from the owner's Grok prompt; checked and planned in section 4a; waits for the owner's ok and 4 answers.
 11c. DEPLOY RULE (27 Oct): the owner NEVER kills processes by hand. Phone side is tools/owl_auto.sh v5, see section 13. If you change how the backend starts workers, change owl_auto.sh in the same zip.
 11b. ZIP RULE: each new zip is CUMULATIVE for the files changed since the owner last confirmed applying (the owner often applies several zips at once), always with README.md. Say in the reply which earlier zips it already contains.
+12. NEW CHAT = NO CODE: Claude starts every chat blind (cannot see the live repo). The owner sends the latest Indian-main*.zip (and the shared-chat PDF if useful). Claude reads this README first, then only the files from section 12. A public GitHub link may work only in a chat that has web access (not tested yet); the zip always works.
 
 ## 1. OWNER RULES (strict)
 - Do NOT touch: dual_lab.py, tag_lab.py, dual_lab_data.json, Dual Bot trading / exits. Dual Bot v1 stays in full explore mode (no filter, no skip, no block). Brain only READS its data (read-only) and writes only its own json files.
@@ -31,63 +32,74 @@ Crypto paper-trading app (Flutter) + Python backend. Dual Bot v1 collects trades
 - Brain own trades: scans TODAY's top-10 gainers + top-10 losers (20 coins, no BTC) on 15m every 5 min. Stage by finished own trades: learning (0-99, loose) -> medium (100+) -> quality (300+, strict). Max 40 new own trades a day, max 20 open. Learns lessons from its own results: a setup mix that lost is not repeated, one that worked is repeated, newest trades weigh more.
 - Owner's big goal: make the Brain so strong that it can trade a small real amount ($10-20) by itself and make profit, using only the two indicators. Section 5 says when that can even be considered.
 
-## 3. DONE (in the repo; rows R1-1 to R1-3 below are Round 1 = old Parts 1-3, applied by the owner on 27 Oct)
-| # | What | Main files |
+## 3. DONE (in the repo; ONE line each - details are in section 12 CODE MAP and section 10 CHANGE LOG)
+| # | What (short) | Main files |
 |---|---|---|
 | 1-3 | Brain "what it thinks now", Dual Bot screen tabs, luck test, risk numbers, rolling memory | smart_brain.py, smart_brain_view.dart, dual_bot_screen.dart |
 | 4-6 | Shared card design, Dashboard, Signals and Alerts look | owl_card.dart, dashboard_screen.dart, signals_screen.dart |
-| 7, 13 | Brain learns exits (FULL TP / HALF TP / HOLD), advice only | brain_exit.py, brain_exit_pick.py |
+| 7, 13 | Exit learning (FULL TP / HALF TP / HOLD), advice only | brain_exit.py, brain_exit_pick.py |
 | 9 | "What if the bot had listened?" report | brain_follow.py |
-| 10 | Brain skip gate: built, app switch REMOVED on purpose, default OFF | smart_brain.py, test_brain_gate.py |
+| 10 | Brain skip gate built, app switch removed on purpose, default OFF | smart_brain.py, test_brain_gate.py |
 | 11 | Tab keeps last reply, fast start, trust needs 100 judged trades | dual_bot_screen.dart, smart_brain.py |
-| 12 | Brain own paper trades (separate book) | brain_own.py |
+| 12 | Brain own paper trades (separate book, stages, lessons) | brain_own.py |
 | A | Sideways report (Trending / Mixed / Sideways, cost in USDT) | smart_brain.py |
 | 14-17 | Now / Opportunities / Performance / Simple tabs | dual_summary_strip.dart, opportunities_tab.dart, performance_tab.dart, simple_tab.dart |
-| V2-1..3 | Price Action layer, Volume layer, join report (report only; join needs 100 trades + 10 days) | pa_layer.py, vol_layer.py, layers_join.py |
-| R1-1 | Brain own trades now loose + today's coins + auto-learning lessons + stages + daily limit (27 Oct) | smart_brain.py, brain_own.py |
-| R1-2 | Retest report: two numbers apart (came back / never came back) + Trending / Mixed / Sideways split (27 Oct) | smart_brain.py, smart_brain_view.dart |
-| R1-3 | Simple tab: LOCKED / FLOATING / NET boxes + Brain dislike %; "Old setups read" bar can no longer say "5000 of 60" (27 Oct) | simple_tab.dart, smart_brain_view.dart |
-| A1-A3 | Honest trust bar (never 150 of 100), header says MAIN bot P&L, Performance tab without BTC (BTC own line), Simple tab 'which signal type pays' card + open rows say 'opened 5m ago' | smart_brain_view.dart, live_ticker_bar.dart, performance_tab.dart, simple_tab.dart, dual_bot_screen.dart, smart_brain.py |
-| N1 | This single notes file; old notes removed with tools/clean_old_notes.sh (27 Oct) | README.md |
-| D1-D2 | Exit style + hold time per setup mix (same Timing Sync mixes): best of the 9 exit rules vs the bot's own exit, winners vs losers minutes, share of fast winners, older-vs-newer half check, up to 3 'clearly better' lines (needs +3 points). Brain tab card 'EXIT STYLE AND HOLD TIME'. Report only (27 Oct, zip owl_D = cumulative: also contains N2, B, C) | brain_tp_hold.py, test_brain_tp_hold.py, smart_brain.py (hook), smart_brain_view.dart |
-| C1-C2 | READY CHECK card on top of the Brain tab (trust, luck, what-if, exit hit-rate = the 4 gates; retest, timing sync, own stage = info rows; headline says if Brain skip / exit trail can be asked about). Retest card headline 'WAITING IS BETTER/WORSE BY X USDT' + total of waiting vs total at the signal + honest note about skipped signals (27 Oct, zip owl_C = also contains N2 and B) | brain_ready.py, test_brain_ready.py, smart_brain.py (hook), smart_brain_view.dart |
-| F3 | Week report card + time-of-day cap (27 Oct, zip owl_F3): brain_week.report(own) = last 7 trading days (trades, win %, USDT, best/worst day) + 4 UTC blocks of 6 hours (same blocks as the tag lab); blocked(own, now_ms, opened) caps new own trades per day in a block that loses in both halves (needs 7 days + 300 own trades). Hooks: brain_own.open_from, summary key 'week'. Brain tab card 'WEEK REPORT CARD' inside 'More reports' (now 18). Own book only | brain_week.py, test_brain_week.py, brain_own.py, smart_brain_view.dart |
-| F2 | Retest own book (27 Oct, zip owl_EFG): when an own trade finishes, brain_own.settle asks brain_retest.twin() what waiting for the EMA50 retest would have made (same fill rule and waits 3/6/12/24 as Dual Bot, same exit). Stored as t['rt']. brain_retest.report(own) compares retest book vs normal own book in USDT, best wait, older vs newer half. Brain own card shows WAITING IS BETTER / WORSE / EARLY HINT / NOT STEADY. Measure only: opens nothing. Old own trades have no t['rt'] and are not counted; a twin still open at that moment is skipped, not retried | brain_retest.py, test_brain_retest.py, brain_own.py, smart_brain_view.dart |
-| E5 | One look for every screen: spacing tokens cardGap 12 to 10 and cardPad 14 to 12 (Dashboard, Positions, Signals, Alerts, Dual Bot all read them), AppButtons (shape, 40px height, label) applied to Elevated / Filled / Outlined / Text buttons in both themes. Screens themselves untouched, nothing removed (27 Oct, zip owl_EF) | app_spacing.dart, app_theme.dart |
-| F1 | Sideways self-rule for the Brain's OWN trades only (27 Oct, zip owl_EF): brain_side.state() / blocked(); open_from hook; summary key side_rule; Brain own card shows 'SIDEWAYS LIMIT ON/OFF' + plain sentence + skipped today. Dual Bot and main bot untouched | brain_side.py, test_brain_side.py, brain_own.py, smart_brain_view.dart |
-| E3-E4 | E3: one-line badges on every trade row (clean / unclear / dislike + agree / mixed / disagree, REAL / FAKE once finished) via DualTradeCard.badgeRow, used in the Simple tab rows and the Dual trade card; tighter rows and card. E4: OwlDensity(compact) wraps the Dual Bot tab body so every OwlSectionCard gets smaller padding/gap; Brain tab shows Ready, Now, Timing, Exit style, Trust, Own trades and folds the other 17 reports behind 'More reports' (27 Oct, zip owl_E = cumulative E1-E4, 7 files) | dual_trade_card.dart, simple_tab.dart, owl_card.dart, dual_bot_screen.dart, smart_brain_view.dart |
-| E1-E2 | Header bar 40px to 36px, tighter gaps, flatter pills, smaller latency number (no item removed). Dual Bot tabs: boxed chips replaced by underline pills; tab body fades between tabs via _segBody() + AnimatedSwitcher (27 Oct, zip owl_E12, only 3 files, owl_D already applied) | live_ticker_bar.dart, dual_bot_screen.dart |
-| N2 | Section 12 CODE MAP (which feature lives in which file) + rules 8-10 (27 Oct) | README.md |
-| B1-B2 | Timing Sync report (Same candle / Z first / Main first 1-2 and 3-5 candles / Z only / Main only / opposite: count, win %, USDT, TSI with/against, sideways, older-vs-newer half check, BTC left out), a 'deep clean candidate' measure, up to 10 plain lessons. Brain tab card 'TIMING SYNC - WHO SPOKE FIRST' (27 Oct, zip owl_B) | brain_lessons.py, test_brain_lessons.py, smart_brain.py (hook), smart_brain_view.dart |
+| V2-1..3 | Price Action layer, Volume layer, join report (report only) | pa_layer.py, vol_layer.py, layers_join.py |
+| R1-1..3 | Own trades loose + stages; retest report; Simple tab LOCKED / FLOATING / NET + Brain dislike % | smart_brain.py, brain_own.py, simple_tab.dart |
+| A1-A3 | Honest trust bar, header says MAIN bot P&L, BTC own line, signal-type card, trade age on rows | smart_brain_view.dart, live_ticker_bar.dart, performance_tab.dart, simple_tab.dart |
+| N1, N2 | One notes file; CODE MAP + rules 8-10 | README.md |
+| B1-B2 | Timing Sync report + card (who spoke first, deep clean candidate) | brain_lessons.py, smart_brain_view.dart |
+| C1-C2 | READY CHECK card on top of Brain tab + retest headline | brain_ready.py, smart_brain_view.dart |
+| D1-D2 | Exit style + hold time per setup mix, card | brain_tp_hold.py, smart_brain_view.dart |
+| E1-E2 | Header bar 36px; Dual Bot underline tabs | live_ticker_bar.dart, dual_bot_screen.dart |
+| E3-E4 | One-line trade badges (clean / dislike, REAL / FAKE), compact density | dual_trade_card.dart, simple_tab.dart, owl_card.dart |
+| E5 | Same spacing tokens + buttons on all screens | app_spacing.dart, app_theme.dart |
+| F1 | Sideways self-rule, Brain OWN trades only (data gate) | brain_side.py |
+| F2 | Retest own book, paper twin (data gate) | brain_retest.py |
+| F3 | Week report card + time-of-day cap (data gate) | brain_week.py |
+| v5-v5e | Phone deploy: kills old workers by folder, self-update by BUILD, one-repo zip rule, no APK push (section 13) | tools/owl_auto.sh |
 
-## 4. ROAD AHEAD (Part A, B, C ... in this order; start a part only when its "start when" is true AND the owner says ok)
-OWNER ORDER NOW: Parts A, B, C, D, E (all 5), F1, F2, F3 are DONE. F1, F2 and F3 are built with a data gate (no limit or verdict until their numbers are reached). Next G1 / G2, only when READY CHECK says so (section 6) and the owner says ok. Still open from B: B3 (Brain own trades prefer deep clean setups) needs the Timing Sync numbers to stay stable for 3+ days; nothing else of B is missing.
-Sources: owner's 3 prompt files (Brain strong modules, Owl FINAL master, FINAL FORM all problems) and his phone screenshots of 27 Oct.
+## 4. ROAD AHEAD (start a part only when its "start when" is true AND the owner says ok)
+OWNER ORDER NOW: Parts A-F are DONE (section 3). WAITING FOR DATA: B3, G1, G2. NEW 27 Oct: Part U1-U5 (Dual Bot 7-day universe + desk), plan in section 4a, WAITING FOR THE OWNER'S OK.
+CHECKS DUE: (1) 28 Oct: Own book must show finished own trades; if still 0, find out why first. (2) about 30 Oct: read Ready Check + Timing Sync again, then decide B3 / G1 / G2. (3) If Part U goes live, Ready Check numbers mix two coin sets: compare only trades after the switch day.
 | Part | What | Files | Lines | Start when | Status |
 |---|---|---|---|---|---|
-| A1 | Honest numbers: trust bar shows "100 of 100, earned check pending" (never 150 of 100); top header label says it is the MAIN bot's P&L (it showed -139 while Dual Bot locked was -744 = confusing) | smart_brain_view.dart, live_ticker_bar.dart | ~35 | NOW | DONE 27 Oct (zip owl_A) |
-| A2 | Performance tab: BTC left out of the alt curve (it is now mixed in: 479 trades vs 464 on the Today card, equity -892 = -744 alts + -148 BTC). BTC shown as its own line | smart_brain.py, test_brain_perf.py, performance_tab.dart | ~40 | NOW | DONE 27 Oct (zip owl_A) |
-| A3 | Simple tab: always-visible mini summary "Both same candle / Z only / Main only" (data shows Both = green, Main only = worst) + check every open-trade row shows age (5m / 1h) | simple_tab.dart, dual_bot_screen.dart | ~65 | NOW | DONE 27 Oct (zip owl_A) |
-| B1 | Indicator Timing Sync report: SAME candle / Z first then Main (1-2 or 3-5 candles) / Main first then Z / Z only / Main only, with count, win %, USDT, TSI state, sideways; plus 5-10 plain "how to use both indicators" lessons; defines "deep clean setup" from data. Uses the existing "order" tag, Dual Bot untouched | brain_lessons.py (new), test_brain_lessons.py (new), smart_brain.py | ~230 | NOW (Dual data is enough) | DONE 27 Oct (zip owl_B) |
-| B2 | Brain tab card for B1 (one strong block, plain words) | smart_brain_view.dart | ~110 | after B1 | DONE 27 Oct (zip owl_B) |
-| B3 | Brain OWN trades softly prefer "deep clean" setups | brain_own.py, smart_brain.py, test | ~50 | B1 numbers stable for 3+ days | WAIT FOR DATA |
-| C1 | READY CHECK card on top of Brain tab: trust, luck, what-if, exit hit-rate, retest, timing sync, own stage + trades to next stage | smart_brain_view.dart, smart_brain.py | ~110 | after A | DONE 27 Oct (zip owl_C) |
-| C2 | Retest card headline: "Waiting is better by +X USDT" with best wait, and the honest note that part of it is skipping signals | smart_brain_view.dart | ~30 | with C1 | DONE 27 Oct (zip owl_C) |
-| D1 | TP + hold time per setup mix (best exit, bars held in wins vs losses, fast vs slow). Report only | brain_tp_hold.py (new), test_brain_tp_hold.py (new), smart_brain.py | ~200 | NOW | DONE 27 Oct (zip owl_D) |
-| D2 | Brain tab card for D1 | smart_brain_view.dart | ~75 | after D1 | DONE 27 Oct (zip owl_D) |
-| E1 | Modern look 1: one compact header row (CRYPTO/INDIA, latency, PAPER, TF, P&L, power), less padding | live_ticker_bar.dart | ~80 | after A, B | DONE 27 Oct (zip owl_E12) |
-| E2 | Modern look 2: Dual Bot tabs as clean segmented / underline pills, smooth switch | dual_bot_screen.dart | ~100 | after E1 | DONE 27 Oct (zip owl_E12) |
-| E3 | Modern look 3: Simple tab polish, tighter trade rows with one-line badges (clean / agree / dislike / FAKE) | simple_tab.dart, dual_trade_card.dart | ~150 | after E2 | DONE 27 Oct (zip owl_E) |
-| E4 | Modern look 4: Now / Opportunities / Learned density, no tall empty padding, secondary Brain cards collapsible | dual_bot_screen.dart, smart_brain_view.dart, owl_card.dart (OwlDensity) | ~200 | after E3 | DONE 27 Oct (zip owl_E) |
-| E5 | Modern look 5: same tokens and buttons on Dashboard, Positions, Signals, Alerts (nothing removed) | app_spacing.dart, app_theme.dart (shared tokens + button theme; the 4 screens use them) | ~250 | after E4 | DONE 27 Oct (zip owl_EF) |
-| F1 | Sideways self-rule: Brain OWN trades only, fewer own trades in sideways when own book loses there | brain_side.py (new), brain_own.py (hook), smart_brain_view.dart, test_brain_side.py (new) | ~110 | 100+ own finished trades AND 30+ in sideways (about 4-7 days) | DONE 27 Oct (zip owl_EF), built with a gate: the rule stays OFF until 100+ own finished AND 30+ sideways AND sideways lost in both halves; then max 5 new sideways own trades a day |
-| F2 | Retest own book (separate file, compared with normal own book) | brain_retest.py (new), brain_own.py (hook in settle + summary), smart_brain_view.dart, test_brain_retest.py (new) | ~200 | 100+ signals that came back AND same sign in older and newer half (about 7-10 days) | DONE 27 Oct (zip owl_EFG), built as a paper twin with a gate: shows numbers from 10 trades, gives a verdict only after 100+ came back AND both halves agree |
-| F3 | Weekly report card + time-of-day cap for own book | brain_week.py (new), brain_own.py (hook), smart_brain_view.dart, test_brain_week.py (new) | ~190 | 7+ days of own trading and 300+ own finished trades | DONE 27 Oct (zip owl_F3), built with a gate: report card shows from day 1, the time-of-day limit switches on only after 7+ days AND 300+ own finished trades AND a 6-hour UTC block with 30+ trades that lost in both halves; then max 3 new own trades a day in that block |
-| G1 | Brain skips bad signals in the main bot (Step C of section 8) | 2-3 files | ~100 | READY CHECK 1+2+3 true (section 6) | WAIT FOR DATA |
-| G2 | Brain exit advice trails the stop (Step D of section 8) | 2 files | ~120 | READY CHECK 4 true | WAIT FOR DATA |
-| - | Per-coin memory | - | - | NOT PLANNED: top-10 coins change every day, so it would be noise | DROPPED |
-Totals: A ~125 lines, B ~390, C ~140, D ~275, E ~780 (5 small zips, because Flutter cannot be compiled here), F ~500 later.
-Recommended order: A, B, C, D, E, then F and G as data arrives.
+| B3 | Brain OWN trades softly prefer "deep clean" setups | brain_own.py, smart_brain.py, test | ~50 | Timing Sync numbers stable 3+ days (27 Oct: same candle +1.33/trade, Z first then Main -4.98/trade) | WAIT FOR DATA |
+| G1 | Brain skips bad signals in the main bot (Step C of section 8) | 2-3 files | ~100 | READY CHECK 1+2+3 true (section 6; 27 Oct only 3 true) | WAIT FOR DATA |
+| G2 | Brain exit advice trails the stop (Step D of section 8) | 2 files | ~120 | READY CHECK 4 true (27 Oct hit-rate 50%, needs 60%+) | WAIT FOR DATA |
+| U1 | Universe memory: save each day's top list, build TODAY + LAST 7 DAYS (deduped, capped), route /api/dual_universe | universe_7d.py (new), test_universe_7d.py (new), api_server.py (route only) | ~220 | owner ok + answers in 4a | WAIT FOR OWNER OK |
+| U2 | Dual Bot scans the combined list: ONE-LINE hook in dual_lab.py (the coins function, ~L966). Entry/exit/tag rules unchanged | dual_lab.py | ~3 | with U1; owner must allow the rule-1 exception | WAIT FOR OWNER OK |
+| U3a | Dual desk: TODAY and LAST 7 DAYS sections, each with 5m / 15m switch, source chip (Today / 7d) on rows | universe_strip.dart (new), dual_bot_screen.dart, dual_trade_card.dart | ~200 | after U2 ran 1 day | WAIT FOR OWNER OK |
+| U3b | Open positions: filter chips All / Today / Last 7d / Long / Short, tap = detail, open count one tap away | simple_tab.dart, dual_bot_screen.dart | ~100 | after U3a | WAIT FOR OWNER OK |
+| U4 | Brain report card "Edge by universe": Today vs Last 7d (P&L, win %, dislike %) + cycle phase day0 / day1-2 / day3+ (E2). Report only | brain_universe.py (new), test_brain_universe.py (new), smart_brain.py (hook), smart_brain_view.dart | ~240 | after U2 ran 3+ days | WAIT FOR OWNER OK |
+| U5 | README / this section updated in every U zip | README.md | - | always | RULE |
+| U6 | Brain OWN scan uses the same Today + 7d list (owner's wish: the Brain must explore more than today's top-10). Own-trade rules unchanged: only when it likes, 40 new a day, 20 open, stages, sideways and time caps | smart_brain.py (today_coins ~L410) | ~25 | with U1 | WAIT FOR OWNER OK |
+| S1 | HISTORY MIRROR (SQLite, python stdlib sqlite3): the Brain worker copies new / changed Dual trades and rows into smart_brain_hist.db (WAL, one writer = Brain worker), keeps 30 days. Nothing reads it yet. Dual Bot saving is NOT touched | brain_db.py (new), test_brain_db.py (new), smart_brain.py (1 hook) | ~250 | NOW (data trimmed by Dual Bot cannot be recovered, so start early) | WAIT FOR OWNER OK |
+| S2 | Brain reads a 7-10 day window (cap ~20000 rows) from the mirror instead of the 600-trade JSON; tools/db_check.py compares JSON vs DB counts; switch default = JSON until counts match | smart_brain.py (read_v1 hook), tools/db_check.py (new) | ~110 | S1 ran 2-3 days and counts match | WAIT FOR OWNER OK |
+ZIP PLAN (every push of a non-.md file starts one GitHub build, so fewer zips = less build time): Z1 backend = U1 + U2 + U6 + S1 (7 files, ~490 lines); Z2 Flutter desk = U3a + U3b (4 files, ~300 lines); Z3 reports = U4 + S2 (5 files, ~350 lines). Total about 16 files, about 1,140 lines, 3 zips, 3 builds. README-only zips start NO build (workflow ignores .md). Flutter cannot be compiled here: owner sends any build error.
+Backlog, NOT planned now: E4 failure replay card (top 5 fake reasons this week, ~80 lines); E5 own book on 7d names when today is pure chop; E6 SQLite when dual_lab_data.json is big or slow (section 7); Brain v2 (regime, session, price action, careful small live size with a daily loss cap) only after Ready Check + the section 5 path to real money.
+Dropped: per-coin memory (top coins change daily). Part U is not that: it keeps a 7-day LIST of coins, it does not learn per coin.
+
+## 4a. PART U - DUAL BOT 7-DAY UNIVERSE + DESK (owner's Grok prompt Owl_DualBot_7Day_Universe_Deep_Prompt.txt, checked by Claude 27 Oct; owner has NOT said ok yet)
+OWNER PROBLEM: the daily top list changes, so Dual Bot practises on today's names and tomorrow they leave. Real cycle: pump/dump day, then sideways/digest (often night, low volume), then higher-timeframe retest, 1-2 days of real move, volume dies, slow slide. A "today only" list misses the later legs. Owner wants a rolling memory of recent strong movers for the Dual Bot (and so for the Brain), and a Dual screen that shows money and open trades at a glance (backend full of data but frontend confusing = failure).
+GOAL: Dual Bot coins = TODAY top 5 (pump/dump, usable volume) + LAST 7 DAYS = coins that were in the daily top 5 of the previous 7 completed days (deduped; a coin that is in today stays under Today; cap about 25 extra). Each coin carries a source: today | d7. Day boundary 5:30 AM IST. BTC rule unchanged (always in, own margin). Brain reads the same trades and reports Today vs 7d. Main bot untouched, no live orders.
+WHAT CLAUDE CHECKED IN THE CODE (27 Oct, facts):
+- Dual Bot gets its coins in dual_lab.worker() ~L966: cycle(..., lambda: FL.default_coins(...)) = today's top-10 gainers + top-10 losers (20 coins, NO volume floor) + BTC. cycle() ~L869 also keeps every coin that has an open or skipped trade, so open trades survive a list change.
+- FL.default_coins (filter_lab.py ~L557) is ALSO used by smart_brain.py ~L419 (Brain own scan), tag_lab, z_scenarios, scan_lab, variant_lab. DO NOT edit it. Build the new list in the new universe_7d.py and change only the one dual_lab.py line.
+- Trade rows already have the field "src" = MAIN / Z / BOTH (signal type). The universe tag must use another name: "uni" = today | d7 | old (old = trades from before Part U). The Brain/API works it out read-only from the saved day lists (trade open time -> that day's list); Dual Bot rows are not changed.
+- Already DONE, do not rebuild: LOCKED / FLOATING / NET + dislike % (R1-3), Same candle / Z only / Main only summary and trade age (A3), sideways cost (A), trade badges (E3), Ready Check on top of the Brain tab (C1), 6-hour session blocks (tag_lab, F3). So Grok section 4.1 is mostly done; new are only the Today / 7d sections, 5m/15m switch, source chip, open filter chips and the Brain split.
+- Grok points that are right: only WHO is watched changes; Dual entry/exit/tag rules stay; Brain own trade RULES stay strict (the own SCAN list becomes Today + 7d in U6, the owner's later wish); report only; no SQLite now; no live orders.
+- No history of past top lists exists, so the 7d pool starts empty and fills day by day (about 7 days to be full). Optional later: rebuild past days from daily candles (~60 lines, many API calls).
+- Load: today 21 coins x 2 timeframes. With 10 today + cap 25 + BTC = 36 coins, about 1.7x work for the phone. The backend froze on heavy work before (section 7), so the cap matters.
+OWNER DECISIONS NEEDED (Claude uses these defaults if the owner just says ok):
+1. "Top 5" = 5 gainers + 5 losers per day (10 coins a day) - default. Or 5 coins in total?
+2. Volume floor: skip coins with 24h turnover below 10M USDT (Claude's guess, one constant, easy to change).
+3. Cap on the 7d extra coins = 25, most recent days first.
+4. Allow ONE changed line in dual_lab.py (README rule 1 says do not touch it). Nothing else in dual_lab.py changes.
+5. Brain own scan also uses Today + 7d (U6) - default yes. 6. SQLite = history mirror (S1-S2), NOT a migration of Dual Bot saving - default yes, start S1 early in Z1.
+OWNER'S REASON (27 Oct, later, in his words): the Brain only trades the daily top-10 and learns from them; the list changes every day so it never explores or finds new opportunity - "a child who goes to school but has no exam, so no result". He adds the last 7 days because a coin that pumped today goes sideways tomorrow and often dumps 2 days later; he wants the Brain to learn at which SD bands / levels it goes sideways, what the ZSMA line does, what TSI does and what price does near the EMA, in each phase. He hopes this makes 10 days of learning happen in 2 days. CLAUDE'S HONEST ESTIMATE: signals grow about 1.5-2x (cap 25, older coins move less), so about 5-6 days instead of 10, not 2. More points are only useful if the history is kept: see MEMORY LIMITS in section 12 and Part S.
+RULE FOR THE PHASE TAG: do NOT add a new DIM to tag_lab.DIMS. smart_brain.read_v1() drops every row whose tag count differs from len(DIMS), so adding one would hide all old rows. The cycle phase (day0 pump / day1-2 digest / day3+ drift = days since the coin first entered a daily top list) is computed read-only in brain_universe.py (U4) from the saved day lists.
+HARD RULES FOR PART U (from the prompt): main bot symbols / size / logic unchanged; Dual entry and exit rules unchanged (still explore, no skip, no filter); Brain own trades still "only when it really likes"; paper only; new small files, thin hooks; tests for dedupe, day roll, cap, source tag; update this README in the same zip; Phase 0 = file and line plan first, code only after the owner's ok.
 
 ## 5. WHAT THE LIVE NUMBERS SAY (27 Oct screenshots - keep visible, do not hide)
 - Closed trades lose, open trades float high: about -744 locked vs +3,600 floating, 18% win, 121 open. Floating is NOT money. Judge the system by LOCKED over many days, not by the floating number.
@@ -108,6 +120,7 @@ Note: "0% good, clean score 30, 12-18% win" on the phone is DATA (many dirty / s
 ## 7. DECISIONS ON HOLD
 - Dual Bot stays in full explore mode for 2-3 weeks (decided 26 Oct 2026). Do not touch dual_lab.py. Decide about a "never skip" switch after that.
 - SQLite and WebSocket NOT yet: changing how Dual Bot saves while it runs can lose or double data, and the backend once froze on heavy file reads. First collect clean data 2-3 weeks. Check size: `ls -lh $(find ~ -name dual_lab_data.json 2>/dev/null)`. Under about 20 MB = keep waiting. When big or slow: move to SQLite in a copy, compare numbers with the JSON, then switch. Never change Dual Bot saving and the app in the same step.
+- SQLite UPDATE (27 Oct): the real problem is not file size (dual_lab.trim keeps the JSON small) but MEMORY LENGTH: Dual Bot keeps only the newest 600 trades and 5000 rows. Plan = a mirror that the BRAIN worker writes (Part S1), the Dual Bot keeps saving JSON exactly as now. Switch the Brain to read from it only after counts match (S2). No migration of Dual Bot saving.
 - Gold / multi-asset and live mode: last.
 
 ## 8. PHASE 4 PLAN (how Brain lessons could reach the main bot)
@@ -121,6 +134,8 @@ A: Brain only watches (now). B: shadow "would take / would skip" - DONE as the "
 - Not seen: Claude never ran the app; a file started by a Termux script outside the repo would look dead.
 
 ## 10. CHANGE LOG (newest first)
+- 27 Oct 2026 (v19): README only (zip owl_U0b, no code, .md files do not start a GitHub build). Section 12 got QUICK INDEX + WHO PICKS WHICH COINS + MEMORY LIMITS + TRADE FIELDS (so nobody re-reads code). New finding: Dual Bot keeps only 600 trades / 5000 rows, so Brain reports see about 1 day, a 7-day report needs a history archive = Part S. Added U6 (Brain own scan on Today + 7d) and S1-S2 (SQLite history mirror, not a migration). Zip plan = 3 zips, 3 builds.
+- 27 Oct 2026 (v18): README only (zip owl_U0, no code). Section 3 and 4 shortened: every finished part is one line. Added Part U1-U5 (Dual Bot 7-day universe + desk) and section 4a from the owner's Grok prompt, with what Claude found in the code (coin list at dual_lab.py ~L966, FL.default_coins shared with the Brain scan, field "src" already used), 4 open owner decisions, CHECKS DUE (28 Oct own book, ~30 Oct Ready Check) and rule 12 (new chat = no code, owner sends the zip). No behaviour change.
 - 27 Oct 2026 (v17): owl_v5e = owl_auto.sh v5e, BUILD=40. Phone log after v5d showed "BUILD 25 -> 35": the v5c/v5d compare read every digit of the BUILD line including its comment (v5c in the comment). It worked by luck. v5e reads only the whole number after BUILD= . BUILD jumped to 40 so the installed (old) parser still sees a bigger number. Self-update worked by itself on the phone (v5c -> v5d, no manual step, zip pushed to GitHub). Owner works with CHANGED-FILES-ONLY zips (not the whole repo): that is the normal case and is fully supported (see section 13).
 - 27 Oct 2026 (v16): owl_v5d = owl_auto.sh v5d (BUILD 3). The owner downloads zips of OTHER repos into the same Download folder; v5c would have used any zip with backend/ or README.md (overlay on the live code, push to this GitHub repo). v5d uses a zip ONLY if every file sits in the top folder Indian-main/ (Claude zips and the GitHub zip of this repo); all others are ignored and logged once as "zip ignored". Found in the log: owl_v5c.zip was seen at 04:49:34 but the push never ran because the owner stopped the old watcher at that moment (he pushed README v15 + BUILD 2 by hand, DONE). v5d reaches the phone by itself through the v5c self-update: the owner only downloads the zip.
 - 27 Oct 2026 (v15): owl_v5c = owl_auto.sh v5c (BUILD 2). Bug found by the owner: v5 pushed release-apk (6).zip, so a 66 MB app-release.apk landed in the repo (commit 0a9aca3). v5c pushes ONLY code zips (backend/, frontend/, tools/, test/, scanner/, android/, .github/, README.md, pubspec*), never apk/aab/zip/keystore, and skips any file over 20 MB. v5c also updates itself: a zip or repo zip holding tools/owl_auto.sh with a higher BUILD= number replaces ~/owl_auto.sh and the watcher restarts itself. Owner copies owl_auto.sh by hand ONE last time (v5 has no self-update). Cumulative: README.md + tools/owl_auto.sh.
@@ -152,6 +167,35 @@ Only the FIRST time (old notes cleanup), add `bash tools/clean_old_notes.sh &&` 
 
 ## 12. CODE MAP (open ONLY what the feature needs; line numbers approximate - search the function name)
 Data dir: dual_lab._dir() (phone: ~/owl_data). Backend tests: `cd backend && python3 test_X.py` (no network). Flutter is not compiled by Claude.
+
+QUICK INDEX (task -> open ONLY these; do not scan the repo)
+| Task | Open |
+|---|---|
+| Change which coins Dual Bot watches | dual_lab.py worker ~L966 (coins function), new universe_7d.py (Part U) |
+| Change which coins the Brain own scan uses | smart_brain.py today_coins ~L410 |
+| Read or add a setup tag | tag_lab.py DIMS ~L47. NEVER add or remove a DIM (read_v1 drops rows with a different tag count = all history gone) |
+| New Brain report | recipe under "HOW BRAIN DATA REACHES THE APP" below |
+| Brain own trade rules, stages, limits | brain_own.py (stage_for, open_from, settle); caps in brain_side.py, brain_week.py |
+| Exit rules (the 9) | tag_lab.EXITS |
+| New card on the Dual Bot screen | dual_bot_screen.dart _segBody(); tab files simple_tab.dart, opportunities_tab.dart, performance_tab.dart; Brain cards smart_brain_view.dart |
+| New API route | api_server.py (routes only): Dual ~L1708, Brain ~L1746 |
+| Zip pickup, restart, self-update on the phone | tools/owl_auto.sh, section 13 |
+| Look and spacing | owl_card.dart, app_theme.dart, app_spacing.dart |
+
+WHO PICKS WHICH COINS
+| Who | Where | List |
+|---|---|---|
+| Main (crypto) bot | recovered_bot/settings_store.py (btc_fixed = BTC always in) | its own watchlist. NEVER touch |
+| Dual Bot | dual_lab.worker ~L966 -> filter_lab.default_coins (~L557) | today's top-10 gainers + top-10 losers by 24h change, no volume floor, + BTC + every coin with an open / skipped trade (cycle ~L869) |
+| Brain own scan | smart_brain.today_coins ~L410 -> same default_coins, refreshed every 30 min | same 20 coins (no BTC) |
+| Ping radar | recovered_bot/ping_tracker.py | top 10 by radar |
+| Old labs by hand | filter_lab, tag_lab, z_scenarios, scan_lab, variant_lab | default_coins. Do NOT edit default_coins: Dual Bot, the Brain and these all share it |
+
+MEMORY LIMITS (why reports only see about 1 day)
+dual_lab.py ~L47: MAX_ROWS 5000, MAX_TRADES 600, MAX_SEEN 6000, MAX_RT 4000; trim() ~L482 deletes older ones. At 500-600 trades a day the Brain sees roughly the last day of trades. Brain book: BOOK_MAX 400 (smart_brain.py ~L512). MIN_TRAIN = 150 rows. A 7-day report needs the history mirror (Part S).
+
+TRADE FIELDS (one Dual Bot trade, dict in dual_lab_data.json "trades")
+id, s (symbol), f (5m / 15m), t (time ms), d (side), src (MAIN / Z / BOTH = signal type, NOT the universe source), entry, sl, tps, tg (tags, one per DIM), status (open / closed / skipped / skipped_done), net (ROI %), exit (exit rule name), mode (EXPLORE / LEARNED), why. Margin: dual_lab._mg(t) = BTC 1000, others 100; USDT = margin x net / 100. "rows" = [sym, tf, t, d, tags, nets per exit rule, bars per exit rule].
 
 HOW BRAIN DATA REACHES THE APP (the one road every Brain feature uses)
 1. smart_brain.worker() (~L1023) loops, reads Dual Bot data (read_v1 ~L89 reads dual_lab_data.json, read-only), calls build_view() (~L967) and saves smart_brain_view.json.
