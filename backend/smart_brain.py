@@ -950,6 +950,14 @@ def _tphold_view(rows):
         return {"status": "error", "text": "Exit and hold report error: %s" % str(e)[:80], "mixes": [], "lines": [], "n": 0, "need": 30}
 
 
+def _universe_view():
+    try:
+        import brain_universe as BUN
+        return BUN.report()
+    except Exception as e:
+        return {"status": "error", "text": "Edge by universe error: %s" % str(e)[:80], "groups": {}, "days": [], "lines": [], "need": 30, "phase_now": "early"}
+
+
 def _ready_view(v):
     try:
         import brain_ready as BR
@@ -997,6 +1005,7 @@ def build_view(rows=None, trades=None, watch=None, scan_t=0, progress="", err=""
             "perf": _perf_view(trades),
             "timing": _timing_view(trades),
             "tp_hold": _tphold_view(rows),
+            "universe": _universe_view(),
             "by_key": {"%s|%s|%s" % (x["s"], x["f"], x["t"]): {"clean": x["clean"], "div": x["div"], "verdict": x["verdict"], "text": x["verdict_text"]} for x in sigs},
             "hours": hours_table(rows), "repeat_loss": rl, "patterns": gp, "speed": fast_slow(rows),
             "bands": bands(rows) if len(rows) >= 3 * MIN_GROUP else [], "trust": tv,
