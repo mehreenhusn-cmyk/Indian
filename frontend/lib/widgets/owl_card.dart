@@ -300,3 +300,114 @@ class OwlDayHeader extends StatelessWidget {
     );
   }
 }
+
+/// UI1: the one big number of a screen. Small muted label on top, 34px value, optional note below.
+/// Colour follows the sign when [signed] is true (green / red), otherwise normal text colour.
+class OwlHero extends StatelessWidget {
+  final String label;
+  final double value;
+  final String unit;
+  final String? note;
+  final bool signed;
+  final int decimals;
+
+  const OwlHero({super.key, required this.label, required this.value, this.unit = 'USDT', this.note, this.signed = true, this.decimals = 2});
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    final c = !signed || value == 0 ? p.textPrimary : (value > 0 ? p.profit : p.loss);
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+      Text(label, style: AppTypography.eyebrow.copyWith(color: p.textMuted)),
+      const SizedBox(height: 4),
+      Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+        Flexible(
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: TweenAnimationBuilder<double>(
+              tween: Tween<double>(end: value),
+              duration: const Duration(milliseconds: 450),
+              curve: Curves.easeOutCubic,
+              builder: (context, v, _) => Text('${signed && v > 0 ? '+' : ''}${v.toStringAsFixed(decimals)}', maxLines: 1, style: AppTypography.heroXL.copyWith(color: c)),
+            ),
+          ),
+        ),
+        const SizedBox(width: 6),
+        Padding(padding: const EdgeInsets.only(bottom: 5), child: Text(unit, style: context.type.secondary.copyWith(color: p.textMuted))),
+      ]),
+      if (note != null) ...[
+        const SizedBox(height: 2),
+        Text(note!, style: context.type.metadata),
+      ],
+    ]);
+  }
+}
+
+/// UI1: a card that shows ONE headline line when closed (the key number or status) and the details when tapped.
+/// [bare] = the body is NOT wrapped in the card (use it when the body is already a card, like DiagnosticsCard).
+class OwlFold extends StatefulWidget {
+  final String title;
+  final String headline;
+  final Color? headlineColor;
+  final Color? edge;
+  final bool initiallyOpen;
+  final bool bare;
+  final Widget? trailing;
+  final List<Widget> children;
+
+  const OwlFold({super.key, required this.title, required this.headline, required this.children, this.headlineColor, this.edge, this.initiallyOpen = false, this.bare = false, this.trailing});
+
+  @override
+  State<OwlFold> createState() => _OwlFoldState();
+}
+
+class _OwlFoldState extends State<OwlFold> {
+  late bool _open = widget.initiallyOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    final header = OWLPressable(
+      pressedScale: 0.99,
+      onTap: () => setState(() => _open = !_open),
+      child: Row(children: [
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(widget.title, style: AppTypography.eyebrow.copyWith(color: p.textMuted)),
+            const SizedBox(height: 3),
+            Text(widget.headline, maxLines: 2, overflow: TextOverflow.ellipsis, style: context.type.primary.copyWith(fontWeight: FontWeight.w700, color: widget.headlineColor ?? p.textPrimary)),
+          ]),
+        ),
+        if (widget.trailing != null) ...[widget.trailing!, const SizedBox(width: 6)],
+        AnimatedRotation(turns: _open ? 0.5 : 0, duration: AppMotion.base, child: Icon(Icons.expand_more_rounded, size: 22, color: p.textMuted)),
+      ]),
+    );
+    final body = AnimatedSize(
+      duration: AppMotion.base,
+      curve: Curves.easeOutCubic,
+      alignment: Alignment.topCenter,
+      child: _open
+          ? Padding(
+              padding: EdgeInsets.only(top: widget.bare ? AppSpacing.cardGap : AppSpacing.s),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: widget.children),
+            )
+          : const SizedBox(width: double.infinity),
+    );
+    if (widget.bare) {
+      return Container(
+        width: double.infinity,
+        margin: const EdgeInsets.only(bottom: AppSpacing.cardGap),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          OWLCard(edge: widget.edge, padding: const EdgeInsets.all(AppSpacing.cardPad), child: header),
+          body,
+        ]),
+      );
+    }
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: AppSpacing.cardGap),
+      child: OWLCard(edge: widget.edge, padding: const EdgeInsets.all(AppSpacing.cardPad), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [header, body])),
+    );
+  }
+}

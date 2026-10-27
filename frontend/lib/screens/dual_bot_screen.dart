@@ -139,8 +139,11 @@ class _DualBotScreenState extends State<DualBotScreen> {
   double _mg(Map t) => t['margin'] is num ? (t['margin'] as num).toDouble() : _n(_st['margin']);
   static String _usdt(double v) => '${v >= 0 ? '+' : ''}${v.toStringAsFixed(2)} USDT';
 
-  Widget _card(AppPalette p, {required String title, required List<Widget> children, Color? edge}) =>
-      OwlSectionCard(title: title, edge: edge, children: children);
+  /// UI2b: with [headline] the card is a fold (one line with the key number when closed, details on tap).
+  Widget _card(AppPalette p, {required String title, required List<Widget> children, Color? edge, String? headline, Color? headlineColor}) =>
+      headline == null
+          ? OwlSectionCard(title: title, edge: edge, children: children)
+          : OwlFold(title: title, headline: headline, headlineColor: headlineColor, edge: edge, children: children);
 
 
   Widget _kv(String k, String v, {Color? color}) {
@@ -165,10 +168,9 @@ class _DualBotScreenState extends State<DualBotScreen> {
     final btcNote = btcMargin > 0 ? 'BTC is always included, with ${btcMargin.toStringAsFixed(0)} USDT per trade. ' : '';
     return _card(p, title: 'DUAL BOT (PAPER)', edge: p.accent, children: [
       Text(
-          'A separate bot that reads both indicators and learns by itself when to trade and how to exit. '
           'Paper only: ${_n(_st['margin']).toStringAsFixed(0)} USDT per trade at ${_n(_st['lev']).toStringAsFixed(0)}x. '
           '$btcNote'
-          'No AI key is needed, so a key limit cannot stop it. Your live bot is not touched.',
+          'Your live bot is not touched.',
           style: context.type.metadata),
       const SizedBox(height: 8),
       Row(children: [
@@ -198,7 +200,9 @@ class _DualBotScreenState extends State<DualBotScreen> {
     }
     final learned = m['mode'] == 'LEARNED';
     final v = _map(m['val']);
-    return _card(p, title: 'WHAT IT HAS LEARNED', edge: learned ? p.profit : p.warning, children: [
+    return _card(p, title: 'WHAT IT HAS LEARNED', edge: learned ? p.profit : p.warning,
+        headline: learned ? 'LEARNED: its choice ${_n(v['taken_avg']).toStringAsFixed(2)}% vs take-all ${_n(v['all_avg']).toStringAsFixed(2)}% per trade' : 'STILL EXPLORING: it takes every signal and keeps learning',
+        headlineColor: learned ? p.profit : p.warning, children: [
       Text(learned ? 'LEARNED' : 'STILL EXPLORING', style: context.type.section.copyWith(color: learned ? p.profit : p.warning, fontWeight: FontWeight.w800)),
       const SizedBox(height: 4),
       Text(
@@ -365,7 +369,11 @@ class _DualBotScreenState extends State<DualBotScreen> {
     final bad = _maps(r['bad']);
     final good = _maps(r['good']);
     final c = _map(r['combo']);
-    return _card(p, title: 'DAILY REVIEW (${r['day']})', edge: p.accent, children: [
+    final wc = _n(c['with']) >= _n(c['without']) ? p.profit : p.loss;
+    return _card(p, title: 'DAILY REVIEW (${r['day']})', edge: p.accent,
+        headline: bad.isEmpty ? 'Day ${r['day']}: ${_usdt(_n(r['pnl']))}, no clear losing scenario' : 'Skipping the losers: ${_usdt(_n(c['with']))} instead of ${_usdt(_n(c['without']))}',
+        headlineColor: bad.isEmpty ? null : wc,
+        children: [
       Text('That day: ${r['n']} trades, ${r['won']} won, result ${_usdt(_n(r['pnl']))}.',
           style: context.type.primary.copyWith(fontWeight: FontWeight.w800, height: 1.3)),
       if (_n(r['open_left']) > 0) Text('${r['open_left']} trade(s) from that day are still open and not counted.', style: context.type.metadata),
@@ -394,7 +402,9 @@ class _DualBotScreenState extends State<DualBotScreen> {
     final sc = _map(_st['scen']);
     final cards = _maps(sc['cards']);
     if (sc['status'] != 'ready' || cards.isEmpty) return const SizedBox.shrink();
-    return _card(p, title: 'SCENARIOS (HOW OFTEN, HOW LONG, HOW MUCH)', children: [
+    final nUse = cards.where((c) => c['verdict'] == 'USE').length;
+    final nSkip = cards.where((c) => c['verdict'] == 'SKIP').length;
+    return _card(p, title: 'SCENARIOS (HOW OFTEN, HOW LONG, HOW MUCH)', headline: '${cards.length} scenarios  ·  $nUse to use  ·  $nSkip to skip', children: [
       for (final c in cards)
         Padding(
           padding: const EdgeInsets.only(bottom: 10),
@@ -462,7 +472,7 @@ class _DualBotScreenState extends State<DualBotScreen> {
             style: context.type.secondary),
       ]);
     }
-    return _card(p, title: 'SETUPS (BOTH INDICATORS TOGETHER)', edge: p.accent, children: [
+    return _card(p, title: 'SETUPS (BOTH INDICATORS TOGETHER)', edge: p.accent, headline: '${tot['use']} good  ·  ${tot['skip']} bad  ·  ${tot['seen']} setups seen', children: [
       Text('${tot['seen']} different setups seen', style: context.type.primary.copyWith(fontWeight: FontWeight.w800, fontSize: 15)),
       const SizedBox(height: 2),
       Text(
@@ -511,7 +521,7 @@ class _DualBotScreenState extends State<DualBotScreen> {
     final warned = (rep['warned'] ?? 0) as num;
     final free = (rep['not_warned'] ?? 0) as num;
     final reasons = _maps(l['top_reasons']);
-    return _card(p, title: 'LESSONS FROM MISTAKES', children: [
+    return _card(p, title: 'LESSONS FROM MISTAKES', headline: '${l['fake'] ?? 0} fake  ·  ${l['real'] ?? 0} real  ·  $closed finished', children: [
       _kv('Finished trades', '$closed'),
       _kv('Fake signals', '${l['fake'] ?? 0}', color: p.loss),
       _kv('Real moves', '${l['real'] ?? 0}', color: p.profit),
@@ -633,6 +643,30 @@ class _DualBotScreenState extends State<DualBotScreen> {
     );
   }
 
+  /// UI2a: the Now tab opens with one line: how many are open, long / short, and the floating money.
+  Widget _nowLine(AppPalette p) {
+    final td = _map(_map(_st['summary'])['today']);
+    if (td.isEmpty) return const SizedBox.shrink();
+    final nOpen = _n(td['open']).toInt();
+    final nLong = _n(td['open_long']).toInt();
+    final fl = _n(td['open_pnl']);
+    final c = nOpen == 0 ? p.textMuted : (fl >= 0 ? p.profit : p.loss);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: OWLCard(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        edge: nOpen == 0 ? null : c,
+        child: Row(children: [
+          Expanded(
+            child: Text(nOpen == 0 ? 'Nothing open right now' : '$nOpen open  ·  $nLong long  ·  ${nOpen - nLong} short',
+                maxLines: 1, overflow: TextOverflow.ellipsis, style: context.type.primary.copyWith(fontWeight: FontWeight.w800)),
+          ),
+          if (nOpen > 0) Text('floating ${fl >= 0 ? '+' : ''}${fl.toStringAsFixed(2)} USDT', style: context.type.primary.copyWith(fontWeight: FontWeight.w800, color: c)),
+        ]),
+      ),
+    );
+  }
+
   Widget _stripCard(AppPalette p) {
     final state = '${_st['state'] ?? ''}';
     final running = state == 'running' || state == 'loading' || (state.isEmpty && _st['running'] == true);
@@ -708,7 +742,9 @@ class _DualBotScreenState extends State<DualBotScreen> {
     }
     final missedNow = _n(r['now_missed']);
     final tsi = _maps(r['tsi']);
-    return _card(p, title: 'RETEST CHECK (WAIT FOR PRICE TO COME BACK TO THE EMA)', edge: p.accent, children: [
+    final extra = _n(r['extra_on_entered']);
+    return _card(p, title: 'RETEST CHECK (WAIT FOR PRICE TO COME BACK TO THE EMA)', edge: p.accent,
+        headline: 'Entering after a retest: ${_usdt(extra)} vs the signal entry', headlineColor: extra >= 0 ? p.profit : p.loss, children: [
       Text('Same stop, same targets, same exit. Only the entry changes: wait for a pullback to the EMA50. The bot measures 3, 6, 12 and 24 candles at once and shows the best.', style: context.type.metadata),
       const SizedBox(height: 8),
       _retestRow(p, r, title: 'All signals, best wait: ${r['wait']} candles'),
@@ -873,6 +909,7 @@ class _DualBotScreenState extends State<DualBotScreen> {
                 onOpen: (t) => showDualTradeChart(context, row: t, margin: _mg(t), lev: _n(_st['lev'])),
               ),
             ] else if (_seg == 1) ...[
+              _nowLine(p),
               _stripCard(p),
               _statusCard(p),
               _todayCard(p),

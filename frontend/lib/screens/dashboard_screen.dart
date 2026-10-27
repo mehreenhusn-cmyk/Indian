@@ -15,8 +15,10 @@ import '../widgets/tag_lab_tile.dart';
 import '../widgets/btc_live_tile.dart';
 import '../widgets/live_wallet_card.dart';
 import '../widgets/owl_animated_pnl.dart';
+import '../widgets/owl_card.dart';
 import '../widgets/owl_connection_indicator.dart';
 import '../widgets/owl_pressable.dart';
+import '../widgets/owl_status_pill.dart';
 import '../widgets/owl_refresh.dart';
 import '../widgets/owl_skeleton.dart';
 import '../widgets/pnl_calendar.dart';
@@ -194,42 +196,10 @@ class DashboardScreen extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: AppSpacing.s),
-                  Text(
-                    'Bot is running and monitoring ${status['symbols_tracked'] ?? 0} coins',
-                    style: AppTypography.primaryData.copyWith(color: context.palette.textSecondary, fontSize: 14),
-                  ),
+                  const _StatusLine(),
                   if (status['last_reconcile'] is Map)
                     _CatchUpLine(Map<String, dynamic>.from(status['last_reconcile'] as Map)),
                   const SizedBox(height: AppSpacing.l),
-
-                  // DASHBOARD MOUNTING - real feed/latency/guard/error
-                  // telemetry, wired straight to AppProvider (see
-                  // diagnostics_card.dart). Kept at the top, right under the
-                  // header, so ops health is always the first thing visible.
-                  const DiagnosticsCard(),
-
-                  // Backend load (CPU/RAM/disk, Binance feed, broadcaster,
-                  // candle polling, AI assistant) - see system_load_card.dart.
-                  const SystemLoadCard(),
-
-                  // Tag Lab - which mix of both indicators makes money (read-only, opens tag_lab_screen.dart)
-                  // BTC live price + BTC's own result today (apart from the alt coins)
-                  const BtcLiveTile(),
-                  const DualBotTile(),
-                  const TagLabTile(),
-
-                  // Strategy Doctor - which entries lose / win (read-only, see strategy_doctor_screen.dart)
-                  if (kShowStrategyDoctor) const StrategyDoctorCard(),
-
-                  // AI Insights - win rate by SD zone / session / EMA / volume
-                  // plus MFE/MAE, straight from ai_stats.py (see
-                  // ai_insights_card.dart).
-                  // AI Insights card removed (it was built from the old AI's paper stats).
-                  // LIVE account: real Binance wallet card instead.
-                  if (isLiveStats) ...[
-                    const LiveWalletCard(),
-                    const SizedBox(height: AppSpacing.cardGap),
-                  ],
 
                   // COCKPIT - one compact card: ring gauge (P&L inside, fills
                   // toward the daily target) + Open P&L / Win / Positions /
@@ -255,6 +225,26 @@ class DashboardScreen extends StatelessWidget {
                     ),
                   ],
 
+                  // LIVE account: real Binance wallet card instead.
+                  if (isLiveStats) ...[
+                    const LiveWalletCard(),
+                    const SizedBox(height: AppSpacing.cardGap),
+                  ],
+                  const SizedBox(height: AppSpacing.cardGap),
+
+                  // Tag Lab - which mix of both indicators makes money (read-only, opens tag_lab_screen.dart)
+                  // BTC live price + BTC's own result today (apart from the alt coins)
+                  const BtcLiveTile(),
+                  const DualBotTile(),
+                  const TagLabTile(),
+
+                  // Strategy Doctor - which entries lose / win (read-only, see strategy_doctor_screen.dart)
+                  if (kShowStrategyDoctor) const StrategyDoctorCard(),
+
+                  // AI Insights - win rate by SD zone / session / EMA / volume
+                  // plus MFE/MAE, straight from ai_stats.py (see
+                  // ai_insights_card.dart).
+                  // AI Insights card removed (it was built from the old AI's paper stats).
                   const TopMoversCard(),
 
                   const SizedBox(height: AppSpacing.cardGap),
@@ -271,6 +261,16 @@ class DashboardScreen extends StatelessWidget {
                     onMonthChanged: (m) => provider.fetchCalendar(month: m),
                   ),
 
+                  // UI1: system health sits at the bottom now (the status line at the top already says Bot ON + feed age).
+                  const SizedBox(height: AppSpacing.cardGap),
+                  const DiagnosticsCard(),
+                  OwlFold(
+                    title: 'PHONE LOAD',
+                    headline: 'CPU, memory, feed and candle polling - tap to open',
+                    bare: true,
+                    children: const [SystemLoadCard()],
+                  ),
+
                 ],
               ),
               ),
@@ -278,6 +278,42 @@ class DashboardScreen extends StatelessWidget {
           },
         ),
       ),
+    );
+  }
+}
+
+/// UI1: one status line under the title: Bot ON / PAUSED / OFFLINE chip + how old the price feed is + coins watched.
+/// Own Selector, so only this line rebuilds when the feed age moves (bucketed to 3 s).
+class _StatusLine extends StatelessWidget {
+  const _StatusLine();
+
+  @override
+  Widget build(BuildContext context) {
+    return Selector<AppProvider, int>(
+      selector: (_, p) => Object.hash(p.error == null, p.settings['trading_enabled'], ((p.feedAgeSec ?? -3) / 3).floor(), p.status['symbols_tracked']),
+      builder: (context, _, __) {
+        final pr = context.read<AppProvider>();
+        final p = context.palette;
+        final offline = pr.error != null;
+        final on = (pr.settings['trading_enabled'] as bool?) ?? true;
+        final age = pr.feedAgeSec;
+        final coins = pr.status['symbols_tracked'] ?? 0;
+        final chip = offline
+            ? OWLStatusPill(text: 'OFFLINE', color: p.loss)
+            : (on ? OWLStatusPill(text: 'BOT ON', color: p.profit) : OWLStatusPill(text: 'PAUSED', color: p.warning));
+        final stale = age != null && age > 30;
+        final feed = age == null ? 'Feed --' : 'Feed ${fmtSpan(age)} ago';
+        return Wrap(
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 10,
+          runSpacing: 4,
+          children: [
+            chip,
+            Text(feed, style: context.type.secondary.copyWith(color: stale ? p.warning : p.textSecondary, fontWeight: stale ? FontWeight.w700 : FontWeight.w400)),
+            Text('$coins coins watched', style: context.type.metadata),
+          ],
+        );
+      },
     );
   }
 }

@@ -81,10 +81,43 @@ class PerformanceTab extends StatelessWidget {
     final total = _n(f['total']);
     final up = total >= 0;
     final wNow = f['win_now'], wBefore = f['win_before'];
+    // UI2b: biggest drawdown worked out from the curve we already have (running total after each trade, start = 0).
+    var peak = 0.0, maxDd = 0.0, peakAtMax = 0.0, lowAtMax = 0.0;
+    for (final v in eq) {
+      if (v > peak) peak = v;
+      if (peak - v > maxDd) {
+        maxDd = peak - v;
+        peakAtMax = peak;
+        lowAtMax = v;
+      }
+    }
+    final nowBelow = eq.isEmpty ? 0.0 : (peak - eq.last);
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       OwlSectionCard(title: 'EQUITY CURVE (ALT COINS, BTC NOT INCLUDED)', edge: up ? p.profit : p.loss, children: [
-        Text('${_sg(total)} USDT', style: context.type.primary.copyWith(fontWeight: FontWeight.w900, fontSize: 24, color: up ? p.profit : p.loss)),
+        OwlHero(label: 'TOTAL OF FINISHED TRADES', value: total),
+        const SizedBox(height: 4),
         Text('${f['text'] ?? ''}', style: context.type.metadata),
+        if (eq.length >= 2) ...[
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            decoration: BoxDecoration(color: p.warning.withOpacity(0.10), borderRadius: BorderRadius.circular(10), border: Border.all(color: p.warning.withOpacity(0.45))),
+            child: Row(children: [
+              Icon(Icons.south_east_rounded, size: 18, color: p.warning),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(maxDd == 0 ? 'No drawdown yet' : 'Biggest drawdown: -${maxDd.toStringAsFixed(2)} USDT', style: context.type.primary.copyWith(fontWeight: FontWeight.w800)),
+                  Text(
+                      maxDd == 0
+                          ? 'The total has only gone up so far.'
+                          : 'From ${_sg(peakAtMax)} down to ${_sg(lowAtMax)}. ${nowBelow < 0.005 ? 'Now at the best point so far.' : 'Right now ${nowBelow.toStringAsFixed(2)} USDT below the best point.'}',
+                      style: context.type.metadata),
+                ]),
+              ),
+            ]),
+          ),
+        ],
         if (_n(_map(f['btc'])['n']) > 0)
           Text('BTC alone (own 1000 USDT margin, not in this curve): ${_n(_map(f['btc'])['n']).toInt()} trades, ${_sg(_n(_map(f['btc'])['pnl']))} USDT.', style: context.type.metadata),
         const SizedBox(height: 8),
@@ -92,7 +125,13 @@ class PerformanceTab extends StatelessWidget {
         const SizedBox(height: 4),
         Text('Each point is the running total after a trade. The dotted line is zero.', style: context.type.metadata),
       ]),
-      OwlSectionCard(title: 'WIN RATE TREND (LAST 20 TRADES AT A TIME)', children: [
+      OwlFold(
+          title: 'WIN RATE TREND (LAST 20 TRADES AT A TIME)',
+          headline: wr.length < 2
+              ? 'Needs 20 finished trades first'
+              : (wNow is num && wBefore is num ? 'Now $wNow% won (started at $wBefore%)  ·  ${wNow >= wBefore ? 'holding up' : 'getting weaker'}' : 'Trend ready, tap to see'),
+          headlineColor: wr.length >= 2 && wNow is num && wBefore is num ? (wNow >= wBefore ? p.profit : p.loss) : null,
+          children: [
         if (wr.length < 2) Text('Needs 20 finished trades first.', style: context.type.secondary),
         if (wr.length >= 2) ...[
           Text(
@@ -106,7 +145,10 @@ class PerformanceTab extends StatelessWidget {
           Text('The dotted line is 50%.', style: context.type.metadata),
         ],
       ]),
-      OwlSectionCard(title: 'DAILY RESULTS (5:30 AM IST TO 5:30 AM IST)', children: [
+      OwlFold(
+          title: 'DAILY RESULTS (5:30 AM IST TO 5:30 AM IST)',
+          headline: days.isEmpty ? 'No finished day yet' : 'Best day ${_sg(_n(f['best_day']))}  ·  worst day ${_sg(_n(f['worst_day']))} USDT',
+          children: [
         if (days.isEmpty) Text('No finished day yet.', style: context.type.secondary),
         for (final d in days)
           Padding(

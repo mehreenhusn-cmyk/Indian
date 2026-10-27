@@ -108,10 +108,20 @@ class UniverseStrip extends StatelessWidget {
     }
     final g = _m(desk['groups']);
     final other = _otherLine(_m(g['other']));
-    return OwlSectionCard(title: 'TODAY VS LAST 7 DAYS COINS', trailing: _safeChip(p), hint: 'Since 5:30 AM IST. Same trades, split by where the coin came from.', children: [
-      _block(context, p, "TODAY'S TOP COINS", _m(g['today'])),
-      _block(context, p, "LAST 7 DAYS' COINS (live only)", _m(g['d7'])),
-      if (other.isNotEmpty) Text(other, style: context.type.metadata),
-    ]);
+    // UI2a: folded. The headline already carries the two money numbers, the blocks open on tap.
+    double grp(String k) => _n(_m(_m(g[k])['5m'])['net']) + _n(_m(_m(g[k])['15m'])['net']);
+    final tNet = grp('today'), dNet = grp('d7');
+    return OwlFold(
+      title: 'TODAY VS LAST 7 DAYS COINS',
+      headline: 'Today coins ${fmtSigned(tNet)}  ·  7-day coins ${fmtSigned(dNet)} USDT',
+      trailing: _safeChip(p),
+      children: [
+        Text('Since 5:30 AM IST. Same trades, split by where the coin came from.', style: context.type.metadata),
+        const SizedBox(height: 6),
+        _block(context, p, "TODAY'S TOP COINS", _m(g['today'])),
+        _block(context, p, "LAST 7 DAYS' COINS (live only)", _m(g['d7'])),
+        if (other.isNotEmpty) Text(other, style: context.type.metadata),
+      ],
+    );
   }
 }

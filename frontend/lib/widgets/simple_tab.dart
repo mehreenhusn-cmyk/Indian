@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import 'dual_trade_card.dart';
 import 'owl_card.dart';
+import 'owl_status_pill.dart';
 import 'universe_strip.dart';
 
 /// Dual Bot "Simple" tab: the whole picture in 5 small blocks, no jargon. Block 0: Locked / Floating / Net + Brain dislike %.
@@ -82,13 +83,15 @@ class _SimpleTabState extends State<SimpleTab> {
     return o is Map ? Map<String, dynamic>.from(o) : null;
   }
 
-  /// Three big numbers for today (5:30 AM IST day) + how often the Brain disliked the latest trades.
+  /// UI2a: today's money. ONE hero number (NET = locked + floating) with a status chip, LOCKED and FLOATING smaller below,
+  /// and the Brain dislike line. Same numbers as before, only the hierarchy changed.
   Widget _threeBoxes(AppPalette p) {
     final td = widget.today;
     if (td.isEmpty) return const SizedBox.shrink();
     final total = _n(td['total']);
     final locked = td.containsKey('realized') ? _n(td['realized']) : total;
     final floating = _n(td['open_pnl']);
+    final v = _verdict(p);
     var rated = 0, bad = 0, badDone = 0;
     double badUsdt = 0;
     for (final t in widget.recent) {
@@ -103,68 +106,69 @@ class _SimpleTabState extends State<SimpleTab> {
         }
       }
     }
-    Widget box(String label, double v, String note) => Expanded(
+    Widget small(String label, double val, String note) => Expanded(
           child: Container(
             margin: const EdgeInsets.symmetric(horizontal: 3),
-            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
             decoration: BoxDecoration(border: Border.all(color: p.border), borderRadius: BorderRadius.circular(10)),
-            child: Column(children: [
-              Text(label, style: context.type.label.copyWith(fontWeight: FontWeight.w800)),
-              const SizedBox(height: 4),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(label, style: AppTypography.eyebrow.copyWith(color: p.textMuted, fontSize: 9.5)),
+              const SizedBox(height: 3),
               FittedBox(
                 fit: BoxFit.scaleDown,
-                child: Text(_sg(v), style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: v >= 0 ? p.profit : p.loss, fontFeatures: _tab)),
+                alignment: Alignment.centerLeft,
+                child: Text(_sg(val), maxLines: 1, style: AppTypography.numberLarge.copyWith(color: val >= 0 ? p.profit : p.loss)),
               ),
-              const SizedBox(height: 2),
-              Text(note, textAlign: TextAlign.center, style: context.type.metadata),
+              const SizedBox(height: 1),
+              Text(note, maxLines: 1, overflow: TextOverflow.ellipsis, style: context.type.metadata),
             ]),
           ),
         );
-    return OwlSectionCard(title: 'TODAY IN USDT (5:30 AM IST TO 5:30 AM IST)', edge: total >= 0 ? p.profit : p.loss, children: [
-      Row(children: [
-        box('LOCKED', locked, 'closed trades, final'),
-        box('FLOATING', floating, 'open trades, can change'),
-        box('NET', total, 'locked + floating'),
-      ]),
-      if (rated > 0) ...[
-        const SizedBox(height: 8),
-        Text('Brain dislikes ${(100 * bad / rated).round()}% of the latest $rated trades.', style: context.type.primary),
-        if (badDone > 0)
-          Text('The disliked ones that finished made ${_sg(badUsdt)} USDT ($badDone trades).', style: context.type.secondary),
+    return OwlSectionCard(
+      title: 'TODAY IN USDT',
+      hint: '5:30 AM IST to 5:30 AM IST',
+      edge: total >= 0 ? p.profit : p.loss,
+      trailing: OWLStatusPill(text: v.shortHead.toUpperCase(), color: v.c),
+      children: [
+        OwlHero(label: 'NET (LOCKED + FLOATING)', value: total),
+        const SizedBox(height: AppSpacing.m),
+        Row(children: [
+          small('LOCKED', locked, 'closed, final'),
+          small('FLOATING', floating, 'open, can change'),
+        ]),
+        if (rated > 0) ...[
+          const SizedBox(height: 8),
+          Text('Brain dislikes ${(100 * bad / rated).round()}% of the latest $rated trades.', style: context.type.primary),
+          if (badDone > 0)
+            Text('The disliked ones that finished made ${_sg(badUsdt)} USDT ($badDone trades).', style: context.type.secondary),
+        ],
       ],
-    ]);
+    );
+  }
+
+  /// One verdict for the day, used by the chip on the hero card and the sentence in IS THE BOT OK?.
+  _V _verdict(AppPalette p) {
+    final td = widget.today;
+    final closed = _n(td['closed']).toInt();
+    final locked = td.containsKey('realized') ? _n(td['realized']) : _n(td['total']);
+    final floating = _n(td['open_pnl']);
+    final total = _n(td['total']);
+    if (closed < 20) return _V(p.textMuted, 'Too early to say', 'Too early', 'Only $closed trades have closed today. Check again later.');
+    if (locked >= 0) return _V(p.profit, 'Looking fine', 'Looking fine', 'Closed trades are in profit today (${_sg(locked)} USDT locked in).');
+    if (total >= 0) {
+      return _V(p.warning, 'Careful, not locked in', 'Careful',
+          'Closed trades lost ${_sg(locked)} USDT. The open trades are floating ${_sg(floating)} USDT, but that can still disappear.');
+    }
+    return _V(p.loss, 'Losing today', 'Losing', 'Closed trades ${_sg(locked)} USDT, open trades ${_sg(floating)} USDT. Total ${_sg(total)} USDT.');
   }
 
   Widget _health(AppPalette p) {
     final td = widget.today;
     final closed = _n(td['closed']).toInt();
     final wins = _n(td['wins']).toInt();
-    final locked = td.containsKey('realized') ? _n(td['realized']) : _n(td['total']);
-    final floating = _n(td['open_pnl']);
-    final total = _n(td['total']);
     final nOpen = _n(td['open']).toInt();
     final winPct = closed > 0 ? (100 * wins / closed).round() : null;
-
-    late final Color c;
-    late final String head;
-    late final String why;
-    if (closed < 20) {
-      c = p.textMuted;
-      head = 'Too early to say';
-      why = 'Only $closed trades have closed today. Check again later.';
-    } else if (locked >= 0) {
-      c = p.profit;
-      head = 'Looking fine';
-      why = 'Closed trades are in profit today (${_sg(locked)} USDT locked in).';
-    } else if (total >= 0) {
-      c = p.warning;
-      head = 'Careful, not locked in';
-      why = 'Closed trades lost ${_sg(locked)} USDT. The open trades are floating ${_sg(floating)} USDT, but that can still disappear.';
-    } else {
-      c = p.loss;
-      head = 'Losing today';
-      why = 'Closed trades ${_sg(locked)} USDT, open trades ${_sg(floating)} USDT. Total ${_sg(total)} USDT.';
-    }
+    final v = _verdict(p);
 
     final sw = widget.sideways;
     final cost = sw['cost'];
@@ -172,14 +176,9 @@ class _SimpleTabState extends State<SimpleTab> {
         ? 'Sideways markets have cost ${cost.toStringAsFixed(2)} USDT so far (see Brain tab for details).'
         : '';
 
-    return OwlSectionCard(title: 'IS THE BOT OK?', edge: c, children: [
-      Row(children: [
-        Icon(Icons.circle, size: 12, color: c),
-        const SizedBox(width: 8),
-        Expanded(child: Text(head, style: context.type.primary.copyWith(fontWeight: FontWeight.w900, fontSize: 18, color: c))),
-      ]),
-      const SizedBox(height: 6),
-      Text(why, style: context.type.primary),
+    // The verdict word itself is the chip on the hero card; here only the plain sentence + counts.
+    return OwlSectionCard(title: 'IS THE BOT OK?', edge: v.c, children: [
+      Text(v.why, style: context.type.primary.copyWith(fontWeight: FontWeight.w700)),
       const SizedBox(height: 6),
       Text(
         closed == 0
@@ -196,12 +195,18 @@ class _SimpleTabState extends State<SimpleTab> {
     if (widget.bySrc.isEmpty) return const SizedBox.shrink();
     const names = {'BOTH': 'Both on the same candle', 'Z': 'Z black candle only', 'MAIN': 'Main chart only'};
     final rows = <Widget>[];
+    String? bestName;
+    double bestPnl = 0;
     for (final k in const ['BOTH', 'Z', 'MAIN']) {
       final v = widget.bySrc[k];
       if (v is! Map) continue;
       final n = _n(v['n']).toInt();
       final w = _n(v['wins']).toInt();
       final pnl = _n(v['pnl']);
+      if (n > 0 && (bestName == null || pnl > bestPnl)) {
+        bestName = names[k] ?? k;
+        bestPnl = pnl;
+      }
       rows.add(Padding(
         padding: const EdgeInsets.only(bottom: 6),
         child: Row(children: [
@@ -216,7 +221,7 @@ class _SimpleTabState extends State<SimpleTab> {
       ));
     }
     if (rows.isEmpty) return const SizedBox.shrink();
-    return OwlSectionCard(title: 'WHICH SIGNAL TYPE PAYS (FINISHED TRADES)', children: [
+    return OwlFold(title: 'WHICH SIGNAL TYPE PAYS (FINISHED TRADES)', headline: bestName == null ? 'No finished trade yet' : 'Best: $bestName ${_sg(bestPnl)} USDT', headlineColor: bestName == null ? null : (bestPnl >= 0 ? p.profit : p.loss), children: [
       ...rows,
       Text('Closed trades only, alt coins. Open trades are not counted here.', style: context.type.metadata),
     ]);
@@ -313,7 +318,12 @@ class _SimpleTabState extends State<SimpleTab> {
     done.sort((a, b) => (_n(b['net']) * widget.marginOf(b)).compareTo(_n(a['net']) * widget.marginOf(a)));
     final best = done.where((t) => _n(t['net']) > 0).take(3).toList();
     final worst = done.reversed.where((t) => _n(t['net']) < 0).take(3).toList();
-    return OwlSectionCard(title: 'BEST AND WORST FINISHED TRADES', children: [
+    double usdt(Map<String, dynamic> t) => _n(t['net']) * widget.marginOf(t) / 100.0;
+    final head = [
+      if (best.isNotEmpty) 'Best ${_sg(usdt(best.first))}',
+      if (worst.isNotEmpty) 'Worst ${_sg(usdt(worst.first))}',
+    ].join('  ·  ');
+    return OwlFold(title: 'BEST AND WORST FINISHED TRADES', headline: head.isEmpty ? 'Out of the latest ${done.length} finished trades' : '$head USDT', children: [
       Text('Out of the latest ${done.length} finished trades.', style: context.type.metadata),
       if (best.isNotEmpty) ...[
         const SizedBox(height: 4),
@@ -334,9 +344,9 @@ class _SimpleTabState extends State<SimpleTab> {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       _threeBoxes(p),
       _health(p),
+      _openCard(p),
       UniverseStrip(desk: widget.desk, archive: widget.archive),
       _signalTypeCard(p),
-      _openCard(p),
       _doneCard(p),
       Padding(
         padding: const EdgeInsets.only(top: 2, bottom: 4),
@@ -344,4 +354,13 @@ class _SimpleTabState extends State<SimpleTab> {
       ),
     ]);
   }
+}
+
+/// UI2a: the day's verdict (colour, long word, short chip word, one sentence).
+class _V {
+  final Color c;
+  final String head;
+  final String shortHead;
+  final String why;
+  const _V(this.c, this.head, this.shortHead, this.why);
 }

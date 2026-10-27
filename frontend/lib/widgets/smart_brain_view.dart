@@ -315,7 +315,16 @@ class _SmartBrainViewState extends State<SmartBrainView> {
     final st = _maps(f['stories']);
     final ready = '${f['status']}' == 'ready';
     String sg(num v, int d) => '${v >= 0 ? '+' : ''}${v.toStringAsFixed(d)}';
+    final bigDiff = st.length >= 2 ? _n(st[1]['total']) - _n(st[0]['total']) : null;
     return _card(p, title: 'WHAT IF THE BOT HAD LISTENED?', edge: ready ? null : p.textMuted, children: [
+      if (ready && bigDiff != null) ...[
+        Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+          Text(sg(bigDiff, 0), style: AppTypography.heroXL.copyWith(color: bigDiff >= 0 ? p.profit : p.loss)),
+          const SizedBox(width: 8),
+          Padding(padding: const EdgeInsets.only(bottom: 5), child: Text('ROI points vs taking every signal', style: context.type.secondary)),
+        ]),
+        const SizedBox(height: 6),
+      ],
       Text('${f['text'] ?? ''}', style: context.type.primary),
       if (st.isNotEmpty) ...[
         const SizedBox(height: 8),
@@ -613,7 +622,15 @@ class _SmartBrainViewState extends State<SmartBrainView> {
     final rows = _maps(x['rows']);
     if (rows.isEmpty) return const SizedBox.shrink();
     final good = x['skip_ok'] == true || x['exit_ok'] == true;
+    final gates = rows.where((r) => r['gate'] == true).toList();
+    final nOk = gates.where((r) => r['ok'] == true).length;
     return _card(p, title: 'READY CHECK', edge: good ? p.profit : p.textMuted, children: [
+      Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+        Text('$nOk of ${gates.length}', style: AppTypography.heroXL.copyWith(color: nOk == gates.length && gates.isNotEmpty ? p.profit : p.textPrimary)),
+        const SizedBox(width: 8),
+        Padding(padding: const EdgeInsets.only(bottom: 5), child: Text('checks true', style: context.type.secondary)),
+      ]),
+      const SizedBox(height: 6),
       Text('${x['text'] ?? ''}', style: context.type.primary.copyWith(fontWeight: FontWeight.w700)),
       const SizedBox(height: 8),
       for (final r in rows)
@@ -1143,11 +1160,15 @@ class _SmartBrainViewState extends State<SmartBrainView> {
     final p = context.palette;
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       _readyCard(p),
-      _nowCard(p),
-      _timingCard(p),
-      _tpHoldCard(p),
-      _universeCard(p),
       _trustCard(p),
+      _followCard(p),
+      _nowCard(p),
+      OwlFold(
+        title: 'REPORTS',
+        headline: 'Timing sync  ·  Exit style and hold time  ·  Edge by universe',
+        bare: true,
+        children: [_timingCard(p), _tpHoldCard(p), _universeCard(p)],
+      ),
       _ownCard(p),
       _moreToggle(p),
       if (_more) ...[
@@ -1157,7 +1178,6 @@ class _SmartBrainViewState extends State<SmartBrainView> {
         _statusCard(p),
         _luckCard(p),
         _exitCard(p),
-        _followCard(p),
         _exitPickCard(p),
         _sidewaysCard(p),
         _retestCard(p),

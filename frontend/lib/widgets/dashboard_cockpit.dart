@@ -1,19 +1,15 @@
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../theme/app_theme.dart';
 import 'glass_card.dart';
+import 'owl_card.dart';
 import 'owl_pressable.dart';
 
-/// One compact "cockpit" card that replaces the big P&L hero + the four bento
-/// tiles: a ring gauge on the left (the P&L number sits inside it, the arc
-/// fills as you approach the daily target) and four live stats stacked on the
-/// right. The equity chart below it is the only chart - no duplicate sparkline.
-///
-/// Cheap to paint: one CustomPaint (arc + track), no blur, no controllers.
-/// Only the Open P&L reading follows the live price tick, via its own small
-/// Selector; everything else comes in as plain values from the dashboard body.
+/// UI1: the Dashboard money card. ONE hero number (Today P&L, 34px), a thin bar toward the daily target,
+/// then three equal tiles (Open P&L / Win rate / Open positions) and the 7D / 30D row.
+/// In LIVE mode the hero is the live open P&L and the first tile is margin used (same data rules as before).
+/// Cheap: no painter, no controller. Only the Open P&L follows the live price tick, through its own Selector.
 class DashboardCockpit extends StatelessWidget {
   final bool isLive;
   final double todayPnl;
@@ -46,41 +42,39 @@ class DashboardCockpit extends StatelessWidget {
         final prov = context.read<AppProvider>();
         final openPnl = prov.openPnl;
         final p = context.palette;
-        // TODAY = closed trades only (same number as the top pill and the Daily target). Open P&L is a small live row.
+        // TODAY = closed trades only (same number as the top pill and the Daily target). Open P&L is a tile.
         final main = isLive ? openPnl : todayPnl;
         final mainColor = main == 0 ? p.textPrimary : (main > 0 ? p.profit : p.loss);
         final hasTarget = !isLive && dailyTarget > 0;
-        final progress = hasTarget ? (todayPnl / dailyTarget).clamp(0.0, 1.0).toDouble() : null;
+        final progress = hasTarget ? (todayPnl / dailyTarget).clamp(0.0, 1.0).toDouble() : 0.0;
+        String sg(double v) => '${v >= 0 ? '+' : ''}${v.toStringAsFixed(2)}';
+        Color pc(double v) => v == 0 ? p.textPrimary : (v > 0 ? p.profit : p.loss);
 
-        Widget statRow(String label, String value, {Color? color, VoidCallback? onTap}) {
-          final row = Padding(
-            padding: const EdgeInsets.symmetric(vertical: 5),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: context.type.label.copyWith(fontSize: 10.5, letterSpacing: 0.5, color: p.textMuted)),
-                ),
-                Text(value,
-                    maxLines: 1,
-                    style: context.type.secondary.copyWith(
-                        fontSize: 13.5, fontWeight: FontWeight.w700, color: color ?? p.textPrimary)),
-                SizedBox(
-                  width: 14,
-                  child: onTap == null
-                      ? null
-                      : Icon(Icons.chevron_right_rounded, size: 14, color: p.textMuted),
-                ),
-              ],
+        Widget tile(String label, String value, Color color, {VoidCallback? onTap}) {
+          final box = Container(
+            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+            decoration: BoxDecoration(
+              color: p.surfaceHigher.withOpacity(0.5),
+              borderRadius: BorderRadius.circular(AppSpacing.radiusMedium),
+              border: Border.all(color: p.border.withOpacity(0.7)),
+            ),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppTypography.eyebrow.copyWith(color: p.textMuted, fontSize: 9.5)),
+              const SizedBox(height: 4),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(value, maxLines: 1, style: AppTypography.numberLarge.copyWith(color: color)),
+              ),
+            ]),
+          );
+          return Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 3),
+              child: onTap == null ? box : OWLPressable(pressedScale: 0.97, onTap: onTap, child: box),
             ),
           );
-          if (onTap == null) return row;
-          return OWLPressable(pressedScale: 0.98, onTap: onTap, child: row);
         }
-
-        Widget hairline() => Container(height: 0.5, color: p.border);
 
         return GlassCard(
           hero: true,
@@ -90,103 +84,52 @@ class DashboardCockpit extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    SizedBox(
-                      width: 116,
-                      height: 116,
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          Positioned.fill(
-                            child: CustomPaint(
-                              painter: _RingPainter(
-                                progress: progress,
-                                color: mainColor == p.textPrimary ? p.accent : mainColor,
-                                track: p.border,
-                              ),
-                            ),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(isLive ? 'Live open' : 'Today',
-                                    style: context.type.label.copyWith(fontSize: 9.5, letterSpacing: 0.8, color: p.textMuted)),
-                                const SizedBox(height: 2),
-                                FittedBox(
-                                  fit: BoxFit.scaleDown,
-                                  child: TweenAnimationBuilder<double>(
-                                    tween: Tween<double>(end: main),
-                                    duration: const Duration(milliseconds: 450),
-                                    curve: Curves.easeOutCubic,
-                                    builder: (context, v, _) => Text(
-                                      '${v >= 0 ? '+' : ''}${v.toStringAsFixed(2)}',
-                                      maxLines: 1,
-                                      style: AppTypography.numberLarge.copyWith(fontSize: 20, color: mainColor),
-                                    ),
-                                  ),
-                                ),
-                                Text('USDT', style: context.type.label.copyWith(fontSize: 9.5, color: p.textMuted)),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: AppSpacing.m),
-                    Expanded(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (isLive)
-                            statRow('Margin used', '${marginUsed.toStringAsFixed(2)} USDT', color: p.accent)
-                          else ...[
-                            statRow('Open P&L', '${openPnl >= 0 ? '+' : ''}${openPnl.toStringAsFixed(2)}',
-                                color: openPnl == 0 ? null : (openPnl > 0 ? p.profit : p.loss)),
-                          ],
-                          hairline(),
-                          if (!isLive) ...[
-                            statRow('Win rate today', '${winRate.toStringAsFixed(1)}%', color: p.accent),
-                            hairline(),
-                          ],
-                          // Tabs: 0=Dash, 1=Market, 2=Positions, 3=Signals
-                          statRow('Open positions', '$openCount', onTap: () => goToTab(2)),
-                          hairline(),
-                          statRow('Signals today', '$signalsToday', onTap: () => goToTab(3)),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                if (!isLive) ...[
-                  const SizedBox(height: AppSpacing.s),
-                  Container(height: 0.5, color: p.border),
-                  const SizedBox(height: AppSpacing.s),
-                  Row(
-                    children: [
-                      _periodCell(context, '7D', prov.pnl7d, prov.trades7d),
-                      _periodCell(context, '30D', prov.pnl30d, prov.trades30d),
-                    ],
-                  ),
-                ],
+                OwlHero(label: isLive ? 'LIVE OPEN P&L' : 'TODAY P&L (CLOSED TRADES)', value: main),
                 if (hasTarget) ...[
                   const SizedBox(height: AppSpacing.s),
-                  Row(
-                    children: [
-                      Icon(Icons.flag_outlined, size: 13, color: p.textMuted),
-                      const SizedBox(width: 6),
-                      Text('Daily target (closed trades)', style: context.type.metadata.copyWith(color: p.textMuted)),
-                      const Spacer(),
-                      Text(
-                        '${todayPnl.toStringAsFixed(2)} / ${dailyTarget.toStringAsFixed(2)}  (${((progress ?? 0) * 100).toStringAsFixed(0)}%)',
-                        style: context.type.metadata.copyWith(
-                            color: targetHit ? p.profit : p.textSecondary, fontWeight: FontWeight.w600),
-                      ),
-                    ],
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: Container(
+                      height: 5,
+                      color: p.border,
+                      alignment: Alignment.centerLeft,
+                      child: FractionallySizedBox(widthFactor: progress, child: Container(color: targetHit ? p.profit : p.accent)),
+                    ),
                   ),
+                  const SizedBox(height: 4),
+                  Row(children: [
+                    Text('Daily target', style: context.type.metadata),
+                    const Spacer(),
+                    Text('${todayPnl.toStringAsFixed(2)} / ${dailyTarget.toStringAsFixed(2)}  (${(progress * 100).toStringAsFixed(0)}%)',
+                        style: context.type.metadata.copyWith(color: targetHit ? p.profit : p.textSecondary, fontWeight: FontWeight.w700)),
+                  ]),
+                ],
+                const SizedBox(height: AppSpacing.m),
+                Row(children: [
+                  if (isLive) tile('MARGIN USED', marginUsed.toStringAsFixed(2), p.accent) else tile('OPEN P&L', sg(openPnl), pc(openPnl)),
+                  if (!isLive) tile('WIN RATE', '${winRate.toStringAsFixed(1)}%', p.accent),
+                  // Tabs: 0=Dash, 1=Market, 2=Positions, 3=Signals
+                  tile('OPEN POSITIONS', '$openCount', p.textPrimary, onTap: () => goToTab(2)),
+                ]),
+                const SizedBox(height: AppSpacing.s),
+                OWLPressable(
+                  pressedScale: 0.99,
+                  onTap: () => goToTab(3),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Row(children: [
+                      Text('$signalsToday signals today', style: context.type.secondary),
+                      const Spacer(),
+                      Icon(Icons.chevron_right_rounded, size: 16, color: p.textMuted),
+                    ]),
+                  ),
+                ),
+                if (!isLive) ...[
+                  const SizedBox(height: AppSpacing.xs),
+                  Row(children: [
+                    tile('7 DAYS · ${prov.trades7d} TRADES', sg(prov.pnl7d), pc(prov.pnl7d)),
+                    tile('30 DAYS · ${prov.trades30d} TRADES', sg(prov.pnl30d), pc(prov.pnl30d)),
+                  ]),
                 ],
               ],
             ),
@@ -195,64 +138,4 @@ class DashboardCockpit extends StatelessWidget {
       },
     );
   }
-
-  /// One cell of the 7D / 30D row: closed-trade P&L (after fee) over the last N trading days + trade count.
-  Widget _periodCell(BuildContext context, String label, double pnl, int? trades) {
-    final p = context.palette;
-    final c = pnl == 0 ? p.textPrimary : (pnl > 0 ? p.profit : p.loss);
-    return Expanded(
-      child: Container(
-      margin: const EdgeInsets.symmetric(horizontal: 4),
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      decoration: BoxDecoration(
-        color: p.surfaceHigher.withOpacity(0.5),
-        borderRadius: BorderRadius.circular(AppSpacing.radiusMedium),
-        border: Border.all(color: p.border.withOpacity(0.7), width: 1),
-      ),
-      child: Column(
-        children: [
-          Text(label, style: context.type.label.copyWith(fontSize: 10, letterSpacing: 0.6, color: p.textMuted)),
-          const SizedBox(height: 2),
-          Text('${pnl >= 0 ? '+' : ''}${pnl.toStringAsFixed(2)}',
-              style: context.type.secondary.copyWith(fontSize: 14, fontWeight: FontWeight.w800, color: c)),
-          if (trades != null)
-            Text('$trades trades', style: context.type.metadata.copyWith(fontSize: 9.5, color: p.textMuted)),
-        ],
-      ),
-    ));
-  }
-}
-
-/// Ring gauge: grey track + rounded arc starting at 12 o'clock.
-/// [progress] null = no target set -> a faint full ring in the P&L colour.
-class _RingPainter extends CustomPainter {
-  final double? progress;
-  final Color color;
-  final Color track;
-  const _RingPainter({required this.progress, required this.color, required this.track});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    const stroke = 9.0;
-    final rect = Offset.zero & size;
-    final arcRect = rect.deflate(stroke / 2);
-    final trackPaint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = stroke
-      ..color = progress == null ? color.withOpacity(0.25) : track;
-    canvas.drawArc(arcRect, 0, math.pi * 2, false, trackPaint);
-    final pr = progress;
-    if (pr != null && pr > 0) {
-      final arcPaint = Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = stroke
-        ..strokeCap = StrokeCap.round
-        ..color = color;
-      canvas.drawArc(arcRect, -math.pi / 2, math.pi * 2 * pr, false, arcPaint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _RingPainter old) =>
-      old.progress != progress || old.color != color || old.track != track;
 }
