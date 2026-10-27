@@ -48,6 +48,10 @@ try:                                    # Batch 2: Brain version label (label on
     import brain_meta as _BM
 except Exception:
     _BM = None
+try:                                    # Batch 3a: edge observer (report only, never decides). Missing file = no edge key, bot runs as before
+    import brain_edge as BE
+except Exception:
+    BE = None
 try:                                    # Part H2: extra TP levels for new Dual trades. Missing file = the old 4 levels
     import dual_tp_ext as DX
 except Exception:
@@ -407,11 +411,21 @@ def process(data, sym, tf, candles, boot, now_ms, model, exit_names):
             tr.pop("lpx", None)
             tr["status"] = "closed" if tr["take"] else "skipped_done"
             tr["closed_at"] = time.time()
+            if BE is not None:                                   # B3a: observation ended (marker only)
+                try:
+                    BE.close(tr)
+                except Exception:
+                    pass
         else:
             lv = TL.sim_rule(S, Z, i, tr["d"], tr["entry"], tr["sl"], tr["tps"], LEV, FEE, allow_open=True, **rule)
             tr["live"] = round(lv["net"], 2) if lv else None
             if lv:
                 tr.update(_bits(S, i, FL.TF_MS[tf], lv, live=True))
+                if BE is not None and not boot and tr["status"] == "open":   # B3a: edge observer, once per new closed candle (only writes tr["edge"])
+                    try:
+                        BE.observe(tr, S, Z, i, lv, LEV, FEE)
+                    except Exception as ex:                          # an observer problem must never stop the bot
+                        print(f"dual_lab: edge observer skipped for {sym} {tf}: {ex}", flush=True)
     # 3. new signals on the last closed candles
     n = S["n"]
     for i in range(max(F.MIN_BARS, n - LATEST), n):
@@ -841,6 +855,14 @@ def _summary_of(tr):
     }
 
 
+def _edge_slim(t):
+    """B3a: the trade's edge without its history lists, for the app view. Any problem = None (the view still works)."""
+    try:
+        return BE.slim_edge(t) if BE is not None else None
+    except Exception:
+        return None
+
+
 def slim(t):
     scn = _scenario(t)
     w1, w2 = _what(t)
@@ -849,7 +871,8 @@ def slim(t):
             "t": t["t"], "ct": t.get("ct"), "entry": t["entry"], "sl": t["sl"], "tps": t.get("tps"),
             "margin": _mg(t), "path": t.get("path") or [], "xpx": t.get("xpx"), "xt": t.get("xt"), "lpx": t.get("lpx"),
             "scn": scn, "what1": w1, "what2": w2, "label": t.get("label"), "reason": t.get("reason"), "mem": t.get("mem"),
-            "side": [(t.get("tg") or {}).get("side_main_pct"), (t.get("tg") or {}).get("side_z_pct")]}
+            "side": [(t.get("tg") or {}).get("side_main_pct"), (t.get("tg") or {}).get("side_z_pct")],
+            "edge": _edge_slim(t)}                                   # B3a: no history lists here (small)
 
 
 def make_view(data, model, ins, exit_names, progress, err, enabled):

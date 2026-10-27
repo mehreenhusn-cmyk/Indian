@@ -741,6 +741,16 @@ def _exit_view(state, trades):
         return {"status": "error", "text": "Exit learner error: %s" % str(e)[:80], "n_past": 0, "open": [], "stages": [], "score": {"n": 0, "right": 0, "pct": None, "text": ""}}
 
 
+def _edge_view(trades):
+    """B3a: open-trade edge decay report (observation only, provisional labels). Never raises."""
+    try:
+        import brain_edge as BE
+        return BE.report(trades)
+    except Exception as e:
+        return {"status": "error", "text": "Edge report error: %s" % str(e)[:80], "provisional": True, "open": 0, "counts": {}, "items": [],
+                "score": {"status": "collecting", "n": 0, "need": 30, "groups": [], "text": ""}}
+
+
 def _follow_view(rows, trades):
     try:
         import brain_follow as BF
@@ -1003,6 +1013,7 @@ def build_view(rows=None, trades=None, watch=None, scan_t=0, progress="", err=""
             "luck": luck_test(rows, trades) if rows else None, "risk": risk_view(book, trades) if book and book.get("picks") is not None else None,
             "drift": recent_vs_old(rows),
             "exit": _exit_view(exit_state, trades),
+            "edge": _edge_view(trades),
             "follow": _follow_view(rows, trades),
             "own": _own_view(own),
             "exit_pick": _exitpick_view(rows),
