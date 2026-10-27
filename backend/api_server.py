@@ -1741,6 +1741,28 @@ async def dual_desk_api():
         return {"state": "error", "err": f"{type(e).__name__}: {e}"}
 
 
+@app.get("/api/archive_check")
+async def archive_check_api():
+    """Does the archive hold every finished trade of the JSON file (archive_tools.check)? Read-only, small."""
+    try:
+        import archive_tools
+        return await asyncio.to_thread(archive_tools.check)
+    except Exception as e:
+        return {"state": "error", "text": f"Archive check error: {type(e).__name__}: {e}"}
+
+
+@app.get("/api/archive_export")
+async def archive_export_api(days: int = 0, all_states: int = 0):
+    """Finished trades of the archive as a CSV file (open it in the phone browser). days=N = last N days, all_states=1 = open trades too."""
+    try:
+        import archive_tools
+        from fastapi.responses import Response
+        text = await asyncio.to_thread(archive_tools.export_csv, None, days or None, not all_states)
+        return Response(text, media_type="text/csv", headers={"Content-Disposition": "attachment; filename=owl_archive.csv"})
+    except Exception as e:
+        return {"state": "error", "text": f"Archive export error: {type(e).__name__}: {e}"}
+
+
 @app.get("/api/dual_universe")
 async def dual_universe_api():
     """Dual Bot coin sources (universe_7d.py): which 7-day lists are saved, the cap, the last error. Read-only, small."""

@@ -953,7 +953,13 @@ def _tphold_view(rows):
 def _universe_view():
     try:
         import brain_universe as BUN
-        return BUN.report()
+        v = BUN.report()
+        try:
+            import archive_tools as AT
+            v["check"] = AT.check()
+        except Exception:
+            pass
+        return v
     except Exception as e:
         return {"status": "error", "text": "Edge by universe error: %s" % str(e)[:80], "groups": {}, "days": [], "lines": [], "need": 30, "phase_now": "early"}
 

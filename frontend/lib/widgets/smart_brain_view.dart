@@ -680,6 +680,58 @@ class _SmartBrainViewState extends State<SmartBrainView> {
     ]);
   }
 
+  /// Part U5 (Z3b): Edge by universe. Do the 7-day coins earn more than today's coins, and what kind of day was each of the last 7.
+  /// Report only (from the archive, read-only). Dual Bot still takes every signal.
+  Widget _universeCard(AppPalette p) {
+    final x = _map(_st['universe']);
+    if (x.isEmpty) return const SizedBox.shrink();
+    final ready = '${x['status']}' == 'ready';
+    final g = _map(x['groups']);
+    final days = _maps(x['days']).where((d) => _n(d['n']) > 0).toList();
+    final chk = _map(x['check']);
+    String sg(num v) => '${v >= 0 ? '+' : ''}${v.toStringAsFixed(2)}';
+    Color phaseColor(String ph) => ph == 'pump' ? p.profit : (ph == 'drift' ? p.warning : p.textMuted);
+    Widget grp(String name, Map<String, dynamic> v) {
+      final n = _n(v['n']).toInt();
+      final net = _n(v['net']);
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 6),
+        child: Row(children: [
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(name, style: context.type.secondary.copyWith(fontWeight: FontWeight.w700)),
+              Text(n == 0 ? 'no finished trade yet' : '$n trades, ${v['win_pct']}% won, ${sg(_n(v['avg']))} per trade', style: context.type.metadata),
+            ]),
+          ),
+          if (n > 0) Text('${sg(net)} USDT', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: net >= 0 ? p.profit : p.loss)),
+        ]),
+      );
+    }
+
+    return _card(p, title: 'EDGE BY UNIVERSE (TODAY VS 7 DAYS)', edge: ready ? null : p.textMuted, children: [
+      Text('${x['text'] ?? ''}', style: context.type.primary),
+      if (g.isNotEmpty) ...[
+        const SizedBox(height: 8),
+        grp("Today's top coins", _map(g['today'])),
+        grp('7-day coins (live only)', _map(g['d7'])),
+      ],
+      if (days.isNotEmpty) ...[
+        const SizedBox(height: 4),
+        Text('Day feel, from how long and short trades did', style: context.type.label.copyWith(fontWeight: FontWeight.w700)),
+        const SizedBox(height: 4),
+        Wrap(spacing: 6, runSpacing: 6, children: [
+          for (final d in days) OwlChip('${'${d['day']}'.substring(5)} ${d['phase']}', phaseColor('${d['phase']}')),
+        ]),
+      ],
+      if (chk.isNotEmpty) ...[
+        const SizedBox(height: 8),
+        Text('${chk['text'] ?? ''}', style: context.type.metadata.copyWith(color: '${chk['state']}' == 'differ' ? p.warning : p.textMuted)),
+      ],
+      const SizedBox(height: 6),
+      Text('pump = longs won, shorts lost. drift = the opposite. sideways = both lost. mixed = both won. Report only, no rule changes. CSV of all finished trades: open localhost:8000/api/archive_export in the phone browser.', style: context.type.metadata),
+    ]);
+  }
+
   /// Part B2: Timing Sync. Which indicator spoke first and how far apart, with plain lessons. Report only, Dual Bot still takes every signal.
   Widget _timingCard(AppPalette p) {
     final x = _map(_st['timing']);
@@ -1094,6 +1146,7 @@ class _SmartBrainViewState extends State<SmartBrainView> {
       _nowCard(p),
       _timingCard(p),
       _tpHoldCard(p),
+      _universeCard(p),
       _trustCard(p),
       _ownCard(p),
       _moreToggle(p),
