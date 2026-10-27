@@ -44,6 +44,10 @@ try:                                    # Part U2: 7-day coin names (+ live-only
 except Exception:
     _U7 = None
 
+try:                                    # Batch 2: Brain version label (label only). Missing file = trades just have no label
+    import brain_meta as _BM
+except Exception:
+    _BM = None
 try:                                    # Part H2: extra TP levels for new Dual trades. Missing file = the old 4 levels
     import dual_tp_ext as DX
 except Exception:
@@ -397,6 +401,7 @@ def process(data, sym, tf, candles, boot, now_ms, model, exit_names):
         r = TL.sim_rule(S, Z, i, tr["d"], tr["entry"], tr["sl"], tr["tps"], LEV, FEE, **rule)
         if r is not None:
             tr["net"], tr["end"], tr["bars"], tr["hit"] = round(r["net"], 2), r["why"], r["bars"], r["hit"]
+            tr["mfe"], tr["giveback"] = round(r["mfe"], 2), round(r["giveback"], 2)   # Batch 2: best profit seen / profit given back (ROI points, before fee)
             tr["label"], tr["reason"] = MD.label_trade(tr.get("tg") or {}, tr["net"], r["why"], r["hit"])
             tr.update(_bits(S, i, FL.TF_MS[tf], r))
             tr.pop("lpx", None)
@@ -425,7 +430,8 @@ def process(data, sym, tf, candles, boot, now_ms, model, exit_names):
         data["trades"].append({
             "id": key, "s": sym, "f": tf, "ct": e["ct"], "t": e["t"], "d": e["d"], "src": e["src"], "entry": e["entry"],
             "sl": e["sl"], "tps": e["tps"], "ext": max(0, len(e["tps"]) - 4), "exit": exit_names[xi], "take": take, "mode": mode, "pred": pred, "why": why,
-            "status": "open" if take else "skipped", "opened": time.time(), "tg": e["tg"], "mem": mem})
+            "status": "open" if take else "skipped", "opened": time.time(), "tg": e["tg"], "mem": mem,
+            "brain_version": _BM.BRAIN_VERSION if _BM else None})
     return added
 
 

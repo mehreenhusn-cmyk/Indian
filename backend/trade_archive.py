@@ -37,6 +37,8 @@ CREATE TABLE IF NOT EXISTS picks (id TEXT PRIMARY KEY, t INTEGER, sym TEXT, tf T
 CREATE TABLE IF NOT EXISTS exit_shadow (k TEXT, t INTEGER, js TEXT, PRIMARY KEY (k, t));
 CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT);
 """
+_NEW_COLS = {DUAL_DB: "trades", BRAIN_DB: "own"}        # Batch 2: columns added to the EXISTING tables (old rows keep NULL = not recorded)
+_NEW_SPEC = (("mfe", "REAL"), ("giveback", "REAL"), ("brain_version", "TEXT"))
 _META = "INSERT INTO meta(k, v) VALUES(?, ?) ON CONFLICT(k) DO UPDATE SET v = excluded.v"
 _B = {"own": set(), "pk": set(), "ex": set()}     # what the Brain worker already saved (this process)
 _C = {"t": 0.0, "v": None}                                                  # status() cache
@@ -61,6 +63,12 @@ def _open(name, sql, base=None):
     con.execute("PRAGMA journal_mode=WAL")
     con.execute("PRAGMA synchronous=NORMAL")
     con.executescript(sql)
+    tbl = _NEW_COLS.get(name)
+    if tbl:
+        have = {r[1] for r in con.execute("PRAGMA table_info(%s)" % tbl)}
+        for col, typ in _NEW_SPEC:
+            if col not in have:
+                con.execute("ALTER TABLE %s ADD COLUMN %s %s" % (tbl, col, typ))
     return con
 
 
@@ -94,10 +102,12 @@ def save_dual(data, st=None, base=None):
         try:
             with con:
                 con.executemany(
-                    "INSERT INTO trades(id, t, sym, tf, side, src, status, net, exit_rule, mode, saved, js) VALUES(?,?,?,?,?,?,?,?,?,?,?,?) "
-                    "ON CONFLICT(id) DO UPDATE SET status=excluded.status, net=excluded.net, saved=excluded.saved, js=excluded.js",
+                    "INSERT INTO trades(id, t, sym, tf, side, src, status, net, exit_rule, mode, saved, js, mfe, giveback, brain_version) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) "
+                    "ON CONFLICT(id) DO UPDATE SET status=excluded.status, net=excluded.net, saved=excluded.saved, js=excluded.js, "
+                    "mfe=COALESCE(excluded.mfe, trades.mfe), giveback=COALESCE(excluded.giveback, trades.giveback), "
+                    "brain_version=COALESCE(excluded.brain_version, trades.brain_version)",   # Batch 2: a later save without the value never wipes it
                     [(t["id"], t.get("t"), t.get("s"), t.get("f"), t.get("d"), t.get("src"), t.get("status"), t.get("net"),
-                      t.get("exit"), t.get("mode"), now, _js(t)) for t, _ in tr])
+                      t.get("exit"), t.get("mode"), now, _js(t), t.get("mfe"), t.get("giveback"), t.get("brain_version")) for t, _ in tr])
                 con.executemany("INSERT OR IGNORE INTO rows(k, t, sym, tf, js) VALUES(?,?,?,?,?)",
                                 [(k, v[2], v[0], v[1], _js(v)) for k, v in rw])
                 con.executemany("INSERT OR IGNORE INTO rt(k, js) VALUES(?,?)", [(k, _js(v)) for k, v in rr])
@@ -129,8 +139,9 @@ def save_brain(own=None, ex=None, book=None, base=None):
         con = _open(BRAIN_DB, _BRAIN_SQL, base)
         try:
             with con:
-                con.executemany("INSERT OR IGNORE INTO own(id, t, sym, tf, net, stage, saved, js) VALUES(?,?,?,?,?,?,?,?)",
-                                [(t["id"], t.get("t"), t.get("s"), t.get("f"), t.get("net"), t.get("stage"), time.time(), _js(t)) for t in closed])
+                con.executemany("INSERT OR IGNORE INTO own(id, t, sym, tf, net, stage, saved, js, mfe, giveback, brain_version) VALUES(?,?,?,?,?,?,?,?,?,?,?)",
+                                [(t["id"], t.get("t"), t.get("s"), t.get("f"), t.get("net"), t.get("stage"), time.time(), _js(t),
+                                  t.get("mfe"), t.get("giveback"), t.get("brain_version")) for t in closed])
                 con.executemany("INSERT OR IGNORE INTO picks(id, t, sym, tf, mode, js) VALUES(?,?,?,?,?,?)",
                                 [(p["id"], p.get("t"), p.get("s"), p.get("f"), p.get("mode"), _js(p)) for p in picks])
                 con.executemany("INSERT OR IGNORE INTO exit_shadow(k, t, js) VALUES(?,?,?)", [(e.get("k"), e.get("t"), _js(e)) for e in shadow])

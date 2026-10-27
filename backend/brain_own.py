@@ -7,6 +7,11 @@ Plain Python, no numpy, no torch. Anything that goes wrong here is caught by the
 """
 import time
 
+try:   # Batch 2: version label (label only). Missing file = no label
+    import brain_meta as _BM
+except Exception:
+    _BM = None
+
 MAX_OPEN = 20            # most pretend trades open at once (keeps the phone light, not a trading rule)
 KEEP_CLOSED = 300        # finished trades kept in the file
 MAX_FETCH = 6            # coins re-checked per round (candles are downloaded, so keep it small)
@@ -121,7 +126,7 @@ def open_from(own, watch, now_ms=None, pick_fn=None):
             "tps": plan["tps"], "exit": ex, "why_exit": why, "clean": w.get("clean"), "div": w.get("div"),
             "win_pct": (w.get("prob") or {}).get("win_pct"), "n": (w.get("prob") or {}).get("n"), "tg": tg,
             "stage": w.get("stage"), "lesson": w.get("lesson") or "",
-            "status": "open", "live": None, "chk": 0})
+            "status": "open", "live": None, "chk": 0, "brain_version": _BM.BRAIN_VERSION if _BM else None})
         if exp:
             own["open"][-1].update(explore=True, mg=EXPLORE_MG)
         opened += 1
@@ -161,7 +166,8 @@ def settle(own, fetch_limit, now_ms=None):
                 continue
             r = TL.sim_rule(S, Z, i, t["d"], t["entry"], t["sl"], t["tps"], LEV, FEE, **rule)
             if r is not None:
-                t.update(net=round(r["net"], 2), end=r["why"], bars=r["bars"], hit=r["hit"], status="closed", closed_at=now_ms)
+                t.update(net=round(r["net"], 2), end=r["why"], bars=r["bars"], hit=r["hit"], status="closed", closed_at=now_ms,
+                         mfe=round(r["mfe"], 2), giveback=round(r["giveback"], 2))   # Batch 2
                 try:   # F2: what would waiting for a retest have made? (measure only, see brain_retest.py)
                     import brain_retest as BR
                     res = BR.twin(S, Z, i, t["d"], t["sl"], t["tps"], rule, TL, LEV, FEE)

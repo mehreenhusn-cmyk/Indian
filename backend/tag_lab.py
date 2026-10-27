@@ -174,6 +174,7 @@ def sim_rule(S, Z, i, d, entry, sl, tps, lev, fee, cap=4, be=True, xmode="main",
     opp = None if xmode is None else ((S["xdn"] if d > 0 else S["xup"]) if xmode == "main" else (Z["dn"] if d > 0 else Z["up"]))
     R = abs(entry - sl)
     cur, be_on, hit, b1, mae, best, got = sl, False, 0, None, 0.0, entry, None
+    mfe_px = entry                                       # B2: best price seen while the trade lived (own tracker; `best` below drives the trail, never touch it)
     path = []                                            # every move of the stop: (candle index it was set on, new stop)
     for j in range(i + 1, end + 1):
         hh, ll = h[j], l[j]
@@ -181,6 +182,7 @@ def sim_rule(S, Z, i, d, entry, sl, tps, lev, fee, cap=4, be=True, xmode="main",
         if (ll <= cur) if d > 0 else (hh >= cur):
             got = (cur, "SL" if cur == sl else "BE" if cur == entry else "TRAIL", j - i)
             break
+        mfe_px = max(mfe_px, hh) if d > 0 else min(mfe_px, ll)   # B2: counts the exit candle too (TP / REV / HOLD); a stop candle is skipped = SL first, as above
         while hit < len(tps) and ((hh >= tps[hit]) if d > 0 else (ll <= tps[hit])):   # H2: len(tps) (4 for every old caller; Dual Bot trades may have 7)
             hit += 1
             if hit == 1 and b1 is None:
@@ -211,8 +213,10 @@ def sim_rule(S, Z, i, d, entry, sl, tps, lev, fee, cap=4, be=True, xmode="main",
         else:
             return None
     px, why, bars = got
+    gross = (px - entry) / entry * 100.0 * d * lev       # B2: ROI points before the fee (net = gross - fee)
+    mfe = max(0.0, (mfe_px - entry) / entry * 100.0 * d * lev)
     return {"net": (px - entry) / entry * 100.0 * d * lev - fee, "why": why, "bars": bars, "hit": hit, "b1": b1,
-            "mae": mae * 100.0 * lev, "px": px, "path": path}
+            "mae": mae * 100.0 * lev, "px": px, "path": path, "mfe": mfe, "giveback": max(0.0, mfe - gross)}
 
 
 def simulate(S, Z, i, d, entry, sl, tps, xmode, lev, fee):
