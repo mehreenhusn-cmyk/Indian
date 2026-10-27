@@ -1019,6 +1019,14 @@ class _SmartBrainViewState extends State<SmartBrainView> {
     String sg(num v) => '${v >= 0 ? '+' : ''}${v.toStringAsFixed(2)}';
     String side(dynamic d) => _n(d) > 0 ? 'BUY' : 'SELL';
     return _card(p, title: "THE BRAIN'S OWN PAPER TRADES", edge: n == 0 ? p.textMuted : (pnl >= 0 ? p.profit : p.loss), children: [
+      if (o['exploring'] == true) ...[
+        Row(children: [
+          _chip('EXPLORING ${n} OF ${_n(o['explore_n']).toInt()}', p.warning),
+          const SizedBox(width: 8),
+          Expanded(child: Text('Small paper trades (25 USDT) so it can make mistakes and learn.', style: context.type.metadata)),
+        ]),
+        const SizedBox(height: 6),
+      ],
       Text('${o['text'] ?? ''}', style: context.type.primary),
       if (_map(o['side_rule'])['text'] != null) ...[
         const SizedBox(height: 6),

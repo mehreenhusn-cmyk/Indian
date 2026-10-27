@@ -133,7 +133,7 @@ def candles(tf, n, seed):
 fetch = lambda sym, tf, limit: candles(tf, limit, sum(map(ord, sym + tf)))[-limit:]
 before = open(path, "rb").read()
 found = B.scan(rows, ["AAAUSDT", "BBBUSDT", "CCCUSDT", "DDDUSDT"], fetch)
-check(isinstance(found, list) and all(w["clean"] >= 45 and w["div"] <= 55 and (w["prob"] is None or w["prob"]["win_pct"] >= 45) and w["stage"] == "learning" for w in found), "scan in learning stage lists loose setups only")
+check(isinstance(found, list) and all(w["stage"] == "exploring" for w in found), "scan in explore stage lists setups with no floor")
 check(B.scan(rows, ["X"], lambda *a: (_ for _ in ()).throw(RuntimeError("net down"))) == [], "a broken download never stops the scan")
 check(open(path, "rb").read() == before, "scan did not touch Dual Bot data")
 
@@ -233,8 +233,8 @@ check(open(path, "rb").read() == before, "dual_lab_data.json still untouched aft
 
 # 12. Part 1 of auto-learning: stages, today's coins, lessons from own trades, daily limit
 import brain_own as BO
-check(BO.stage_for(0)[0] == "learning" and BO.stage_for(99)[0] == "learning" and BO.stage_for(100)[0] == "medium" and BO.stage_for(300)[0] == "quality", "stages follow judged own trades")
-check(BO.stage_for(0)[1:] == (45, 45, 55) and BO.stage_for(300)[1:] == (60, 55, 43), "loose at first, strict later")
+check(BO.stage_for(0)[0] == "exploring" and BO.stage_for(29)[0] == "exploring" and BO.stage_for(30)[0] == "learning" and BO.stage_for(99)[0] == "learning" and BO.stage_for(100)[0] == "medium" and BO.stage_for(300)[0] == "quality", "stages follow judged own trades")
+check(BO.stage_for(0)[1:] == (0, 0, 100) and BO.stage_for(30)[1:] == (45, 45, 55) and BO.stage_for(300)[1:] == (60, 55, 43), "loose at first, strict later")
 check(BO.next_stage(40) == ("medium", 60) and BO.next_stage(500) == (None, 0), "next stage counter")
 st_dead = {"t": 0.0, "c": []}
 import filter_lab as _FL
@@ -269,7 +269,7 @@ now_ms = 1_700_000_000_000
 def wi(k):
     return {"s": "C%dUSDT" % k, "f": "15m", "d": 1, "clean": 50, "div": 20, "prob": None, "stage": "learning", "lesson": "l",
             "_plan": {"entry": 1.0, "sl": 0.9, "tps": [1.1], "ct": now_ms + k}, "_tg": clean}
-book_o = {}
+book_o = {"closed": [{"s": "X", "f": "15m", "d": 1, "net": 1.0, "t": 0}] * BO.EXPLORE_N}   # past the explore phase
 n_open = BO.open_from(book_o, [wi(k) for k in range(5)], now_ms=now_ms)
 check(n_open == 5 and book_o["open"][0]["stage"] == "learning" and book_o["open"][0]["lesson"] == "l", "own trade keeps stage and lesson")
 BO.MAX_OPEN_KEEP, BO.MAX_DAY, BO.MAX_OPEN = BO.MAX_OPEN, 6, 99
@@ -278,8 +278,8 @@ check(n2 == 1 and len(book_o["open"]) == 6, "daily limit of new own trades")
 n3 = BO.open_from(book_o, [wi(k) for k in range(12, 14)], now_ms=now_ms + 86_400_000)
 check(n3 == 2, "a new trading day starts the count again")
 BO.MAX_DAY, BO.MAX_OPEN = 40, BO.MAX_OPEN_KEEP
-sm = BO.summary(dict(book_o, closed=[]))
-check(sm["stage"] == "learning" and sm["next_stage"] == "medium" and sm["next_in"] == 100, "summary shows stage and what is left")
+sm = BO.summary(book_o)
+check(sm["stage"] == "learning" and sm["next_stage"] == "medium" and sm["next_in"] == 100 - BO.EXPLORE_N, "summary shows stage and what is left")
 
 
 # 13. retest report: two numbers apart, split by market, read only

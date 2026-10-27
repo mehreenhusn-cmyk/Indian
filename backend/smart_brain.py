@@ -502,7 +502,7 @@ def scan(rows, coins, fetch_limit, own=None):
                 if lv == "burnt" or sc["clean"] < c_min or sc["div"] > d_max:
                     continue
                 if lv != "worked":
-                    if pr is None and stage != "learning":
+                    if pr is None and stage not in ("learning", "exploring"):
                         continue                             # later stages need look-alikes; learning stage may explore
                     if pr is not None and pr["win_pct"] < w_min:
                         continue

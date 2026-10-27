@@ -36,7 +36,7 @@ def ready_check(v):
     rows.append(_row("timing", "Timing sync", None, tm.get("text") or "No data yet.", gate=False))
     if own:
         nxt = ("Next stage (%s) in %d more trades." % (own.get("next_stage"), own.get("next_in", 0))) if own.get("next_stage") else "Top stage reached."
-        rows.append(_row("own", "Own book", None, "Stage %s, %d finished own trades, %+.2f USDT. %s" % (own.get("stage"), own.get("n", 0), own.get("pnl", 0.0), nxt), gate=False))
+        rows.append(_row("own", "Own book", None, ("Exploring: %d of %d finished own trades (small paper size). " % (own.get("n", 0), own.get("explore_n", 30)) if own.get("exploring") else "") + "Stage %s, %d finished own trades, %+.2f USDT. %s" % (own.get("stage"), own.get("n", 0), own.get("pnl", 0.0), nxt), gate=False))
     else:
         rows.append(_row("own", "Own book", None, "No own trades yet.", gate=False))
     skip_ok = all(r["ok"] is True for r in rows[:3])

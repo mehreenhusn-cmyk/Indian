@@ -14,6 +14,13 @@ EXIT_NAME = "BOT exit (TP4, main cross)"   # default exit = what Dual Bot uses; 
 LEV, FEE = 10.0, 1.0     # same as Dual Bot: 10x, fee in ROI points
 MAX_DAY = 40             # most new own trades per trading day (day = 5:30 AM IST = 00:00 UTC); keeps learning from turning into noise
 # The Brain starts loose and gets pickier by itself as its own judged trades grow: (judged trades needed, stage, min clean, min win %, max divergence)
+# BE1 Force Explore: until the Brain has EXPLORE_N finished own trades it takes a few small, capped paper trades so it can make mistakes and learn.
+EXPLORE_N = 30           # finished own trades that end the explore phase (then the normal stages below take over)
+EXPLORE_MG = 25.0        # margin (USDT) of one explore trade (normal own trades use the Dual Bot margin)
+EXPLORE_MAX_OPEN = 6     # most explore trades open at once
+EXPLORE_DAY = 12         # most new explore trades per trading day
+EXPLORE_LOSS = -30.0     # explore trades closed today lose more than this (USDT) = no new explore trade until tomorrow
+EXPLORE_ROUND = 3        # most new explore trades per 5-minute scan (the cleanest first)
 STAGES = ((0, "learning", 45, 45, 55), (100, "medium", 55, 50, 48), (300, "quality", 60, 55, 43))
 
 
@@ -21,8 +28,15 @@ def judged(own):
     return len([t for t in (own or {}).get("closed", []) if t.get("net") is not None])
 
 
+def exploring(own):
+    """True while the Brain still has fewer than EXPLORE_N finished own trades (Force Explore, paper only)."""
+    return judged(own) < EXPLORE_N
+
+
 def stage_for(n):
-    """-> (stage name, min clean, min win %, max divergence) for n finished own trades."""
+    """-> (stage name, min clean, min win %, max divergence) for n finished own trades. Explore = no floor, only the lessons still block."""
+    if n < EXPLORE_N:
+        return "exploring", 0, 0, 100
     cur = STAGES[0]
     for st in STAGES:
         if n >= st[0]:
@@ -73,6 +87,13 @@ def open_from(own, watch, now_ms=None, pick_fn=None):
     import brain_week as BW
     day0 = _day_start_ms(now_ms)
     today = len([t for t in own["open"] + own["closed"] if t.get("t", 0) >= day0])
+    exp = exploring(own)
+    cap_open, cap_day = (EXPLORE_MAX_OPEN, EXPLORE_DAY) if exp else (MAX_OPEN, MAX_DAY)
+    if exp:   # the cleanest setups first; a day that already lost too much opens nothing more
+        watch = sorted(watch or [], key=lambda x: -(x.get("clean") or 0))
+        lost = sum(_usdt(t) for t in own["closed"] if t.get("explore") and t.get("closed_at", 0) >= day0 and t.get("net") is not None)
+        if lost <= EXPLORE_LOSS:
+            watch = []
     for w in watch or []:
         plan, tg = w.pop("_plan", None), w.pop("_tg", None)
         if not plan or not tg:
@@ -81,13 +102,13 @@ def open_from(own, watch, now_ms=None, pick_fn=None):
         if key in own["seen"]:
             continue
         own["seen"][key] = 1
-        if today + opened >= MAX_DAY:
+        if today + opened >= cap_day or (exp and opened >= EXPLORE_ROUND):
             continue
         if BS.blocked(own, tg, now_ms, opened_side):   # F1: only active after 100+ own trades and a losing sideways book
             continue
         if BW.blocked(own, now_ms, opened_blk):   # F3: only after 7+ days, 300+ own trades and a block that loses in both halves
             continue
-        if len(own["open"]) >= MAX_OPEN or any(t["s"] == w["s"] and t["d"] == w["d"] for t in own["open"]):
+        if len(own["open"]) >= cap_open or any(t["s"] == w["s"] and t["d"] == w["d"] for t in own["open"]):
             continue
         ex, why = EXIT_NAME, ""
         if pick_fn:
@@ -101,6 +122,8 @@ def open_from(own, watch, now_ms=None, pick_fn=None):
             "win_pct": (w.get("prob") or {}).get("win_pct"), "n": (w.get("prob") or {}).get("n"), "tg": tg,
             "stage": w.get("stage"), "lesson": w.get("lesson") or "",
             "status": "open", "live": None, "chk": 0})
+        if exp:
+            own["open"][-1].update(explore=True, mg=EXPLORE_MG)
         opened += 1
         opened_side += 1 if BS.is_side(tg) else 0
         opened_blk += 1
@@ -161,6 +184,8 @@ def settle(own, fetch_limit, now_ms=None):
 
 
 def _usdt(t):
+    if t.get("mg"):   # explore trades carry their own small margin
+        return t["mg"] * (t.get("net") or 0.0) / 100.0
     try:
         import dual_lab
         mg = dual_lab._mg(t)
@@ -220,12 +245,15 @@ def summary(own):
     rec = [{"s": t["s"], "f": t["f"], "d": t["d"], "kind": kind(t), "net": t["net"], "usdt": round(_usdt(t), 2), "end": t.get("end"), "bars": t.get("bars")}
            for t in sorted(cl, key=lambda x: -x.get("closed_at", 0))[:8]]
     n = len(cl)
+    exp = n < EXPLORE_N
     if n == 0:
         text = ("The Brain has %d own pretend trade(s) open. None has finished yet." % len(op)) if op else \
                "No own trade yet. The Brain opens one only when its scan finds a setup it really likes."
     else:
         text = "Own pretend trades finished: %d. Won %d%% of them. Total %+.2f USDT (fee inside)." % (n, round(100.0 * wins / n), pnl)
+    if exp:
+        text = "Exploring - taking limited paper trades to learn (%d of %d finished). Small size, a few at a time. " % (n, EXPLORE_N) + text
     stg = stage_for(n)[0]
     nxt, left = next_stage(n)
-    return {"stage": stg, "next_stage": nxt, "next_in": left, "since": own.get("since"), "open": op, "n": n, "wins": wins, "pnl": pnl, "avg": round(sum(t["net"] for t in cl) / n, 2) if n else 0.0,
+    return {"stage": stg, "exploring": exp, "explore_n": EXPLORE_N, "next_stage": nxt, "next_in": left, "since": own.get("since"), "open": op, "n": n, "wins": wins, "pnl": pnl, "avg": round(sum(t["net"] for t in cl) / n, 2) if n else 0.0,
             "recent": rec, "text": text, "side_rule": _side_rule(own), "retest_book": _retest_book(own), "week": _week(own), "exit": EXIT_NAME, "by_exit": sorted(by.values(), key=lambda x: -x["pnl"])}

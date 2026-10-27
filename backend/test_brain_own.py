@@ -62,11 +62,23 @@ check(BO.open_from(own, [x]) == 0 and len(own["open"]) == 1, "one open trade per
 y = item("BBBUSDT"); y["_plan"] = dict(plan, ct=plan["ct"] + 1800000)
 check(BO.open_from(own, [y]) == 1 and len(own["open"]) == 2, "another coin opens")
 check(BO.open_from(own, [{"s": "CCC", "f": "15m", "d": 1}]) == 0, "item without a plan is ignored")
-big = {}
+big = {"closed": [{"net": 1.0, "t": 0}] * BO.EXPLORE_N}   # past the explore phase = normal cap
 for k in range(BO.MAX_OPEN + 5):
     z = item("C%dUSDT" % k); z["_plan"] = dict(plan, ct=plan["ct"] + k * 900000)
     BO.open_from(big, [z])
 check(len(big["open"]) == BO.MAX_OPEN, "cap on open trades")
+
+# 2b. explore limits: at most 3 per round (cleanest first), 6 open, day loss cap stops new ones
+ex = {}
+many = []
+for k in range(5):
+    z = item("E%dUSDT" % k); z["clean"] = 50 + k; z["_plan"] = dict(plan, ct=plan["ct"] + (k + 40) * 900000); many.append(z)
+check(BO.open_from(ex, many) == BO.EXPLORE_ROUND, "explore: only 3 new trades per round")
+check([t["s"] for t in ex["open"]] == ["E4USDT", "E3USDT", "E2USDT"], "explore: the cleanest setups go first")
+check(all(t["mg"] == BO.EXPLORE_MG and t["explore"] for t in ex["open"]), "explore trades are tagged and small")
+ex["closed"] = [{"explore": True, "mg": 25.0, "net": -200.0, "t": 1, "closed_at": int(time.time() * 1000)}]
+z = item("FUSDT"); z["_plan"] = dict(plan, ct=plan["ct"] + 99 * 900000)
+check(BO.open_from(ex, [z]) == 0, "explore: day loss cap stops new trades")
 
 # 3. following: the market data holds the future of the trade, so it must finish with a number
 fetches = []
@@ -97,8 +109,10 @@ check(not e["open"] and not e["closed"], "a candle that cannot be found is dropp
 check(BO.summary({}) is None, "no summary before the book exists")
 sm = BO.summary(own)
 check(sm["n"] == 2 and sm["open"] == [] and "finished: 2" in sm["text"] and len(sm["recent"]) == 2, "summary counts and text")
-check(abs(sm["pnl"] - round(sum(100.0 * t["net"] / 100.0 for t in own["closed"]), 2)) < 0.011, "USDT uses 100 margin per trade")
-so = BO.summary({"since": now, "open": [dict(own["closed"][0], status="open", live=2.5)], "closed": []})
+check(all(t.get("explore") and t.get("mg") == BO.EXPLORE_MG for t in own["closed"]) and abs(sm["pnl"] - round(sum(BO.EXPLORE_MG * t["net"] / 100.0 for t in own["closed"]), 2)) < 0.011, "explore trades use the small 25 USDT margin")
+sm_n = BO.summary({"since": 1, "open": [], "closed": [{"s": "X", "f": "15m", "d": 1, "net": 2.0, "t": 0}] * BO.EXPLORE_N})
+check(not sm_n["exploring"] and abs(sm_n["pnl"] - round(BO.EXPLORE_N * 100.0 * 2.0 / 100.0, 2)) < 0.011 and sm_n["stage"] == "learning", "after the explore phase: normal stage and 100 margin")
+so = BO.summary({"since": now, "open": [dict(own["closed"][0], status="open", live=2.5, mg=None)], "closed": []})
 check(so["open"][0]["usdt"] == 2.5 and "None has finished" in so["text"], "open trade shows live USDT")
 json.dumps(sm)
 
