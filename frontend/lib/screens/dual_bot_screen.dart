@@ -42,6 +42,7 @@ class _DualBotScreenState extends State<DualBotScreen> {
   Map<String, dynamic> _brain = {}; // last full Smart Brain reply (watch list, own trades, performance) for the Opportunities and Performance tabs
   Map<String, dynamic> _brainIds = {}; // Smart Brain opinion per trade (coin|timeframe|time), for the small badge on the open cards
   Map<String, dynamic> _desk = {}; // /api/dual_desk: today / last-7-days numbers for the strip on the Simple tab (Z2b)
+  Map<String, dynamic> _arch = {}; // /api/archive: DATA SAFE chip (Z2c)
   String _brainTrust = ''; // Smart Brain trust verdict (earned / not_yet / learning) for the status bar
   int _filter = 0; // Now tab filter: 0 = All, 1 = Good only, 2 = Long, 3 = Short
   Timer? _timer;
@@ -94,9 +95,14 @@ class _DualBotScreenState extends State<DualBotScreen> {
     try {
       final base = context.read<AppProvider>().baseUrl;
       final res = await http.get(Uri.parse('$base/api/dual_desk')).timeout(const Duration(seconds: 10));
-      if (res.statusCode != 200) return;
-      final m = jsonDecode(utf8.decode(res.bodyBytes));
+      final m = res.statusCode == 200 ? jsonDecode(utf8.decode(res.bodyBytes)) : null;
       if (m is Map && mounted) setState(() => _desk = Map<String, dynamic>.from(m));
+    } catch (_) {}
+    try {
+      final base = context.read<AppProvider>().baseUrl;
+      final res = await http.get(Uri.parse('$base/api/archive')).timeout(const Duration(seconds: 10));
+      final m = res.statusCode == 200 ? jsonDecode(utf8.decode(res.bodyBytes)) : null;
+      if (m is Map && mounted) setState(() => _arch = Map<String, dynamic>.from(m));
     } catch (_) {}
   }
 
@@ -862,6 +868,7 @@ class _DualBotScreenState extends State<DualBotScreen> {
                 sideways: _map(_brain['sideways']),
                 bySrc: _map(_map(_st['summary'])['by_src']),
                 desk: _desk,
+                archive: _arch,
                 marginOf: _mg,
                 onOpen: (t) => showDualTradeChart(context, row: t, margin: _mg(t), lev: _n(_st['lev'])),
               ),

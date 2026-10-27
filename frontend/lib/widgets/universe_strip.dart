@@ -13,8 +13,25 @@ import 'owl_card.dart';
 /// Money = USDT (margin x ROI), same as the rest of the screen. Trading day = 5:30 AM IST.
 class UniverseStrip extends StatelessWidget {
   final Map<String, dynamic> desk; // reply of /api/dual_desk (may be empty before the first answer)
+  final Map<String, dynamic> archive; // reply of /api/archive, for the DATA SAFE chip (Z2c)
 
-  const UniverseStrip({super.key, required this.desk});
+  const UniverseStrip({super.key, required this.desk, this.archive = const {}});
+
+  /// DATA SAFE chip: the permanent archive is saving (safe), waiting (Dual Bot stopped?), not started, or has a problem.
+  Widget _safeChip(AppPalette p) {
+    switch ('${archive['state'] ?? ''}') {
+      case 'safe':
+        return OwlChip('DATA SAFE', p.profit);
+      case 'stale':
+        return OwlChip('SAVE WAITING', p.warning);
+      case 'error':
+        return OwlChip('ARCHIVE PROBLEM', p.loss);
+      case 'none':
+        return OwlChip('NOT STARTED', p.textMuted);
+      default:
+        return const SizedBox.shrink();
+    }
+  }
 
   static const _tab = [FontFeature.tabularFigures()];
   static double _n(dynamic v) => v is num ? v.toDouble() : 0.0;
@@ -91,7 +108,7 @@ class UniverseStrip extends StatelessWidget {
     }
     final g = _m(desk['groups']);
     final other = _otherLine(_m(g['other']));
-    return OwlSectionCard(title: 'TODAY VS LAST 7 DAYS COINS', hint: 'Since 5:30 AM IST. Same trades, split by where the coin came from.', children: [
+    return OwlSectionCard(title: 'TODAY VS LAST 7 DAYS COINS', trailing: _safeChip(p), hint: 'Since 5:30 AM IST. Same trades, split by where the coin came from.', children: [
       _block(context, p, "TODAY'S TOP COINS", _m(g['today'])),
       _block(context, p, "LAST 7 DAYS' COINS (live only)", _m(g['d7'])),
       if (other.isNotEmpty) Text(other, style: context.type.metadata),

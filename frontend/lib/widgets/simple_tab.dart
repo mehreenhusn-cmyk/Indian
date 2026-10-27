@@ -18,6 +18,7 @@ class SimpleTab extends StatefulWidget {
   final Map<String, dynamic> sideways; // Brain's sideways report (may be empty)
   final Map<String, dynamic> bySrc; // summary.by_src from /api/dual_lab: finished trades by signal type (alt coins)
   final Map<String, dynamic> desk; // /api/dual_desk (today vs last 7 days coins, Z2b)
+  final Map<String, dynamic> archive; // /api/archive (DATA SAFE chip, Z2c)
   final double Function(Map<String, dynamic>) marginOf;
   final void Function(Map<String, dynamic>) onOpen;
 
@@ -29,6 +30,7 @@ class SimpleTab extends StatefulWidget {
     required this.sideways,
     this.bySrc = const {},
     this.desk = const {},
+    this.archive = const {},
     required this.marginOf,
     required this.onOpen,
   });
@@ -39,6 +41,8 @@ class SimpleTab extends StatefulWidget {
 
 class _SimpleTabState extends State<SimpleTab> {
   bool _all = false;
+  int _flt = 0; // open list filter: 0 All, 1 Today, 2 7d, 3 Long, 4 Short (Z2c)
+  static const _fltNames = ['All', 'Today', '7d', 'Long', 'Short'];
   static const _showFirst = 12;
   static const _tab = [FontFeature.tabularFigures()];
 
@@ -49,6 +53,28 @@ class _SimpleTabState extends State<SimpleTab> {
   double _openUsdt(Map<String, dynamic> t) {
     final roi = t['live_now'] is num ? _n(t['live_now']) : _n(t['live']);
     return widget.marginOf(t) * roi / 100.0;
+  }
+
+  /// Where the coin came from: 'today' (top list now, BTC too) or 'd7' (only a 7-day name). Empty = unknown (old trade).
+  String _from(Map<String, dynamic> t) {
+    if ('${t['s']}' == 'BTCUSDT') return 'today';
+    final tags = widget.desk['tags'];
+    return tags is Map ? '${tags['${t['s']}'] ?? ''}' : '';
+  }
+
+  bool _keep(Map<String, dynamic> t) {
+    switch (_flt) {
+      case 1:
+        return _from(t) == 'today';
+      case 2:
+        return _from(t) == 'd7';
+      case 3:
+        return _n(t['d']) > 0;
+      case 4:
+        return _n(t['d']) < 0;
+      default:
+        return true;
+    }
   }
 
   Map<String, dynamic>? _brain(Map<String, dynamic> t) {
@@ -215,6 +241,7 @@ class _SimpleTabState extends State<SimpleTab> {
                 Flexible(child: Text(_coin(t['s']), maxLines: 1, overflow: TextOverflow.ellipsis, style: context.type.primary.copyWith(fontWeight: FontWeight.w800))),
                 const SizedBox(width: 6),
                 Text(buy ? 'BUY' : 'SELL', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: buy ? p.profit : p.loss)),
+                if (_from(t).isNotEmpty) ...[const SizedBox(width: 6), OwlChip(_from(t) == 'd7' ? '7D' : 'TODAY', p.textMuted)],
               ]),
               Text('${t['f'] ?? ''}${src.isNotEmpty ? '  ·  $src' : ''}  ·  ${DualTradeCard.openFor(t['t']) == 'now' ? 'just now' : '${DualTradeCard.openFor(t['t'])} ago'}', style: context.type.metadata),
               Padding(padding: const EdgeInsets.only(top: 2), child: DualTradeCard.badgeRow(p, brain: _brain(t), label: t['label'])),
@@ -228,12 +255,23 @@ class _SimpleTabState extends State<SimpleTab> {
   }
 
   Widget _openCard(AppPalette p) {
-    final open = widget.recent.where((t) => '${t['status']}' == 'open').toList();
+    final allOpen = widget.recent.where((t) => '${t['status']}' == 'open').toList();
+    final open = allOpen.where(_keep).toList();
     open.sort((a, b) => _openUsdt(b).compareTo(_openUsdt(a)));
     final shown = _all ? open : open.take(_showFirst).toList();
     final up = open.where((t) => _openUsdt(t) >= 0).length;
-    return OwlSectionCard(title: 'OPEN TRADES (${open.length})', children: [
-      if (open.isEmpty) Text('Nothing is open right now.', style: context.type.secondary),
+    return OwlSectionCard(title: _flt == 0 ? 'OPEN TRADES (${open.length})' : 'OPEN TRADES (${open.length} of ${allOpen.length})', children: [
+      SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(children: [
+          for (var i = 0; i < _fltNames.length; i++)
+            Padding(
+              padding: const EdgeInsets.only(right: 6),
+              child: ChoiceChip(label: Text(_fltNames[i]), selected: _flt == i, visualDensity: VisualDensity.compact, onSelected: (_) => setState(() => _flt = i)),
+            ),
+        ]),
+      ),
+      if (open.isEmpty) Text(allOpen.isEmpty ? 'Nothing is open right now.' : 'No open trade matches this filter.', style: context.type.secondary),
       if (open.isNotEmpty) ...[
         Text('$up in profit, ${open.length - up} in loss. Best first. Tap for the chart.', style: context.type.metadata),
         const SizedBox(height: 2),
@@ -296,7 +334,7 @@ class _SimpleTabState extends State<SimpleTab> {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       _threeBoxes(p),
       _health(p),
-      UniverseStrip(desk: widget.desk),
+      UniverseStrip(desk: widget.desk, archive: widget.archive),
       _signalTypeCard(p),
       _openCard(p),
       _doneCard(p),
