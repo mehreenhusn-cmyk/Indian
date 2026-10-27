@@ -2,11 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../theme/app_theme.dart';
-import 'glass_card.dart';
 import 'owl_card.dart';
 import 'owl_pressable.dart';
 
-/// UI1: the Dashboard money card. ONE hero number (Today P&L, 34px), a thin bar toward the daily target,
+/// UI1 / SR1b: the Dashboard money card. ONE hero number (Today P&L, 36px), a thin bar toward the daily target,
 /// then three equal tiles (Open P&L / Win rate / Open positions) and the 7D / 30D row.
 /// In LIVE mode the hero is the live open P&L and the first tile is margin used (same data rules as before).
 /// Cheap: no painter, no controller. Only the Open P&L follows the live price tick, through its own Selector.
@@ -54,9 +53,9 @@ class DashboardCockpit extends StatelessWidget {
           final box = Container(
             padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
             decoration: BoxDecoration(
-              color: p.surfaceHigher.withOpacity(0.5),
-              borderRadius: BorderRadius.circular(AppSpacing.radiusMedium),
-              border: Border.all(color: p.border.withOpacity(0.7)),
+              color: p.bg,
+              borderRadius: BorderRadius.circular(AppSpacing.radiusSmall + 4),
+              border: Border.all(color: p.border),
             ),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppTypography.eyebrow.copyWith(color: p.textMuted, fontSize: 9.5)),
@@ -76,11 +75,13 @@ class DashboardCockpit extends StatelessWidget {
           );
         }
 
-        return GlassCard(
-          hero: true,
-          glowColor: main == 0 ? null : mainColor,
+        // SR1b: the same calm card as the rest of the app (OWLCard); a thin green / red rim follows the sign of the hero number.
+        return OWLCard(
+          padding: EdgeInsets.zero,
+          hasPositiveGlow: main > 0,
+          hasNegativeGlow: main < 0,
           child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.cardPad),
+            padding: const EdgeInsets.all(AppSpacing.l),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -104,7 +105,7 @@ class DashboardCockpit extends StatelessWidget {
                         style: context.type.metadata.copyWith(color: targetHit ? p.profit : p.textSecondary, fontWeight: FontWeight.w700)),
                   ]),
                 ],
-                const SizedBox(height: AppSpacing.m),
+                Divider(height: 24, thickness: 1, color: p.border),
                 Row(children: [
                   if (isLive) tile('MARGIN USED', marginUsed.toStringAsFixed(2), p.accent) else tile('OPEN P&L', sg(openPnl), pc(openPnl)),
                   if (!isLive) tile('WIN RATE', '${winRate.toStringAsFixed(1)}%', p.accent),

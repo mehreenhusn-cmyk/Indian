@@ -23,10 +23,10 @@ class AppTypography {
     fontFeatures: _tabular,
   );
 
-  /// UI1: the ONE big number of a screen (Today P&L, Net). 34px, tight tracking.
+  /// UI1: the ONE big number of a screen (Today P&L, Net). SR1a: 36px, tight tracking.
   static const TextStyle heroXL = TextStyle(
     fontFamily: fontFamily,
-    fontSize: 34,
+    fontSize: 36,
     fontWeight: FontWeight.w700,
     letterSpacing: -1.0,
     height: 1.05,

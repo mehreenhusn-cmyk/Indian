@@ -20,7 +20,10 @@ class DualTradeCard extends StatelessWidget {
   /// Optional Smart Brain opinion for this trade: {clean, div, verdict}. Shown as a small badge. Null = no badge.
   final Map<String, dynamic>? brain;
 
-  const DualTradeCard({super.key, required this.row, required this.margin, required this.onTap, this.setupLine, this.brain});
+  /// BE2: where the coin came from: 'today' or 'd7' (shows a small TODAY / 7D chip). Empty = no chip.
+  final String from;
+
+  const DualTradeCard({super.key, required this.row, required this.margin, required this.onTap, this.setupLine, this.brain, this.from = ''});
 
   static double? _n(dynamic v) => v is num ? v.toDouble() : null;
 
@@ -59,7 +62,7 @@ class DualTradeCard extends StatelessWidget {
     return FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Row(mainAxisSize: MainAxisSize.min, children: items));
   }
 
-  /// "42m", "2h 5m" or "now": how long the trade has been open.
+  /// "42 min", "2 h 5 min" or "now": how long the trade has been open.
   static String openFor(dynamic tMs) {
     final a = _age(tMs);
     return a == 'just now' ? 'now' : a;
@@ -70,10 +73,7 @@ class DualTradeCard extends StatelessWidget {
     if (t == null) return '';
     final secs = (DateTime.now().millisecondsSinceEpoch - t) / 1000.0;
     if (secs < 60) return 'just now';
-    final m = (secs / 60).floor();
-    if (m < 60) return '${m}m';
-    final h = m ~/ 60;
-    return '${h}h ${m % 60}m';
+    return fmtSpan(secs);
   }
 
   @override
@@ -138,19 +138,42 @@ class DualTradeCard extends StatelessWidget {
     final age = _age(row['t']);
     final grade = quality(brain);
     final accent = grade == 'good' ? p.profit : (grade == 'bad' ? p.loss : p.border);
-    final openLabel = openFor(row['t']);
+    // BE2: how far the live price is on its way to the NEXT take-profit, and how far the stop is (price %, not margin %).
+    String nextLine = '';
+    if (entry != null && live != null && tps.isNotEmpty) {
+      var k = -1;
+      for (var i = 0; i < tps.length; i++) {
+        final passed = long ? live >= tps[i] : live <= tps[i];
+        if (!passed) {
+          k = i;
+          break;
+        }
+      }
+      if (k < 0) {
+        nextLine = 'All ${tps.length} targets passed';
+      } else {
+        final base = k == 0 ? entry : tps[k - 1];
+        final span = tps[k] - base;
+        final done = span == 0 ? 0.0 : ((live - base) / span * 100).clamp(0.0, 100.0).toDouble();
+        nextLine = 'Next TP${k + 1} ${fmtPrice(tps[k])}  ·  ${done.round()}% of the way';
+      }
+    }
+    if (live != null && live > 0 && slNow != null) {
+      final away = (live - slNow).abs() / live * 100;
+      nextLine += '${nextLine.isEmpty ? '' : '  ·  '}stop ${away.toStringAsFixed(2)}% away';
+    }
     final reason = brain == null ? '' : '${brain!['text'] ?? ''}';
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: InkWell(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusMedium),
         onTap: onTap,
         child: Container(
           clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
             color: p.surface,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(AppSpacing.radiusMedium),
             border: Border.all(color: p.border, width: 1),
           ),
           child: IntrinsicHeight(
@@ -176,7 +199,7 @@ class DualTradeCard extends StatelessWidget {
                         chip(long ? 'LONG' : 'SHORT', sideColor),
                         chip('${row['f'] ?? ''}', p.textMuted),
                         if (srcName.isNotEmpty) chip(srcName, p.accent),
-                        if (openLabel.isNotEmpty) chip('open $openLabel', p.textMuted),
+                        if (from.isNotEmpty) chip(from == 'd7' ? '7D' : 'TODAY', p.textMuted),
                       ],
                     ),
                   ),
@@ -209,6 +232,10 @@ class DualTradeCard extends StatelessWidget {
                   stat('Stop now', fmtPrice(slNow), color: p.loss),
                 ],
               ),
+              if (nextLine.isNotEmpty) ...[
+                const SizedBox(height: 6),
+                Text(nextLine, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: p.textPrimary, fontFeatures: tab)),
+              ],
               const SizedBox(height: 8),
               SizedBox(
                 height: 40,

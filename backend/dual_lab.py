@@ -35,6 +35,10 @@ try:                                    # Part U1: long-term archive (append-onl
     import trade_archive as _TA
 except Exception:
     _TA = None
+try:                                    # BE2b: live price of every open coin in one request. Missing file = the old one-by-one way
+    import dual_live as _DL
+except Exception:
+    _DL = None
 try:                                    # Part U2: 7-day coin names (+ live-only rule for them). Missing file = today's list only, as before
     import universe_7d as _U7
 except Exception:
@@ -1055,6 +1059,12 @@ def _live_prices(syms):
     """Latest price of a few coins (the close of the newest, still forming 1m candle = the price now). Cached 6 s; any failure just means no live update."""
     if time.time() - _LIVE["t"] < 6 and all(s in _LIVE["px"] for s in syms):
         return _LIVE["px"]
+    if _DL:                                                   # BE2b: one bulk request for ALL open coins (old way below = fallback)
+        got = _DL.prices(syms)
+        if got:
+            _LIVE["px"].update(got)
+            _LIVE["t"] = time.time()
+            return _LIVE["px"]
     try:
         from recovered_bot import ai_shadow_lab as LAB
         for s in list(syms)[:14]:

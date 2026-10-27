@@ -643,30 +643,6 @@ class _DualBotScreenState extends State<DualBotScreen> {
     );
   }
 
-  /// UI2a: the Now tab opens with one line: how many are open, long / short, and the floating money.
-  Widget _nowLine(AppPalette p) {
-    final td = _map(_map(_st['summary'])['today']);
-    if (td.isEmpty) return const SizedBox.shrink();
-    final nOpen = _n(td['open']).toInt();
-    final nLong = _n(td['open_long']).toInt();
-    final fl = _n(td['open_pnl']);
-    final c = nOpen == 0 ? p.textMuted : (fl >= 0 ? p.profit : p.loss);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: OWLCard(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        edge: nOpen == 0 ? null : c,
-        child: Row(children: [
-          Expanded(
-            child: Text(nOpen == 0 ? 'Nothing open right now' : '$nOpen open  ·  $nLong long  ·  ${nOpen - nLong} short',
-                maxLines: 1, overflow: TextOverflow.ellipsis, style: context.type.primary.copyWith(fontWeight: FontWeight.w800)),
-          ),
-          if (nOpen > 0) Text('floating ${fl >= 0 ? '+' : ''}${fl.toStringAsFixed(2)} USDT', style: context.type.primary.copyWith(fontWeight: FontWeight.w800, color: c)),
-        ]),
-      ),
-    );
-  }
-
   Widget _stripCard(AppPalette p) {
     final state = '${_st['state'] ?? ''}';
     final running = state == 'running' || state == 'loading' || (state.isEmpty && _st['running'] == true);
@@ -688,7 +664,6 @@ class _DualBotScreenState extends State<DualBotScreen> {
     final nMain = open.where((t) => '${t['src']}' == 'MAIN').length;
     final nZ = open.where((t) => '${t['src']}' == 'Z').length;
     final nBoth = open.where((t) => '${t['src']}' == 'BOTH').length;
-    final nLong = open.where((t) => (t['d'] ?? 1) > 0).length;
     return _card(p, title: 'OPEN TRADES (LIVE)', edge: open.isEmpty ? null : p.profit, children: [
       if (allOpen.isNotEmpty) _filterRow(p, allOpen.length, open.length),
       if (allOpen.isEmpty) Text('No open trade right now. Tap any trade below to see its chart.', style: context.type.secondary),
@@ -697,7 +672,7 @@ class _DualBotScreenState extends State<DualBotScreen> {
         Padding(
           padding: const EdgeInsets.only(bottom: 4),
           child: Text(
-            '${open.length} open  ·  $nLong long, ${open.length - nLong} short  ·  entry from: $nMain Main, $nZ Z${nBoth > 0 ? ', $nBoth both' : ''}',
+            'Entry from: $nMain Main, $nZ Z${nBoth > 0 ? ', $nBoth both' : ''}',
             style: context.type.primary.copyWith(fontWeight: FontWeight.w700, fontSize: 13),
           ),
         ),
@@ -909,7 +884,6 @@ class _DualBotScreenState extends State<DualBotScreen> {
                 onOpen: (t) => showDualTradeChart(context, row: t, margin: _mg(t), lev: _n(_st['lev'])),
               ),
             ] else if (_seg == 1) ...[
-              _nowLine(p),
               _stripCard(p),
               _statusCard(p),
               _todayCard(p),

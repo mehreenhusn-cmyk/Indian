@@ -61,18 +61,17 @@ class BottomNavBar extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
           decoration: BoxDecoration(
             color: dark ? p.surfaceElevated : p.surface,
-            borderRadius: BorderRadius.circular(22),
+            borderRadius: BorderRadius.circular(20),
             border: Border.all(
               color: dark ? Colors.white.withOpacity(0.08) : p.border,
               width: 1,
             ),
+            // SR1b: neutral soft shadow in light (was blue tinted); dark keeps its faint accent rim.
             boxShadow: [
               BoxShadow(
-                color: dark
-                    ? p.accent.withOpacity(0.10)
-                    : p.accent.withOpacity(0.12),
-                blurRadius: 22,
-                offset: const Offset(0, 6),
+                color: dark ? p.accent.withOpacity(0.10) : const Color(0xFF101828).withOpacity(0.07),
+                blurRadius: 18,
+                offset: const Offset(0, 4),
               ),
             ],
           ),
@@ -99,15 +98,15 @@ class BottomNavBar extends StatelessWidget {
         curve: AppMotion.standard,
         padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs + 2),
         decoration: BoxDecoration(
-          color: selected ? p.accent.withOpacity(0.14) : Colors.transparent,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: selected ? [BoxShadow(color: p.accent.withOpacity(0.18), blurRadius: 12, offset: const Offset(0, 3))] : null,
+          // SR1b: flat active pill (no glow), the icon and label colour already say which tab is open.
+          color: selected ? p.accent.withOpacity(0.10) : Colors.transparent,
+          borderRadius: BorderRadius.circular(AppSpacing.radiusMedium),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             AnimatedScale(
-              scale: selected ? 1.12 : 1.0,
+              scale: selected ? 1.08 : 1.0,
               duration: AppMotion.base,
               curve: Curves.easeOutBack,
               child: Icon(selected ? _iconsOn[index] : _icons[index], size: 22, color: color),
@@ -120,7 +119,7 @@ class BottomNavBar extends StatelessWidget {
               style: AppTypography.metadata.copyWith(
                 fontSize: 9,
                 color: color,
-                fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
               ),
             ),
           ],

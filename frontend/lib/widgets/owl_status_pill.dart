@@ -43,32 +43,51 @@ class OWLStatusPill extends StatelessWidget {
     return OWLStatusPill(text: label, color: c);
   }
 
+  /// SR1a: one calm pill for a state word. Colour by meaning: running / good -> green, exploring / learning -> accent,
+  /// careful / too early / waiting -> amber, losing / offline / error -> red, anything else -> grey.
+  static Widget calm(BuildContext context, String text) {
+    final p = context.palette;
+    final s = text.toLowerCase();
+    bool has(List<String> k) => k.any(s.contains);
+    final c = has(['running', 'live', 'good', 'safe', 'profit'])
+        ? p.profit
+        : has(['explor', 'learn', 'open'])
+            ? p.accent
+            : has(['careful', 'early', 'wait', 'pause', 'unclear'])
+                ? p.warning
+                : has(['los', 'off', 'error', 'stop', 'bad'])
+                    ? p.loss
+                    : p.textMuted;
+    return OWLStatusPill(text: text, color: c);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s + 1, vertical: 3),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
+        color: color.withOpacity(0.10),
         borderRadius: BorderRadius.circular(AppSpacing.radiusPill),
-        border: Border.all(color: color.withOpacity(0.30), width: 1),
+        border: Border.all(color: color.withOpacity(0.22), width: 1),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           if (showDot) ...[
             Container(
-              width: 6,
-              height: 6,
+              width: 5,
+              height: 5,
               decoration: BoxDecoration(color: color, shape: BoxShape.circle),
             ),
-            const SizedBox(width: 6),
+            const SizedBox(width: 5),
           ],
           Text(
             text.toUpperCase(),
             style: AppTypography.metadata.copyWith(
               color: color,
+              fontSize: 10.5,
               fontWeight: FontWeight.bold,
-              letterSpacing: 0.3,
+              letterSpacing: 0.4,
             ),
           ),
         ],

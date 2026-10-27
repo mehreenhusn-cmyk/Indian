@@ -609,14 +609,13 @@ class _FloatingSummaryBarState extends State<_FloatingSummaryBar> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('OPEN P&L  ·  ${positions.length} TRADES', style: context.type.metadata.copyWith(fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 0.6)),
+                              Text('${positions.length} OPEN  ·  RESULT ON MARGIN', style: context.type.metadata.copyWith(fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 0.6)),
                               const SizedBox(height: 3),
                               FittedBox(
                                 fit: BoxFit.scaleDown,
                                 alignment: Alignment.centerLeft,
                                 child: Text(
-                                  '${isProfit ? '+' : ''}${totalPnl.toStringAsFixed(2)} USDT'
-                                  '  (${isProfit ? '+' : ''}${pct.toStringAsFixed(2)}%)',
+                                  '${isProfit ? '+' : ''}${pct.toStringAsFixed(2)}%',
                                   maxLines: 1,
                                   style: AppTypography.primaryData.copyWith(
                                     color: glow,

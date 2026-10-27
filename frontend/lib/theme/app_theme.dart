@@ -215,14 +215,15 @@ class AppPalette {
   /// version's screenshots (white cards, near-black text, blue accent).
   static const AppPalette light = AppPalette(
     // Soft pearl-lavender canvas + white cards: modern, not plain white.
-    bg: Color(0xFFFFFFFF),
+    // SR1a: off-white canvas so the white cards lift off it; hairline borders a little softer.
+    bg: Color(0xFFF4F5F8),
     surface: Color(0xFFFFFFFF),
     surfacePrimary: Color(0xFFFFFFFF),
     surfaceElevated: Color(0xFFFFFFFF),
-    surfaceHigher: Color(0xFFF3F4F6),
-    border: Color(0xFFE5E7EB),
+    surfaceHigher: Color(0xFFEEF0F4),
+    border: Color(0xFFE6E8EE),
     glassFill: Color(0xFFFFFFFF),
-    glassBorder: Color(0xFFE5E7EB),
+    glassBorder: Color(0xFFE6E8EE),
     glassHighlight: Color(0x06000000),
     accent: Color(0xFF4F5DF0),
     profit: Color(0xFF16A34A),

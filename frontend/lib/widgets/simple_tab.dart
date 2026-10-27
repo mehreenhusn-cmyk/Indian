@@ -41,10 +41,10 @@ class SimpleTab extends StatefulWidget {
 }
 
 class _SimpleTabState extends State<SimpleTab> {
-  bool _all = false;
+  static const _step = 8; // BE2: open trades are full cards now, so show 8 at a time
+  int _shown = _step;
   int _flt = 0; // open list filter: 0 All, 1 Today, 2 7d, 3 Long, 4 Short (Z2c)
   static const _fltNames = ['All', 'Today', '7d', 'Long', 'Short'];
-  static const _showFirst = 12;
   static const _tab = [FontFeature.tabularFigures()];
 
   static double _n(dynamic v) => v is num ? v.toDouble() : 0.0;
@@ -227,43 +227,11 @@ class _SimpleTabState extends State<SimpleTab> {
     ]);
   }
 
-  Widget _openRow(AppPalette p, Map<String, dynamic> t) {
-    final buy = _n(t['d']) > 0;
-    final u = _openUsdt(t);
-    final g = DualTradeCard.quality(_brain(t));
-    final dot = g == 'good' ? p.profit : (g == 'bad' ? p.loss : p.border);
-    final src = '${t['src'] ?? ''}';
-    return InkWell(
-      onTap: () => widget.onOpen(t),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 5),
-        child: Row(children: [
-          Icon(Icons.circle, size: 9, color: dot),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Row(children: [
-                Flexible(child: Text(_coin(t['s']), maxLines: 1, overflow: TextOverflow.ellipsis, style: context.type.primary.copyWith(fontWeight: FontWeight.w800))),
-                const SizedBox(width: 6),
-                Text(buy ? 'BUY' : 'SELL', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: buy ? p.profit : p.loss)),
-                if (_from(t).isNotEmpty) ...[const SizedBox(width: 6), OwlChip(_from(t) == 'd7' ? '7D' : 'TODAY', p.textMuted)],
-              ]),
-              Text('${t['f'] ?? ''}${src.isNotEmpty ? '  ·  $src' : ''}  ·  ${DualTradeCard.openFor(t['t']) == 'now' ? 'just now' : '${DualTradeCard.openFor(t['t'])} ago'}', style: context.type.metadata),
-              Padding(padding: const EdgeInsets.only(top: 2), child: DualTradeCard.badgeRow(p, brain: _brain(t), label: t['label'])),
-            ]),
-          ),
-          Text('${_sg(u)} USDT', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: u >= 0 ? p.profit : p.loss, fontFeatures: _tab)),
-          Icon(Icons.chevron_right, size: 18, color: p.textMuted),
-        ]),
-      ),
-    );
-  }
-
   Widget _openCard(AppPalette p) {
     final allOpen = widget.recent.where((t) => '${t['status']}' == 'open').toList();
     final open = allOpen.where(_keep).toList();
     open.sort((a, b) => _openUsdt(b).compareTo(_openUsdt(a)));
-    final shown = _all ? open : open.take(_showFirst).toList();
+    final shown = open.take(_shown).toList();
     final up = open.where((t) => _openUsdt(t) >= 0).length;
     return OwlSectionCard(title: _flt == 0 ? 'OPEN TRADES (${open.length})' : 'OPEN TRADES (${open.length} of ${allOpen.length})', children: [
       SingleChildScrollView(
@@ -272,7 +240,7 @@ class _SimpleTabState extends State<SimpleTab> {
           for (var i = 0; i < _fltNames.length; i++)
             Padding(
               padding: const EdgeInsets.only(right: 6),
-              child: ChoiceChip(label: Text(_fltNames[i]), selected: _flt == i, visualDensity: VisualDensity.compact, onSelected: (_) => setState(() => _flt = i)),
+              child: ChoiceChip(label: Text(_fltNames[i]), selected: _flt == i, visualDensity: VisualDensity.compact, onSelected: (_) => setState(() { _flt = i; _shown = _step; })),
             ),
         ]),
       ),
@@ -280,12 +248,16 @@ class _SimpleTabState extends State<SimpleTab> {
       if (open.isNotEmpty) ...[
         Text('$up in profit, ${open.length - up} in loss. Best first. Tap for the chart.', style: context.type.metadata),
         const SizedBox(height: 2),
-        for (final t in shown) _openRow(p, t),
-        if (open.length > _showFirst)
+        const SizedBox(height: 4),
+        for (final t in shown)
+          DualTradeCard(row: t, margin: widget.marginOf(t), onTap: () => widget.onOpen(t), brain: _brain(t), from: _from(t)),
+        if (open.length > _shown)
           TextButton(
-            onPressed: () => setState(() => _all = !_all),
-            child: Text(_all ? 'Show less' : 'Show all ${open.length}'),
+            onPressed: () => setState(() => _shown += _step),
+            child: Text('Show ${open.length - _shown < _step ? open.length - _shown : _step} more (${open.length - _shown} left)'),
           ),
+        if (_shown > _step && open.length <= _shown)
+          TextButton(onPressed: () => setState(() => _shown = _step), child: const Text('Show less')),
       ],
     ]);
   }

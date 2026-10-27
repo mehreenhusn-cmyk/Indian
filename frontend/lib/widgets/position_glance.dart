@@ -257,23 +257,10 @@ class PositionsTopBar extends StatelessWidget {
         final l = sig % 1000;
         if (w + l == 0) return const SizedBox.shrink();
         final p = context.palette;
-        Widget chip(String text, Color c) => Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(
-                color: c.withOpacity(0.12),
-                borderRadius: BorderRadius.circular(AppSpacing.radiusPill),
-                border: Border.all(color: c.withOpacity(0.35), width: 0.8),
-              ),
-              child: Text(text,
-                  style: context.type.metadata.copyWith(fontSize: 11, color: c, fontWeight: FontWeight.w700)),
-            );
         return Padding(
           padding: const EdgeInsets.only(bottom: AppSpacing.s),
           child: Row(
             children: [
-              chip('$w up', p.profit),
-              const SizedBox(width: 6),
-              chip('$l down', p.loss),
               const Spacer(),
               ValueListenableBuilder<int>(
                 valueListenable: positionsSortMode,

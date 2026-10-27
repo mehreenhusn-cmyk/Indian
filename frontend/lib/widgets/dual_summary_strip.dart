@@ -127,13 +127,10 @@ class DualSummaryStrip extends StatelessWidget {
                       maxLines: 1, style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: todayColor, fontFeatures: _tab)),
                 ),
                 Text('closed today (locked in)', style: TextStyle(fontSize: 10.5, color: p.textMuted)),
-                if (nOpen > 0) Text('open trades now ${fmtSigned(floating)} (not locked) = ${fmtSigned(total)} in total', style: TextStyle(fontSize: 10.5, color: p.textMuted)),
               ]),
             ),
             Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
               _chip(trustText, trustColor),
-              const SizedBox(height: 6),
-              _chip('$nOpen open', nOpen > 0 ? p.accent : p.textMuted),
             ]),
           ]),
         ),

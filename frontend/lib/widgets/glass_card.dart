@@ -44,10 +44,11 @@ class GlassCard extends StatelessWidget {
       if (glow != null)
         BoxShadow(color: glow.withOpacity(dark ? 0.10 : 0.12), blurRadius: 18, spreadRadius: 0)
       else if (!dark)
+        // SR1b: neutral soft shadow (was blue tinted), same as OWLCard.
         BoxShadow(
-          color: p.accent.withOpacity(0.07),
-          blurRadius: 22,
-          offset: const Offset(0, 8),
+          color: const Color(0xFF101828).withOpacity(0.05),
+          blurRadius: 16,
+          offset: const Offset(0, 4),
         ),
     ];
 

@@ -58,10 +58,11 @@ class OWLCard extends StatelessWidget {
             : (dark
                 ? null
                 : [
+                    // SR1a: neutral soft shadow (was blue tinted) so cards lift calmly off the off-white canvas.
                     BoxShadow(
-                      color: p.accent.withOpacity(0.06),
-                      blurRadius: 18,
-                      offset: const Offset(0, 6),
+                      color: const Color(0xFF101828).withOpacity(0.05),
+                      blurRadius: 16,
+                      offset: const Offset(0, 4),
                     ),
                   ]),
       ),
@@ -116,7 +117,7 @@ class OwlSectionCard extends StatelessWidget {
         padding: EdgeInsets.all(dense ? 11 : AppSpacing.cardPad),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
-            Expanded(child: Text(title, style: context.type.label.copyWith(fontWeight: FontWeight.w800, letterSpacing: 0.6))),
+            Expanded(child: Text(title, style: context.type.label.copyWith(fontWeight: FontWeight.w800, letterSpacing: 0.6, color: p.textSecondary))),
             if (trailing != null) trailing!,
           ]),
           if (hint != null) ...[
