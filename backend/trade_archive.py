@@ -7,7 +7,8 @@ Why: Dual Bot keeps only its newest 600 trades / 5000 learning rows (dual_lab.tr
 ready for real money, so before anything can be trimmed it is copied here (SQLite file = a filing cabinet: pages are added, none removed).
 
 Files (in the data folder, next to dual_lab_data.json, so zips and updates never touch them):
-  dual_archive.db   written by the Dual Bot worker right BEFORE trim():  trades (every state change), rows, rt (retest rows)
+  dual_archive.db   written by the Dual Bot worker right BEFORE trim():  trades (every state change), rows, rt (retest rows),
+                    obs (B4a: one data row per closed candle of an open trade + entry + exit rows, see brain_edge.py; Brain learns from it later)
   brain_archive.db  written by the Brain worker:  own finished trades, frozen picks, exit opinions
 Rules: this file never runs a delete statement (test_trade_archive.py checks the source); a failure is caught, remembered and shown,
 it never stops a bot. Only the Python standard library (sqlite3). One writer per file, so there is no locking fight.
@@ -30,6 +31,9 @@ CREATE TABLE IF NOT EXISTS rows (k TEXT PRIMARY KEY, t INTEGER, sym TEXT, tf TEX
 CREATE INDEX IF NOT EXISTS rows_t ON rows(t);
 CREATE TABLE IF NOT EXISTS rt (k TEXT PRIMARY KEY, js TEXT);
 CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT);
+CREATE TABLE IF NOT EXISTS obs (id TEXT, t INTEGER, k TEXT, n INTEGER, sym TEXT, tf TEXT, d INTEGER, v TEXT, bv TEXT, tag TEXT, lag INTEGER, f TEXT,
+  PRIMARY KEY (id, t, k));
+CREATE INDEX IF NOT EXISTS obs_t ON obs(t);
 """
 _BRAIN_SQL = """
 CREATE TABLE IF NOT EXISTS own (id TEXT PRIMARY KEY, t INTEGER, sym TEXT, tf TEXT, net REAL, stage TEXT, saved REAL, js TEXT);
@@ -98,9 +102,19 @@ def save_dual(data, st=None, base=None):
         rt = data.get("rt") or {}
         rw = [(k, v) for k, v in rows.items() if k not in seen_r]
         rr = [(k, v) for k, v in rt.items() if k not in seen_rt]
+        ob = []
+        try:                                                      # B4a: data rows waiting in brain_edge (a problem here never stops the trade copy)
+            import brain_edge as _BE
+            ob = _BE.pending()
+        except Exception:
+            ob = []
         con = _open(DUAL_DB, _DUAL_SQL, base)
         try:
             with con:
+                if ob:
+                    con.executemany("INSERT OR IGNORE INTO obs(id, t, k, n, sym, tf, d, v, bv, tag, lag, f) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
+                                    [r[:11] + (_js(r[11]),) for r in ob])
+                    con.execute("INSERT OR IGNORE INTO meta(k, v) VALUES(?, ?)", ("obs_keys_" + ob[0][7], _js(list(_BE.OBS_KEYS))))   # the layout of f, saved next to the data
                 con.executemany(
                     "INSERT INTO trades(id, t, sym, tf, side, src, status, net, exit_rule, mode, saved, js, mfe, giveback, brain_version) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) "
                     "ON CONFLICT(id) DO UPDATE SET status=excluded.status, net=excluded.net, saved=excluded.saved, js=excluded.js, "
@@ -115,6 +129,8 @@ def save_dual(data, st=None, base=None):
                 con.execute("INSERT OR IGNORE INTO meta(k, v) VALUES('first_sync', ?)", (str(now),))
         finally:
             con.close()
+        if ob:
+            _BE.confirm(len(ob))                                  # safely written: the buffer may forget them (a failed save keeps them for the next cycle)
         for t, sig in tr:
             seen_t[t["id"]] = sig
         seen_r.update(k for k, _ in rw)
@@ -187,7 +203,7 @@ def status(base=None):
     now = time.time()
     if not base and _C["v"] is not None and now - _C["t"] < 8:
         return dict(_C["v"])
-    out = {"state": "none", "text": "Archive not started yet.", "trades": 0, "closed": 0, "rows": 0, "rt": 0, "own": 0, "picks": 0,
+    out = {"state": "none", "text": "Archive not started yet.", "trades": 0, "closed": 0, "rows": 0, "rt": 0, "obs": 0, "own": 0, "picks": 0,
            "exit_shadow": 0, "first_t": None, "last_sync": 0, "age_s": None, "mb": 0.0, "err": ""}
     try:
         d = _dir(base)
@@ -199,6 +215,7 @@ def status(base=None):
                 out["closed"] = _count(con, "SELECT COUNT(*) FROM trades WHERE status IN ('closed','skipped_done')")
                 out["rows"] = _count(con, "SELECT COUNT(*) FROM rows")
                 out["rt"] = _count(con, "SELECT COUNT(*) FROM rt")
+                out["obs"] = _count(con, "SELECT COUNT(*) FROM obs")
                 out["first_t"] = con.execute("SELECT MIN(t) FROM trades").fetchone()[0]
                 out["last_sync"] = _meta_of(con, "last_sync")
             finally:

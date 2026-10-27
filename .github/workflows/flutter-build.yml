@@ -26,7 +26,17 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
+    # The Flutter SDK is a ~1.5 GB download. On 27 Oct the runner's connection to it broke half way ("curl: (92) HTTP/2 stream ... INTERNAL_ERROR"),
+    # which failed the whole build although the code was fine. So: try once, and only if THAT step failed, try the same step once more.
     - name: Set up Flutter
+      id: flutter_try1
+      uses: subosito/flutter-action@v2
+      continue-on-error: true
+      with:
+        channel: 'stable'
+
+    - name: Set up Flutter (second try after a download glitch)
+      if: steps.flutter_try1.outcome == 'failure'
       uses: subosito/flutter-action@v2
       with:
         channel: 'stable'

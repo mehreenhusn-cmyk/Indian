@@ -21,8 +21,21 @@ edge keys (d = +1 buy / -1 sell; every "with trade" number is multiplied by d, s
   hs   one state letter per observation (S strong, T stable, W weakening, R reversed, N new, ? unknown), newest last
   hc   support count per observation (digits)   hr  ROI per observation   hz  zv per observation   (all capped at MAX_HIST)
   done 1 once the trade has closed (observation ended)
+
+B4a (DATA COLLECTION ONLY): besides the edge above, every closed-candle observation is ALSO written as one compact row for the
+long-term archive (table `obs` in dual_archive.db, see trade_archive.save_dual). Nothing here decides anything; the Brain only
+learns from these rows later (B4b / B4c / B4d). Rows: k = E (entry candle, computed at the FIRST observation) / O (one per new closed
+candle while the trade is open) / X (the exit candle, which the observer never saw because the trade closes in the same pass).
+Every row holds OBS_KEYS (in this order, "with trade" signs, + = with the trade) and `lag` = how many closed candles old the candle
+already was when the row was written (0 = written live; E rows are 1 normally). Nothing is back-filled and nothing is guessed:
+a missed candle simply has no row. Only candles with index <= k are read for a row of candle k (test_brain_obs.py proves it).
 """
 import time
+
+try:   # Batch 2: version label (label only)
+    import brain_meta as _BM
+except Exception:
+    _BM = None
 
 EDGE_VERSION = "e1"
 MAX_HIST = 60                # observations kept per trade (about 0.8 KB of history)
@@ -37,6 +50,17 @@ STATE_LETTER = {"STRONG": "S", "STABLE": "T", "WEAKENING": "W", "REVERSED": "R",
 HIST_KEYS = ("hs", "hc", "hr", "hz")
 SCORE_MIN = 30               # closed trades with history needed before the scorecard gives a number
 MAX_LIST = 60                # open trades listed in the report
+OBS_VERSION = "o1"           # B4a row layout version: a new layout gets a new version, old rows are never rewritten
+OBS_KEYS = ("tsi", "hist", "hs3", "ts3", "z", "zs3", "zsm", "zg", "dm", "bw", "wd5", "ed", "es", "sm", "sz", "ev", "px3", "sc",
+            "roi", "mfe", "gb", "ma")
+# tsi TSI | hist TSI histogram | hs3 / ts3 their change over 3 candles | z Z-score | zs3 its change over 3 | zsm Z-SMA | zg Z minus Z-SMA
+# dm price distance from the SD mean in % of the mean | bw SD width % | wd5 SD width change over 5 candles in % | ed / es EMA50 distance / slope in SD
+# sm / sz sideways % of the main chart / Z pane (0 trend .. 100 sideways) | ev events on THIS candle, bits: 1 opposite EMA50 cross, 2 opposite Z candle,
+# 4 warning arrow against the trade, 8 / 16 / 32 the same three WITH the trade | px3 price change over 3 candles in % | sc reasons still with the
+# trade (0-6) | roi ROI now (fee in; X row = final result) | mfe best | gb given back (ROI points, gross, same basis as Batch 2) | ma candles since MFE improved
+MAX_BUF = 20000              # rows waiting for the archive (the archive empties it every cycle; this only guards a stuck archive)
+_BUF = []                    # rows (id, candle time, kind, n, sym, tf, d, obs version, brain version, tag, lag, [features]) not yet in the archive
+_STAT = {"dropped": 0, "err": ""}
 
 
 def _sg(x, eps=1e-12):
@@ -194,7 +218,82 @@ def _observe(tr, S, Z, i, lv, lev, fee):
         "wd": _r(wd, 1), "ed": _r(ed), "es": _r(es), "ev": ev, "ea": ea, "pm": pm, "ag": ag,
         "roi": _r(roi_now - fee, 1), "mfe": _r(mfe, 1), "gb": _r(gb, 1), "ma": ma,
         "hs": hs, "hc": hc, "hr": hr, "hz": hz, "t": int(time.time())}
+    try:                                                          # B4a: the data row(s); a problem here never touches the edge above
+        if old is None:                                           # first observation of this trade = entry row (old B3a trades get none: no back-fill)
+            _push(tr, "E", S, Z, i, i, 0, [_r(-fee, 1), 0.0, 0.0, 0], None, j - i)
+        _push(tr, "O", S, Z, i, j, n, [_r(roi_now - fee, 1), _r(mfe, 1), _r(gb, 1), ma], STATE_LETTER[st], 0)
+    except Exception as ex:
+        _STAT["err"] = "%s: %s" % (type(ex).__name__, str(ex)[:80])
+        print("brain_edge: obs row skipped %s %s: %s" % (tr.get("s"), tr.get("f"), ex), flush=True)
     return tr["edge"]
+
+
+def snapshot(S, Z, k, d):
+    """The market numbers of closed candle k (OBS_KEYS up to `sc`), "with trade" signs. Reads ONLY indexes <= k (and the prefix sums at
+    k+1 that already hold the total up to k), never a later candle. A value that cannot be computed is None."""
+    k3, k5 = max(0, k - SLOPE_K), max(0, k - WIDTH_K)
+    c = S["c"][k]
+    tsi, df, z, zsma, e50, std, sma, w = S["tsi"][k], S["diff"][k], S["z"][k], S["zsma"][k], S["e50"][k], S["std"][k], S["sma"][k], S["width"][k]
+    w5 = S["width"][k5]
+    try:
+        import tag_lab as _TL
+        sm, sz = _TL.sideways(S, Z, k)
+    except Exception:
+        sm = sz = None
+    ex, ez, ew = (S["xdn"], Z["dn"], S["wdn"]) if d > 0 else (S["xup"], Z["up"], S["wup"])       # against the trade
+    sx, sz_, sw = (S["xup"], Z["up"], S["wup"]) if d > 0 else (S["xdn"], Z["dn"], S["wdn"])       # with the trade
+    ev = (1 if ex[k] else 0) | (2 if ez[k] else 0) | (4 if ew[k] else 0) | (8 if sx[k] else 0) | (16 if sz_[k] else 0) | (32 if sw[k] else 0)
+    sup = support(S, Z, k, d)
+    sc, sn = _count(sup)
+    c3 = S["c"][k3]
+    return [_r(None if tsi is None else tsi * d), _r(None if df is None else df * d), _r(_diff(df, S["diff"][k3], d)), _r(_diff(tsi, S["tsi"][k3], d)),
+            _r(None if z is None else z * d), _r(_diff(z, S["z"][k3], d)), _r(None if zsma is None else zsma * d),
+            _r(None if z is None or zsma is None else (z - zsma) * d), _r(None if not sma else (c - sma) / sma * 100.0 * d, 3), _r(w, 3),
+            _r(None if not w or not w5 else (w / w5 - 1.0) * 100.0, 1),
+            _r(None if not std or e50 is None else (c - e50) / std * d), _r(None if not std or e50 is None or S["e50"][k5] is None else (e50 - S["e50"][k5]) / std * d),
+            sm, sz, ev, _r((c - c3) / c3 * 100.0 * d if c3 else None, 3), sc if sn == 6 else None]
+
+
+def _push(tr, kind, S, Z, i, k, n, tail, tag, lag):
+    """One data row for the archive. k = candle index the numbers belong to."""
+    row = (tr["id"], int(S["t"][k]), kind, int(n), tr.get("s"), tr.get("f"), int(tr["d"]), OBS_VERSION,
+           getattr(_BM, "BRAIN_VERSION", None) if _BM else None, tag, int(lag), snapshot(S, Z, k, tr["d"]) + tail)
+    _BUF.append(row)
+    if len(_BUF) > MAX_BUF:                                       # a stuck archive must never grow memory without limit
+        _STAT["dropped"] += len(_BUF) - MAX_BUF
+        _BUF[:] = _BUF[len(_BUF) - MAX_BUF:]
+
+
+def exit_obs(tr, S, Z, i, r, lev, fee):
+    """B4a: the EXIT candle row of a taken Dual trade that just closed (the observer never sees that candle: the trade closes in the same pass).
+    r = the finished sim_rule result. Never raises, never changes the trade. Not for history replay (the caller skips boot)."""
+    try:
+        if not tr.get("take", True) or tr.get("status") != "closed" or r is None:
+            return None
+        xj = min(S["n"] - 1, i + int(r["bars"]))
+        _push(tr, "X", S, Z, i, xj, xj - i, [_r(r["net"], 1), _r(r["mfe"], 1), _r(r["giveback"], 1), None], str(r.get("why")), S["n"] - 1 - xj)
+        return True
+    except Exception as ex:
+        _STAT["err"] = "%s: %s" % (type(ex).__name__, str(ex)[:80])
+        print("brain_edge: exit row skipped: %s" % ex, flush=True)
+        return None
+
+
+def pending():
+    """Rows waiting for the archive (a copy). The archive calls confirm(len) only after they are safely written."""
+    return list(_BUF)
+
+
+def confirm(n):
+    """The archive stored the first n pending rows: forget them."""
+    try:
+        _BUF[:] = _BUF[int(n):]
+    except Exception:
+        pass
+
+
+def obs_status():
+    return {"waiting": len(_BUF), "dropped": _STAT["dropped"], "err": _STAT["err"], "version": OBS_VERSION}
 
 
 def close(tr):

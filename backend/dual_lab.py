@@ -414,6 +414,8 @@ def process(data, sym, tf, candles, boot, now_ms, model, exit_names):
             if BE is not None:                                   # B3a: observation ended (marker only)
                 try:
                     BE.close(tr)
+                    if not boot:                                 # B4a: data row of the exit candle (observation only, never in history replay)
+                        BE.exit_obs(tr, S, Z, i, r, LEV, FEE)
                 except Exception:
                     pass
         else:

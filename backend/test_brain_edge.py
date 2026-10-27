@@ -276,13 +276,13 @@ def test_real_indicators_give_sane_edges():
 def test_nothing_that_decides_reads_the_edge():
     pat = re.compile(r"edge", re.I)
     for f in ("strategy.py", "paper_trader.py", "tag_lab.py", "brain_own.py", "smart_brain_exit.py", "brain_exit.py", "brain_exit_pick.py",
-              "brain_tp_hold.py", "filter_lab.py", "dual_tp_ext.py", "brain_meta.py", "trade_archive.py"):
+              "brain_tp_hold.py", "filter_lab.py", "dual_tp_ext.py", "brain_meta.py"):     # B4a: trade_archive.py now stores the data rows (checked in test_brain_obs.py)
         p = os.path.join(HERE, f) if os.path.exists(os.path.join(HERE, f)) else os.path.join(HERE, "recovered_bot", f)
         if os.path.exists(p):
             assert "brain_edge" not in open(p).read() and 'tr["edge"]' not in open(p).read(), f
     src = open(os.path.join(HERE, "dual_lab.py")).read()
     uses = [l for l in src.splitlines() if re.search(r'BE\.|"edge"', l)]
-    assert uses and all(re.search(r"BE\.(close|observe|slim_edge)|_edge_slim|B3a", l) for l in uses), uses     # only the close marker, the observer hook and the slim view touch it
+    assert uses and all(re.search(r"BE\.(close|observe|slim_edge|exit_obs)|_edge_slim|B3a|B4a", l) for l in uses), uses     # only the close marker, the observer hook and the slim view touch it
     sb = open(os.path.join(HERE, "smart_brain.py")).read()
     assert len([l for l in sb.splitlines() if re.search(r'brain_edge|"edge"|_edge_view', l)]) == 3      # def, import, build_view key
 
