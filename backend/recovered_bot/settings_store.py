@@ -91,7 +91,7 @@ _defaults = {
     "ai_model": "",            # optional model override ("" = automatic: newest working model
                                  # for the provider, with fallback if a name is retired)
     # ---- Vision AI (ai_vision.py): reads a chart image on every bot signal, trades its own virtual account ----
-    "vision_enabled": True,       # needs the AI key from Settings > AI Assistant; without it the tab shows a setup note
+    "vision_enabled": False,      # OFF by default (28 Oct): not started at boot. needs the AI key from Settings > AI Assistant; without it the tab shows a setup note
     "vision_max_per_min": 6,      # AI calls per minute (free tiers are small); extra signals wait in line or time out
     "vision_max_calls_day": 200,  # AI calls per 24 h (your budget). 0 = no limit. New signals stop first, open-trade checks get 50% extra
     "vision_max_open": 8,         # AI virtual trades open at once

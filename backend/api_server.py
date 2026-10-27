@@ -267,12 +267,13 @@ async def on_startup():
                 ai_post_exit.init(os.path.join(DATA_DIR, "ai"))
             except Exception as e:
                 print(f"[startup] ai_post_exit init skipped: {e}")
-        try:                               # the Vision AI: chart picture on every bot signal, own virtual account (own thread)
-            from recovered_bot import ai_vision
-            ai_vision.init(os.path.join(DATA_DIR, "ai"))
-            ai_vision.start()
-        except Exception as e:
-            print(f"[Vision] start-up: {e}")
+        if settings_store.get("vision_enabled", True):   # OFF = Vision AI not started at boot (nothing else uses it)
+            try:                           # the Vision AI: chart picture on every bot signal, own virtual account (own thread)
+                from recovered_bot import ai_vision
+                ai_vision.init(os.path.join(DATA_DIR, "ai"))
+                ai_vision.start()
+            except Exception as e:
+                print(f"[Vision] start-up: {e}")
         try:                               # Dual Bot (paper only, own low-priority process, no AI key): start its worker 8 s after boot
             import dual_lab
             _t = threading.Timer(8.0, dual_lab.ensure_running)

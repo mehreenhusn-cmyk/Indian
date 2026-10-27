@@ -24,12 +24,14 @@ try:
     from .india_data import IST
     from . import india_options as opt
     from . import india_broker
+    from . import india_shot
 except ImportError:  # flat-import fallback (tests / scripts)
     from strategy import ABCDStrategy
     from india_bridge import to_strategy_candles
     from india_data import IST
     import india_options as opt
     import india_broker
+    import india_shot
 
 log = logging.getLogger("india_telegram")
 
@@ -120,7 +122,7 @@ class IndiaTelegram:
         self.token_check = {"ok": None, "text": ""}    # result of the last Telegram getMe check
         self.note = ""
         self._wake = threading.Event()
-        self.state = {"count": 0, "sent": []}
+        self.state = {"count": 0, "sent": [], "shots": []}
         try:
             with open(self._state_path) as f:
                 self.state.update(json.load(f))
@@ -265,7 +267,7 @@ class IndiaTelegram:
         try:
             tmp = self._state_path + ".tmp"
             with open(tmp, "w") as f:
-                json.dump({"count": self.state["count"], "sent": self.state["sent"][-200:], "login_remind_day": self.state.get("login_remind_day", "")}, f)
+                json.dump({"count": self.state["count"], "sent": self.state["sent"][-200:], "shots": self.state.get("shots", [])[-200:], "login_remind_day": self.state.get("login_remind_day", "")}, f)
             os.replace(tmp, self._state_path)
         except Exception:
             log.exception("save india telegram state")
@@ -380,4 +382,8 @@ class IndiaTelegram:
                                bot_name=BOT_NAME)
             self._post(card, token, chat, "signal")
             sent.append(card)
+            try:    # ONE chart photo per signal: own thread, no retry, never blocks or breaks the signal (india_shot.py)
+                india_shot.send_async(self.state, self._lock, self._save_state, dedupe, u, tf, cs, sig, opened, token, chat)
+            except Exception:
+                log.exception("india shot")
         return sent
