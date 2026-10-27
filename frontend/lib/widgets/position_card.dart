@@ -767,7 +767,7 @@ class _GlassmorphicSurface extends StatelessWidget {
         // Flat: no coloured glow (near-SL / unprotected only recolours the border).
         boxShadow: [
           context.palette.brightness == Brightness.light
-              ? BoxShadow(color: context.palette.accent.withOpacity(0.08), blurRadius: 18, offset: const Offset(0, 6))
+              ? BoxShadow(color: const Color(0xFF101828).withOpacity(0.05), blurRadius: 16, offset: const Offset(0, 4))
               : BoxShadow(color: Colors.black.withOpacity(0.30), blurRadius: 10, offset: const Offset(0, 3)),
         ],
       ),

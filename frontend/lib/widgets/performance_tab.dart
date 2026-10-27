@@ -102,9 +102,9 @@ class PerformanceTab extends StatelessWidget {
           const SizedBox(height: 8),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-            decoration: BoxDecoration(color: p.warning.withOpacity(0.10), borderRadius: BorderRadius.circular(10), border: Border.all(color: p.warning.withOpacity(0.45))),
+            decoration: BoxDecoration(color: p.bg, borderRadius: BorderRadius.circular(12), border: Border.all(color: p.border)),
             child: Row(children: [
-              Icon(Icons.south_east_rounded, size: 18, color: p.warning),
+              Icon(Icons.south_east_rounded, size: 18, color: maxDd == 0 ? p.textMuted : p.loss),
               const SizedBox(width: 8),
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -152,8 +152,10 @@ class PerformanceTab extends StatelessWidget {
           children: [
         if (days.isEmpty) Text('No finished day yet.', style: context.type.secondary),
         for (final d in days)
-          Padding(
+          Container(
+            margin: const EdgeInsets.only(bottom: 6),
             padding: const EdgeInsets.only(bottom: 6),
+            decoration: BoxDecoration(border: Border(bottom: BorderSide(color: p.border.withOpacity(0.6)))),
             child: Row(children: [
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

@@ -621,7 +621,7 @@ class _DualBotScreenState extends State<DualBotScreen> {
   Widget _filterRow(AppPalette p, int total, int shown) {
     const names = ['All', 'Good only', 'Long', 'Short'];
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(bottom: 10),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
@@ -806,35 +806,27 @@ class _DualBotScreenState extends State<DualBotScreen> {
   }
 
   Widget _segRow(AppPalette p) {
-    // E2: clean underline pills (no boxed chips). Selected = accent text + 2px accent line.
+    // SR2a: calm pill tabs. Selected = soft accent fill + accent text; others = white pill with a hairline.
     Widget chip(String label, IconData icon, int i) {
       final on = _seg == i;
-      final c = on ? p.accent : p.textMuted;
+      final c = on ? p.accent : p.textSecondary;
       return GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: () => setState(() => _seg = i),
-        child: Padding(
-          padding: const EdgeInsets.only(right: 16),
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 6),
-              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                Icon(icon, size: 15, color: c),
-                const SizedBox(width: 5),
-                AnimatedDefaultTextStyle(
-                  duration: const Duration(milliseconds: 180),
-                  style: TextStyle(fontSize: 13, color: c, fontWeight: on ? FontWeight.w700 : FontWeight.w500),
-                  child: Text(label),
-                ),
-              ]),
-            ),
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 180),
-              curve: Curves.easeOut,
-              height: 2,
-              width: on ? 26 : 0,
-              decoration: BoxDecoration(color: p.accent, borderRadius: BorderRadius.circular(2)),
-            ),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOut,
+          margin: const EdgeInsets.only(right: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+          decoration: BoxDecoration(
+            color: on ? p.accent.withOpacity(0.10) : p.surface,
+            borderRadius: BorderRadius.circular(100),
+            border: Border.all(color: on ? p.accent.withOpacity(0.35) : p.border),
+          ),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            Icon(icon, size: 15, color: c),
+            const SizedBox(width: 5),
+            Text(label, style: TextStyle(fontSize: 13, color: c, fontWeight: on ? FontWeight.w700 : FontWeight.w500)),
           ]),
         ),
       );
@@ -849,7 +841,7 @@ class _DualBotScreenState extends State<DualBotScreen> {
       'The Smart Brain: scores, probability, trust meter. Analysis only, no real trades.',
     ];
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(bottom: 10),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
@@ -862,8 +854,8 @@ class _DualBotScreenState extends State<DualBotScreen> {
             chip('Brain', Icons.psychology_outlined, 5),
           ]),
         ),
-        const SizedBox(height: 4),
-        Text(hints[_seg.clamp(0, 5)], style: context.type.metadata),
+        const SizedBox(height: 6),
+        Text(hints[_seg.clamp(0, 5)], style: context.type.metadata.copyWith(color: p.textMuted)),
       ]),
     );
   }
@@ -928,7 +920,8 @@ class _DualBotScreenState extends State<DualBotScreen> {
       appBar: AppBar(
         backgroundColor: p.bg,
         elevation: 0,
-        title: Text('Dual Bot', style: context.type.section.copyWith(fontWeight: FontWeight.w700)),
+        centerTitle: false,
+        title: Text('Dual Bot', style: context.type.section.copyWith(fontWeight: FontWeight.w800)),
       ),
       body: SafeArea(
         child: RefreshIndicator(

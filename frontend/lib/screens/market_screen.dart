@@ -36,12 +36,13 @@ class _MarketScreenState extends State<MarketScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('Market Watch', style: t.section.copyWith(fontSize: 22, fontWeight: FontWeight.bold)),
+                  Text('Market Watch', style: t.section.copyWith(fontSize: 22, fontWeight: FontWeight.w800)),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: AppSpacing.m, vertical: AppSpacing.xs + 2),
                     decoration: BoxDecoration(
-                      color: p.accent.withOpacity(0.12),
+                      color: p.accent.withOpacity(0.10),
                       borderRadius: BorderRadius.circular(AppSpacing.radiusPill),
+                      border: Border.all(color: p.accent.withOpacity(0.35)),
                     ),
                     child: Selector<AppProvider, int>(
                       selector: (_, pr) => pr.moversRev,
@@ -87,12 +88,12 @@ class _MarketScreenState extends State<MarketScreen> {
             // Table header
             Container(
               padding: const EdgeInsets.symmetric(horizontal: AppSpacing.l, vertical: AppSpacing.s),
-              color: p.surfacePrimary,
+              decoration: BoxDecoration(color: p.bg, border: Border(bottom: BorderSide(color: p.border))),
               child: Row(
                 children: [
-                  Expanded(flex: 3, child: Text('SYMBOL', style: t.metadata)),
-                  Expanded(flex: 3, child: Text('PRICE', textAlign: TextAlign.right, style: t.metadata)),
-                  Expanded(flex: 2, child: Text('24H CHG', textAlign: TextAlign.right, style: t.metadata)),
+                  Expanded(flex: 3, child: Text('SYMBOL', style: t.metadata.copyWith(color: p.textMuted, fontWeight: FontWeight.w700))),
+                  Expanded(flex: 3, child: Text('PRICE', textAlign: TextAlign.right, style: t.metadata.copyWith(color: p.textMuted, fontWeight: FontWeight.w700))),
+                  Expanded(flex: 2, child: Text('24H CHG', textAlign: TextAlign.right, style: t.metadata.copyWith(color: p.textMuted, fontWeight: FontWeight.w700))),
                 ],
               ),
             ),

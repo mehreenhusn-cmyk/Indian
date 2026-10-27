@@ -403,6 +403,8 @@ class _SignalsScreenState extends State<SignalsScreen> {
               note: wr != null ? 'Win rate ${wr.toStringAsFixed(0)}%  ·  ${td.decided} closed' : 'No closed trade today yet',
             ),
             const SizedBox(height: AppSpacing.m),
+            Divider(height: 1, thickness: 1, color: p.border),
+            const SizedBox(height: AppSpacing.m),
             OwlStatRow([
               ('Signals', '${td.total}', p.textPrimary),
               ('Opened', '${td.opened}', p.accent),
@@ -416,7 +418,7 @@ class _SignalsScreenState extends State<SignalsScreen> {
                 'All loaded: ${s.all.total} signals, ${s.all.wins} won, ${s.all.losses} lost, net ${fmtSigned(s.all.net)} USDT',
                 if (_btcOnly) 'BTC paper size: 1000 USDT at 10x. Tap a trade for its chart, Details for the levels.',
               ].join('\n'),
-              style: t.metadata.copyWith(height: 1.4),
+              style: t.metadata.copyWith(height: 1.4, color: p.textMuted),
             ),
           ],
         ),

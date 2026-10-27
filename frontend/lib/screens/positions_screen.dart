@@ -512,7 +512,7 @@ class _TopSummary extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Text('${fmtSigned(pnl)} USDT',
-                  style: context.type.hero.copyWith(fontSize: 24, fontWeight: FontWeight.w800, color: c)),
+                  style: context.type.hero.copyWith(fontSize: 28, fontWeight: FontWeight.w800, color: c)),
               const SizedBox(width: 10),
               OWLStatusPill(text: '$up UP', color: _green, showDot: false),
               const SizedBox(width: 6),
@@ -597,6 +597,9 @@ class _FloatingSummaryBarState extends State<_FloatingSummaryBar> {
                   color: context.palette.surfaceElevated,
                   borderRadius: BorderRadius.circular(AppSpacing.radiusMedium),
                   border: Border.all(color: context.palette.border, width: 1),
+                  boxShadow: context.palette.brightness == Brightness.light
+                      ? [BoxShadow(color: const Color(0xFF101828).withOpacity(0.05), blurRadius: 16, offset: const Offset(0, 4))]
+                      : null,
                 ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -619,8 +622,8 @@ class _FloatingSummaryBarState extends State<_FloatingSummaryBar> {
                                   maxLines: 1,
                                   style: AppTypography.primaryData.copyWith(
                                     color: glow,
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 13,
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 16,
                                   ),
                                 ),
                               ),
@@ -759,8 +762,8 @@ class _NeonPillButtonState extends State<_NeonPillButton> {
               color: widget.color.withOpacity(widget.busy ? 0.14 : 0.08),
               borderRadius: BorderRadius.circular(AppSpacing.radiusPill),
               border: Border.all(
-                color: widget.color.withOpacity(0.7),
-                width: 1.2,
+                color: widget.color.withOpacity(0.35),
+                width: 1,
               ),
             ),
             child: AnimatedCrossFade(

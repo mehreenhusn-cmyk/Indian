@@ -109,8 +109,8 @@ class _SimpleTabState extends State<SimpleTab> {
     Widget small(String label, double val, String note) => Expanded(
           child: Container(
             margin: const EdgeInsets.symmetric(horizontal: 3),
-            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
-            decoration: BoxDecoration(border: Border.all(color: p.border), borderRadius: BorderRadius.circular(10)),
+            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+            decoration: BoxDecoration(color: p.bg, border: Border.all(color: p.border), borderRadius: BorderRadius.circular(12)),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(label, style: AppTypography.eyebrow.copyWith(color: p.textMuted, fontSize: 9.5)),
               const SizedBox(height: 3),

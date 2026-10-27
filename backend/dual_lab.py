@@ -44,6 +44,11 @@ try:                                    # Part U2: 7-day coin names (+ live-only
 except Exception:
     _U7 = None
 
+try:                                    # Part H2: extra TP levels for new Dual trades. Missing file = the old 4 levels
+    import dual_tp_ext as DX
+except Exception:
+    DX = None
+
 BTC_SYM, BTC_MARGIN = "BTCUSDT", 1000.0     # BTC is always in the Dual Bot and trades 1000 USDT (10x like the rest, paper only)
 
 
@@ -387,6 +392,8 @@ def process(data, sym, tf, candles, boot, now_ms, model, exit_names):
             tr["status"] = "expired"
             continue
         rule = TL.EXITS[tr["exit"]]
+        if len(tr["tps"]) > 4 and rule.get("cap") == 4:      # H2: trades with extra levels stay open past TP4 (cap = the last level)
+            rule = dict(rule, cap=len(tr["tps"]))
         r = TL.sim_rule(S, Z, i, tr["d"], tr["entry"], tr["sl"], tr["tps"], LEV, FEE, **rule)
         if r is not None:
             tr["net"], tr["end"], tr["bars"], tr["hit"] = round(r["net"], 2), r["why"], r["bars"], r["hit"]
@@ -410,12 +417,14 @@ def process(data, sym, tf, candles, boot, now_ms, model, exit_names):
         if key in data["seen"]:
             continue
         data["seen"][key] = 1
+        if DX is not None:                                       # H2: extra SD targets for this new trade (any problem = the 4 bot levels)
+            e["tps"] = DX.extend(e["tps"], e["d"], S["sma"][i], S["std"][i])
         fs = feats_of([e["tg"][k] for k in TL.DIMS], tf, e["d"])
         take, xi, mode, pred, why = decide(model, fs, exit_names)
         mem = MD.lookalikes(list(data["rows"].values()), [e["tg"][k] for k in TL.DIMS], e["t"])
         data["trades"].append({
             "id": key, "s": sym, "f": tf, "ct": e["ct"], "t": e["t"], "d": e["d"], "src": e["src"], "entry": e["entry"],
-            "sl": e["sl"], "tps": e["tps"], "exit": exit_names[xi], "take": take, "mode": mode, "pred": pred, "why": why,
+            "sl": e["sl"], "tps": e["tps"], "ext": max(0, len(e["tps"]) - 4), "exit": exit_names[xi], "take": take, "mode": mode, "pred": pred, "why": why,
             "status": "open" if take else "skipped", "opened": time.time(), "tg": e["tg"], "mem": mem})
     return added
 

@@ -103,6 +103,7 @@ for cut in range(420, 900):
     if d3["trades"]:
         break
 check(len(d3["trades"]) >= 1 and d3["trades"][0]["status"] == "open" and d3["trades"][0]["take"], "a signal opened a paper trade")
+check(all(len(t["tps"]) == 4 + t.get("ext", 0) and t.get("ext", 0) in (0, 3) for t in d3["trades"]), "H2: new trades carry 4 bot levels + 3 extra SD levels")
 nb = len(d3["trades"])
 D.process(d3, "BBBUSDT", "5m", cc[:cut], False, int(time.time() * 1000), None, names)
 check(len(d3["trades"]) == nb, "the same signal is never opened twice")

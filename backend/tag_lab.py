@@ -181,7 +181,7 @@ def sim_rule(S, Z, i, d, entry, sl, tps, lev, fee, cap=4, be=True, xmode="main",
         if (ll <= cur) if d > 0 else (hh >= cur):
             got = (cur, "SL" if cur == sl else "BE" if cur == entry else "TRAIL", j - i)
             break
-        while hit < 4 and ((hh >= tps[hit]) if d > 0 else (ll <= tps[hit])):
+        while hit < len(tps) and ((hh >= tps[hit]) if d > 0 else (ll <= tps[hit])):   # H2: len(tps) (4 for every old caller; Dual Bot trades may have 7)
             hit += 1
             if hit == 1 and b1 is None:
                 b1 = j - i

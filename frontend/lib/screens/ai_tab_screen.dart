@@ -137,7 +137,7 @@ class _AiTabScreenState extends State<AiTabScreen> with SingleTickerProviderStat
                 children: [
                   OwlEyeDot(live: _summary != null, color: p.owlEye, size: 8),
                   const SizedBox(width: 8),
-                  Text('AI', style: context.type.hero.copyWith(fontSize: 24)),
+                  Text('AI', style: context.type.hero.copyWith(fontSize: 22, fontWeight: FontWeight.w800)),
                   const Spacer(),
                   Text('asli closed trades', style: context.type.metadata),
                 ],
@@ -435,7 +435,7 @@ class _Overview extends StatelessWidget {
                   builder: (_, v, __) => FittedBox(
                     fit: BoxFit.scaleDown,
                     alignment: Alignment.centerLeft,
-                    child: Text('${fmtSigned(v)} USDT', style: context.type.hero.copyWith(color: win, fontSize: 32)),
+                    child: Text('${fmtSigned(v)} USDT', style: context.type.hero.copyWith(color: win, fontSize: 36)),
                   ),
                 ),
                 const SizedBox(height: 4),

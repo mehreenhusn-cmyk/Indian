@@ -315,10 +315,24 @@ class _LadderPainter extends CustomPainter {
     required this.dot,
   });
 
+  /// H2: a trade can have extra targets (TP5-TP7). The ladder shows TP1-4 and only reveals the next extra one once the
+  /// price has passed the last one shown, so the first four stay easy to read.
+  List<double> get _vis {
+    if (tps.length <= 4) return tps;
+    var n = 4;
+    if (live != null) {
+      while (n < tps.length && (long ? live! >= tps[n - 1] : live! <= tps[n - 1])) {
+        n++;
+      }
+    }
+    return tps.sublist(0, n);
+  }
+
   @override
   void paint(Canvas canvas, Size size) {
     if (entry == null) return;
-    final pts = <double>[entry!, if (stop != null) stop!, if (live != null) live!, ...tps];
+    final vis = _vis;
+    final pts = <double>[entry!, if (stop != null) stop!, if (live != null) live!, ...vis];
     var lo = pts.reduce((a, b) => a < b ? a : b);
     var hi = pts.reduce((a, b) => a > b ? a : b);
     if (hi - lo <= 0) return;
@@ -364,8 +378,8 @@ class _LadderPainter extends CustomPainter {
 
     if (stop != null) add(stop!, bad, 'SL');
     add(entry!, text, 'IN');
-    for (var k = 0; k < tps.length && k < 4; k++) {
-      add(tps[k], good, 'TP${k + 1}');
+    for (var k = 0; k < vis.length; k++) {
+      add(vis[k], good, 'TP${k + 1}');
     }
     ticks.sort((a, b) => a.px.compareTo(b.px));
     final rowEnd = <double>[-100, -100]; // right edge of the last label on row 0 and row 1

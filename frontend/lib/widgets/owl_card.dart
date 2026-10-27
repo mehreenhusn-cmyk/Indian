@@ -194,9 +194,9 @@ class OwlFilterChip extends StatelessWidget {
         duration: AppMotion.base,
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
         decoration: BoxDecoration(
-          color: on ? p.accent.withOpacity(0.25) : p.surfaceElevated,
+          color: on ? p.accent.withOpacity(0.10) : p.surfaceElevated,
           borderRadius: BorderRadius.circular(999),
-          border: Border.all(color: on ? p.accent : p.border),
+          border: Border.all(color: on ? p.accent.withOpacity(0.35) : p.border),
         ),
         child: Text(label,
             style: AppTypography.secondaryData.copyWith(color: on ? p.accent : p.textSecondary, fontSize: 12, fontWeight: FontWeight.w700)),
@@ -220,7 +220,7 @@ class OwlSegmented extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: AppSpacing.s),
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: p.surfaceHigher.withOpacity(0.6),
+        color: p.bg,
         borderRadius: BorderRadius.circular(AppSpacing.radiusMedium + 2),
         border: Border.all(color: p.border),
       ),
@@ -235,9 +235,9 @@ class OwlSegmented extends StatelessWidget {
                 alignment: Alignment.center,
                 padding: const EdgeInsets.symmetric(vertical: 9),
                 decoration: BoxDecoration(
-                  color: active == it.$1 ? p.accent.withOpacity(0.16) : Colors.transparent,
+                  color: active == it.$1 ? p.accent.withOpacity(0.10) : Colors.transparent,
                   borderRadius: BorderRadius.circular(AppSpacing.radiusMedium),
-                  border: Border.all(color: active == it.$1 ? p.accent.withOpacity(0.45) : Colors.transparent),
+                  border: Border.all(color: active == it.$1 ? p.accent.withOpacity(0.35) : Colors.transparent),
                 ),
                 child: Text(it.$2,
                     style: AppTypography.secondaryData.copyWith(

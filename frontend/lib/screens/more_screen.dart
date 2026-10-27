@@ -41,7 +41,7 @@ class MoreScreen extends StatelessWidget {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(AppSpacing.l, AppSpacing.l, AppSpacing.l, AppSpacing.xl),
           children: [
-            Text('More', style: t.section.copyWith(fontSize: 22, fontWeight: FontWeight.bold)),
+            Text('More', style: t.section.copyWith(fontSize: 22, fontWeight: FontWeight.w800)),
             const SizedBox(height: AppSpacing.l),
             _label(context, 'TRADING TOOLS'),
             _row(context, Icons.hub_outlined, 'Tag Lab', 'Test ideas on old candles',
@@ -113,8 +113,11 @@ class MoreScreen extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           decoration: BoxDecoration(
             color: p.surface,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(AppSpacing.radiusMedium),
             border: Border.all(color: p.border, width: 1),
+            boxShadow: p.brightness == Brightness.light
+                ? [BoxShadow(color: const Color(0xFF101828).withOpacity(0.05), blurRadius: 16, offset: const Offset(0, 4))]
+                : null,
           ),
           child: Row(
             children: [
@@ -122,8 +125,8 @@ class MoreScreen extends StatelessWidget {
                 width: 38,
                 height: 38,
                 decoration: BoxDecoration(
-                  color: p.accent.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(10),
+                  color: p.accent.withOpacity(0.10),
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(icon, size: 20, color: p.accent),
               ),

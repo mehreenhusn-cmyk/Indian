@@ -46,7 +46,7 @@ void showDualTradeChart(BuildContext context, {required Map<String, dynamic> row
   final tps = <int, double?>{};
   if (row['tps'] is List) {
     final l = row['tps'] as List;
-    for (var k = 0; k < l.length && k < 4; k++) {
+    for (var k = 0; k < l.length; k++) {
       tps[k + 1] = _n(l[k]);
     }
   }
