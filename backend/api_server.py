@@ -1731,6 +1731,16 @@ async def archive_api():
         return {"state": "error", "text": f"Archive problem: {type(e).__name__}: {e}"}
 
 
+@app.get("/api/dual_desk")
+async def dual_desk_api():
+    """Dual Bot desk (dual_desk.py): today's finished / open trades split by source (today / 7-day names) and 5m / 15m, from the archive. Small, read-only."""
+    try:
+        import dual_desk
+        return await asyncio.to_thread(dual_desk.desk)
+    except Exception as e:
+        return {"state": "error", "err": f"{type(e).__name__}: {e}"}
+
+
 @app.get("/api/dual_universe")
 async def dual_universe_api():
     """Dual Bot coin sources (universe_7d.py): which 7-day lists are saved, the cap, the last error. Read-only, small."""

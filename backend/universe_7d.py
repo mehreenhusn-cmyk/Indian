@@ -170,6 +170,7 @@ def coins_for_dual(today_coins, base=None, now_s=None):
                 _S["thread"].start()
         extra = [s for s in extra_coins(days, today_coins, cap_now(base), today_ms) if s not in today_coins]
         _S["extra"] = set(extra)
+        _log_day(today_coins, extra, base, now_s)
         return today_coins + extra
     except Exception as e:
         _S["err"] = "%s: %s" % (type(e).__name__, str(e)[:100])
@@ -190,9 +191,40 @@ def with_extras(today_coins, base=None, now_s=None):
         return today_coins
 
 
+def _log_day(today, extra, base=None, now_s=None):
+    """Remembers for ever which coins were on the Dual list on each UTC day (today's top 20 / 7-day-only names), in universe_log.json.
+    The desk uses it to tell a trade's source (today / d7) without changing any trade row. Never raises."""
+    try:
+        day = day_name(day_start_ms(time.time() if now_s is None else now_s))
+        log = _load("universe_log.json", {}, base)
+        e = log.setdefault(day, {"today": [], "extra": []})
+        changed = False
+        for k, lst in (("today", today), ("extra", extra)):
+            for s in lst or []:
+                if s not in e[k]:
+                    e[k].append(s)
+                    changed = True
+        if changed:
+            _save("universe_log.json", log, base)
+    except Exception as ex:
+        _S["err"] = "%s: %s" % (type(ex).__name__, str(ex)[:100])
+
+
+def tag_of(sym, t_ms, log):
+    """Source of a trade, read-only: today (in that day's top list or BTC) / d7 (only a 7-day name that day) / other (before the log started)."""
+    e = (log or {}).get(day_name(int(t_ms)))
+    if sym == "BTCUSDT" or (e and sym in e.get("today", [])):
+        return "today"
+    return "d7" if e and sym in e.get("extra", []) else "other"
+
+
 def is_extra(sym):
     """True when the coin is on the list ONLY because of the 7-day names (not in today's list). The Dual Bot then skips the history replay."""
     return sym in _S["extra"]
+
+
+def load_log(base=None):
+    return _load("universe_log.json", {}, base)
 
 
 def status(base=None, now_s=None):
