@@ -110,8 +110,9 @@ def load(base=None, v=LEARN_VERSION):
     return out, info
 
 
-def _regimes(base, ids):
-    """{(trade id, call candle time): main sideways %} from the B4a obs rows of those trades. Read-only, optional: a missing obs table or key gives {}."""
+def features(base, ids, keys):
+    """{(trade id, call candle time): [value of each key in `keys`, None when missing]} from the B4a obs rows (kind O) of those trades.
+    Read-only, optional: a missing obs table, key or row gives {} / None, never a guess. Used for the regime here and by brain_look (B4c-1)."""
     out, ids = {}, list(ids)
     try:
         con = TA.open_dual_ro(base)
@@ -124,19 +125,25 @@ def _regimes(base, ids):
                 for tid, t, v, f in con.execute("SELECT id, t, v, f FROM obs WHERE k = 'O' AND id IN (%s)" % ",".join("?" * len(part)), part):
                     if v not in lay:
                         m = con.execute("SELECT v FROM meta WHERE k = ?", ("obs_keys_%s" % v,)).fetchone()
-                        keys = json.loads(m[0]) if m else []
-                        lay[v] = keys.index("sm") if "sm" in keys else None
+                        have = json.loads(m[0]) if m else []
+                        lay[v] = [have.index(k) if k in have else None for k in keys]
                     try:
-                        x = json.loads(f)[lay[v]] if lay[v] is not None else None
+                        row = json.loads(f)
+                        vals = [None if i is None or row[i] is None else float(row[i]) for i in lay[v]]
                     except Exception:
-                        x = None
-                    if x is not None:
-                        out[(tid, int(t))] = float(x)
+                        vals = [None] * len(keys)
+                    if any(x is not None for x in vals):
+                        out[(tid, int(t))] = vals
         finally:
             con.close()
     except Exception:
         return {}
     return out
+
+
+def _regimes(base, ids):
+    """{(trade id, call candle time): main sideways %} (the `sm` number of features())."""
+    return {k: v[0] for k, v in features(base, ids, ("sm",)).items() if v[0] is not None}
 
 
 def _first_per(calls, key):
