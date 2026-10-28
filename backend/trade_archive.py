@@ -198,6 +198,16 @@ def open_dual_ro(base=None):
     return con
 
 
+def open_brain_ro(base=None):
+    """B4b-2: brain_archive.db opened READ-ONLY (the Brain worker is its only writer). -> connection, or None when the file does not exist yet."""
+    p = os.path.join(_dir(base), BRAIN_DB)
+    if not os.path.exists(p):
+        return None
+    con = sqlite3.connect("file:%s?mode=ro" % quote(p), uri=True, timeout=10)
+    con.execute("PRAGMA query_only=ON")
+    return con
+
+
 def learn_done_ids(v, base=None):
     """B4b-1: trade ids that already have a journey of this version."""
     con = _open(BRAIN_DB, _BRAIN_SQL, base)
