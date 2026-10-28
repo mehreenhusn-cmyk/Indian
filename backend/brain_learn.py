@@ -170,6 +170,11 @@ def step(base=None, limit=MAX_PER_STEP):
     """One Brain cycle: turn up to `limit` finished taken Dual trades that have no journey yet into journeys. Reads dual_archive.db read-only,
     writes brain_archive.db. Idempotent (a trade already done is skipped). Never raises. -> {"new": n, "err": text}."""
     out = {"new": 0, "err": ""}
+    try:                                                         # B4d-2: shadow observation of open trades; its own try/except, never touches journeys or the return value
+        import brain_shadow as _SH
+        _SH.step(base)
+    except Exception:
+        pass
     try:
         con = TA.open_dual_ro(base)
         if con is None:

@@ -130,11 +130,11 @@ def test_a_real_archive_is_read_only_and_everything_in_it_stays_identical():
     put(base, [(5.0, copy([("S", "SUPPORTED", "hold")]))])
     raw = TS._fingerprint(base, "dual_archive.db", ["obs", "trades"])
     old = TS._fingerprint(base, "brain_archive.db", ["journey", "call_out", "mistake", "learn_stats"])
-    files = sorted(os.listdir(base))
+    files, sr = sorted(os.listdir(base)), TS._fingerprint(base, "brain_archive.db", ["shadow_rec"])
     r = SH.run(base)
     assert r["err"] == "" and r["copies"] >= 1 and SH.recommend("S", 1.0, 10 ** 13, SH.load_gates(base))["rec"] in SH.RECS
     assert TS._fingerprint(base, "dual_archive.db", ["obs", "trades"]) == raw and TS._fingerprint(base, "brain_archive.db", ["journey", "call_out", "mistake", "learn_stats"]) == old
-    assert sorted(os.listdir(base)) == files and "shadow_rec" not in open(os.path.join(base, "brain_archive.db"), "rb").read().decode("latin-1")     # nothing stored yet
+    assert sorted(os.listdir(base)) == files and TS._fingerprint(base, "brain_archive.db", ["shadow_rec"]) == sr     # the hand run stores nothing (the 4d-2 table exists since then)
 
 
 # ---------------------------------------------------------------- 7. trading is unchanged
@@ -152,11 +152,11 @@ def test_source_guards_read_only_not_connected_and_nothing_stored_or_decided():
         assert not re.search(r"^\s*(import|from)\s+%s\b" % bad, code, re.M), bad
     ta = open(os.path.join(HERE, "trade_archive.py")).read()
     fn = ta[ta.index("def learn_snapshots"):ta.index("def learn_counts")]
-    assert "SELECT" in fn and not re.search(r"INSERT|UPDATE|DELETE|DROP|CREATE|REPLACE", fn) and "open_brain_ro" in fn and "shadow_rec" not in ta
+    assert "SELECT" in fn and not re.search(r"INSERT|UPDATE|DELETE|DROP|CREATE|REPLACE", fn) and "open_brain_ro" in fn and "shadow_rec" not in fn
     for f in os.listdir(HERE):
-        if f.endswith(".py") and f not in ("brain_shadow.py", "test_brain_shadow.py"):
+        if f.endswith(".py") and f not in ("brain_shadow.py", "test_brain_shadow.py", "test_brain_shadow2.py", "brain_learn.py", "trade_archive.py"):
             src = open(os.path.join(HERE, f)).read()
-            assert not re.search(r"^\s*(import|from)\s+brain_shadow\b|brain_shadow\.", src, re.M) and "shadow_rec" not in src, f        # not connected (4d-2)
+            assert not re.search(r"^\s*(import|from)\s+brain_shadow\b|brain_shadow\.", src, re.M) and "shadow_rec" not in src, f        # connected only by brain_learn (4d-2); the writer itself is tested in test_brain_shadow2.py
 
 
 if __name__ == "__main__":

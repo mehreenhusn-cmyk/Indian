@@ -1,8 +1,11 @@
-"""brain_shadow.py - Batch 4d-1: SHADOW RECOMMENDATION RULE r1 (pure rule + evidence gate reader; nothing stored, nothing connected, nothing decided).
+"""brain_shadow.py - Batch 4d-1: SHADOW RECOMMENDATION RULE r1 (pure rule + evidence gate reader) and, since 4d-2, the LIVE shadow writer step().
 
 Question: "for one Brain call on an open trade, what would the Brain have said - HOLD_OK, PROTECT_LOOKS_BETTER or NO_OPINION - using only evidence that
 already existed BEFORE that candle?"   It never opens, closes, changes or rejects a trade, calls no API, reads no price feed, writes nothing.
-This part only answers the question for ONE call. The live writer, the frozen table, the scoring and the view come in later parts (not built).
+B4d-2 step(): once per Brain cycle (called at the top of brain_learn.step) it asks the question for the newest closed candles of OPEN Dual trades and freezes each answer
+  in brain_archive.db table shadow_rec (insert-only, key = trade + candle + rule version; NO_OPINION rows too). It reads dual_archive.db read-only and never touches a trade.
+  Live only: a candle older than MAX_AGE_C candles, a row written more than LATE_LAG candles late, an exit row, a closed / skipped trade or an unknown row layout is never recorded.
+  The scoring and the view come in later parts (not built).
 
 RULE r1 (locked; a change needs a new RULE_VERSION and old rows would stay as they are):
   evidence = the result of the call's state (S / T / W / R) in slice "all" inside the latest learn_stats copy (brain_stats, version s1) that was
@@ -19,6 +22,7 @@ import bisect
 import json
 import time
 
+import brain_learn as BL                      # only its row decoder and constants (no second copy of that logic); brain_learn imports this file lazily
 import brain_stats as BS
 import trade_archive as TA
 
@@ -26,12 +30,15 @@ RULE_VERSION = "r1"
 EVIDENCE_VERSION = BS.STATS_VERSION          # the learn_stats copies of brain_stats (s1)
 HINTS = ("EARLY HINT", "SUPPORTED")
 RECS = ("HOLD_OK", "PROTECT_LOOKS_BETTER", "NO_OPINION")
+MAX_AGE_C = 3                                 # B4d-2: a candle is recorded only while it is at most this many candles old (no back-fill after a stop)
+_TF_MS = {"5m": 300000, "15m": 900000}
 
 
-def load_gates(base=None):
-    """Read-only. -> [(saved time s, finished trades, parsed copy)] oldest first. A copy that cannot be read is left out, never guessed."""
+def load_gates(base=None, since=None):
+    """Read-only. -> [(saved time s, finished trades, parsed copy)] oldest first. A copy that cannot be read is left out, never guessed.
+    `since` (seconds) loads only what candles opened at/after it can need (same answers for them)."""
     out = []
-    for t, n, js in TA.learn_snapshots(EVIDENCE_VERSION, base):
+    for t, n, js in TA.learn_snapshots(EVIDENCE_VERSION, base, since):
         try:
             g = json.loads(js)
             if isinstance(g, dict) and isinstance(g.get("res"), list):
@@ -86,6 +93,56 @@ def run(base=None, now_ms=None):
                 "table": {s: {"in_profit": recommend(s, 1.0, t, gates)["rec"], "not_in_profit": recommend(s, -1.0, t, gates)["rec"]} for s in BS.STATES}}
     except Exception as ex:
         return {"copies": 0, "rule": RULE_VERSION, "table": {}, "err": "%s: %s" % (type(ex).__name__, str(ex)[:100])}
+
+
+def _layout(con, ov):
+    """The key list of an obs row layout (meta of dual_archive.db), or () when unknown / without roi."""
+    try:
+        m = con.execute("SELECT v FROM meta WHERE k = ?", ("obs_keys_%s" % ov,)).fetchone()
+        keys = tuple(json.loads(m[0])) if m else (BL._KEYS if ov == BL._OV else ())
+    except Exception:
+        keys = ()
+    return keys if "roi" in keys else ()
+
+
+def _rows(con, now_ms):
+    """Read-only. Open Dual trades -> [(id, candle open ms, call letter, roi, tf, side)] for their recent closed-candle (O) rows only."""
+    if not {"trades", "obs"} <= {r[0] for r in con.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}:
+        return []
+    out, lay = [], {}
+    for tid, tf, side in con.execute("SELECT id, tf, side FROM trades WHERE status = 'open'").fetchall():
+        raw = con.execute("SELECT t, k, n, tag, lag, f, v, bv FROM obs WHERE id = ? AND k = 'O' AND COALESCE(lag, 0) <= ? AND t >= ?",
+                          (tid, BL.LATE_LAG, now_ms - (MAX_AGE_C + 1) * _TF_MS.get(tf, 300000))).fetchall()
+        for ov in {r[6] for r in raw}:
+            lay.setdefault(ov, _layout(con, ov))
+            if lay[ov]:
+                out += [(tid, d["t"], d["tag"], BL._num(d["roi"]), tf, side) for d in BL._decode([r for r in raw if r[6] == ov], lay[ov])[0] if d["tag"] in BS.STATES]
+    return out
+
+
+def step(base=None, now_ms=None):
+    """B4d-2 live writer. Freezes r1's answer for the newest closed candles of open Dual trades. Idempotent (same candle = same row = ignored), never raises,
+    changes no trade. -> {"seen": candles looked at, "err": text}."""
+    out = {"seen": 0, "err": ""}
+    try:
+        con = TA.open_dual_ro(base)
+        if con is None:
+            return out
+        try:
+            rows = _rows(con, time.time() * 1000.0 if now_ms is None else now_ms)
+        finally:
+            con.close()
+        out["seen"] = len(rows)
+        if rows:
+            gates, saved, recs = load_gates(base, since=min(r[1] for r in rows) / 1000.0), time.time(), []
+            for tid, t, st, roi, tf, side in rows:
+                r = recommend(st, roi, t, gates)
+                recs.append((tid, t, RULE_VERSION, st, roi, tf, side, r["rec"], r["level"], r["lean"], r["why"], r["evidence"], r["snap_t"], r["snap_trades"], saved))
+            if not TA.save_shadow_recs(recs, base):
+                out["err"] = TA._S.get("arch_err") or "save failed"
+    except Exception as e:
+        out["err"] = "%s: %s" % (type(e).__name__, str(e)[:100])
+    return out
 
 
 if __name__ == "__main__":

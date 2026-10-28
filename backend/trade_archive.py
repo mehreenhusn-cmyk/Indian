@@ -53,6 +53,8 @@ CREATE TABLE IF NOT EXISTS mistake (id TEXT, st TEXT, kind TEXT, v TEXT, t INTEG
   reg INTEGER, excess REAL, saved REAL, PRIMARY KEY (id, st, kind, v));
 CREATE TABLE IF NOT EXISTS learn_stats (v TEXT, t REAL, trades INTEGER, js TEXT, PRIMARY KEY (v, t));
 CREATE TABLE IF NOT EXISTS look_call (id TEXT, st TEXT, ch TEXT, v TEXT, t INTEGER, pred REAL, m INTEGER, actual REAL, saved REAL, PRIMARY KEY (id, st, ch, v));
+CREATE TABLE IF NOT EXISTS shadow_rec (id TEXT, t INTEGER, rule TEXT, st TEXT, roi REAL, tf TEXT, d INTEGER, rec TEXT, level TEXT, lean TEXT, why TEXT,
+  ev TEXT, snap_t REAL, snap_trades INTEGER, saved REAL, PRIMARY KEY (id, t, rule));
 """
 _NEW_COLS = {DUAL_DB: "trades", BRAIN_DB: "own"}        # Batch 2: columns added to the EXISTING tables (old rows keep NULL = not recorded)
 _NEW_SPEC = (("mfe", "REAL"), ("giveback", "REAL"), ("brain_version", "TEXT"))
@@ -62,7 +64,9 @@ JCOLS = ("id", "v", "t", "sym", "tf", "d", "ov", "bv", "flags", "n_rows", "first
 OCOLS = ("id", "t", "v", "n", "st", "roi", "fin", "max_after", "min_after", "bars_left", "sc")                                   # B4b-1 call_out columns
 MCOLS = ("id", "st", "kind", "v", "t", "n", "roi", "fin", "mx", "mn", "tf", "d", "reg", "excess", "saved")                   # B4b-2b mistake columns
 LCOLS = ("id", "st", "ch", "v", "t", "pred", "m", "actual", "saved")                                                  # B4c-2 look_call columns
+SCOLS = ("id", "t", "rule", "st", "roi", "tf", "d", "rec", "level", "lean", "why", "ev", "snap_t", "snap_trades", "saved")          # B4d-2 shadow_rec columns
 _L = {}                                                                      # B4b-1: last problem while saving journeys
+_S = {}                                                                      # B4d-2: last problem while saving shadow recommendations (kept apart from _L)
 _B = {"own": set(), "pk": set(), "ex": set()}     # what the Brain worker already saved (this process)
 _C = {"t": 0.0, "v": None}                                                  # status() cache
 
@@ -275,6 +279,23 @@ def save_look_calls(rows, base=None):
         return False
 
 
+def save_shadow_recs(rows, base=None):
+    """B4d-2: Brain worker: one frozen shadow recommendation per (trade, candle, rule version); tuples in SCOLS order. INSERT OR IGNORE on that key: a row
+    written once is never changed (a later verdict, candle or result cannot rewrite it), a repeated run adds nothing. All or nothing. Never raises. -> True when saved."""
+    try:
+        con = _open(BRAIN_DB, _BRAIN_SQL, base)
+        try:
+            with con:
+                con.executemany("INSERT OR IGNORE INTO shadow_rec(%s) VALUES(%s)" % (",".join(SCOLS), ",".join("?" * len(SCOLS))), rows)
+        finally:
+            con.close()
+        _S["arch_err"] = ""
+        return True
+    except Exception as e:
+        _fail(_S, e)
+        return False
+
+
 def save_stats_snapshot(v, trades, js, every=10, base=None):
     """B4b-2b: Brain worker: one compact copy of the learning numbers, only when `trades` (finished trades behind it) grew by at least `every`
     since the last copy of version v. Copies are only added, never changed. Returns True when a copy was added. Never raises."""
@@ -294,15 +315,19 @@ def save_stats_snapshot(v, trades, js, every=10, base=None):
         return False
 
 
-def learn_snapshots(v, base=None):
+def learn_snapshots(v, base=None, since=None):
     """B4d-1: the frozen copies of the learning numbers (table learn_stats) of version v, oldest first -> [(saved time in seconds, finished trades
-    behind it, json text)]. READ-ONLY (SELECT only, brain_archive.db opened query_only). A missing file or table gives []. Never raises."""
+    behind it, json text)]. READ-ONLY (SELECT only, brain_archive.db opened query_only). A missing file or table gives []. Never raises.
+    B4d-2: `since` (seconds) = only the copies a candle opened at/after `since` can need: the latest copy saved BEFORE it, and every later one (same answers, less to load)."""
     try:
         con = open_brain_ro(base)
         if con is None:
             return []
         try:
-            return [(float(t), int(n), js) for t, n, js in con.execute("SELECT t, trades, js FROM learn_stats WHERE v = ? ORDER BY t", (v,))]
+            sql, a = "SELECT t, trades, js FROM learn_stats WHERE v = ?", (v,)
+            if since is not None:
+                sql, a = sql + " AND t >= COALESCE((SELECT MAX(t) FROM learn_stats WHERE v = ? AND t < ?), 0)", a + (v, float(since))
+            return [(float(t), int(n), js) for t, n, js in con.execute(sql + " ORDER BY t", a)]
         finally:
             con.close()
     except Exception:
