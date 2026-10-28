@@ -230,12 +230,23 @@ def step(base=None, limit=MAX_PER_STEP):
 
 
 def view_summary(base=None):
-    """Small plain block for the Brain view JSON. In B4b-1 there is never a learning result, only the collected facts. Never raises."""
+    """Small plain block for the Brain view JSON: the collected facts (B4b-1) and, in `stats`, what brain_stats measured (B4b-2b: per state, per
+    BUY/SELL x timeframe x regime slice, and the mistakes ledger). Measurement only, nothing is decided. Never raises."""
     c = TA.learn_counts(LEARN_VERSION, base)
+    st, status = None, "collecting"
     text = ("Journeys collected: %d (%d complete). No learning result yet: NOT ENOUGH DATA. This part only collects facts, nothing is decided."
             % (c["journeys"], c["full"]))
-    return {"version": LEARN_VERSION, "status": "collecting", "journeys": c["journeys"], "full": c["full"], "outcomes": c["outcomes"],
-            "err": _ST["err"] or c["err"], "text": text}
+    try:
+        import brain_stats as _BS
+        st = _BS.summary(base)
+        if st.get("status") == "measuring":
+            status = "measuring"
+            text = ("Journeys collected: %d (%d complete). Measuring outcomes after each Brain state; only results with %d trades or more are shown. "
+                    "Observation only: nothing here controls a trade." % (c["journeys"], c["full"], st["min_n"]))
+    except Exception as e:
+        st = {"status": "error", "err": "%s: %s" % (type(e).__name__, str(e)[:80])}
+    return {"version": LEARN_VERSION, "status": status, "journeys": c["journeys"], "full": c["full"], "outcomes": c["outcomes"],
+            "err": _ST["err"] or c["err"], "text": text, "stats": st}
 
 
 if __name__ == "__main__":

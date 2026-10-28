@@ -49,6 +49,9 @@ CREATE TABLE IF NOT EXISTS journey (id TEXT, v TEXT, t INTEGER, sym TEXT, tf TEX
 CREATE INDEX IF NOT EXISTS journey_t ON journey(t);
 CREATE TABLE IF NOT EXISTS call_out (id TEXT, t INTEGER, v TEXT, n INTEGER, st TEXT, roi REAL, fin REAL, max_after REAL, min_after REAL,
   bars_left INTEGER, sc INTEGER, PRIMARY KEY (id, t, v));
+CREATE TABLE IF NOT EXISTS mistake (id TEXT, st TEXT, kind TEXT, v TEXT, t INTEGER, n INTEGER, roi REAL, fin REAL, mx REAL, mn REAL, tf TEXT, d INTEGER,
+  reg INTEGER, excess REAL, saved REAL, PRIMARY KEY (id, st, kind, v));
+CREATE TABLE IF NOT EXISTS learn_stats (v TEXT, t REAL, trades INTEGER, js TEXT, PRIMARY KEY (v, t));
 """
 _NEW_COLS = {DUAL_DB: "trades", BRAIN_DB: "own"}        # Batch 2: columns added to the EXISTING tables (old rows keep NULL = not recorded)
 _NEW_SPEC = (("mfe", "REAL"), ("giveback", "REAL"), ("brain_version", "TEXT"))
@@ -56,6 +59,7 @@ _META = "INSERT INTO meta(k, v) VALUES(?, ?) ON CONFLICT(k) DO UPDATE SET v = ex
 JCOLS = ("id", "v", "t", "sym", "tf", "d", "ov", "bv", "flags", "n_rows", "first_n", "exit_n", "exit_why", "net", "mfe", "gb", "mfe_n", "peak_n", "peak_roi",
          "gb_peak", "hist_n", "hist_roi", "weak_n", "weak_roi", "weak_st", "ev_n", "ev_roi", "mom_n", "mom_roi", "saved")      # B4b-1 journey columns
 OCOLS = ("id", "t", "v", "n", "st", "roi", "fin", "max_after", "min_after", "bars_left", "sc")                                   # B4b-1 call_out columns
+MCOLS = ("id", "st", "kind", "v", "t", "n", "roi", "fin", "mx", "mn", "tf", "d", "reg", "excess", "saved")                   # B4b-2b mistake columns
 _L = {}                                                                      # B4b-1: last problem while saving journeys
 _B = {"own": set(), "pk": set(), "ex": set()}     # what the Brain worker already saved (this process)
 _C = {"t": 0.0, "v": None}                                                  # status() cache
@@ -230,6 +234,42 @@ def save_learn(journeys, outs, base=None):
         finally:
             con.close()
         _L["arch_err"] = ""
+        return True
+    except Exception as e:
+        _fail(_L, e)
+        return False
+
+
+def save_mistakes(rows, base=None):
+    """B4b-2b: Brain worker: the mistakes ledger (a call that the trade's result contradicted; tuples in MCOLS order). INSERT OR IGNORE: a row written
+    once is frozen, later rules or thresholds can never rewrite it. Returns True when saved. Never raises."""
+    try:
+        con = _open(BRAIN_DB, _BRAIN_SQL, base)
+        try:
+            with con:
+                con.executemany("INSERT OR IGNORE INTO mistake(%s) VALUES(%s)" % (",".join(MCOLS), ",".join("?" * len(MCOLS))), rows)
+        finally:
+            con.close()
+        _L["arch_err"] = ""
+        return True
+    except Exception as e:
+        _fail(_L, e)
+        return False
+
+
+def save_stats_snapshot(v, trades, js, every=10, base=None):
+    """B4b-2b: Brain worker: one compact copy of the learning numbers, only when `trades` (finished trades behind it) grew by at least `every`
+    since the last copy of version v. Copies are only added, never changed. Returns True when a copy was added. Never raises."""
+    try:
+        con = _open(BRAIN_DB, _BRAIN_SQL, base)
+        try:
+            with con:
+                last = con.execute("SELECT MAX(trades) FROM learn_stats WHERE v = ?", (v,)).fetchone()[0]
+                if last is not None and trades - last < every:
+                    return False
+                con.execute("INSERT OR IGNORE INTO learn_stats(v, t, trades, js) VALUES(?,?,?,?)", (v, time.time(), int(trades), js))
+        finally:
+            con.close()
         return True
     except Exception as e:
         _fail(_L, e)
