@@ -1,4 +1,4 @@
-"""test_api_split.py - checks for the api_server split (NEXT-6a SWR core, NEXT-6b Vision routes, NEXT-6c lab / Dual routes, NEXT-6d money routes, NEXT-6e settings / exchange, NEXT-6f status / market / history, NEXT-6g AI keys / prefs / Trade Book, NEXT-6h diary).
+"""test_api_split.py - checks for the api_server split (NEXT-6a SWR core, NEXT-6b Vision routes, NEXT-6c lab / Dual routes, NEXT-6d money routes, NEXT-6e settings / exchange, NEXT-6f status / market / history, NEXT-6g AI keys / prefs / Trade Book, NEXT-6h diary + coach, NEXT-6i rest of the AI routes, NEXT-6j WebSocket).
 Run: cd backend && python3 test_api_split.py     (no network; imports api_server with a temp HOME, starts no bot)
 """
 import asyncio
@@ -26,6 +26,11 @@ import api.settings as ST
 import api.status as SS
 import api.ai_book as AB
 import api.ai_pages as AP
+import api.ws as WS
+import api.ai_core as AC
+import api.ai_reports as AR
+import api.ai_live as AL
+import api.ai_chats as ACH
 import hashlib
 
 # 6a: api_server shares the SAME objects as api/swr.py (not copies)
@@ -246,6 +251,91 @@ check("api_server.py includes the diary router once", src.count("_ai_diary_route
 check("api_server.py no longer defines the diary handlers / page text",
       "async def ai_diary_endpoint(" not in src and "async def ai_diary_page(" not in src and "_DIARY_HTML" not in src)
 check("ai_pages diary factory exists", callable(AP.make_router_diary))
+
+# 6h part 2: AI Coach (4 API routes + page) moved to api/ai_pages.py; page text byte for byte; prewarm handler kept
+allr = list(_walk(A.app.routes))
+_COACH = [("/api/ai/coach", "GET"), ("/api/ai/coach/reset", "POST"), ("/api/ai/plan/config", "POST"), ("/api/ai/coach/config", "POST"), ("/coach", "GET")]
+_ic = allr.index(_COACH[0])
+check("coach routes: same 5 paths + methods, same order, in the old place (right after /api/ai/free_trade)",
+      allr[_ic:_ic + 5] == _COACH and allr[_ic - 1] == ("/api/ai/free_trade", "GET") and allr[_ic + 5] == ("/api/ai/desk/reset", "POST"))
+check("coach page text is byte for byte the old one (sha256)",
+      hashlib.sha256(AP._COACH_HTML.encode()).hexdigest() == "ed04d0baa6fdaab1d9732d1813ce9ecd73de48afe13a75aab6b9b91086a43441")
+check("api_server.py includes the coach router once and no longer defines the handlers / page text",
+      src.count("_ai_coach_router(require_api_token)") == 1 and "async def ai_coach_endpoint(" not in src and "_COACH_HTML" not in src)
+check("_swr_prewarm still reaches the coach handler (same object that the /api/ai/coach route uses)",
+      callable(getattr(A, "ai_coach_endpoint", None)) and any(getattr(r, "endpoint", None) is A.ai_coach_endpoint for r in A.app.routes if getattr(r, "path", "") == "/api/ai/coach"))
+_AP = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "api", "ai_pages.py"), encoding="utf-8").read()
+check("coach POST routes still ask for the API token (3)", _AP.count("Depends(require_api_token)") == 3)
+
+# 6i: the last 49 routes (ask / reports / lab / observer / tools / live / chats) moved to 4 api/ files; same paths, methods and order
+_AI49 = [
+    ("/api/ai/ask", "POST"), ("/api/ai/trade-audit-context", "GET"), ("/api/ai/insights", "GET"), ("/api/ai/doctor", "GET"),
+    ("/api/report/save", "GET"), ("/api/report/app", "GET"), ("/api/report/app_save", "GET"), ("/api/report", "GET"),
+    ("/api/ai/health", "GET"), ("/api/ai/pair_replay", "GET"), ("/api/ai/lab", "GET"), ("/api/ai/ab_board", "GET"), ("/api/ai/reading", "GET"),
+    ("/api/ai/exit_study", "GET"), ("/api/ai/wait_study", "GET"), ("/api/ai/recipe", "GET"), ("/api/ai/desk", "GET"), ("/api/ai/levels", "GET"),
+    ("/api/ai/observer", "GET"), ("/api/ai/pick", "GET"), ("/api/ai/selfsignal", "GET"), ("/api/ai/free_trade", "GET"),
+    ("/api/ai/desk/reset", "POST"), ("/api/ai/advice", "GET"), ("/api/ai/ab_board/reset", "POST"), ("/api/ai/learning", "GET"),
+    ("/api/ai/backup", "GET"), ("/api/ai/backup/run", "POST"), ("/api/ai/backup/restore", "POST"),
+    ("/api/ai/live", "GET"), ("/api/ai/live/keys", "POST"), ("/api/ai/live/keys/clear", "POST"), ("/api/ai/live/check", "POST"),
+    ("/api/ai/live/config", "POST"), ("/api/ai/live/enable", "POST"), ("/api/ai/live/disable", "POST"), ("/api/ai/live/panic", "POST"),
+    ("/api/ai/live/reset", "POST"), ("/api/ai/lab/replay", "POST"), ("/api/ai/shadow", "GET"), ("/api/ai/digest/send", "POST"),
+    ("/api/ai/history", "GET"), ("/api/ai/history/clear", "POST"), ("/api/ai/chats", "GET"), ("/api/ai/chats", "POST"),
+    ("/api/ai/chats/rename", "POST"), ("/api/ai/chats/delete", "POST"), ("/api/ai/chats/active", "POST"), ("/api/ai/app_health", "GET"),
+]
+allr = list(_walk(A.app.routes))
+check("6i: the 49 AI routes exist once each, in the old order", len(_AI49) == 49 and [x for x in allr if x in set(_AI49)] == _AI49)
+check("6i: api_server.py no longer defines any of the 49 handlers",
+      not any(("async def " + n + "(") in src for n in ("ai_ask", "ai_trade_audit_context", "ai_insights", "ai_doctor", "report_save", "app_report", "app_report_save", "full_report",
+                                                       "ai_health", "ai_pair_replay", "ai_lab", "ai_observer_endpoint", "ai_pick_endpoint", "ai_selfsignal_endpoint", "ai_desk_reset",
+                                                       "ai_live_status", "ai_live_panic", "ai_chats_list", "ai_history", "ai_app_health_report")))
+check("6i: the 4 modules + their factories exist", all(callable(f) for f in (AC.make_router_ask, AC.make_router_lab, AC.make_router_observer, AR.make_router_reports,
+                                                                                AL.make_router_tools, AL.make_router_live, ACH.make_router_chats)))
+check("6i: the start-up warm-up still reaches all 8 handlers it calls directly",
+      all(callable(getattr(A, n, None)) for n in ("ai_book_endpoint", "ai_coach_endpoint", "ai_pick_endpoint", "ai_ab_board_endpoint", "ai_desk_endpoint",
+                                                  "ai_observer_endpoint", "ai_levels_endpoint", "ai_advice_endpoint")))
+_AL = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "api", "ai_live.py"), encoding="utf-8").read()
+check("6i: all 14 token-protected routes (resets, backup run / restore, every AI Live route) still ask for the API token", _AL.count("_auth=Depends(require_api_token)") == 14)
+check("6i: every api/ file is under 250 lines", all(sum(1 for _ in open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "api", f), encoding="utf-8")) < 250
+                                                    for f in ("ai_core.py", "ai_reports.py", "ai_live.py", "ai_chats.py")))
+
+# 6j: WebSocket moved to api/ws.py; /ws is still the LAST route; old names are thin links
+allr = list(_walk(A.app.routes))
+check("/ws is still the last route", allr[-1] == ("/ws", ""))
+check("api_server shares the SAME manager / _dumps / ConnectionManager objects as api/ws.py",
+      A.manager is WS.manager and A._dumps is WS._dumps and A.ConnectionManager is WS.ConnectionManager)
+check("same limits: 3 sockets, 10 s send timeout, 0.25 s cadence",
+      A.MAX_SOCKETS == 3 and A.SEND_TIMEOUT_SEC == 10.0 and A.BROADCAST_INTERVAL_SEC == 0.25 and WS.BROADCAST_INTERVAL_SEC == 0.25)
+check("api_server.py no longer defines the websocket code",
+      "class ConnectionManager" not in src and "@app.websocket" not in src and "async def websocket_endpoint" not in src)
+check("start-up still has _status_broadcaster and _snapshot_msg", callable(A._status_broadcaster) and callable(A._snapshot_msg))
+_snap = A._snapshot_msg()
+check("snapshot message is FULL_STATE_SNAPSHOT json", '"FULL_STATE_SNAPSHOT"' in _snap and _snap.startswith('{"type": "init"'))
+
+
+async def _mgr():
+    class _W:
+        def __init__(self):
+            self.sent = []
+            self.closed = False
+
+        async def accept(self):
+            pass
+
+        async def send_text(self, m):
+            self.sent.append(m)
+
+        async def close(self):
+            self.closed = True
+    m = WS.ConnectionManager()
+    ws = [_W() for _ in range(5)]
+    for w in ws:
+        await m.connect(w)
+    n, dropped = await m.broadcast("x")
+    return len(m.active_connections), n, dropped, ws
+
+
+_a, _n2, _d, _ws = asyncio.run(_mgr())
+check("manager keeps the newest 3 sockets, closes the older ones, broadcast reaches 3", _a == 3 and _n2 == 3 and _d == 0 and _ws[0].closed and _ws[1].closed and _ws[4].sent == ["x"])
 
 print(f"{_n['ok']} passed, {_n['bad']} failed")
 sys.exit(1 if _n["bad"] else 0)

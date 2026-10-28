@@ -198,6 +198,23 @@ class AppProvider extends ChangeNotifier with SoundAlerts {
         DateTime.now().difference(t) > const Duration(seconds: 6);
   }
 
+  /// UI-LIVE (LiveStatusChip + Market screen): 'live' = socket up and data arrived in the last 3 s, 'delayed' = socket up
+  /// but quiet (or no data yet), 'offline' = socket down. The backend pushes every 250 ms (1 s in live-trading mode),
+  /// so 3 s of silence is a real delay. Read-only: nothing here changes any data.
+  String get liveState {
+    if (!wsConnected) return 'offline';
+    final t = _lastWsDataAt;
+    if (t == null) return 'delayed';
+    return DateTime.now().difference(t) > const Duration(seconds: 3) ? 'delayed' : 'live';
+  }
+
+  /// Seconds since the last WebSocket data (null until the first message). The chip shows it as 'LIVE . 1 s'.
+  num? get liveAgeSec {
+    final t = _lastWsDataAt;
+    if (t == null) return null;
+    return DateTime.now().difference(t).inMilliseconds / 1000.0;
+  }
+
   /// System Load card (GET /api/system). Returns the decoded map instead of
   /// storing it + notifyListeners(): the card keeps its own state, so its 3s
   /// refresh never rebuilds any other screen. null on any failure.

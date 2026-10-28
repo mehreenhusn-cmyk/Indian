@@ -260,8 +260,13 @@ def view_summary(base=None):
         sh = _SH.summary(base)
     except Exception as e:
         sh = {"status": "error", "err": "%s: %s" % (type(e).__name__, str(e)[:80]), "text": "NOT ENOUGH DATA", "provisional": True}
+    try:                                                         # NEXT-7: skipped-signal check (key learn.skip), separate from taken-trade evidence; a failure here only sets skip.status = error
+        import brain_skip as _SK
+        sk = _SK.summary(base)
+    except Exception as e:
+        sk = {"status": "error", "err": "%s: %s" % (type(e).__name__, str(e)[:80]), "text": "NOT ENOUGH DATA", "provisional": True}
     return {"version": LEARN_VERSION, "status": status, "journeys": c["journeys"], "full": c["full"], "outcomes": c["outcomes"],
-            "err": _ST["err"] or c["err"], "text": text, "stats": st, "look": lk, "shadow": sh}
+            "err": _ST["err"] or c["err"], "text": text, "stats": st, "look": lk, "shadow": sh, "skip": sk}
 
 
 if __name__ == "__main__":
