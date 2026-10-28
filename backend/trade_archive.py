@@ -296,6 +296,34 @@ def save_shadow_recs(rows, base=None):
         return False
 
 
+def shadow_recs(rule, base=None):
+    """B4d-3: READ-ONLY. The frozen shadow recommendations of one rule version without NO_OPINION -> [(trade id, candle open ms, rec)] oldest first. Never raises."""
+    try:
+        con = open_brain_ro(base)
+        if con is None:
+            return []
+        try:
+            return [(i, int(t), r) for i, t, r in con.execute("SELECT id, t, rec FROM shadow_rec WHERE rule = ? AND rec != 'NO_OPINION' ORDER BY t, id", (rule,))]
+        finally:
+            con.close()
+    except Exception:
+        return []
+
+
+def shadow_counts(rule, base=None):
+    """B4d-4: READ-ONLY. How many frozen shadow rows (candles) of one rule version say each rec -> {rec: n}. Never raises."""
+    try:
+        con = open_brain_ro(base)
+        if con is None:
+            return {}
+        try:
+            return {r: int(n) for r, n in con.execute("SELECT rec, COUNT(*) FROM shadow_rec WHERE rule = ? GROUP BY rec", (rule,))}
+        finally:
+            con.close()
+    except Exception:
+        return {}
+
+
 def save_stats_snapshot(v, trades, js, every=10, base=None):
     """B4b-2b: Brain worker: one compact copy of the learning numbers, only when `trades` (finished trades behind it) grew by at least `every`
     since the last copy of version v. Copies are only added, never changed. Returns True when a copy was added. Never raises."""

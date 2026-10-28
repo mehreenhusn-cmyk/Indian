@@ -84,6 +84,82 @@ def recommend(st, roi, t_ms, gates):
     return decide(st, roi, gate_at(gates, t_ms))
 
 
+def score_recs(recs, calls):
+    """PURE (B4d-3). recs = [(trade id, candle ms, rec)] (HOLD_OK / PROTECT_LOOKS_BETTER only), calls = brain_stats.load() dicts (finished trades only).
+    ONE count per trade and rec type (its first recommendation). "If followed" = ROI points the trade gains by doing what the rec said instead of the other
+    choice: HOLD_OK -> final - roi at the call (left), PROTECT -> roi - final (-left). Judged against the same stage baseline as brain_stats (excess), the same
+    30-trade minimum, older/newer half and luck test (brain_stats._judge). dir: "right" (rec beat the baseline) or "wrong" -- only when the verdict is a hint.
+    -> {rec: {n, pending, unjudged, if_followed, excess, halves, p, verdict, dir}}. Paper numbers only, nothing is traded."""
+    idx = {(c["id"], c["t"]): c for c in calls}
+    book = BS._Base(BS._first_per(calls, lambda c: BS._cell(c["n"], c["roi"])))
+    pool = [c["left"] - b[0] for c in BS._first_per(calls, lambda c: BS._cell(c["n"], c["roi"])) for b in [book.at(c)] if b]
+    out = {}
+    for rec, sign in (("HOLD_OK", 1.0), ("PROTECT_LOOKS_BETTER", -1.0)):
+        first = {}
+        for tid, t, r in sorted(recs, key=lambda x: (x[1], x[0])):
+            if r == rec:
+                first.setdefault(tid, t)
+        raw, ex, pending = [], [], 0
+        for tid, t in sorted(first.items(), key=lambda x: x[1]):
+            c = idx.get((tid, t))
+            b = None if c is None else book.at(c)
+            if c is None:
+                pending += 1
+            elif b:
+                raw.append(sign * c["left"])
+                ex.append(sign * (c["left"] - b[0]))
+        n, h = len(ex), len(ex) // 2
+        halves = [BS._r(BS._mean(ex[:h])), BS._r(BS._mean(ex[h:]))] if n >= 2 * BS.MIN_HALF else None
+        m = BS._mean(ex)
+        p = BS._r(BS._luck_p(pool, n, m), 3) if n >= BS.MIN_N else None
+        v = BS._judge(n, halves, m, p)
+        out[rec] = {"n": n, "pending": pending, "unjudged": len(first) - pending - n, "if_followed": BS._r(BS._mean(raw)), "excess": BS._r(m), "halves": halves,
+                   "p": p, "verdict": v, "dir": None if v not in HINTS else ("right" if m > 0 else "wrong")}
+    return out
+
+
+def score(base=None):
+    """Read-only. Scores the stored r1 recommendations against what really followed (call_out via brain_stats.load). Never raises."""
+    try:
+        calls, _info = BS.load(base)
+        return {"rule": RULE_VERSION, "err": "", "score": score_recs(TA.shadow_recs(RULE_VERSION, base), calls)}
+    except Exception as ex:
+        return {"rule": RULE_VERSION, "score": {}, "err": "%s: %s" % (type(ex).__name__, str(ex)[:100])}
+
+
+_C = {"t": 0.0, "key": None, "res": None, "base": None}          # B4d-4 cache, same pattern as brain_pattern / brain_stats
+
+
+def summary(base=None, force=False):
+    """B4d-4: the small block of the Brain view (key learn.shadow). Counts of what r1 said (HOLD_OK / PROTECT_LOOKS_BETTER / NO_OPINION, per candle row) and
+    the paper score of the first two (score_recs). No raw rows. Recomputed at most every BS.REFRESH_S and only when the shadow rows or the call outcomes
+    changed. Read-only, never raises. Paper numbers only: nothing here controls a trade."""
+    now = time.time()
+    try:
+        same = _C["res"] is not None and _C["base"] == base
+        if not force and same and now - _C["t"] < BS.REFRESH_S:
+            return _C["res"]
+        cnt = TA.shadow_counts(RULE_VERSION, base)
+        key = (sum(cnt.values()), TA.learn_counts(BS.LEARN_VERSION, base)["outcomes"])
+        if not force and same and key == _C["key"]:
+            _C["t"] = now
+            return _C["res"]
+        sc = score(base)
+        if sc["err"]:
+            raise RuntimeError(sc["err"])
+        seen = any(r["n"] >= BS.MIN_N for r in sc["score"].values())
+        res = {"rule": RULE_VERSION, "status": "measuring" if seen else "collecting", "min_n": BS.MIN_N, "provisional": True, "err": "",
+               "counts": {r: int(cnt.get(r, 0)) for r in RECS}, "score": sc["score"],
+               "text": ("Shadow check: measuring. Paper numbers only, nothing here controls a trade." if seen else
+                        "Shadow check: NOT ENOUGH DATA yet (a result needs %d judged trades). Paper numbers only." % BS.MIN_N)}
+        json.dumps(res, allow_nan=False)                           # must be plain JSON for the app, else it is an error below
+        _C.update(t=now, key=key, res=res, base=base)
+        return res
+    except Exception as ex:
+        return {"rule": RULE_VERSION, "status": "error", "min_n": BS.MIN_N, "provisional": True, "counts": {}, "score": {},
+                "err": "%s: %s" % (type(ex).__name__, str(ex)[:80]), "text": "Shadow check could not be measured. NOT ENOUGH DATA."}
+
+
 def run(base=None, now_ms=None):
     """Hand run / tests: read-only. What r1 says for every state, in profit and not, from the latest copy before `now_ms`. Never raises."""
     try:

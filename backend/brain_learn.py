@@ -255,8 +255,13 @@ def view_summary(base=None):
         lk = _BP.summary(base)
     except Exception as e:
         lk = {"status": "error", "err": "%s: %s" % (type(e).__name__, str(e)[:80]), "text": "NOT ENOUGH DATA", "provisional": True}
+    try:                                                         # B4d-4: shadow check (key learn.shadow); a failure here only sets shadow.status = error
+        import brain_shadow as _SH
+        sh = _SH.summary(base)
+    except Exception as e:
+        sh = {"status": "error", "err": "%s: %s" % (type(e).__name__, str(e)[:80]), "text": "NOT ENOUGH DATA", "provisional": True}
     return {"version": LEARN_VERSION, "status": status, "journeys": c["journeys"], "full": c["full"], "outcomes": c["outcomes"],
-            "err": _ST["err"] or c["err"], "text": text, "stats": st, "look": lk}
+            "err": _ST["err"] or c["err"], "text": text, "stats": st, "look": lk, "shadow": sh}
 
 
 if __name__ == "__main__":

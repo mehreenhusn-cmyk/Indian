@@ -154,7 +154,7 @@ def test_source_guards_read_only_not_connected_and_nothing_stored_or_decided():
     fn = ta[ta.index("def learn_snapshots"):ta.index("def learn_counts")]
     assert "SELECT" in fn and not re.search(r"INSERT|UPDATE|DELETE|DROP|CREATE|REPLACE", fn) and "open_brain_ro" in fn and "shadow_rec" not in fn
     for f in os.listdir(HERE):
-        if f.endswith(".py") and f not in ("brain_shadow.py", "test_brain_shadow.py", "test_brain_shadow2.py", "brain_learn.py", "trade_archive.py"):
+        if f.endswith(".py") and f not in ("brain_shadow.py", "test_brain_shadow.py", "test_brain_shadow2.py", "test_brain_shadow3.py", "brain_learn.py", "trade_archive.py"):
             src = open(os.path.join(HERE, f)).read()
             assert not re.search(r"^\s*(import|from)\s+brain_shadow\b|brain_shadow\.", src, re.M) and "shadow_rec" not in src, f        # connected only by brain_learn (4d-2); the writer itself is tested in test_brain_shadow2.py
 

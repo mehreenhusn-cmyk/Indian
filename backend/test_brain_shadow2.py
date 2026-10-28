@@ -196,13 +196,13 @@ def test_raw_tables_are_byte_identical_and_trading_output_is_unchanged():
 
 def test_source_guards_writes_only_through_trade_archive_and_nothing_trades():
     code = re.sub(r'""".*?"""', "", open(os.path.join(HERE, "brain_shadow.py")).read(), flags=re.S)
-    assert not re.search(r"delete\s+from|drop\s+table|update\s+\w+\s+set|insert\s|create\s+table|sqlite3|open\(", code, re.I) and set(re.findall(r"\bTA\.(\w+)", code)) == {"learn_snapshots", "open_dual_ro", "save_shadow_recs", "_S"}
+    assert not re.search(r"delete\s+from|drop\s+table|update\s+\w+\s+set|insert\s|create\s+table|sqlite3|open\(", code, re.I) and set(re.findall(r"\bTA\.(\w+)", code)) == {"learn_snapshots", "open_dual_ro", "save_shadow_recs", "shadow_recs", "shadow_counts", "learn_counts", "_S"}
     for bad in ("requests", "urllib", "anthropic", "websocket", "paper_trader", "strategy", "dual_lab", "market_ws", "telegram", "smart_brain", "random", "sklearn", "numpy"):
         assert not re.search(r"^\s*(import|from)\s+%s\b" % bad, code, re.M), bad
     ta = open(os.path.join(HERE, "trade_archive.py")).read()
     assert not re.search(r"delete\s+from|drop\s+table", ta, re.I) and "INSERT OR IGNORE INTO shadow_rec" in ta and not re.search(r"(UPDATE|REPLACE)[^\n]*shadow_rec", ta)
     assert "brain_shadow" not in open(os.path.join(HERE, "smart_brain.py")).read()
-    assert len(re.findall(r"brain_shadow", open(os.path.join(HERE, "brain_learn.py")).read())) == 1                  # one lazy import, one call
+    assert len(re.findall(r"brain_shadow", open(os.path.join(HERE, "brain_learn.py")).read())) == 2                  # two lazy imports: step() hook (4d-2) and view_summary() hook (4d-4)
 
 
 # ---------------------------------------------------------------- 8. speed on a bigger archive
@@ -222,6 +222,55 @@ def test_one_cycle_is_fast_on_1200_trades():
     a, b, c = timing(1200)
     print("   1,200 trades: first writer cycle %d ms, brain cycle %d ms, repeat cycle %d ms" % (a, b, c))
     assert a < 1500 and c < 1500
+
+
+# ---------------------------------------------------------------- B4d-3: scoring
+def _w_recs(calls, rec):
+    return [(c["id"], c["t"], rec) for c in calls if c["st"] == "W"]
+
+
+def test_score_counts_a_trade_once_and_follows_the_sign_of_the_rec():
+    keep = SH.BS.MIN_CELL
+    SH.BS.MIN_CELL = 1                                                                              # one older finished trade B is enough baseline for this check
+    try:
+        b = TS.calls_of("B", T0 - 10 * 3600000, [(1, "T", 2.0), (2, "W", 3.0)], 1.0)
+        a = TS.calls_of("A", T0, [(1, "T", 2.0), (2, "W", 3.0)], 1.0)                              # at candle 2 final 1.0 vs ROI 3.0: holding lost 2, leaving gained 2
+        r = SH.score_recs([("A", a[1]["t"], "HOLD_OK"), ("A", a[1]["t"], "PROTECT_LOOKS_BETTER")], a + b)
+        assert r["HOLD_OK"]["n"] == 1 and r["HOLD_OK"]["if_followed"] == -2.0 and r["PROTECT_LOOKS_BETTER"]["if_followed"] == 2.0, r
+        r = SH.score_recs([("A", a[0]["t"], "HOLD_OK"), ("A", a[1]["t"], "HOLD_OK")], a + b)["HOLD_OK"]   # two HOLD_OK rows, one trade: only the first counts
+        assert r["n"] + r["unjudged"] + r["pending"] == 1, r
+    finally:
+        SH.BS.MIN_CELL = keep
+
+
+def test_score_small_samples_and_missing_calls_never_give_a_verdict():
+    calls = TS.market(25, 2, TS.planted)
+    r = SH.score_recs(_w_recs(calls, "PROTECT_LOOKS_BETTER") + [("GONE", T0, "HOLD_OK")], calls)
+    assert all(v["verdict"] == "NOT ENOUGH DATA" and v["dir"] is None for v in r.values()), r
+    assert r["HOLD_OK"]["pending"] == 1 and r["HOLD_OK"]["n"] == 0                                  # trade with no finished result is pending, not scored
+    assert SH.score_recs([], [])["HOLD_OK"]["verdict"] == "NOT ENOUGH DATA"
+
+
+def test_score_finds_a_planted_edge_and_a_wrong_rec_is_called_wrong():
+    calls = TS.market(400, 4, TS.planted)                                                           # at W, leaving was ~10 points better than holding
+    r = SH.score_recs(_w_recs(calls, "PROTECT_LOOKS_BETTER") + _w_recs(calls, "HOLD_OK")[:0], calls)["PROTECT_LOOKS_BETTER"]
+    assert r["verdict"] in SH.HINTS and r["dir"] == "right" and r["if_followed"] > 3 and r["halves"][0] > 0 < r["halves"][1], r
+    w = SH.score_recs(_w_recs(calls, "HOLD_OK"), calls)["HOLD_OK"]
+    assert w["dir"] == "wrong" and w["if_followed"] < -3, w
+
+
+def test_score_reads_the_archive_read_only_and_ignores_no_opinion():
+    base = tempfile.mkdtemp()
+    assert SH.score(base)["err"] == "" and SH.score(base)["score"]["HOLD_OK"]["n"] == 0            # no archive yet
+    TS._archive(base, [("A", T0, [(1, "T", 2.0), (2, "W", 3.0)], 1.0, "full")])
+    row = lambda n, rec: ("A", T0 + n * MS, "r1", "W", 3.0, "5m", 1, rec, None, None, "x", "s1", None, None, 1.0)
+    assert TA.save_shadow_recs([row(1, "NO_OPINION")], base) and TA.shadow_recs("r1", base) == []
+    assert TA.save_shadow_recs([row(2, "PROTECT_LOOKS_BETTER")], base) and TA.shadow_recs("r1", base) == [("A", T0 + 2 * MS, "PROTECT_LOOKS_BETTER")]
+    db = os.path.join(base, "brain_archive.db")
+    before = hashlib.sha256(open(db, "rb").read()).hexdigest()
+    r = SH.score(base)
+    assert r["err"] == "" and set(r["score"]) == {"HOLD_OK", "PROTECT_LOOKS_BETTER"}
+    assert hashlib.sha256(open(db, "rb").read()).hexdigest() == before
 
 
 if __name__ == "__main__":
