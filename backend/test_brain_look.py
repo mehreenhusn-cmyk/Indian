@@ -300,7 +300,7 @@ def test_source_guards_and_nothing_else_knows_this_module():
     for bad in ("requests", "urllib", "anthropic", "websocket", "paper_trader", "strategy", "dual_lab", "market_ws", "telegram", "smart_brain", "random"):
         assert not re.search(r"^\s*(import|from)\s+%s\b" % bad, code, re.M), bad
     for f in os.listdir(HERE):
-        if f.endswith(".py") and f not in ("brain_look.py", "test_brain_look.py", "brain_pattern.py", "test_brain_pattern.py"):      # brain_pattern (B4c-2 part 1) is the one allowed user
+        if f.endswith(".py") and f not in ("brain_look.py", "test_brain_look.py", "brain_pattern.py", "test_brain_pattern.py", "test_brain_pattern2.py"):      # brain_pattern (B4c-2 part 1) is the one allowed user
             assert not re.search(r"^\s*(import|from)\s+brain_look\b|\bBLK\.|brain_look\.", open(os.path.join(HERE, f)).read(), re.M), f      # B4c-1 is not connected to anything (B4c-2 does that)
 
 

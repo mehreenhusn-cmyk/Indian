@@ -52,6 +52,7 @@ CREATE TABLE IF NOT EXISTS call_out (id TEXT, t INTEGER, v TEXT, n INTEGER, st T
 CREATE TABLE IF NOT EXISTS mistake (id TEXT, st TEXT, kind TEXT, v TEXT, t INTEGER, n INTEGER, roi REAL, fin REAL, mx REAL, mn REAL, tf TEXT, d INTEGER,
   reg INTEGER, excess REAL, saved REAL, PRIMARY KEY (id, st, kind, v));
 CREATE TABLE IF NOT EXISTS learn_stats (v TEXT, t REAL, trades INTEGER, js TEXT, PRIMARY KEY (v, t));
+CREATE TABLE IF NOT EXISTS look_call (id TEXT, st TEXT, ch TEXT, v TEXT, t INTEGER, pred REAL, m INTEGER, actual REAL, saved REAL, PRIMARY KEY (id, st, ch, v));
 """
 _NEW_COLS = {DUAL_DB: "trades", BRAIN_DB: "own"}        # Batch 2: columns added to the EXISTING tables (old rows keep NULL = not recorded)
 _NEW_SPEC = (("mfe", "REAL"), ("giveback", "REAL"), ("brain_version", "TEXT"))
@@ -60,6 +61,7 @@ JCOLS = ("id", "v", "t", "sym", "tf", "d", "ov", "bv", "flags", "n_rows", "first
          "gb_peak", "hist_n", "hist_roi", "weak_n", "weak_roi", "weak_st", "ev_n", "ev_roi", "mom_n", "mom_roi", "saved")      # B4b-1 journey columns
 OCOLS = ("id", "t", "v", "n", "st", "roi", "fin", "max_after", "min_after", "bars_left", "sc")                                   # B4b-1 call_out columns
 MCOLS = ("id", "st", "kind", "v", "t", "n", "roi", "fin", "mx", "mn", "tf", "d", "reg", "excess", "saved")                   # B4b-2b mistake columns
+LCOLS = ("id", "st", "ch", "v", "t", "pred", "m", "actual", "saved")                                                  # B4c-2 look_call columns
 _L = {}                                                                      # B4b-1: last problem while saving journeys
 _B = {"own": set(), "pk": set(), "ex": set()}     # what the Brain worker already saved (this process)
 _C = {"t": 0.0, "v": None}                                                  # status() cache
@@ -251,6 +253,22 @@ def save_mistakes(rows, base=None):
         finally:
             con.close()
         _L["arch_err"] = ""
+        return True
+    except Exception as e:
+        _fail(_L, e)
+        return False
+
+
+def save_look_calls(rows, base=None):
+    """B4c-2: Brain worker: one frozen row per scored look-alike call (tuples in LCOLS order; ch = 'roi' or 'mistake', v = the rule version).
+    INSERT OR IGNORE on (id, st, ch, v): a row written once is never changed, a repeated run adds nothing. All or nothing. Never raises. -> True when saved."""
+    try:
+        con = _open(BRAIN_DB, _BRAIN_SQL, base)
+        try:
+            with con:
+                con.executemany("INSERT OR IGNORE INTO look_call(%s) VALUES(%s)" % (",".join(LCOLS), ",".join("?" * len(LCOLS))), rows)
+        finally:
+            con.close()
         return True
     except Exception as e:
         _fail(_L, e)

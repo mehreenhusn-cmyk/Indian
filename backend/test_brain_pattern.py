@@ -128,7 +128,7 @@ def test_source_guards_no_network_no_trading_no_writes_and_no_copied_logic():
         assert not re.search(r"^\s*(import|from)\s+%s\b" % bad, code, re.M), bad
     assert not re.search(r"def (_shift_p|_guess|_spread|_dist|_stat|_finish|_judge|_luck_p|_Base|judged|evaluate)\b", code)    # reuses, never copies
     for f in os.listdir(HERE):
-        if f.endswith(".py") and f not in ("brain_pattern.py", "test_brain_pattern.py", "test_brain_look.py"):
+        if f.endswith(".py") and f not in ("brain_pattern.py", "test_brain_pattern.py", "test_brain_look.py", "test_brain_pattern2.py", "brain_learn.py"):
             assert not re.search(r"^\s*(import|from)\s+brain_pattern\b|brain_pattern\.", open(os.path.join(HERE, f)).read(), re.M), f      # not connected yet (Part 2)
 
 

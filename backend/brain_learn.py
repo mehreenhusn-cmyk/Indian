@@ -245,8 +245,13 @@ def view_summary(base=None):
                     "Observation only: nothing here controls a trade." % (c["journeys"], c["full"], st["min_n"]))
     except Exception as e:
         st = {"status": "error", "err": "%s: %s" % (type(e).__name__, str(e)[:80])}
+    try:                                                         # B4c-2: look-alike learning + mistake risk; a failure here only sets look.status = error
+        import brain_pattern as _BP
+        lk = _BP.summary(base)
+    except Exception as e:
+        lk = {"status": "error", "err": "%s: %s" % (type(e).__name__, str(e)[:80]), "text": "NOT ENOUGH DATA", "provisional": True}
     return {"version": LEARN_VERSION, "status": status, "journeys": c["journeys"], "full": c["full"], "outcomes": c["outcomes"],
-            "err": _ST["err"] or c["err"], "text": text, "stats": st}
+            "err": _ST["err"] or c["err"], "text": text, "stats": st, "look": lk}
 
 
 if __name__ == "__main__":
