@@ -294,6 +294,21 @@ def save_stats_snapshot(v, trades, js, every=10, base=None):
         return False
 
 
+def learn_snapshots(v, base=None):
+    """B4d-1: the frozen copies of the learning numbers (table learn_stats) of version v, oldest first -> [(saved time in seconds, finished trades
+    behind it, json text)]. READ-ONLY (SELECT only, brain_archive.db opened query_only). A missing file or table gives []. Never raises."""
+    try:
+        con = open_brain_ro(base)
+        if con is None:
+            return []
+        try:
+            return [(float(t), int(n), js) for t, n, js in con.execute("SELECT t, trades, js FROM learn_stats WHERE v = ? ORDER BY t", (v,))]
+        finally:
+            con.close()
+    except Exception:
+        return []
+
+
 def learn_counts(v, base=None):
     """B4b-1: small numbers for the app: journeys, complete journeys, call outcomes. Reads only. Never raises."""
     out = {"journeys": 0, "full": 0, "outcomes": 0, "err": _L.get("arch_err", "")}
