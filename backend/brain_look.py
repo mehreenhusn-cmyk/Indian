@@ -196,13 +196,16 @@ def _text(r):
     return base + " %s. Not advice." % r["verdict"].capitalize()
 
 
-def analyze(calls):
+def analyze(calls, flag=None):
     """PURE. Everything B4c-1 measures. -> {version, look_version, config, trades, tests, slices: [{slice, kind, targets, states}], targets, coverage}.
-    slices use brain_stats' list (all, BUY, SELL, each timeframe, each regime, crosses); the guesses are made once and only re-grouped."""
-    book = BS._Base(BS._first_per(calls, lambda c: BS._cell(c["n"], c["roi"])))
+    slices use brain_stats' list (all, BUY, SELL, each timeframe, each regime, crosses); the guesses are made once and only re-grouped.
+    flag = optional f(call, state) -> number that replaces what is measured (`left`) for that state; None = the B4c-1 measure (what holding added).
+    brain_pattern (B4c-2) uses it to measure mistakes with the same machinery: the baseline and the look-alikes are then made from that number."""
     tg, cov = [], {}
     for s in BS.STATES:
-        t, jn, nf, nl = evaluate(calls, s, book)
+        cs = calls if flag is None else [dict(c, left=flag(c, s)) for c in calls]
+        book = BS._Base(BS._first_per(cs, lambda c: BS._cell(c["n"], c["roi"])))
+        t, jn, nf, nl = evaluate(cs, s, book)
         tg += t
         cov[s] = {"judged": jn, "nofeat": nf, "nolook": nl, "scored": len(t)}
     sl = []
