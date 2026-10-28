@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import 'owl_pressable.dart';
 
-/// Bottom navigation - same public API as before (currentIndex + onTap) and
-/// 7 tabs: Dash, Market, Pos, Signals (Signals + Alerts), Dual Bot, AI, More.
-/// Dash/Market/Pos/Signals keep indexes 0-3 so AppProvider.goToTab keeps working. Floating
-/// rounded glass bar, accent pill on the active tab.
+/// Bottom navigation - same public API as before (currentIndex + onTap, both are SCREEN indexes of main.dart).
+/// NEXT-4: 5 visible tabs: Dashboard, Market, Positions, Brain, More. Signals (3), Dual Bot (4) and AI (5) keep their screen
+/// index (so AppProvider.goToTab keeps working) but are opened from More, which stays lit while one of them is open.
+/// Floating rounded bar, accent pill on the active tab.
 class BottomNavBar extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
@@ -17,13 +17,14 @@ class BottomNavBar extends StatelessWidget {
   });
 
   // Outlined icon when idle, filled when selected. AI = CPU chip (no more sparkle).
+  // The visible tab -> the screen index it opens (7 = Brain screen, 6 = More).
+  static const List<int> _screens = [0, 1, 2, 7, 6];
+
   static const List<IconData> _icons = [
     Icons.space_dashboard_outlined,
     Icons.query_stats_outlined,
     Icons.account_balance_wallet_outlined,
-    Icons.sensors_outlined,
-    Icons.smart_toy_outlined,
-    Icons.memory_outlined,
+    Icons.psychology_outlined,
     Icons.widgets_outlined,
   ];
 
@@ -31,21 +32,23 @@ class BottomNavBar extends StatelessWidget {
     Icons.space_dashboard_rounded,
     Icons.query_stats_rounded,
     Icons.account_balance_wallet_rounded,
-    Icons.sensors_rounded,
-    Icons.smart_toy_rounded,
-    Icons.memory_rounded,
+    Icons.psychology_rounded,
     Icons.widgets_rounded,
   ];
 
   static const List<String> _labels = [
-    'Dash',
+    'Dashboard',
     'Market',
-    'Pos',
-    'Signals',
-    'Dual Bot',
-    'AI',
+    'Positions',
+    'Brain',
     'More',
   ];
+
+  // Which visible tab is lit: Signals / Dual Bot / AI are under More, so More stays lit there.
+  int get _lit {
+    final i = _screens.indexOf(currentIndex);
+    return i < 0 ? _screens.length - 1 : i;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -87,12 +90,12 @@ class BottomNavBar extends StatelessWidget {
   }
 
   Widget _item(AppPalette p, int index) {
-    final selected = currentIndex == index;
+    final selected = _lit == index;
     final color = selected ? p.accent : p.textMuted;
 
     return OWLPressable(
       // Tapping the open tab again is passed on too: the app scrolls it to the top.
-      onTap: () => onTap(index),
+      onTap: () => onTap(_screens[index]),
       child: AnimatedContainer(
         duration: AppMotion.base,
         curve: AppMotion.standard,

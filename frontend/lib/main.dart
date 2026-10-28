@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 
 import 'providers/app_provider.dart';
+import 'screens/brain_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/market_screen.dart';
 import 'screens/positions_screen.dart';
@@ -295,7 +296,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   // already on scrolls it back to the top. Screens are NOT kept alive in the
   // background (that would slow the app); we only remember the scroll
   // positions of the long lists and put them back when you return.
-  final List<GlobalKey> _tabKeys = List.generate(7, (_) => GlobalKey());
+  final List<GlobalKey> _tabKeys = List.generate(8, (_) => GlobalKey());
   final Map<int, List<double>> _scrollMemo = {};
 
   /// The big vertical lists of one tab, in tree order.
@@ -396,8 +397,12 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   double _swipeStartX = 0;
   double _swipeDx = 0;
 
+  // NEXT-4: swipe follows the bar (Dash, Market, Pos, Brain), then the tabs that now live under More (Signals, Dual Bot, AI), then More.
+  static const List<int> _order = [0, 1, 2, 7, 3, 4, 5, 6];
+
   void _swipeTab(int dir) {
-    final next = (_currentIndex + dir).clamp(0, _screens.length - 1);
+    final at = _order.indexOf(_currentIndex);
+    final next = _order[(at + dir).clamp(0, _order.length - 1)];
     if (next == _currentIndex) return;
     AppHaptics.light();
     _saveScroll(_currentIndex);
@@ -416,6 +421,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     const DualBotScreen(),
     const VisionTabScreen(),
     const MoreScreen(),
+    const BrainScreen(), // 7 (NEXT-4): own bottom tab
   ];
 
   @override

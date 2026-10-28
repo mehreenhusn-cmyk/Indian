@@ -7,6 +7,8 @@ import 'package:provider/provider.dart';
 
 import '../providers/app_provider.dart';
 import '../theme/app_theme.dart';
+import 'brain_evidence_card.dart';
+import 'brain_learn_blocks.dart';
 import 'owl_card.dart';
 
 /// "Brain" view inside the Dual Bot screen (paper only, analysis only). Shows what the Smart Brain thinks about the Dual Bot setups:
@@ -1279,6 +1281,8 @@ class _SmartBrainViewState extends State<SmartBrainView> {
     final p = context.palette;
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       _readyCard(p),
+      BrainEvidenceCard(learn: _map(_st['learn']), edge: _map(_st['edge']), loading: _st.isEmpty, err: _err), // NEXT-2 part 1, NEXT-3
+      BrainLearnBlocks(learn: _map(_st['learn'])), // NEXT-2 part 2
       _trustCard(p),
       _followCard(p),
       _nowCard(p),
