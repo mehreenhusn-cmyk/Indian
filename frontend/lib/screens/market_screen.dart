@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../widgets/market_tile.dart';
 import '../widgets/owl_empty_state.dart';
+import '../widgets/owl_state_view.dart';
+import '../widgets/live_status_chip.dart';
 import '../widgets/owl_skeleton.dart';
 import '../widgets/candle_chart.dart';
 import '../widgets/owl_refresh.dart';
@@ -20,6 +22,15 @@ enum _MarketFilter { all, gainers, losers }
 
 class _MarketScreenState extends State<MarketScreen> {
   _MarketFilter _filter = _MarketFilter.all;
+  // Part 4 (UI-D2): coin search. Case-insensitive 'contains' on the symbol, applied on top of the All / Gainers / Losers tab.
+  final TextEditingController _search = TextEditingController();
+  String _query = '';
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -37,24 +48,8 @@ class _MarketScreenState extends State<MarketScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text('Market Watch', style: t.section.copyWith(fontSize: 22, fontWeight: FontWeight.w800)),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.m, vertical: AppSpacing.xs + 2),
-                    decoration: BoxDecoration(
-                      color: p.accent.withOpacity(0.10),
-                      borderRadius: BorderRadius.circular(AppSpacing.radiusPill),
-                      border: Border.all(color: p.accent.withOpacity(0.35)),
-                    ),
-                    child: Selector<AppProvider, int>(
-                      selector: (_, pr) => pr.moversRev,
-                      builder: (context, _rev, child) {
-                        final c = _counts(context.read<AppProvider>());
-                        return Text(
-                          'LIVE  ·  ${c.$1} up  ·  ${c.$2} down',
-                          style: t.metadata.copyWith(color: p.accent, fontWeight: FontWeight.bold),
-                        );
-                      },
-                    ),
-                  ),
+                  // UI-LIVE: honest chip (LIVE / DELAYED / OFFLINE); the up / down counts stay in the filter tabs below.
+                  const LiveStatusChip(),
                 ],
               ),
             ),
@@ -85,6 +80,42 @@ class _MarketScreenState extends State<MarketScreen> {
                 },
               ),
             ),
+            // Part 4 (UI-D2): compact coin search (same pill look as the Positions search).
+            Padding(
+              padding: const EdgeInsets.fromLTRB(AppSpacing.l, AppSpacing.s, AppSpacing.l, AppSpacing.s),
+              child: SizedBox(
+                height: 38,
+                child: TextField(
+                  controller: _search,
+                  onChanged: (v) => setState(() => _query = v.trim().toUpperCase()),
+                  textInputAction: TextInputAction.search,
+                  textCapitalization: TextCapitalization.characters,
+                  style: const TextStyle(fontSize: 13),
+                  decoration: InputDecoration(
+                    isDense: true,
+                    hintText: 'Search coin (BTC, SOL...)',
+                    hintStyle: TextStyle(fontSize: 12.5, color: p.textMuted),
+                    prefixIcon: const Icon(Icons.search_rounded, size: 18),
+                    suffixIcon: _query.isEmpty
+                        ? null
+                        : IconButton(
+                            icon: const Icon(Icons.close_rounded, size: 16),
+                            onPressed: () {
+                              _search.clear();
+                              setState(() => _query = '');
+                            },
+                          ),
+                    contentPadding: EdgeInsets.zero,
+                    filled: true,
+                    fillColor: p.surface,
+                    enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(AppSpacing.radiusPill), borderSide: BorderSide(color: p.border)),
+                    focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(AppSpacing.radiusPill), borderSide: BorderSide(color: p.accent.withOpacity(0.5))),
+                  ),
+                ),
+              ),
+            ),
             // Table header
             Container(
               padding: const EdgeInsets.symmetric(horizontal: AppSpacing.l, vertical: AppSpacing.s),
@@ -102,13 +133,19 @@ class _MarketScreenState extends State<MarketScreen> {
               child: OWLRefresh(
                 onRefresh: () => context.read<AppProvider>().fetchStatus(),
                 child: Selector<AppProvider, int>(
-                selector: (_, p) => p.moversRev,
+                selector: (_, p) => Object.hash(p.moversRev, p.liveState == 'offline'),
                 builder: (context, _rev, child) {
                   final provider = context.read<AppProvider>();
                   final all = provider.movers
                       .whereType<Map>()
                       .map((e) => e.cast<String, dynamic>())
                       .toList();
+                  if (all.isEmpty && provider.liveState == 'offline') {
+                    return OWLPullEmpty(child: OwlStateView(
+                      kind: OwlViewKind.offline,
+                      onRetry: () => provider.fetchStatus(),
+                    ));
+                  }
                   if (all.isEmpty) {
                     return ListView(
                       physics: owlPullPhysics,
@@ -123,6 +160,7 @@ class _MarketScreenState extends State<MarketScreen> {
                     );
                   }
                   final filtered = all.where((item) {
+                    if (_query.isNotEmpty && !'${item['symbol'] ?? ''}'.toUpperCase().contains(_query)) return false;
                     final change = (item['change_pct'] is num) ? (item['change_pct'] as num).toDouble() : 0.0;
                     switch (_filter) {
                       case _MarketFilter.gainers:
@@ -137,7 +175,9 @@ class _MarketScreenState extends State<MarketScreen> {
                     return OWLPullEmpty(child: OWLEmptyState(
                       icon: Icons.show_chart_rounded,
                       title: 'No matching symbols',
-                      subtitle: _filter == _MarketFilter.all
+                      subtitle: _query.isNotEmpty
+                          ? 'No coin on this list matches "$_query".'
+                          : _filter == _MarketFilter.all
                           ? 'No market data yet - waiting for the watchlist to load.'
                           : 'No ${_filterLabel(_filter).toLowerCase()} on the current watchlist right now.',
                     ));

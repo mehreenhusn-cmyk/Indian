@@ -586,22 +586,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget _appearanceCard(BuildContext context) {
     final p = context.palette;
     final mode = context.select<AppProvider, ThemeMode>((p) => p.themeMode);
-    final isLight = mode == ThemeMode.light;
+    final summaryText = mode == ThemeMode.system
+        ? 'System · follows your phone'
+        : (mode == ThemeMode.light ? 'Light · Clean White' : 'Dark · Obsidian');
     return SettingsGroup(
       icon: Icons.palette_outlined,
       title: 'Appearance',
       tint: const Color(0xFFEC4899),
-      summary: isLight ? 'Light · Clean White' : 'Dark · Obsidian',
+      summary: summaryText,
       initiallyExpanded: false,
       children: [
         SizedBox(
           width: double.infinity,
           child: SegmentedButton<ThemeMode>(
             segments: const [
-              ButtonSegment(value: ThemeMode.dark, label: Text('Dark'), icon: Icon(Icons.dark_mode_outlined)),
               ButtonSegment(value: ThemeMode.light, label: Text('Light'), icon: Icon(Icons.light_mode_outlined)),
+              ButtonSegment(value: ThemeMode.dark, label: Text('Dark'), icon: Icon(Icons.dark_mode_outlined)),
+              ButtonSegment(value: ThemeMode.system, label: Text('System'), icon: Icon(Icons.phone_android_outlined)),
             ],
-            selected: {isLight ? ThemeMode.light : ThemeMode.dark},
+            selected: {mode},
             onSelectionChanged: (sel) => context.read<AppProvider>().setThemeMode(sel.first),
             style: SegmentedButton.styleFrom(
               selectedBackgroundColor: p.accent.withOpacity(0.18),

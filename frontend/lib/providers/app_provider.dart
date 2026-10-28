@@ -151,16 +151,22 @@ class AppProvider extends ChangeNotifier {
     return i;
   }
 
-  /// Theme Mode (Light/Dark) - stored locally in SharedPreferences so it is
+  /// Theme Mode (Light / Dark / System) - stored locally in SharedPreferences so it is
   /// instant, works offline, and defaults to LIGHT unless dark was chosen (a fresh install used to start black).
   /// Deliberately NOT read from the backend `theme` setting: that key is a
   /// legacy Kivy default of "light" and would flip every existing user to
   /// light mode on first launch.
-  ThemeMode get themeMode =>
-      prefs.getString('theme_mode') == 'dark' ? ThemeMode.dark : ThemeMode.light;
+  ThemeMode get themeMode {
+    final m = prefs.getString('theme_mode');
+    if (m == 'dark') return ThemeMode.dark;
+    if (m == 'system') return ThemeMode.system; // UI-A1: follow the phone's own setting
+    return ThemeMode.light;
+  }
 
   Future<bool> setThemeMode(ThemeMode mode) async {
-    final ok = await prefs.setString('theme_mode', mode == ThemeMode.light ? 'light' : 'dark');
+    final ok = await prefs.setString(
+        'theme_mode',
+        mode == ThemeMode.system ? 'system' : (mode == ThemeMode.light ? 'light' : 'dark'));
     notifyListeners();
     pushPrefsBackup();
     return ok;
@@ -180,6 +186,24 @@ class AppProvider extends ChangeNotifier {
     return !wsConnected ||
         t == null ||
         DateTime.now().difference(t) > const Duration(seconds: 6);
+  }
+
+  /// UI-LIVE: one honest answer for every LIVE chip: 'live' / 'delayed' / 'offline'.
+  /// offline = socket down; delayed = socket up but quiet for 6 s or the backend feed is older than 20 s.
+  String get liveState {
+    if (!wsConnected) return 'offline';
+    if (wsStale || (feedAgeSec ?? 0) > 20) return 'delayed';
+    return 'live';
+  }
+
+  /// Age in seconds shown next to the chip: the older of backend feed age and the last socket message.
+  double? get liveAgeSec {
+    final t = _lastWsDataAt;
+    final ws = t == null ? null : DateTime.now().difference(t).inMilliseconds / 1000.0;
+    final f = feedAgeSec;
+    if (ws == null) return f;
+    if (f == null) return ws;
+    return ws > f ? ws : f;
   }
 
   /// System Load card (GET /api/system). Returns the decoded map instead of

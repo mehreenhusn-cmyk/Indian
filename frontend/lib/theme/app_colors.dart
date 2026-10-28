@@ -15,20 +15,20 @@ class AppColors {
   // ---- Backgrounds (true-black canvas for AMOLED, raised surfaces above) ----
   // Ink-navy canvas: still near-black for AMOLED, but with a cool tint so
   // glass cards have something to glow against (premium glass look).
-  static const Color background = Color(0xFF05070D);
-  static const Color surfacePrimary = Color(0xFF0B101A);
-  static const Color surfaceElevated = Color(0xFF111827);
-  static const Color surfaceHigher = Color(0xFF182134);
+  static const Color background = Color(0xFF0A0D14);
+  static const Color surfacePrimary = Color(0xFF111723);
+  static const Color surfaceElevated = Color(0xFF171F2D);
+  static const Color surfaceHigher = Color(0xFF1F293B);
 
   // ---- Borders & accent ----
-  static const Color border = Color(0xFF1F2A40);
+  static const Color border = Color(0xFF263145);
   // One calm blue-violet for tabs, buttons and selected states.
   static const Color accent = Color(0xFF7388FF);
 
   // ---- Text ----
-  static const Color textPrimary = Color(0xFFF5F7FA);
-  static const Color textSecondary = Color(0xFF93A0B8);
-  static const Color textMuted = Color(0xFF66738C);
+  static const Color textPrimary = Color(0xFFE6EAF2);
+  static const Color textSecondary = Color(0xFF9AA6BC);
+  static const Color textMuted = Color(0xFF7683A0);
 
   // ---- Status ----
   static const Color positive = Color(0xFF0ECB81);

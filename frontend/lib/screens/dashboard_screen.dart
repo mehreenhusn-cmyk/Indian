@@ -19,6 +19,7 @@ import '../widgets/owl_card.dart';
 import '../widgets/owl_connection_indicator.dart';
 import '../widgets/owl_pressable.dart';
 import '../widgets/owl_status_pill.dart';
+import '../widgets/live_status_chip.dart';
 import '../widgets/owl_refresh.dart';
 import '../widgets/owl_skeleton.dart';
 import '../widgets/pnl_calendar.dart';
@@ -290,26 +291,21 @@ class _StatusLine extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Selector<AppProvider, int>(
-      selector: (_, p) => Object.hash(p.error == null, p.settings['trading_enabled'], ((p.feedAgeSec ?? -3) / 3).floor(), p.status['symbols_tracked']),
+      selector: (_, p) => Object.hash(p.settings['trading_enabled'], p.status['symbols_tracked']),
       builder: (context, _, __) {
         final pr = context.read<AppProvider>();
         final p = context.palette;
-        final offline = pr.error != null;
         final on = (pr.settings['trading_enabled'] as bool?) ?? true;
-        final age = pr.feedAgeSec;
         final coins = pr.status['symbols_tracked'] ?? 0;
-        final chip = offline
-            ? OWLStatusPill(text: 'OFFLINE', color: p.loss)
-            : (on ? OWLStatusPill(text: 'BOT ON', color: p.profit) : OWLStatusPill(text: 'PAUSED', color: p.warning));
-        final stale = age != null && age > 30;
-        final feed = age == null ? 'Feed --' : 'Feed ${fmtSpan(age)} ago';
+        // UI-LIVE: BOT ON / PAUSED = what the bot is set to; the LiveStatusChip = whether the data is live.
+        final chip = on ? OWLStatusPill(text: 'BOT ON', color: p.profit) : OWLStatusPill(text: 'PAUSED', color: p.warning);
         return Wrap(
           crossAxisAlignment: WrapCrossAlignment.center,
           spacing: 10,
           runSpacing: 4,
           children: [
             chip,
-            Text(feed, style: context.type.secondary.copyWith(color: stale ? p.warning : p.textSecondary, fontWeight: stale ? FontWeight.w700 : FontWeight.w400)),
+            const LiveStatusChip(),
             Text('$coins coins watched', style: context.type.metadata),
           ],
         );

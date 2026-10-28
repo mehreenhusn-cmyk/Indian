@@ -1,3 +1,4 @@
+import '../widgets/live_status_chip.dart';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -257,6 +258,8 @@ class PositionsScreen extends StatelessWidget {
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
+                      const LiveStatusChip(),
+                      const SizedBox(width: 8),
                       // Small "N open" counter next to PANIC.
                       Selector<AppProvider, int>(
                         selector: (_, p) => p.positions.length,
