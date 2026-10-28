@@ -9,7 +9,8 @@ ready for real money, so before anything can be trimmed it is copied here (SQLit
 Files (in the data folder, next to dual_lab_data.json, so zips and updates never touch them):
   dual_archive.db   written by the Dual Bot worker right BEFORE trim():  trades (every state change), rows, rt (retest rows),
                     obs (B4a: one data row per closed candle of an open trade + entry + exit rows, see brain_edge.py; Brain learns from it later)
-  brain_archive.db  written by the Brain worker:  own finished trades, frozen picks, exit opinions
+  brain_archive.db  written by the Brain worker:  own finished trades, frozen picks, exit opinions,
+                    journey + call_out (B4b-1: one summary per finished Dual trade and the facts that followed each Brain call, see brain_learn.py)
 Rules: this file never runs a delete statement (test_trade_archive.py checks the source); a failure is caught, remembered and shown,
 it never stops a bot. Only the Python standard library (sqlite3). One writer per file, so there is no locking fight.
 Run by hand: cd backend && python3 trade_archive.py status
@@ -19,6 +20,7 @@ import os
 import sqlite3
 import sys
 import time
+from urllib.parse import quote
 
 DUAL_DB, BRAIN_DB = "dual_archive.db", "brain_archive.db"
 STALE_S = 180                      # no save for 3 minutes = the app shows "stale"
@@ -40,10 +42,21 @@ CREATE TABLE IF NOT EXISTS own (id TEXT PRIMARY KEY, t INTEGER, sym TEXT, tf TEX
 CREATE TABLE IF NOT EXISTS picks (id TEXT PRIMARY KEY, t INTEGER, sym TEXT, tf TEXT, mode TEXT, js TEXT);
 CREATE TABLE IF NOT EXISTS exit_shadow (k TEXT, t INTEGER, js TEXT, PRIMARY KEY (k, t));
 CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT);
+CREATE TABLE IF NOT EXISTS journey (id TEXT, v TEXT, t INTEGER, sym TEXT, tf TEXT, d INTEGER, ov TEXT, bv TEXT, flags TEXT, n_rows INTEGER,
+  first_n INTEGER, exit_n INTEGER, exit_why TEXT, net REAL, mfe REAL, gb REAL, mfe_n INTEGER, peak_n INTEGER, peak_roi REAL, gb_peak REAL,
+  hist_n INTEGER, hist_roi REAL, weak_n INTEGER, weak_roi REAL, weak_st TEXT, ev_n INTEGER, ev_roi REAL, mom_n INTEGER, mom_roi REAL,
+  saved REAL, PRIMARY KEY (id, v));
+CREATE INDEX IF NOT EXISTS journey_t ON journey(t);
+CREATE TABLE IF NOT EXISTS call_out (id TEXT, t INTEGER, v TEXT, n INTEGER, st TEXT, roi REAL, fin REAL, max_after REAL, min_after REAL,
+  bars_left INTEGER, sc INTEGER, PRIMARY KEY (id, t, v));
 """
 _NEW_COLS = {DUAL_DB: "trades", BRAIN_DB: "own"}        # Batch 2: columns added to the EXISTING tables (old rows keep NULL = not recorded)
 _NEW_SPEC = (("mfe", "REAL"), ("giveback", "REAL"), ("brain_version", "TEXT"))
 _META = "INSERT INTO meta(k, v) VALUES(?, ?) ON CONFLICT(k) DO UPDATE SET v = excluded.v"
+JCOLS = ("id", "v", "t", "sym", "tf", "d", "ov", "bv", "flags", "n_rows", "first_n", "exit_n", "exit_why", "net", "mfe", "gb", "mfe_n", "peak_n", "peak_roi",
+         "gb_peak", "hist_n", "hist_roi", "weak_n", "weak_roi", "weak_st", "ev_n", "ev_roi", "mom_n", "mom_roi", "saved")      # B4b-1 journey columns
+OCOLS = ("id", "t", "v", "n", "st", "roi", "fin", "max_after", "min_after", "bars_left", "sc")                                   # B4b-1 call_out columns
+_L = {}                                                                      # B4b-1: last problem while saving journeys
 _B = {"own": set(), "pk": set(), "ex": set()}     # what the Brain worker already saved (this process)
 _C = {"t": 0.0, "v": None}                                                  # status() cache
 
@@ -172,6 +185,63 @@ def save_brain(own=None, ex=None, book=None, base=None):
     except Exception as e:
         _fail(_B, e)
         return False
+
+
+def open_dual_ro(base=None):
+    """B4b-1: dual_archive.db opened READ-ONLY (the Dual worker is its only writer). WAL mode lets this read while Dual writes.
+    -> connection, or None when the file does not exist yet. Raises only for a real open problem (the caller catches it)."""
+    p = os.path.join(_dir(base), DUAL_DB)
+    if not os.path.exists(p):
+        return None
+    con = sqlite3.connect("file:%s?mode=ro" % quote(p), uri=True, timeout=10)
+    con.execute("PRAGMA query_only=ON")
+    return con
+
+
+def learn_done_ids(v, base=None):
+    """B4b-1: trade ids that already have a journey of this version."""
+    con = _open(BRAIN_DB, _BRAIN_SQL, base)
+    try:
+        return {r[0] for r in con.execute("SELECT id FROM journey WHERE v = ?", (v,))}
+    finally:
+        con.close()
+
+
+def save_learn(journeys, outs, base=None):
+    """B4b-1: Brain worker: appends journeys + call outcomes (tuples in JCOLS / OCOLS order). INSERT OR IGNORE: an existing row is never
+    changed, a new journey version adds new rows beside the old ones. All or nothing. Returns True when saved. Never raises."""
+    try:
+        con = _open(BRAIN_DB, _BRAIN_SQL, base)
+        try:
+            with con:
+                con.executemany("INSERT OR IGNORE INTO journey(%s) VALUES(%s)" % (",".join(JCOLS), ",".join("?" * len(JCOLS))), journeys)
+                con.executemany("INSERT OR IGNORE INTO call_out(%s) VALUES(%s)" % (",".join(OCOLS), ",".join("?" * len(OCOLS))), outs)
+                con.execute(_META, ("learn_last", str(time.time())))
+        finally:
+            con.close()
+        _L["arch_err"] = ""
+        return True
+    except Exception as e:
+        _fail(_L, e)
+        return False
+
+
+def learn_counts(v, base=None):
+    """B4b-1: small numbers for the app: journeys, complete journeys, call outcomes. Reads only. Never raises."""
+    out = {"journeys": 0, "full": 0, "outcomes": 0, "err": _L.get("arch_err", "")}
+    try:
+        p = os.path.join(_dir(base), BRAIN_DB)
+        if os.path.exists(p):
+            con = sqlite3.connect("file:%s?mode=ro" % quote(p), uri=True, timeout=5)
+            try:
+                out["journeys"] = _count(con, "SELECT COUNT(*) FROM journey WHERE v = '%s'" % v.replace("'", ""))
+                out["full"] = _count(con, "SELECT COUNT(*) FROM journey WHERE v = '%s' AND flags = 'full'" % v.replace("'", ""))
+                out["outcomes"] = _count(con, "SELECT COUNT(*) FROM call_out WHERE v = '%s'" % v.replace("'", ""))
+            finally:
+                con.close()
+    except Exception as e:
+        out["err"] = "%s: %s" % (type(e).__name__, str(e)[:100])
+    return out
 
 
 def _count(con, sql):

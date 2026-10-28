@@ -1112,7 +1112,16 @@ def worker():
                     ex = None
                 if _TA:
                     _TA.save_brain(own, ex, book)      # Part U1: finished own trades, frozen picks and exit opinions go to the archive (never raises)
+                learn = None
+                try:                                           # B4b-1: trade journeys from the archive (read only; never touches a trade)
+                    import brain_learn as BLN
+                    if not first:
+                        BLN.step()
+                    learn = BLN.view_summary()
+                except Exception as e:
+                    learn = {"status": "error", "text": "Journey error: %s" % str(e)[:80]}
                 view = build_view(rows, trades, watch, scan_t, book=book, tv=tv, scan_coins=scan_list, exit_state=ex, own=own)
+                view["learn"] = learn
             else:
                 view = dict(build_view([], []), enabled=False, status="stopped", status_text="Stopped.")
             if enabled and time.time() - join_t > 600:
