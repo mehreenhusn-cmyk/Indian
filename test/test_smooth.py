@@ -24,6 +24,11 @@ import ast
 SRC = open(os.path.join(os.path.dirname(__file__), "..", "backend", "api_server.py")).read()
 TREE = ast.parse(SRC)
 kinds = {n.name: type(n).__name__ for n in TREE.body if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))}
+# NEXT-6f: the REST handlers moved into api/status.py (inside make_router_* factories), so look there too
+_ST = ast.parse(open(os.path.join(os.path.dirname(__file__), "..", "backend", "api", "status.py")).read())
+for _n in ast.walk(_ST):
+    if isinstance(_n, (ast.FunctionDef, ast.AsyncFunctionDef)):
+        kinds.setdefault(_n.name, type(_n).__name__)
 for name in ["get_status", "get_positions", "get_market", "get_signals", "get_alerts", "get_history", "get_equity"]:
     assert kinds[name] == "FunctionDef", name        # plain def => FastAPI thread pool, not the event loop
 assert "await send(_snapshot_msg())" not in SRC       # the snapshot (exchange call in live mode) is built in a thread

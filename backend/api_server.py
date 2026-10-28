@@ -377,14 +377,13 @@ async def on_startup():
 
 # ---------------------------------------------------------------- basic ----
 
-@app.get("/")
-async def root():
-    return {"status": "OWL Terminal API", "bot_status": status.get().get("status")}
+# The root + health routes moved to api/status.py (NEXT-6f). Included HERE so the route order stays the same.
+from api.status import (make_router_basic as _status_basic_router, make_router_system as _status_system_router,
+                        make_router_market as _status_market_router, make_router_history as _status_history_router)
+from api.settings import make_router_settings as _st_settings_router, make_router_exchange as _st_exchange_router
+app.include_router(_status_basic_router())
 
 
-@app.get("/health")
-async def health():
-    return {"status": "healthy"}
 
 
 # ---------------------------------------------------------------- reads ----
@@ -649,222 +648,23 @@ def _display_status(skip=()):
     return data
 
 
-@app.get("/api/status")
-def get_status():
-    return _display_status()
+# The status / system / ops / load_report routes moved to api/status.py (NEXT-6f). Included HERE so the route order stays the same.
+app.include_router(_status_system_router(_display_status, DATA_DIR))
 
 
-@app.get("/api/system")
-async def get_system():
-    """System Load card: cached telemetry only (CPU/RAM/disk, REST calls/min,
-    broadcaster cost, candle poll stats, AI assistant, Binance feed). Reads a
-    snapshot the sampler thread already built - no work happens per request."""
-    snap = telemetry.snapshot()
-    try:
-        from recovered_bot import loop_watch
-        snap = dict(snap, **loop_watch.snapshot())
-    except Exception:
-        pass
-    return snap
-
-
-@app.get("/api/ops")
-async def get_ops():
-    """Left-swipe Backend panel: which zip is live, uptime, restarts today, last problems (see ops_status.py)."""
-    from recovered_bot import ops_status
-    return await asyncio.to_thread(ops_status.snapshot, DATA_DIR)
-
-
-@app.get("/api/load_report")
-async def load_report_get(hours: float = 4.0):
-    """Where is the load? Meters + the main bottleneck for the last 1 / 4 / 24 h (see load_report.py)."""
-    from recovered_bot import load_report
-    return await asyncio.to_thread(load_report.build, hours)
-
-
-@app.get("/api/load_report/daily")
-async def load_report_daily():
-    from recovered_bot import load_report
-    return {"days": await asyncio.to_thread(load_report.daily_list)}
 
 
 # ---------------------------------------------------------------- AI keys: paste a key, the backend detects whose it is
-@app.get("/api/ai/vkeys")
-async def ai_vkeys_status():
-    from recovered_bot import ai_keys_api
-    return await asyncio.to_thread(ai_keys_api.status)
+from api.ai_book import make_router_keys as _ai_keys_router, make_router_book as _ai_book_router
+app.include_router(_ai_keys_router(require_api_token, DATA_DIR))
 
 
-@app.post("/api/ai/vkeys/add")
-async def ai_vkeys_add(payload: dict, _auth=Depends(require_api_token)):
-    from recovered_bot import ai_keys_api
-    return await asyncio.to_thread(ai_keys_api.add, payload.get("key", ""), payload.get("slot") or None)
 
 
-@app.post("/api/ai/vkeys/test")
-async def ai_vkeys_test(payload: dict, _auth=Depends(require_api_token)):
-    from recovered_bot import ai_keys_api
-    return await asyncio.to_thread(ai_keys_api.test, payload.get("slot", ""))
+# The positions / market / signals / BTC / daily-report routes moved to api/status.py (NEXT-6f). Included HERE so the route order stays the same.
+app.include_router(_status_market_router(_display_status, _bot_arg))
 
 
-@app.post("/api/ai/vkeys/detect")
-async def ai_vkeys_detect(payload: dict, _auth=Depends(require_api_token)):
-    from recovered_bot import ai_keys_api
-    return await asyncio.to_thread(ai_keys_api.detect, payload.get("slot", ""))
-
-
-@app.post("/api/ai/vkeys/clear")
-async def ai_vkeys_clear(payload: dict, _auth=Depends(require_api_token)):
-    from recovered_bot import ai_keys_api
-    return await asyncio.to_thread(ai_keys_api.clear, payload.get("slot", ""))
-
-
-@app.get("/api/app_prefs")
-async def app_prefs_get():
-    """App-side choices (theme, sounds) backed up on the phone's backend, so a fresh app install gets them back."""
-    from recovered_bot import ops_status
-    return await asyncio.to_thread(ops_status.prefs_get, DATA_DIR)
-
-
-@app.post("/api/app_prefs")
-async def app_prefs_set(payload: dict, _auth=Depends(require_api_token)):
-    from recovered_bot import ops_status
-    return await asyncio.to_thread(ops_status.prefs_merge, DATA_DIR, payload)
-
-
-@app.get("/api/positions")
-def get_positions(bot: str = "b1"):
-    """Standalone positions endpoint - same live/paper exclusivity as the
-    open_positions field inside /api/status (see _display_status)."""
-    data = _display_status()
-    return data.get("open_positions", [])
-
-
-@app.get("/api/market")
-def get_market():
-    return {"movers": status.get().get("market_movers", [])}
-
-
-def _attach_signal_results(sigs):
-    """Adds a `result` to every OPENED signal: what its trade did (open / closed + how + P&L).
-
-    Comes from the permanent closed-trade record and the live open positions, matched by
-    symbol + signal_no + open time. It does NOT use the Alerts list (that keeps only the last
-    250 alerts, which made old signals look 'open' forever). No match -> state 'old'.
-    """
-    try:
-        from collections import defaultdict
-        closed = defaultdict(list)
-        for t in trade_store.get_all_closed(5000, net=False):
-            closed[(t.get("symbol"), t.get("signal_no"))].append(t)
-        open_by = defaultdict(list)
-        for pos in (status.get().get("open_positions") or []):
-            open_by[(pos.get("symbol"), pos.get("signal_no"))].append(pos)
-    except Exception:
-        return sigs
-
-    def near(trade_ts, rec_ts):
-        # the trade opens right after the signal is saved: allow a small window around it
-        if not trade_ts or not rec_ts:
-            return False
-        return -300 <= (float(trade_ts) - float(rec_ts)) <= 1800
-
-    for s in sigs:
-        if not s.get("opened"):
-            continue
-        key = (s.get("symbol"), s.get("signal_no"))
-        rec = s.get("recorded_at")
-        res = None
-        for pos in open_by.get(key, []):
-            if near(pos.get("opened_at_ts"), rec):
-                res = {"state": "open", "tp_hit_levels": list(pos.get("tp_hit_levels") or []),
-                       "opened_ts": pos.get("opened_at_ts")}
-                break
-        if res is None:
-            for t in reversed(closed.get(key, [])):
-                if near(t.get("opened_at_ts"), rec):
-                    reason = str(t.get("status") or "").replace("CLOSED_", "", 1)
-                    try:
-                        tag = paper_trader._exit_tag(reason, t)
-                    except Exception:
-                        tag = "OTHER"
-                    res = {"state": "closed", "exit_tag": tag, "pnl": t.get("pnl_usdt"),
-                           "target_level": t.get("target_level"),
-                           "tp_hit_levels": list(t.get("tp_hit_levels") or []),
-                           "opened_ts": t.get("opened_at_ts"), "closed_ts": t.get("closed_at_ts"),
-                           "exit_px": t.get("exit_price"), "roi": t.get("roi_pct") or t.get("net_roi_pct")}
-                    break
-        s["result"] = res or {"state": "old"}
-    return sigs
-
-
-@app.get("/api/signals")
-def get_signals(bot: str = "b1"):
-    _mode = "LIVE" if settings_store.get("live_trading_enabled", False) else None   # LIVE account: real signals only
-    # BTC has its own list and numbers (/api/btc/signals): the alt-coin list never includes it.
-    return {"signals": _attach_signal_results(db.get_recent_signals(400, bot=_bot_arg(bot), mode=_mode, btc=False))}
-
-
-@app.get("/api/btc/live")
-def get_btc_live():
-    """BTC live price (from the bot's own Binance push feed, REST fallback) + BTC's own today numbers. Light call: the
-    Dashboard tile asks every second."""
-    from recovered_bot import market_ws
-    price, src, _err = market_ws.get_best_live_price(trade_store.BTC_SYMBOL)
-    change = None
-    try:
-        live = market_ws.get_live(trade_store.BTC_SYMBOL)
-        change = live.get("change_pct") if live else None
-    except Exception:
-        pass
-    open_pnl, open_n = 0.0, 0
-    try:
-        for pos in (status.get().get("open_positions") or []):
-            if str(pos.get("symbol")).upper() == trade_store.BTC_SYMBOL:
-                open_n += 1
-                open_pnl += float(pos.get("pnl_usdt") or pos.get("pnl") or 0.0)
-    except Exception:
-        pass
-    st = trade_store.get_btc_stats()
-    return {"price": price, "src": src, "change_pct": change, "today_pnl": st["today_pnl_usdt"],
-            "today_trades": st["total_trades"], "open": open_n, "open_pnl": round(open_pnl, 4), "ts": time.time()}
-
-
-@app.get("/api/btc/signals")
-def get_btc_signals():
-    """BTC only: its own signals + trades for Today / Yesterday / Day before (trading day = 5:30 AM IST),
-    kept apart from the alt-coin numbers. Each day: signals, opened, skipped, won, lost, P&L."""
-    _mode = "LIVE" if settings_store.get("live_trading_enabled", False) else None
-    start = trade_store._trading_day_start_ts()
-    sigs = _attach_signal_results(db.get_recent_signals(200, bot="b1", mode=_mode, btc=True))
-    for s in sigs:
-        try:
-            no = int(s.get("signal_no") or 0)
-            s["btc_no"] = no - trade_store.BTC_NO_BASE if no >= trade_store.BTC_NO_BASE else no
-        except Exception:
-            pass
-    closed = trade_store.get_btc_closed_days(3)
-    names = ["Today", "Yesterday", "Day before"]
-    days = []
-    for i in range(3):
-        lo, hi = start - i * 86400, (start - (i - 1) * 86400) if i else float("inf")
-        day_sigs = [s for s in sigs if lo <= float(s.get("recorded_at") or 0) < hi]
-        opened = sum(1 for s in day_sigs if s.get("opened"))
-        open_now = sum(1 for s in day_sigs if (s.get("result") or {}).get("state") == "open")
-        c = closed[i]
-        days.append({"name": names[i], "signals": len(day_sigs), "opened": opened, "skipped": len(day_sigs) - opened,
-                     "open": open_now, "won": c["wins"], "lost": c["losses"], "pnl": c["pnl"]})
-    keep = [s for s in sigs if float(s.get("recorded_at") or 0) >= start - 2 * 86400]
-    return {"signals": keep, "days": days, "today": trade_store.get_btc_stats(),
-            "margin": float(settings_store.get("btc_margin", 1000.0) or 1000.0),
-            "leverage": int(settings_store.get("btc_leverage", 10) or 10)}
-
-
-@app.get("/api/daily-report")
-async def daily_report_endpoint():
-    """Yesterday / today / last 7 days in plain English, rebuilt from the permanent trade archive (cannot disappear)."""
-    from recovered_bot import daily_report
-    return await _swr("daily_report", 20.0, daily_report.build, 7)
 
 
 # ---------------------------------------------------------------- Vision AI (ai_vision.py)
@@ -874,393 +674,26 @@ app.include_router(_vision_make_router(require_api_token))
 
 
 
-@app.get("/api/alerts")
-def get_alerts():
-    rows = status.get().get("alerts", [])
-    if settings_store.get("live_trading_enabled", False):
-        rows = [a for a in rows if status.alert_is_live(a)]
-    return {"alerts": rows}
+# The alerts / history / equity / calendar / candles routes moved to api/status.py (NEXT-6f). Included HERE so the route order stays the same.
+app.include_router(_status_history_router(_bot_arg))
 
 
-@app.get("/api/history")
-def get_history(bot: str = "b1"):
-    return {"trades": trade_store.get_recent_closed(50, bot=_bot_arg(bot), live_view=True)}
 
 
-@app.get("/api/equity")
-def get_equity(tf: str = "7d", bot: str = "b1"):
-    """Dashboard equity curve. tf picks the bucketing:
-    - 15m/1h/2h/1d -> fixed-size intraday windows (1d = last 24h in hourly buckets)
-    - 3d/7d        -> calendar trading days, 5:30 AM IST boundary (get_equity_curve)
-    Falls back to 7d on an unrecognised value instead of erroring."""
-    intraday = {"15m": (15, 32), "1h": (60, 24), "2h": (120, 24), "1d": (60, 24)}
-    daily = {"3d": 3, "7d": 7}
-    if tf in intraday:
-        minutes, buckets = intraday[tf]
-        return {"curve": trade_store.get_equity_curve_intraday(minutes, buckets, bot=_bot_arg(bot)), "tf": tf}
-    days = daily.get(tf, 7)
-    return {"curve": trade_store.get_equity_curve(days, bot=_bot_arg(bot)), "tf": tf}
+# The settings / history backup routes moved to api/settings.py (NEXT-6e). Included HERE so the route order stays the same.
+app.include_router(_st_settings_router(require_api_token, DATA_DIR))
 
 
-@app.get("/api/calendar")
-def get_calendar(month: str = "", bot: str = "b1"):
-    """Daily P&L calendar for one month (YYYY-MM, default this month). Closed trades only,
-    after fee, same trading-day boundary as the Dashboard Today ring."""
-    return trade_store.get_daily_calendar(month, bot=_bot_arg(bot))
-
-
-@app.get("/api/candles/{symbol}")
-async def get_candles(symbol: str, limit: int = 260, tf: str = None):
-    """OHLC candles for the chart screen. Routed through exchange.py, which
-    dispatches to Binance USDT-M Futures (the sole supported exchange).
-    tf (optional): either a label ("1m"/"3m"/"5m"/"15m"/"1h" - what the
-    Flutter app now sends, matching the configured Strategy Timeframe) or
-    a bare number of minutes for backwards compatibility - both go through
-    exchange.resolve_timeframe(). Defaults to 5m. Runs the blocking REST
-    call in a thread so
-    it doesn't stall the event loop the WebSocket also runs on.
-
-    CANDLE/SD CONTRACT: default bumped 120 -> 260 to stay >= strategy.py's
-    SD lookback (SMA200 + population stdev over the last 200 closes, see
-    ABCDStrategy._rolling_mean_std) plus headroom for EMA50 warm-up -
-    every current caller (candle_chart.dart's full sheet, app_provider.dart's
-    own default) already requests >=200 explicitly, but this keeps the
-    endpoint's own contract correct for any caller that omits limit,
-    instead of silently under-supplying client-side SD/EMA math.
-
-    include_forming=True: this is a UI/display endpoint only, so unlike
-    every strategy call site (app.py, paper_trader.py's reconcile path -
-    both call exchange.get_klines() directly with the default
-    include_forming=False), the chart is allowed to see the still-forming
-    candle as its last row. Signal generation never goes through this
-    endpoint, so "closed candle only" for trading decisions is unaffected
-    - this only changes what the chart itself is allowed to draw."""
-    limit = max(2, min(int(limit), 1500))   # chart lazy-loads older history on pan; 1500 = ~5 days of 5m
-    try:
-        candles = await asyncio.to_thread(
-            exchange.get_klines, symbol, None, limit, True, tf, True
-        )
-        return {"symbol": symbol, "candles": candles}
-    except Exception as e:
-        return {"symbol": symbol, "candles": [], "error": str(e)}
-
-
-# PRODUCTION HARDENING - these settings keys hold real secrets (exchange
-# API secrets, Telegram bot token). GET /api/settings used to return them
-# to the frontend in plain text; now it returns a masked placeholder
-# string (kept as a STRING, not a boolean - settings_screen.dart reads
-# these fields as text to prefill them and to compute the Telegram
-# "linked"/"not linked" status, so changing the type here would crash
-# that screen). POST /api/settings drops any incoming value that still
-# looks like our own mask, so opening Settings and hitting Save without
-# touching a secret field can never overwrite the real stored secret with
-# the masked placeholder.
-_SETTINGS_SECRET_KEYS = ("binance_api_secret", "telegram_bot_token", "ai2_api_key", "ai3_api_key", "ai4_api_key",
-                         "ai5_api_key", "ai6_api_key", "ai7_api_key", "ai8_api_key")
-_SECRET_MASK_PREFIX = "\u2022\u2022\u2022\u2022"  # "••••"
-
-
-def _mask_settings(all_settings: dict) -> dict:
-    out = dict(all_settings)
-    for key in _SETTINGS_SECRET_KEYS:
-        val = out.get(key)
-        out[key] = (_SECRET_MASK_PREFIX + str(val)[-4:]) if val else ""
-    return out
-
-
-@app.get("/api/settings")
-async def get_settings(_auth=Depends(require_api_token)):
-    return _mask_settings(settings_store.get_all())
-
-
-@app.post("/api/settings")
-async def update_settings(payload: dict, _auth=Depends(require_api_token)):
-    clean_payload = {
-        k: v for k, v in payload.items()
-        if not (k in _SETTINGS_SECRET_KEYS and isinstance(v, str) and v.startswith(_SECRET_MASK_PREFIX))
-    }
-    settings_store.update(**clean_payload)
-    if "live_trading_enabled" in clean_payload:
-        try:
-            status.touch_alerts()          # LIVE/PAPER switched: the Alerts feed is re-sent (live-only or paper view)
-        except Exception:
-            pass
-    # A "timeframe" change must take effect on THIS running process
-    # immediately, not just on next restart - settings_store.update() above
-    # only persists it to disk. timeframe_manager caches the active
-    # timeframe in memory (that cache is what app.py's candle fetch,
-    # market_ws's kline subscriptions and signal generation actually read),
-    # so it must be told explicitly. set_active_timeframe() also re-persists
-    # the normalized value, which is harmless/idempotent here.
-    if "timeframe" in clean_payload:
-        timeframe_manager.set_active_timeframe(clean_payload["timeframe"])
-    return _mask_settings(settings_store.get_all())
-
-
-# ------------------------------------------------------- history backup ----
-# Files worth keeping if the phone/Termux is wiped. settings.json (API keys)
-# and owl.db are deliberately NOT included - only trade/alert/AI history.
-_BACKUP_FILES = ("closed_trades_archive.jsonl", "trades.json", "alerts.json", "ai_chat_history.json")
-
-
-def _build_backup_zip():
-    import zipfile
-    os.makedirs(os.path.join(DATA_DIR, "exports"), exist_ok=True)
-    out = os.path.join(DATA_DIR, "exports", f"owl_history_{time.strftime('%Y%m%d_%H%M%S')}.zip")
-    with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as z:
-        for name in _BACKUP_FILES:
-            src = os.path.join(DATA_DIR, name)
-            if os.path.exists(src):
-                z.write(src, name)
-    exp = os.path.join(DATA_DIR, "exports")
-    for old_f in sorted(os.listdir(exp))[:-5]:          # keep the last 5 exports only
-        try:
-            os.remove(os.path.join(exp, old_f))
-        except OSError:
-            pass
-    return out
-
-
-@app.post("/api/backup/export")
-async def export_backup(_auth=Depends(require_api_token)):
-    """Zip the trade/alert/AI history and send it to the user's Telegram chat
-    (same bot token / chat id as the signal alerts). Button-initiated only."""
-    from recovered_bot.app import bot as _tg
-
-    def _run():
-        path = _build_backup_zip()
-        size_kb = os.path.getsize(path) / 1024.0
-        ok, msg = _tg.send_document(path, f"OWL history backup - {time.strftime('%d %b %Y %H:%M')} ({size_kb:.0f} KB)")
-        return {"ok": ok, "message": msg, "file": os.path.basename(path), "size_kb": round(size_kb, 1)}
-
-    return await asyncio.to_thread(_run)
 
 
 # ---------------------------------------------------------------- writes ----
 
-@app.post("/api/close/{trade_id}")
-async def close_one(trade_id: str, _auth=Depends(require_api_token)):
-    # trade_id is a str, not int: in PAPER mode it's still the numeric
-    # trade_store id (ExecutionRouter parses it to int internally), but in
-    # LIVE mode there is no local integer id at all - binance_trader.py's
-    # get_open_positions() sets a live position's "id" to its symbol
-    # (e.g. "BTCUSDT"). An `int` type hint here would 422 on
-    # every live close - ExecutionRouter.close_one() is what actually
-    # branches PAPER vs LIVE and interprets the identifier accordingly.
-    #
-    # Runs in a thread because both the paper (blocking REST price fetch)
-    # and live (blocking exchange REST call) paths can block - never stall
-    # the event loop the WebSocket also runs on (a stalled loop is what
-    # made uvicorn's WebSocket keepalive ping time out -> code 1011).
-    # Returns the full dict (ok/mode/forced/symbol/error) - not just a bare
-    # bool - so the app can tell the user WHY a close failed, or that it
-    # succeeded via a force-close fallback (dead price feed) instead of a
-    # normal exit.
-    result = await asyncio.to_thread(ExecutionRouter.close_one, trade_id)
-    return result
+# The close / flatten / TP / SL / reconcile routes moved to api/trade.py (NEXT-6d). Included HERE so the route order stays the same.
+from api.trade import make_router as _trade_make_router
+app.include_router(_trade_make_router(require_api_token, _bot_arg))
 
 
-@app.post("/api/close_all")
-async def close_all(bot: str = "", _auth=Depends(require_api_token)):
-    """Flatten All (PAPER or LIVE, via ExecutionRouter - see that module's
-    docstring for why every action needs to check live_trading_enabled
-    instead of always hitting paper_trader). PAPER force-closes any symbol
-    with a dead/thin price feed instead of silently skipping it (see
-    paper_trader.py); LIVE closes every real open position on the active
-    exchange. Returns exactly what happened either way, so the app's toast
-    always matches reality instead of always claiming success."""
-    result = await asyncio.to_thread(ExecutionRouter.close_all, _bot_arg(bot, None))
-    return {"ok": result["failed_count"] == 0, **result}
-
-
-@app.post("/api/flatten")
-async def flatten(_auth=Depends(require_api_token)):
-    """EMERGENCY PANIC KILL SWITCH - deliberately kept distinct from
-    /api/close_all above and from the plain "turn live trading off" toggle
-    in Settings. Those two only ever act within the CURRENTLY active mode
-    (close_all via ExecutionRouter now correctly does that - see that
-    module's docstring for the bug this fixed) and neither one touches the
-    live_trading_enabled switch itself. /api/flatten does both, unconditionally:
-
-      1) Close every REAL exchange position first, while live_trading_enabled
-         is still True. Order matters here: binance_trader.py's
-         close_position_market() refuses to place a
-         closing order at all once live_trading_enabled is False (its own
-         master-switch guard) - flipping the switch off before this step
-         would make every live close silently no-op.
-      2) Close every PAPER position too (close_all_with_detail - same call
-         ExecutionRouter.close_all() uses in PAPER mode) - a harmless no-op
-         if paper is empty, which it normally is whenever live is the
-         active mode.
-      3) THEN set live_trading_enabled = False, so no new entries can open
-         on EITHER engine after this call returns - the "automatically sets
-         live_trading: false" half of the panic switch, which close_all/the
-         Settings toggle deliberately do NOT do on their own.
-
-    Returns enough detail for the app to show exactly what happened on each
-    side, same "never just claim success" philosophy as close_all_with_detail."""
-    was_live = settings_store.get("live_trading_enabled", False)
-
-    live_details = []
-    if was_live:
-        try:
-            live_positions = await asyncio.to_thread(exchange.get_open_positions)
-        except Exception as e:
-            live_positions = []
-            status.add_alert("manual", f"PANIC FLATTEN: could not list live positions - {e}")
-        for p in live_positions:
-            symbol = p.get("symbol")
-            action = p.get("action")
-            try:
-                order_id = await asyncio.to_thread(exchange.close_position_market, symbol, action)
-                live_details.append({"symbol": symbol, "ok": order_id is not None, "order_id": order_id})
-            except Exception as e:
-                live_details.append({"symbol": symbol, "ok": False, "error": str(e)})
-
-    paper_result = await asyncio.to_thread(paper_trader.close_all_with_detail)
-
-    # Master kill switch - stop any further auto-entries (paper OR live)
-    # from this point on, regardless of which mode was actually active
-    # above. Deliberately done LAST - see the docstring ordering note.
-    settings_store.update(live_trading_enabled=False)
-    status.add_alert("manual", "PANIC FLATTEN triggered - all positions closed, live trading disabled")
-
-    live_closed = sum(1 for d in live_details if d.get("ok"))
-    live_failed = len(live_details) - live_closed
-    return {
-        "ok": live_failed == 0 and paper_result["failed_count"] == 0,
-        "was_live": was_live,
-        "live_closed_count": live_closed,
-        "live_failed_count": live_failed,
-        "live_details": live_details,
-        "paper_closed_count": paper_result["closed_count"],
-        "paper_failed_count": paper_result["failed_count"],
-        "paper_details": paper_result["details"],
-        "live_trading_disabled": True,
-    }
-
-
-@app.get("/api/preview_close_all")
-async def preview_close_all(mode: str = "profit", bot: str = ""):
-    """Re-prices every open position at a fresh live price (no caching) and
-    returns which ones WOULD close for mode=profit/loss, plus the total
-    P&L - called by the confirmation dialog before Close All Profit/Loss
-    actually closes anything, so the number shown matches what's about to
-    happen instead of a possibly-stale figure."""
-    if mode not in ("profit", "loss"):
-        return {"ok": False, "error": "mode must be 'profit' or 'loss'"}
-    result = await asyncio.to_thread(paper_trader.preview_close_all, mode, _bot_arg(bot, None))
-    return {"ok": True, **result}
-
-
-@app.post("/api/close_all_profit")
-async def close_all_profit(bot: str = "", _auth=Depends(require_api_token)):
-    """Closes every open position currently sitting in profit (pnl_usdt >= 0)
-    at a fresh price - PAPER re-verifies against a fresh live price per
-    position (paper_trader.close_all_profit()); LIVE re-reads the exchange's
-    own open-positions feed (already fresh, no caching - see exchange.py)
-    and closes every matching real position. Returns how many closed so the
-    button can actually tell the user what happened, in either mode."""
-    result = await asyncio.to_thread(ExecutionRouter.close_all_profit, _bot_arg(bot, None))
-    return result
-
-
-@app.post("/api/close_all_loss")
-async def close_all_loss(bot: str = "", _auth=Depends(require_api_token)):
-    """Same as above but for positions currently in loss - 'Close All Loss'."""
-    result = await asyncio.to_thread(ExecutionRouter.close_all_loss, _bot_arg(bot, None))
-    return result
-
-
-@app.post("/api/set_target_tp/{trade_id}")
-async def set_target_tp(trade_id: str, payload: dict, _auth=Depends(require_api_token)):
-    """Tapping a TP1-4 box on a position card that price hasn't reached yet.
-    payload = {"level": 1-4} or {"level": null} to clear back to the
-    default target (TP4). trade_id is str for the same reason /api/close/{}
-    is - see close_one()'s comment. In LIVE mode this currently returns
-    ok=False until Part 2's exchange.set_target_tp() exists (see
-    execution_router.py's interface-contract docstring) - it does NOT
-    silently no-op."""
-    level = payload.get("level")
-    result = await asyncio.to_thread(ExecutionRouter.set_target_tp, trade_id, level)
-    return result
-
-
-@app.post("/api/trail_sl/{trade_id}")
-async def trail_sl(trade_id: str, payload: dict, _auth=Depends(require_api_token)):
-    """Tapping a TP1-4 box that price has ALREADY passed - moves the SL up
-    to that level instead of closing the trade. Returns ok=False (no-op)
-    if that would loosen the SL instead of tightening it (PAPER), or if
-    Part 2's live exchange.modify_sl() doesn't exist yet (LIVE - see
-    execution_router.py)."""
-    level = payload.get("level")
-    if level is None:
-        return {"ok": False, "error": "level is required"}
-    result = await asyncio.to_thread(ExecutionRouter.trail_sl, trade_id, level)
-    return result
-
-
-@app.post("/api/move_sl_breakeven/{trade_id}")
-async def move_sl_breakeven(trade_id: str, _auth=Depends(require_api_token)):
-    """"Move Stop Loss to Break-Even (Entry)" quick pill on a position card.
-    Returns ok=False (no-op) if the SL is already at or past entry (PAPER),
-    or if Part 2's live exchange.move_sl_to_breakeven() doesn't exist yet
-    (LIVE - see execution_router.py)."""
-    result = await asyncio.to_thread(ExecutionRouter.move_sl_breakeven, trade_id)
-    return result
-
-
-@app.post("/api/reconcile")
-async def reconcile(payload: dict = None, _auth=Depends(require_api_token)):
-    """Catch-up check of every open PAPER trade against the 5m candles since
-    it was last watched live (see paper_trader.reconcile_position) - the
-    app calls this right after its connection comes back, so a TP/SL that
-    was touched while the phone/backend was disconnected is applied
-    immediately instead of waiting for luck. In LIVE mode this is a
-    reported no-op (real positions are always read fresh from the exchange
-    already - see execution_router.py's reconcile() docstring)."""
-    trigger = (payload or {}).get("trigger", "reconnect")
-    result = await asyncio.to_thread(ExecutionRouter.reconcile, trigger)
-    return result
-
-
-@app.post("/api/binance/test-connection")
-async def binance_test_connection(_auth=Depends(require_api_token)):
-    """Called from Settings' 'Test Connection' button - authenticates with
-    whatever Binance API key/secret are currently saved in Settings and
-    reads the futures USDT balance, without placing any order. Does NOT
-    require live_trading_enabled to be on."""
-    from recovered_bot import binance_trader
-    result = await asyncio.to_thread(binance_trader.test_connection)
-    return result
-
-
-@app.get("/api/exchange")
-async def get_exchange():
-    """Current active exchange + which ones this app supports - drives the
-    drawer's Exchange Selector and Settings' exchange toggle."""
-    return {"active": exchange.active(), "supported": list(exchange.SUPPORTED)}
-
-
-@app.post("/api/exchange/switch")
-async def switch_exchange(payload: dict, _auth=Depends(require_api_token)):
-    """Flips settings_store["active_exchange"] and forces an IMMEDIATE
-    watchlist + live-price-feed refresh (instead of waiting out their normal
-    ~10s/2s poll intervals), so the Exchange Selector genuinely feels
-    instant rather than "eventually catches up"."""
-    target = (payload.get("exchange") or "").strip().lower()
-    if target not in exchange.SUPPORTED:
-        return {"ok": False, "error": f"exchange must be one of {list(exchange.SUPPORTED)}"}
-    settings_store.update(active_exchange=target)
-    # Next refresh_watchlist() tick (app.py polls every WATCHLIST_REFRESH_INTERVAL)
-    # will now see stale symbols from the old exchange and swap the whole
-    # watchlist over immediately instead of waiting for the interval to elapse.
-    try:
-        from recovered_bot import app as bot_app
-        bot_app.last_watchlist_refresh = 0
-    except Exception:
-        pass
-    return {"ok": True, "active": target}
+app.include_router(_st_exchange_router(require_api_token))
 
 
 @app.post("/api/ai/ask")
@@ -1374,60 +807,12 @@ async def full_report():
     return PlainTextResponse(txt, headers={"Content-Disposition": 'attachment; filename="owl_report.txt"'})
 
 
-_BOOK_CACHE = {}      # key -> (time, answer)
+# The Trade Book routes moved to api/ai_book.py (NEXT-6g). Included HERE so the route order stays the same.
+_ai_book_r = _ai_book_router()
+app.include_router(_ai_book_r)
+ai_book_endpoint = _ai_book_r.ai_book_endpoint   # the SAME handler object: _swr_prewarm (start-up warm-up) calls it directly
 
 
-def _book_go(offset, limit, side, result, q, grp, gval, hour):
-    out = {"page": ai_book.page(offset, limit, side, result, q, grp, gval, hour)}
-    if offset <= 0:
-        out["summary"] = ai_book.summary()
-    return out
-
-
-@app.get("/api/ai/book")
-async def ai_book_endpoint(offset: int = 0, limit: int = 40, side: str = "", result: str = "", q: str = "",
-                           grp: str = "", gval: str = "", hour: int = -1):
-    """AI tab -> Trade Book. ALL-TIME summary (only on the first page) plus one
-    filtered page of closed trades, newest first. Read-only, from the permanent
-    archive with the exchange fee already taken off (ai_book.py)."""
-    # Book is a cheap read: own thread pool, never behind the heavy lock. An OLD answer is returned at once while a fresh
-    # one is built behind it, so the tab opens instantly after the first build.
-    key = (offset, limit, side, result, q, grp, gval, hour)
-    ent = _BOOK_CACHE.get(key)
-    now = time.time()
-    if ent is not None:
-        if now - ent[0] >= 6.0 and key not in _BOOK_BUSY:
-            _BOOK_BUSY.add(key)
-            asyncio.ensure_future(_book_refresh(key, offset, limit, side, result, q, grp, gval, hour))
-        return ent[1]
-    t0 = time.time()
-    out = await asyncio.get_running_loop().run_in_executor(_LIGHT_POOL, _book_go, offset, limit, side, result, q, grp, gval, hour)
-    if time.time() - t0 > 1.5:
-        print(f"[book] first build {time.time() - t0:.1f}s")
-    if len(_BOOK_CACHE) > 60:
-        _BOOK_CACHE.clear()
-    _BOOK_CACHE[key] = (time.time(), out)
-    return out
-
-
-_BOOK_BUSY = set()
-
-
-async def _book_refresh(key, offset, limit, side, result, q, grp, gval, hour):
-    try:
-        out = await asyncio.get_running_loop().run_in_executor(_LIGHT_POOL, _book_go, offset, limit, side, result, q, grp, gval, hour)
-        _BOOK_CACHE[key] = (time.time(), out)
-    except Exception as e:
-        print(f"[book] refresh failed (old answer kept): {type(e).__name__}")
-    finally:
-        _BOOK_BUSY.discard(key)
-
-
-@app.get("/api/ai/path")
-async def ai_path_endpoint(id: str = "", opened: float = 0.0):
-    """Trade Book replay: the saved price path of one closed trade (ai_book.path).
-    {"ok": false} for trades closed before path recording existed."""
-    return await asyncio.get_running_loop().run_in_executor(_LIGHT_POOL, ai_book.path, id, opened)
 
 
 def _safe_status(mod):
@@ -1530,44 +915,11 @@ async def ai_levels_endpoint():
     return await _swr("levels", 30.0, ai_level_study.build)
 
 
-@app.get("/api/ai/diary")
-async def ai_diary_endpoint():
-    """Per-trade diary (ai_observer.diary): what each bot trade did and what other exit rules would have given. Read-only."""
-    from recovered_bot import ai_observer
-    return await _swr("diary", 15.0, ai_observer.diary)
+# The AI Trade Diary routes (/api/ai/diary, /diary) moved to api/ai_pages.py (NEXT-6h part 1). Included HERE so the route order stays the same.
+from api.ai_pages import make_router_diary as _ai_diary_router
+app.include_router(_ai_diary_router())
 
 
-_DIARY_HTML = """<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>OWL Trade Diary</title><style>
-body{font-family:system-ui,sans-serif;margin:0;padding:12px;background:#f2f3f7;color:#14161c}
-h1{font-size:18px;margin:4px 0 8px}.c{background:#fff;border-radius:12px;padding:12px;margin:0 0 10px;box-shadow:0 1px 3px #0001}
-.g{color:#0a8f4f}.r{color:#d0273a}.m{color:#667}.s{font-size:12px}.b{font-weight:700}
-table{width:100%;border-collapse:collapse;font-size:12px;margin-top:6px}td,th{padding:3px 2px;text-align:right}td:first-child,th:first-child{text-align:left}
-.w{background:#fff4e0;border-left:4px solid #e08a00}</style></head><body>
-<h1>OWL Trade Diary</h1><div class="s m" id="t">load ho raha hai...</div><div id="h" class="c b"></div>
-<div id="o"></div><div id="l"></div>
-<script>
-const P=v=>(v>=0?'+':'')+Number(v).toFixed(1)+'%',C=v=>v>0?'g':(v<0?'r':'m');
-const T=ts=>{const d=new Date((ts+19800)*1000);return d.toISOString().slice(11,16)};
-async function go(){try{const d=await (await fetch('/api/ai/diary')).json();
-document.getElementById('t').textContent='Update: '+new Date().toLocaleTimeString()+' - har 30 sec me khud badalta hai';
-document.getElementById('h').textContent=d.headline||'';
-let o='';(d.open||[]).forEach(x=>{o+=`<div class="c ${x.alert.startsWith('Booking')?'w':''}"><span class="b">${x.sym} ${x.side=='BUY'?'LONG':'SHORT'}</span> <span class="${C(x.now)} b">${P(x.now)}</span> <span class="s m">peak ${P(x.peak)} | low ${P(x.low)} | ${T(x.opened)}</span>${x.alert?`<div class="s">${x.alert}</div>`:''}</div>`});
-document.getElementById('o').innerHTML=o?'<div class="s m b">ABHI KHULE TRADE</div>'+o:'';
-const K=Object.keys(d.names||{});let l='<div class="s m b">BAND TRADE (naye pehle)</div>';
-(d.rows||[]).forEach(x=>{l+=`<div class="c"><span class="b">${x.sym} ${x.side=='BUY'?'LONG':'SHORT'}</span> <span class="${C(x.roi)} b">${P(x.roi)}</span> <span class="s m">${x.reason||''} | ${T(x.opened)} | peak ${P(x.peak)} @${x.peak_min}m | low ${P(x.low)}</span>
-<div class="s">TP: ${x.tp.map((v,i)=>v?'TP'+(i+1)+' ok':'TP'+(i+1)+' -').join(' | ')}</div><div class="s" style="margin-top:4px">${x.lesson}</div>
-<table><tr>${K.map(k=>`<th>${k}</th>`).join('')}</tr><tr>${K.map(k=>`<td class="${C(x.rules[k])}${k==x.best?' b':''}">${x.rules[k].toFixed(1)}</td>`).join('')}</tr></table>
-<div class="s m">Data: SD ${x.has.sd?'ha':'collecting'} | EMA ${x.has.slope?'ha':'collecting'} | TSI/Z ${x.has.ind?'ha':'collecting'}</div></div>`});
-document.getElementById('l').innerHTML=l;}catch(e){document.getElementById('t').textContent='Backend se connect nahi hua: '+e}}
-go();setInterval(go,30000);
-</script></body></html>"""
-
-
-@app.get("/diary")
-async def ai_diary_page():
-    from fastapi.responses import HTMLResponse
-    return HTMLResponse(_DIARY_HTML)
 
 
 @app.get("/api/ai/observer")

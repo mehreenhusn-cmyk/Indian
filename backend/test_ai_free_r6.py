@@ -32,7 +32,7 @@ S.update(ai8_api_key="nvapi-" + "B" * 60, ai8_provider="mistral")
 sl = {x["slot"]: x for x in V._slots()}
 check("slot 8 becomes an NVIDIA slot from the key letters", sl.get("backup7", {}).get("provider") == "nvidia")
 S.update(ai8_api_key="")
-check("secret of slot 8 is hidden in settings", "ai8_api_key" in open(os.path.join(os.path.dirname(__file__), "api_server.py")).read().split("_SETTINGS_SECRET_KEYS =")[1][:400])
+check("secret of slot 8 is hidden in settings", "ai8_api_key" in open(os.path.join(os.path.dirname(__file__), "api", "settings.py")).read().split("_SETTINGS_SECRET_KEYS =")[1][:400])
 
 # ---- nvidia request: no response_format, 400 retried without it
 class R:
