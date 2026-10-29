@@ -1,5 +1,6 @@
 #!/data/data/com.termux/files/usr/bin/bash
-# OWL auto-deploy v5e (2026-10-27) for Termux.
+# OWL auto-deploy v5f (2026-10-30) for Termux.
+# v5f (30 Oct): GitHub push now also takes README4.md and README2.md (before, only README.md was allowed, so README4 never reached GitHub).
 #
 #   bash ~/owl_auto.sh            start the watcher (only ONE can run; a 2nd copy refuses)
 #   bash ~/owl_auto.sh status     full report -> screen + ~/owl_status.txt + Download/owl_status.txt
@@ -62,8 +63,8 @@
 # Settings / trades live outside the code folder, so a new zip never touches them.
 # Needs once:  termux-setup-storage
 
-BUILD=40    # self-update number: a zip replaces this script only if its BUILD is a bigger whole number (v5c=2, v5d=3, v5e=40)
-VERSION="v5e 2026-10-27"
+BUILD=41    # self-update number: a zip replaces this script only if its BUILD is a bigger whole number (v5c=2, v5d=3, v5e=40, v5f=41)
+VERSION="v5f 2026-10-30"
 DL_LIST() {   # every Download folder that exists (no duplicates)
   for d in "$OWL_DL" "$HOME/storage/downloads" "$HOME/storage/shared/Download" "/sdcard/Download" "/storage/emulated/0/Download"; do
     [ -n "$d" ] && [ -d "$d" ] && echo "$(cd "$d" 2>/dev/null && pwd -P)"
@@ -471,7 +472,7 @@ tops = {n.split("/")[0] for n in names}
 pre = ""
 if len(tops) == 1 and list(tops)[0] not in ("backend", "frontend", ".github", "test", "scanner") and all("/" in n for n in names):
     pre = list(tops)[0] + "/"          # one wrapper folder (like Indian-main/) -> strip it
-ALLOWED = {"backend", "frontend", "tools", "test", "scanner", "android", ".github", "README.md", "pubspec.yaml",
+ALLOWED = {"backend", "frontend", "tools", "test", "scanner", "android", ".github", "README.md", "README2.md", "README4.md", "pubspec.yaml",
            "pubspec.lock", "analysis_options.yaml", "web_update.sh", ".gitignore", ".metadata"}
 BLOCKED_EXT = (".apk", ".aab", ".ipa", ".zip", ".so", ".jks", ".keystore")
 n_ok = 0
