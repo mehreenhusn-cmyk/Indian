@@ -427,3 +427,222 @@ OWL1 is progressing toward success when:
 - No live-trading authority has been silently granted.
 
 **Final instruction:** Audit first. Reconcile README.md with this file. Keep private project details private. Preserve working code and historical records. Do not change live trading. Propose one clear next delivery, wait for approval, then implement and prove it.
+
+
+---
+
+# PART R — FULL MERGE CHECKLIST FROM THE THREE OWNER PROMPTS
+
+This section is deliberately part of README2 itself. It is not a new roadmap and does not replace the earlier sections. Claude must use this checklist to verify that the three detailed source prompts have been carried into one complete OWL1 specification. The recovered sources include the Claude Opus master prompt, the AI Vision + NVIDIA frontend/backend prompt, and the long Version 2 master prompt with raw-data/research memory, visualisation, explainability and continuous-execution requirements. Similar/duplicated statements may be merged, but their meaning and constraints must not be lost.
+
+## R1. Owner workflow and project continuity
+
+- Treat OWL1 as an existing app, not a greenfield demo.
+- First inspect the actual repository, full README.md, this README2.md, source tree, test tree, dependency manifests, CI and build setup. Do not infer current implementation from old notes alone.
+- Initial response is audit-only: no code edits, data edits, migrations, dependency changes, UI changes or trading changes.
+- Give a coherent architecture, product/UI plan, data model, API contract plan, phased dependency graph, file-level changes, test/acceptance criteria, risks, estimates and rollback plan.
+- Find the exact remembered Claude plan of approximately 43 parts / 6,000–7,000 lines if actually available. If it is not present, say so; never reconstruct it as if it were the original.
+- Do not force an arbitrary number of parts or lines. Estimates are ranges derived from inspected code. The whole product plan is unified even though implementation is staged.
+- Wait for owner approval before implementation. After approval, continue through the agreed plan without repeatedly asking the owner to restate requirements.
+- README.md remains the one living status/roadmap record. README2.md remains the complete specification/prompt. Keep these roles clear; do not create competing master roadmaps.
+- For each delivery, update README.md with real status, exact changed files, test evidence, limitations, rollback and the single next task.
+- If ZIP delivery is requested, include cumulative changes not yet confirmed applied, preserve correct `Indian-main/` root and README location, and never nest `Indian-main/Indian-main/`.
+- Report Passed / Failed / Not Run / Blocked accurately. File existence, a written test, a nice screenshot or an LLM answer is not proof of a working feature.
+
+## R2. Required source-prompt reconciliation
+
+Before implementation, create a traceability table inside the audit report (or a supporting matrix only if needed). Every requirement from the three recovered prompts and README.md must map to:
+- Stable requirement ID and original source prompt/section.
+- Current implementation status: Implemented, Partial, Missing, Broken, Unknown, Historical Done or Needs Evidence.
+- Actual source paths and symbols, not guessed file names.
+- Canonical roadmap part and dependency.
+- Data/API/UI ownership.
+- Acceptance criteria and tests.
+- Risk level and whether owner approval is required.
+
+Do not silently delete a requirement because it is repeated. Merge duplicates but retain traceability to every source. Where two source prompts disagree, report the conflict and preserve the safer behavior until the owner decides. Where an item is already done, verify it and retain the historical record rather than rebuilding it automatically.
+
+## R3. Existing app areas to audit (do not assume all are present)
+
+Inspect and verify each area if found in the repo:
+- Dashboard/Home/Wallboard and market summary.
+- Binance scanner, market candidates and historical movers.
+- Positions, open orders, trade history, close preview and TP adjustment.
+- Existing EMA50/SD-band signal bot and protective orders.
+- Special 13 and Special Master indicator parity.
+- AI Vision and the current provider/API integration.
+- Brain, Brain Skip, historical journeys and outcome evaluation.
+- Scalp Lab categories, experiments and separate ledgers.
+- Timing Sync, setup lifecycle, early-entry and trend/timeframe research.
+- Tag Lab and historical tag versioning.
+- Strategy Doctor and Filter Lab.
+- Ping Lab / backend health / WebSocket diagnostics / diagnostic event feed.
+- Dual Bot / Dual Wallet / account and execution identity.
+- Reports/downloads, fees/funding/net P&L and India-specific INR/timezone/reporting.
+- Settings, notifications/Telegram, data retention, backup/export and privacy.
+- Backend workers, scheduled jobs, API routes, storage, migrations and startup/shutdown.
+- Flutter navigation, shared components, chart package, Android lifecycle and CI.
+If a module is absent, mark it missing or unknown. Do not build a fake placeholder and label it complete.
+
+## R4. Detailed market-data and storage requirements
+
+- Map the real source of every market value and every UI value: exchange/public endpoint or account endpoint → collector/client → validation/normalisation → storage/cache → API/WebSocket → Flutter state → displayed field.
+- Identify the source of truth for candles, snapshots, signals, positions, fills, fees, funding, realized P&L, floating P&L and reports.
+- Keep public market-data collectors separate from authenticated trading/account services.
+- Use event timestamps and receive timestamps, symbol, timeframe, source, schema/formula version, candle status, data quality and mode/provenance.
+- Validate OHLCV ordering, duplicate/out-of-order candles, missing intervals, timezone alignment, symbol/timeframe mismatch, stale feeds and partial snapshots.
+- Make ingestion restart-safe and idempotent. Add bounded queues, rate-limit handling, backoff, reconnect/resync and explicit gap records where relevant.
+- A connected WebSocket is not proof of fresh data. Show connection, subscription, event arrival and candle freshness separately.
+- Keep last-known-good data with a stale marker instead of replacing unavailable values with zero.
+- Separate authentic snapshots, retrospective reconstructions and synthetic fixtures everywhere in storage, UI and reports.
+- The previous design discussed a separate `v2_market.db` for research/public market data and a storage cap around 300 MB. Verify current files and load before adopting this. A cap means pause/report/approved retention policy, not silent deletion.
+- Measure collector CPU, memory, request/subscription rate, disk growth, recovery time and impact on the existing backend before widening the universe. Earlier limits such as 21 symbols/two timeframes or 30/51 coin-timeframe items are historical planning numbers to validate, not immutable settings.
+- Inspect SQLite WAL/SHM and read-only inventory behaviour. Do not accidentally mutate/create sidecars while claiming a strictly read-only audit.
+- Inventory caches, generated reports, logs, temporary files, stale duplicates and unreachable data. Prove references and rebuildability before proposing deletion. Use dry-run, backup/archive/quarantine and explicit owner approval for destructive cleanup.
+- Preserve all trade history, Brain journeys, outcomes, lessons and historical cohort evidence while Brain is being evaluated. Never delete it merely because it is old or absent from a static code reference.
+
+## R5. Historical movers, pump lifecycle and Wallbot/scalp research
+
+- Verify whether the current product has a Wallbot/Wallboard or similarly named market board; preserve actual naming and routes from source.
+- For historical top-five movers, use each completed day's authentic snapshot. Do not reuse today's top five to fill the previous seven days.
+- If authentic history does not exist, label it unavailable and begin prospective collection only after the approved plan; do not invent historical rankings.
+- Track coin episodes/lifecycle when data supports it: pump/initial expansion → continuation → digestion/sideways → retest → possible continuation → weakening volume/slide. These are research hypotheses, not guaranteed lifecycle rules.
+- Avoid counting 20 snapshots from the same coin episode as 20 independent examples. Define episode IDs and overlap rules.
+- Keep current live candidates, authentic historical snapshots and retrospective candle-derived cohorts visibly distinct.
+- Scalp Lab categories need separate definitions, setup counts, trade records, P&L, fees, sample size, hold time, failure cases, confidence and next experiment. Shared raw candles are allowed; duplicate P&L counting is not.
+- Price-action context previously discussed includes signal candle strength, rejection wick, candle size relative to recent candles, EMA50 retest held/broken, relative volume and follow-through. Measure/report these only where data supports them. Do not turn them into production filters without separate approval.
+- Allow a clean data-collection period of around 3–4 weeks if necessary. Report gaps and coverage; do not claim an edge before adequate evidence.
+
+## R6. Detailed Brain/Scalp experiment outputs
+
+Every experiment should define before running:
+- Hypothesis and intended decision use.
+- Dataset/query, symbols, timeframe, period and cohort selection.
+- Feature availability timestamp and candle-close/provisional rules.
+- Outcome horizon and setup/episode identity.
+- Baseline comparison and candidate variants.
+- Fees, funding, slippage, spread and fill assumptions.
+- Exclusion rules, overlap handling and missing-data policy.
+- Train/research period versus holdout/out-of-sample period.
+- Metrics: sample count, net expectancy, net P&L, drawdown, profit factor, win rate, trade frequency, MFE/MAE, time to MFE/MAE, giveback and uncertainty where calculable.
+- Counterexamples, failure cases, sensitivity and whether the result survives another period/symbol group.
+- Reproducible query/config/version, result artifact and next experiment.
+- Result label such as Insufficient Data, Exploratory, Watch, Promising Candidate, Rejected or Needs More Validation. These are research labels, not live instructions.
+
+The owner wants to know when to take a setup, when to wait, when no new trade is better, how long to hold, and what evidence supports an exit/profit-protection idea. The system must test these questions rather than claim it can predict profit. Record skipped opportunities so both avoided losers and missed winners can be measured.
+
+## R7. Premium Flutter experience — detailed expectations
+
+Build a coherent terminal, not disconnected decorative screens:
+- Audit current screen hierarchy and preserve useful navigation before redesign.
+- Limit primary bottom tabs; put detailed features inside clear nested sections rather than placing every screen on the bottom bar.
+- A previous navigation candidate was Dashboard, Market, Positions, Brain, More; treat it as a candidate to validate, not an instruction to break existing navigation.
+- Brain should expose useful areas such as Overview, Scalp Lab, indicator behaviour, experiments, coin lifecycle and Knowledge/Results where appropriate.
+- Dual Bot/Wallet should clearly separate identities, balances, positions, orders, risk and P&L.
+- Settings, alerts/signals, reports/downloads and diagnostics must remain discoverable.
+- Back navigation, nested tabs, swipeable sections, modal sheets, chart fullscreen and selected-tab state must be predictable. Avoid duplicate bottom bars.
+- Shared components may include AppScaffold, AppHeader, ModeBadge, ConnectionStatus, DataFreshness, P&L/KPI cards, position cards, section headers, filters, loading skeletons, empty/error/offline/stale states, confirmation sheets, diagnostic rows, chart containers and paginated lists. Reuse only where behavior is truly shared; avoid one giant shared-widget file.
+- Use consistent design tokens for typography, spacing, semantic colours, surfaces, borders/radii, icons, chart labels and number formatting. Prefer a calm, high-trust exchange style; avoid excessive glow, gradients, rainbow statuses, card nesting and heavy animation.
+- Use tabular/readable numbers, consistent USDT/INR precision, signed P&L and time-zone/timeframe labels.
+- Do not communicate status by colour alone. Respect text scaling, screen readers, contrast and touch-target size.
+- Test narrow Android screens, long symbols and values, keyboard/safe areas, rotation if supported, large text, empty and large datasets, slow network, stale WebSocket, reconnect, scrolling, modal/back navigation and debug overflow.
+- Loading/skeleton, populated, empty, stale, offline, reconnecting, partial and error states must be designed for each data-driven screen.
+- Do not show placeholder figures as live. Do not claim screenshots/device validation if not actually performed.
+
+## R8. Position cards, order previews, reports and India-specific handling
+
+- Show realized net P&L separately from floating/open P&L. Show gross/net and fees/funding separately where supported.
+- Display entry/current price, quantity/size, margin/leverage, open time, mode, stop/targets and target progress only when the source provides them.
+- Ensure close/reduce previews use the same authoritative backend selection and calculation as the actual action.
+- Handle double taps, partial fills, stale prices, rejected requests, timeout, duplicate requests and refresh from authoritative state.
+- “Close All Profit/Loss” must preview exact affected positions/amounts and require confirmation. Do not implement/change it without approval if it affects live execution.
+- Reports must specify date range, timezone, currency, account/mode, fees/funding inclusion, gross/net formula and data completeness.
+- Verify INR conversion source/time and timezone/day-boundary calculations. If tax reporting exists, label estimates and rule version; do not hard-code an assumed Indian tax rate or claim professional tax advice.
+- Do not double-count exchange fees or funding already included by the source.
+- Separate live, paper, shadow, replay and hypothetical records and totals. Never mix paper results with live-account liabilities.
+
+## R9. Settings and user control
+
+Audit settings before changing defaults. Group supported settings into:
+- Account/environment and clearly visible Live/Paper/Shadow/Replay mode.
+- API connections with masked credentials and permissions explanation.
+- Market-data symbols/timeframes, freshness, retention and rate-limit implications.
+- Dashboard display density, card order, theme and chart defaults.
+- Approved trading/risk settings, with clear statement of whether a setting affects live orders.
+- Brain/research settings, separate from live strategy settings.
+- Scalp Lab category, timeframe, paper/shadow and fee/slippage assumptions.
+- AI Vision provider/model/usage/latency/cost where supported.
+- Notifications/Telegram where supported.
+- Diagnostics/privacy/log retention/export.
+- Data/storage backup, retention and cache cleanup.
+- Reports/tax configuration where supported.
+- About/version/compatibility.
+Every setting should state value, description, default, validation, persistence source, restart need, scope and whether safe to change with an open trade. Dangerous/live-affecting changes require confirmation and audit evidence. Never reveal secrets in UI.
+
+## R10. Backend/WebSocket reliability and API contracts
+
+- Inspect the existing FastAPI structure before refactoring. Map routes, schemas, services, repositories, background workers, scheduler lifecycle, startup/shutdown, WebSockets, polling and Flutter consumers.
+- Define typed request/response contracts and consistent error structures. Validate inputs, units, timestamps and mode.
+- Prevent slow AI or research work from blocking the event loop, scanner or execution path.
+- Use timeouts, bounded concurrency, cancellation, backoff and idempotency.
+- Reconnect/resync after WebSocket gaps; avoid duplicate listeners/subscriptions after navigation.
+- Provide diagnostics with event age, last successful REST call, last WebSocket event, last candle, last scan, active subscriptions, reconnects, queue depth and errors where the source supports it.
+- Redact secrets/private account data from logs and exported diagnostics.
+- Keep current data path until a new one passes comparison tests; use a reversible migration/feature flag where appropriate.
+- Verify correct requirements manifest, commands, Android/Flutter build compatibility and CI workflows from the repo rather than guessing.
+- Avoid blind dependency upgrades, forced framework migration or new database/GraphQL layers without evidence.
+
+## R11. Claude/NVIDIA selection and cost controls
+
+- Claude API is the initial reasoning-provider candidate; verify the actual API billing model, model, rate limits and budget. A consumer subscription must not be assumed to include API credits.
+- Keep provider access behind a backend interface, keys server-side, requests event-driven, concurrency bounded and outputs schema-validated.
+- NVIDIA resources are candidates to study, not a mandatory stack. Evaluate the five original Skills catalogue links plus Nemotron, Quantitative Signal Discovery Agent, NeMo Agent Toolkit and RAG/blueprints links listed earlier in this file.
+- For each candidate record: official capability, specific OWL1 use case, expected measurable benefit, hardware/hosted service, license, privacy/data handling, latency, cost, integration burden, benchmark, rollback and adopt/defer/reject decision.
+- Prioritize only components that demonstrably help quantitative signal discovery/evaluation, retrieval of similar historical setups, tool orchestration or trustworthy evaluation.
+- Do not add unrelated healthcare, robotics, Omniverse or physical-AI components; do not add GPU dependency just for fashion.
+- Do not send private exchange/account data to an external provider without an approved minimal-data flow.
+- Cache only when the market/time context makes cached output safe. Never call an LLM for every tick or put its latency on the critical execution path.
+
+## R12. Test matrix and proof required for each delivery
+
+For each requirement, state the test ID, test level, expected result, actual result and evidence. Use relevant coverage for:
+- Existing live-rule characterization and regression tests.
+- Mocked exchange client and proof no real order was submitted.
+- API contract, validation, authentication/permissions and error paths.
+- Candle order/gap/duplicate/timestamp/timezone checks.
+- Storage retention, migration and restart/idempotency.
+- Live/paper/shadow/replay separation.
+- P&L/fees/funding reconciliation and rounding.
+- AI schema validation, timeout, invalid response, quota failure, redaction and missing-data cases.
+- Replay look-ahead leakage, cohort overlap and out-of-sample split.
+- Flutter loading/empty/offline/stale/error/retry states, navigation and preview parity.
+- WebSocket reconnect/resync and stale-data handling.
+- Collector CPU/memory/disk/rate-limit impact.
+- Flutter analyze/test/build, backend test commands and CI where environment supports them.
+- Real-device performance/accessibility/screenshots only if actually run.
+
+Never say “tested” when only reviewed. Never say “passed” when not run. Clearly separate source inspection, unit tests, integration tests, CI, Android build and physical-device validation.
+
+## R13. Delivery completion report — required simple format
+
+Every approved delivery must end with this exact concise report:
+1. **Kya kiya:** changed features/files and reason.
+2. **Kya test hua:** commands, real results and tests not run.
+3. **Kya baaki hai:** blockers, missing evidence and known limitations.
+4. **Live safety:** whether any protected trading path/setting changed; default must be no.
+5. **Next step:** one dependency-ready task, why it comes next and its acceptance criteria.
+
+## R14. Privacy and external sharing clarification
+
+The project and strategy details are private owner material. Keep repository visibility and sharing unchanged. Do not publish or externally share the prompts, source, trading records, screenshots or reports. A prompt cannot by itself guarantee confidentiality: enforce privacy in repo permissions, secret handling, provider configuration, data minimization and logs. Ask before any external data transfer, public sharing, destructive data deletion or recurring paid service.
+
+## R15. Final completeness check before calling README2 consolidated
+
+Claude must confirm each source prompt has been inspected and mapped:
+- `OWL1_Claude_Opus_Master_Prompt.txt`
+- `OWL1_AI_Vision_NVIDIA_Frontend_Backend_Master_Prompt.txt`
+- the long `OWL1_MASTER_PROMPT_v70plus` / Version 2 continuous execution and raw-data/research brief actually supplied by the owner.
+
+Also inspect the actual README.md and current code. If the source files have overlapping wording, consolidate it but retain all unique requirements and constraints. If a prompt is only partially available, state exactly what was available. Do not claim all three have been fully reconciled until the requirement matrix proves it.
+
+The owner wants one detailed document to give Claude so Claude can make the final repository-grounded plan. Do not make the owner read or manually merge the source prompts. Use this README2 as the consolidated brief; keep README.md as the live project status and historical record.
