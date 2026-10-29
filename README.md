@@ -1,14 +1,49 @@
 # Owl Terminal - MASTER NOTES (the ONLY notes file in this repo)
 
-OWL MASTER NOTES v82 - last updated: 29 Oct 2026
+OWL MASTER NOTES v83 - last updated: 29 Oct 2026
 
 Crypto paper-trading app (Flutter) + Python backend. Dual Bot v1 collects trades. Smart Brain learns on the side, paper only. CORRECTION (v80): the main bot code CAN send LIVE Binance orders when live_trading_enabled is on (two paths, see the VERSION 2 STATUS BOARD). Dual Bot and Smart Brain stay paper.
 
+
+## V2 MASTER ORDER BOARD (added v83, 29 Oct 2026 - README only, ONE list, start to end, in order)
+Owner order (29 Oct): "sab ek hi jagah, shuru se aakhir tak, order mein, color ke saath". This is the ONE list to read first. Details of each row = the boards and section 15 below. If two places differ, THIS list and the V2 board below it win. Claude flips the colour in the SAME zip as the work.
+Colours: 🟢 DONE (built AND proven, test result written) | 🔵 WORKING (built, partly proven) | 🟡 waiting for the owner's ok, his data or his phone check | 🔴 NOT DONE or BLOCKED (named blocker in the last column).
+Nothing is 🟢 or 🔵 in V2 yet. No V2 code is written, no V2 test was run. The old->V2 mapping (rows 17-23) is PROPOSED until the owner says "mapping ok".
+| # | Colour | ID | What | Next step / waiting for |
+|---|---|---|---|---|
+| 0 | 🟢 | before V2 | Everything built before V2 (Parts 1-3, A-F, U1-U5, Brain B4, NEXT-2 ... NEXT-6j, UI, H2, IS1) | nothing; list = old STATUS BOARD block 2 |
+| 0b | 🟡 | phone check | Newest old zips (NEXT-2 ... NEXT-6, UI, SR, H2, IS1) | owner downloads, watches the GitHub build, sends any error |
+| 1 | 🟡 | V2-S0 round 1a | backend/v2_inv_safe.py + test (safe read-only opener) | owner says "ok S0 round 1a" |
+| 2 | 🔴 | V2-S0 round 1b | v2_inv_redact.py + test (fail-closed redaction) | after 1a |
+| 3 | 🔴 | V2-S0 round 1c | v2_inventory.py + test (inventory tool + CLI, replaces old NEXT-1) | after 1b; then the owner runs it once on the phone and sends the JSON |
+| 4 | 🔴 | V2-S0 round 2a | protected-rules tests + paper/live routing tests (preview gap only recorded) | after 1c |
+| 5 | 🔴 | V2-S0 round 2b | live-client mocks + import guard + CI tests job (informational) | after 2a |
+| 6 | 🔴 | V2-S1 | Collectors: 5-min top 20/20 snapshots, daily cohort, 3m/5m candles, v2_market.db, 300 MB cap, gap_log, kill-switch | BLOCKED: needs the inventory JSON (row 3) |
+| 7 | 🔴 | V2-S2 | P&L reconciliation (live and paper kept apart) | after S0 inventory |
+| 8 | 🔴 | V2-S3 | Diagnostics: Dashboard strip + detail page | after S1 status data |
+| 9 | 🔴 | V2-S4 | Design system + navigation | none |
+| 10 | 🔴 | V2-S5 | Positions + safe Close All preview (live-mode fix) | separate approval for any api/trade.py change |
+| 11 | 🔴 | V2-S6 | Charts audit + fixes | none |
+| 12 | 🔴 | V2-S7 | Radar cohort view (real vs retrospective proxy) | BLOCKED: S1 data, at least 1 day |
+| 13 | 🔴 | V2-S8 | Data summaries + Data Explorer + AI Vision evidence (includes old NEXT-9) | after S0 inventory |
+| 14 | 🔴 | V2-S9 | Knowledge Ledger | after S1 and S8 |
+| 15 | 🔴 | V2-S10 | Scalp Lab (framework + 2 categories) | BLOCKED: S1 candles, 3-4 weeks of data |
+| 16 | 🔴 | V2-S11 | Stop-wick / continuation / re-entry study | S1 candles |
+| 17 | 🔴 | V2-S12 | Settings taxonomy + fees / tax report | after S0 inventory |
+| 18 | 🔴 | V2-S13 | Performance, accessibility, final README (includes old NEXT-10) | last of the main plan |
+| 19 | 🟡 | V2-S14 | Brain-assisted PAPER A/B (old NEXT-8) | needs S2 + S9, own plan + ok |
+| 20 | 🟡 | V2-S15 | Brain Skip card in the app (old NEXT-7 Flutter card; backend DONE) | own small plan + ok |
+| 21 | 🟡 | V2-S16 | Brain-to-trading rules B3, G1, G2 | WAIT FOR DATA (Ready Check) + separate approval each |
+| 22 | 🟡 | V2-S17 | Dual Bot options H1, TP-LAST | own plan + ok (TP-LAST touches Dual exits) |
+| 23 | 🔴 | V2-S18 / S19 | Backlog E4, E5, E6, Brain v2 / backend cleanup (old section 9) | NOT planned / owner decides |
+| 24 | 🟡 | decision | "mapping ok" for the old -> V2 renames (section 15.14) | owner says "mapping ok" |
+Rule: parts are small (about 300 lines, 4-5 files, rule 14). Claude shows files + lines first and starts only after the owner's "ok" (rule 13). One zip per part, README inside every zip.
 
 ## VERSION 2 STATUS BOARD (added v80, 29 Oct 2026 - README only, NO V2 CODE YET)
 Overall: PLAN APPROVED (owner, 29 Oct: the short plan S0-S13 with the decisions below). NO V2 CODE WRITTEN. NO V2 TEST RUN. Last verified: 29 Oct 2026 by READING files only (no pytest, no Flutter build was run).
 "Version 2" is the product / roadmap name only. Legacy repo, module, package and file names do NOT change without a separate approval.
 Status words: DONE = built AND proven (tests really run, result written here). WORKING = built, only partly proven. NOT DONE. BLOCKED = a named blocker. NEEDS VALIDATION = file or data evidence is missing. A parent is DONE only when ALL its children are DONE and its acceptance test passed. Labels: VF = verified from a file (path + line), OR = owner requirement, NV = needs validation.
+ONE ordered list with colours = V2 MASTER ORDER BOARD right above this board (v83).
 FULL PLAN (what / why / when / how, file tables, tests, risks, traceability, end state) = section 15 at the end of this file. This board = live progress; if the two differ, this board wins.
 
 ### V2 owner decisions (29 Oct 2026)
@@ -79,7 +114,7 @@ FULL PLAN (what / why / when / how, file tables, tests, risks, traceability, end
 Next action: owner reviews and says "ok S0 round 1a". Each later part is shown with files + lines first, and this board is updated in the same zip with real test results.
 
 ## STATUS BOARD (read this first; keep it true in EVERY zip - rule 16)
-Order: 1 WAITING FOR OWNER, 2 DONE, 3 RUNNING NOW (big items cut into parts), 4 UPCOMING. Details of every row are in sections 3, 4c, 10 below. Version 2 (S0-S13) work has its OWN board right above this one.
+Order: 1 WAITING FOR OWNER, 2 DONE, 3 RUNNING NOW (big items cut into parts), 4 UPCOMING. Details of every row are in sections 3, 4c, 10 below. Version 2 (S0-S13) work has its OWN board right above this one. The single ordered colour list of ALL pending work (old + V2) = V2 MASTER ORDER BOARD at the very top.
 
 ### 1. WAITING FOR OWNER (his data, his ok or his phone check) - nothing here is built by Claude by itself
 | What | What the owner must do | Where to read more |
@@ -131,7 +166,7 @@ Rule: routes keep the same path, same order, same behaviour. Proof after every p
 ## 0. FOR EVERY CLAUDE / READER - do this every time
 1. Read this whole file first. It is the single source of truth. Do NOT create other README / NOTES / CHANGES / status files.
 2. Check section 4 (ROAD AHEAD). If a "start when" data condition is reached, tell the owner plainly: "Data is ready for step X. Shall I build it?" Build only after his "ok".
-3. Owner way of working: tell number of files + lines first, start only after "ok", build in parts, ONE zip with only changed files. He updates from Termux in one shot. Simple English or Hinglish, short replies.
+3. Owner way of working: tell number of files + lines first, start only after "ok", build in parts, ONE zip with only changed files. He updates from Termux in one shot. Simple English or Hinglish, short replies (talk style: see rule 18).
 4. After ANY work: update this file in the same zip: tick the step in section 4, add a row to section 3 (DONE) and section 10 (change log), change the date above. Never leave this file stale.
 5. Flutter cannot be compiled in Claude's sandbox. Say so, and ask the owner to send any build error.
 6. NAMING (owner asked, so he never gets confused): "Round 1" = old Parts 1, 2, 3 (finished and already pushed by the owner). All new work is Part A, Part B, Part C ... and steps inside a part are A1, A2, A3 / B1, B2 ... Never reuse old numbers. Name the zip after the part, e.g. owl_A1.zip.
@@ -153,6 +188,8 @@ Rule: routes keep the same path, same order, same behaviour. Proof after every p
 
 16. STATUS BOARD (owner, 29 Oct): the README was too scattered. The STATUS BOARD at the top (4 blocks: waiting for owner, done, running now cut into parts, upcoming) must be updated in the SAME zip as any work: move the item between blocks, tick the part, change the date / version. Sections 3, 4c and 10 stay as the detail / history. Owner 29 Oct: finished parts show 🟢 DONE in block 3 (green circle), pending parts 🟡; when a part is built, flip its mark and write the next 4-5 parts with files + lines in the reply. When the owner sends only the zip (rule 13), read the STATUS BOARD first, then take the first 🟡 part in block 3.
 17. VERSION 2 (owner, 29 Oct): read the VERSION 2 STATUS BOARD at the very top and section 15 (the full plan) before any V2 work. No V2 code before his "ok <part>"; the 2 live Binance paths and the protected files in 15.4 are never edited; data domains in 15.5 never mix; only his 2 indicators (15.6); every zip updates the V2 board with tests that REALLY ran.
+
+18. TALK STYLE (owner, 29 Oct): talk to the owner like a simple WhatsApp chat: easy English written in Roman letters (plain English or Hinglish), short sentences, no big words, no Hindi / Devanagari script in replies. Same for every plan, audit, status and explanation, in every chat and every part. Keep replies short (rule 6b gives the numbered end steps). Code, file names and this README stay in English.
 
 ## 1. OWNER RULES (strict)
 - Do NOT touch: dual_lab.py, tag_lab.py, dual_lab_data.json, Dual Bot trading / exits. Dual Bot v1 stays in full explore mode (no filter, no skip, no block). Brain only READS its data (read-only) and writes only its own json files. EXCEPTION (needs the owner's ok, 27 Oct): Part U adds THREE thin hook lines in dual_lab.py: the coin list (~L966), the archive write right before trim() (~L967), and 'live-only' for 7-day coins (the boot condition in cycle() ~L884: skip the 7-day candle replay for them). No entry / exit / tag / explore rule changes. EXCEPTION 2 (owner ok 28 Oct for H2 only): dual_tp_ext.py adds 3 extra SD targets (TP5-TP7) to NEW Dual trades: 1 guarded import + 1 hook in the new-trade step + 1 cap hook in the finish step of dual_lab.py, and `while hit < len(tps)` in tag_lab.sim_rule (len 4 for every old caller). Entry, stop, tags, learning rows and the Brain's own trades are unchanged. EXCEPTION 3 (owner ok 28 Oct for B3a only): brain_edge.py observer = 1 guarded import + 1 try/except hook after the live replay of an OPEN trade + 1 close marker + `edge` in slim() of dual_lab.py. It only writes the `edge` key of a trade, never reads it to decide.
@@ -347,6 +384,7 @@ A: Brain only watches (now). B: shadow "would take / would skip" - DONE as the "
 - Not seen: Claude never ran the app; a file started by a Termux script outside the repo would look dead.
 
 ## 10. CHANGE LOG (newest first)
+- 29 Oct 2026 (v83): README ONLY. No code, no build, no test run (zip owl_V2_README_v83, only Indian-main/README.md; it ALSO CONTAINS v80, v81 and v82). Owner: one place, start to end, in order, with colours; and a rule that Claude talks in simple WhatsApp-style Roman English. Added: V2 MASTER ORDER BOARD at the very top (one numbered list of all pending work, old items under their V2 names, colours green / blue / yellow / red), pointers from the V2 board and the old STATUS BOARD, rule 18 (talk style) in section 0, item 8 in 15.1. Nothing deleted. The old -> V2 mapping is still PROPOSED until the owner says "mapping ok".
 - 29 Oct 2026 (v82): README ONLY. No code, no build, no test run (zip owl_V2_README_v82, only Indian-main/README.md; it ALSO CONTAINS v80 and v81). Owner: 'purane readme ke pending kaam aur naya plan: same hai to dono kyu karna, alag hai to new naming ke saath rename'. Added: section 15.14 (old pending -> V2 names: NEXT-1 merged into V2-S0-INV, NEXT-9 merged into V2-S8, NEXT-10 merged into V2-S13, NEXT-8 = V2-S14, NEXT-7 card = V2-S15, B3 / G1 / G2 = V2-S16, H1 / TP-LAST = V2-S17, backlog = V2-S18, cleanup = V2-S19), phase entries S14-S19 in 15.8, totals (now about 18,700 lines for S0-S16), pointers on the old rows (old text kept), V2 board rows. FIX: section 5 'PATH TO REAL MONEY' said 'Live-order code does not exist in this repo'; that is wrong (two live paths, 15.4 F3) and is now marked CORRECTED with the old text kept. Mapping is PROPOSED until the owner says 'mapping ok'. Proof: diff against the v79 zip shows ONLY README.md changed; 0 code, 0 test, 0 protected file touched. Next: owner says 'mapping ok' and 'ok S0 round 1a'.
 - 29 Oct 2026 (v81): README ONLY. No code, no build, no test run (zip owl_V2_README_v81, only Indian-main/README.md; it ALSO CONTAINS everything of v80, so the v80 zip is not needed). Owner: 'readme me poora systematic daal, kya kab kaise kyun, taaki har insaan aur Claude samajh sake'. Added: section 15 VERSION 2 - THE FULL PLAN (15.1 reading rules, 15.2 why, 15.3 words, 15.4 verified facts + protected files, 15.5 ten data domains, 15.6 the two indicators, 15.7 collector + cohort design, 15.8 phases S0-S13 with what / why / when / how / files / tests / acceptance / risk, 15.9 totals, 15.10 screen audit, 15.11 traceability, 15.12 open decisions D1-D8, 15.13 end state); rule 17 in section 0; one pointer line in the V2 board; header v80 -> v81. The file-level rows are a PROPOSAL, not verified by the owner; the short plan S0-S13 stays the approved one. S0 estimate corrected 1,465 -> about 2,100 lines (extra safeguards), plan total about 17,800. Proof: a diff against the v79 zip shows ONLY README.md changed, 0 code, 0 test, 0 protected file touched. Next: owner says 'ok S0 round 1a'.
 - 29 Oct 2026 (v80): README ONLY. No code, no build, no test run (zip owl_V2_README_v80, only Indian-main/README.md). Owner: 'sabse pahle readme update karna hai', after he approved the SHORT Version 2 plan S0-S13 and its decisions (inventory tool yes, 300 MB cap yes, 2 live paths protected, public GET only, 2 indicators only). Added: (1) VERSION 2 STATUS BOARD above the old board (nothing marked DONE; S0 NOT DONE, S1 BLOCKED by the inventory report); (2) two rows in old board section 1 + a pointer line; (3) line 5 correction about live orders; (4) this entry; header v79 -> v80. Proof: a diff against the v79 zip shows ONLY README.md changed, 0 code files, 0 test files, none of the protected live files touched. Not done: section 3 / section 4 rows (nothing was built). Next: owner says 'ok S0 round 1a'.
@@ -587,6 +625,7 @@ Added v81, 29 Oct 2026, README only. Owner order (29 Oct): "readme me poora syst
 5. Say honestly what ran. Flutter cannot be compiled in Claude's sandbox. A test that did not run is not a pass. Never mark DONE without evidence.
 6. Size: about 300 lines per part, 400 at most, 4-5 small files (rule 14). Part names below (1a, 1b ...) are the proposed split; split further when a phase starts.
 7. If a fact contradicts this section, fix the section in the same zip and say so in the reply.
+8. Talk to the owner in simple WhatsApp-style Roman English / Hinglish (rule 18).
 
 ### 15.2 Why Version 2 (the goal in plain words)
 The app already trades and learns (live bot, Dual Bot, Smart Brain). What is missing is TRUST and EVIDENCE: (1) nobody can prove from saved data which coins really were the top 5 gainers / losers at that time, the 7-day list is rebuilt later from 1d candles; (2) the live-money code has too few safety tests and CI runs no tests; (3) data from different sources can be confused (paper vs live, real vs reconstructed); (4) the app has many big screens of uneven quality. Version 2 fixes this in order: PROTECT live money first, COLLECT honest data next, then build screens and research on top of that data.
