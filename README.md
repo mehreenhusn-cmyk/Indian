@@ -5,43 +5,50 @@ OWL MASTER NOTES v84 - last updated: 29 Oct 2026
 Crypto paper-trading app (Flutter) + Python backend. Dual Bot v1 collects trades. Smart Brain learns on the side, paper only. CORRECTION (v80): the main bot code CAN send LIVE Binance orders when live_trading_enabled is on (two paths, see the VERSION 2 STATUS BOARD). Dual Bot and Smart Brain stay paper.
 
 
-## V2 MASTER ORDER BOARD (added v83, 29 Oct 2026 - README only, ONE list, start to end, in order)
-Owner order (29 Oct): "sab ek hi jagah, shuru se aakhir tak, order mein, color ke saath". This is the ONE list to read first. Details of each row = the boards and section 15 below. If two places differ, THIS list and the V2 board below it win. Claude flips the colour in the SAME zip as the work.
-Columns Files + Est. lines (owner, 29 Oct): files = files touched in that part (new + changed + tests; README not counted), lines = rough estimate from section 15.8 / 15.9; the TOTAL and BUILT SO FAR rows are at the bottom. Rows with n/a are not estimated yet and are NOT in the total.
-Colours: 🟢 DONE (built AND proven, test result written) | 🔵 WORKING (built, partly proven) | 🟡 waiting for the owner's ok, his data or his phone check | 🔴 NOT DONE or BLOCKED (named blocker in the last column).
-Nothing is 🟢 or 🔵 in V2 yet. No V2 code is written, no V2 test was run. The old->V2 mapping (rows 19-23) is PROPOSED until the owner says "mapping ok".
-| # | Colour | ID | What | Files | Est. lines | Next step / waiting for |
-| --- | --- | --- | --- | --- | --- | --- |
-| 0 | 🟢 | before V2 | Everything built before V2 (Parts 1-3, A-F, U1-U5, Brain B4, NEXT-2 ... NEXT-6j, UI, H2, IS1) | - | - | nothing; list = old STATUS BOARD block 2 |
-| 0b | 🟡 | phone check | Newest old zips (NEXT-2 ... NEXT-6, UI, SR, H2, IS1) | - | - | owner downloads, watches the GitHub build, sends any error |
-| 1 | 🟡 | V2-S0 round 1a | backend/v2_inv_safe.py + test (safe read-only opener) | 2 | 380 | owner says "ok S0 round 1a" |
-| 2 | 🔴 | V2-S0 round 1b | v2_inv_redact.py + test (fail-closed redaction) | 2 | 270 | after 1a |
-| 3 | 🔴 | V2-S0 round 1c | v2_inventory.py + test (inventory tool + CLI, replaces old NEXT-1) | 2 | 350 | after 1b; then the owner runs it once on the phone and sends the JSON |
-| 4 | 🔴 | V2-S0 round 2a | protected-rules tests + paper/live routing tests (preview gap only recorded) | 2 | 450 | after 1c |
-| 5 | 🔴 | V2-S0 round 2b | live-client mocks + import guard + CI tests job (informational) | 3 | 425 | after 2a |
-| 5b | 🔴 | V2-S0 README | README board + change log updates in the 5 S0 rounds (derived: S0 total 2,100 minus the 1,875 above) | - | 225 | each round |
-| 6 | 🔴 | V2-S1 | Collectors: 5-min top 20/20 snapshots, daily cohort, 3m/5m candles, v2_market.db, 300 MB cap, gap_log, kill-switch | 9 | 1,820 | BLOCKED: needs the inventory JSON (row 3) |
-| 7 | 🔴 | V2-S2 | P&L reconciliation (live and paper kept apart) | 7 | 990 | after S0 inventory |
-| 8 | 🔴 | V2-S3 | Diagnostics: Dashboard strip + detail page | 8 | 1,260 | after S1 status data |
-| 9 | 🔴 | V2-S4 | Design system + navigation | 7 | 1,200 | none |
-| 10 | 🔴 | V2-S5 | Positions + safe Close All preview (live-mode fix) | 5 | 670 | separate approval for any api/trade.py change |
-| 11 | 🔴 | V2-S6 | Charts audit + fixes | 4 | 520 | none |
-| 12 | 🔴 | V2-S7 | Radar cohort view (real vs retrospective proxy) | 9 | 1,610 | BLOCKED: S1 data, at least 1 day |
-| 13 | 🔴 | V2-S8 | Data summaries + Data Explorer + AI Vision evidence (includes old NEXT-9) | 6 | 1,530 | after S0 inventory |
-| 14 | 🔴 | V2-S9 | Knowledge Ledger | 5 | 1,230 | after S1 and S8 |
-| 15 | 🔴 | V2-S10 | Scalp Lab (framework + 2 categories) | 13 | 2,560 | BLOCKED: S1 candles, 3-4 weeks of data |
-| 16 | 🔴 | V2-S11 | Stop-wick / continuation / re-entry study | 3 | 960 | S1 candles |
-| 17 | 🔴 | V2-S12 | Settings taxonomy + fees / tax report | 4 | 1,060 | after S0 inventory |
-| 18 | 🔴 | V2-S13 | Performance, accessibility, final README (includes old NEXT-10) | 4 | 500 | last of the main plan |
-| 19 | 🟡 | V2-S14 | Brain-assisted PAPER A/B (old NEXT-8) | 3 | 350 | needs S2 + S9, own plan + ok |
-| 20 | 🟡 | V2-S15 | Brain Skip card in the app (old NEXT-7 Flutter card; backend DONE) | 3 | 130 | own small plan + ok |
-| 21 | 🟡 | V2-S16 | Brain-to-trading rules B3, G1, G2 | 9 | 270 | WAIT FOR DATA (Ready Check) + separate approval each |
-| 22 | 🟡 | V2-S17 | Dual Bot options H1, TP-LAST | n/a | n/a | own plan + ok (TP-LAST touches Dual exits) |
-| 23 | 🔴 | V2-S18 / S19 | Backlog E4, E5, E6, Brain v2 / backend cleanup (old section 9) | n/a | n/a | NOT planned / owner decides |
-| 24 | 🟡 | decision | "mapping ok" for the old -> V2 renames (section 15.14) | - | - | owner says "mapping ok" |
-| | | **TOTAL S0-S16** | all V2 work, rough (range 12,000-22,000 lines, about 30 deliveries); about 101 distinct files because a file changed in 2 phases counts once | **110** | **18,760** | S17, S18, S19 are NOT in this total (not estimated) |
-| | | **BUILT SO FAR** | V2 code written and proven | **0** | **0** | no V2 code yet; this row grows with every delivery |
-Rule: parts are small (about 300 lines, 4-5 files, rule 14). Claude shows files + lines first and starts only after the owner's "ok" (rule 13). One zip per part, README inside every zip.
+## ONE MASTER ROADMAP — SEQUENTIAL PARTS (canonical order)
+
+**Read this list for the order of work.** Older labels such as A–F, U1–U5, NEXT-1–10, B3/G1/G2, H1, S0–S19 and 6a–6j are historical IDs used to find details below. They are NOT separate roadmaps and do NOT change the order shown here. Completed historical work stays recorded as completed; it is not counted as unfinished V2 work.
+
+**Status key:** 🟢 DONE = built and evidence/test result recorded; 🟡 WAITING = needs owner data/phone check or a decision; 🔴 NOT DONE = not built; ⛔ BLOCKED = dependency not ready; ⚪ NOT PLANNED = backlog only. Estimates are rough, not measured.
+
+| Part | Status | Work, in order | Approx. lines | Starts after / notes |
+|---:|---|---|---:|---|
+| 1 | 🟡 WAITING | Safety foundation: read-only database opener, WAL/SHM and symlink safety | 380 | First delivery; old V2-S0 round 1a |
+| 2 | 🔴 NOT DONE | Fail-closed secret redaction and tests | 270 | Part 1; old V2-S0 round 1b |
+| 3 | 🔴 NOT DONE | Database inventory CLI, evidence labels and report | 350 | Part 2; old NEXT-1 / V2-S0 round 1c; run report once |
+| 4 | 🔴 NOT DONE | Protected strategy-rule tests + paper/live routing characterization | 450 | Part 3; records behaviour, does not change live behaviour |
+| 5 | 🔴 NOT DONE | Mock-only live-client tests, import-isolation guard and informational CI test job | 425 | Part 4; no real orders; completes safety baseline |
+| 6 | ⛔ BLOCKED | Public Binance collectors, snapshots, official cohorts, 3m/5m candles, separate v2_market.db, gaps and storage cap | 1,820 | Needs Part 3 inventory report; old V2-S1 |
+| 7 | 🔴 NOT DONE | Live/Paper P&L reconciliation, fees and data separation | 990 | Inventory; old V2-S2 |
+| 8 | 🔴 NOT DONE | Diagnostics: dashboard health strip + detail/history page | 1,260 | Collector status data; old V2-S3 |
+| 9 | 🔴 NOT DONE | Premium Flutter design system, navigation and reusable UI states | 1,200 | Can be prepared independently; old V2-S4 |
+| 10 | 🔴 NOT DONE | Positions and safe close preview; address live-mode preview mismatch | 670 | Old V2-S5; live-trade path changes remain protected |
+| 11 | 🔴 NOT DONE | Chart audit and fixes for EMA50/SD and Special Master TSI/Z-score displays | 520 | Old V2-S6; exact Pine parity needs source validation |
+| 12 | ⛔ BLOCKED | Radar: today/yesterday/2/3/7-day cohorts, authentic vs retrospective proxy | 1,610 | Collector data for at least one day; old V2-S7 |
+| 13 | 🔴 NOT DONE | Data summaries, Data Explorer and evidence-based AI Vision explanations | 1,530 | Inventory; old V2-S8 / NEXT-9 |
+| 14 | 🔴 NOT DONE | Knowledge Ledger with source/provenance and experiment traceability | 1,230 | Parts 6 and 13; old V2-S9 |
+| 15 | ⛔ BLOCKED | Scalp Lab framework + first two research categories | 2,560 | 3–4 weeks of candle data; historical/paper research only; old V2-S10 |
+| 16 | ⛔ BLOCKED | Stop-wick → continuation → re-entry study | 960 | Collector candle data; old V2-S11 |
+| 17 | 🔴 NOT DONE | Settings taxonomy and fees/tax reporting | 1,060 | Inventory; old V2-S12 |
+| 18 | 🔴 NOT DONE | Final integration, performance, accessibility, acceptance checks and README close-out | 500 | Main roadmap's final integration; old V2-S13 / NEXT-10 |
+| 19 | 🟡 WAITING | Brain-assisted PAPER A/B comparison | 350 | Parts 7 and 14 first; old NEXT-8 / V2-S14; paper only |
+| 20 | 🟡 WAITING | Brain Skip card in Flutter | 130 | Backend key exists; app card pending; old NEXT-7 / V2-S15 |
+| 21 | 🟡 WAITING | Brain-to-trading proposals: B3, G1, G2 | 270 | Wait for Ready Check data; old V2-S16; trading-behaviour changes remain separately gated |
+| 22 | 🟡 WAITING | Dual Bot H1 auto-start + TP-LAST target proposal | n/a | Separate estimate needed; TP-LAST affects Dual exits; old V2-S17 |
+| 23 | ⚪ NOT PLANNED | E4/E5/E6 and Brain v2 backlog | n/a | Not part of the planned build sequence unless requested; old V2-S18 |
+| 24 | 🟡 WAITING | Backend cleanup review | n/a | Scope/estimate not set; old V2-S19; no deletion without a plan |
+
+### How to read progress
+
+- **Completed before V2:** existing Parts 1–3, A–F, U1–U5, UI1–UI5, NEXT-2–NEXT-6j, Brain B4, H2, IS1 and other green items remain in the historical DONE record below. They are not new unfinished tasks.
+- **V2 completion at the source status date (29 Oct 2026):** 0 roadmap Parts are marked built-and-proven. Parts 1–5 are the safety/inventory foundation; later rows cannot be marked DONE until code exists and evidence is recorded.
+- **Old labels are aliases:** use the legacy mapping later in this file to find technical details. Do not count a merged old ID as an extra task.
+- **Large Parts may need multiple ZIP deliveries.** Keep them under the same Part number with a plain sequential delivery counter (for example, Part 15 — delivery 1, delivery 2), not another alphabet-based roadmap.
+- **Estimate correction:** the older total of 18,760 lines / about 30 deliveries conflicts with the “about 300 lines per delivery” rule. That delivery count is not reliable; recalculate file/line totals as each Part is split into actual deliveries.
+- **README updates:** every implementation delivery updates status and actual test/build evidence here. Reading files is not the same as running tests or building Flutter.
+- **Safety boundary:** the two live order paths remain protected. Collectors, replay, Scalp Lab and the Ledger cannot call live execution. This roadmap does not authorize live-trading behaviour changes.
+
+---
 
 ## VERSION 2 STATUS BOARD (added v80, 29 Oct 2026 - README only, NO V2 CODE YET)
 Overall: PLAN APPROVED (owner, 29 Oct: the short plan S0-S13 with the decisions below). NO V2 CODE WRITTEN. NO V2 TEST RUN. Last verified: 29 Oct 2026 by READING files only (no pytest, no Flutter build was run).
@@ -69,7 +76,7 @@ FULL PLAN (what / why / when / how, file tables, tests, risks, traceability, end
 7. The Ping tab is the volume-ping research lab, not connectivity diagnostics.
 8. Not seen: no screenshots, no running backend, no git history, no real database were available.
 
-### V2 phases (line counts are rough estimates from the long plan; the owner has not verified the file tables)
+### Legacy phase reference (old S-labels; use the ONE MASTER ROADMAP above for the actual sequential order)
 | Phase | Status | Parts / rough lines | Depends on / blocker |
 |---|---|---|---|
 | V2-S0 Safety baseline + data inventory (includes old NEXT-1) | NOT DONE | 1a, 1b, 1c, 2a, 2b / about 2,100 | owner: "ok S0 round 1a" |
@@ -115,9 +122,9 @@ FULL PLAN (what / why / when / how, file tables, tests, risks, traceability, end
 | V2-S1-CANDLES 3m / 5m candles (max 40 symbols) | NOT DONE | backend/v2_candles.py | rate budget, gap refill |
 | V2-S1-COH cohort save (no overwrite, proxy flagged) | NOT DONE | backend/v2_store.py | tests for overwrite and proxy label |
 
-Next action: owner reviews and says "ok S0 round 1a". Each later part is shown with files + lines first, and this board is updated in the same zip with real test results.
+Legacy next-action note (canonical order is the master roadmap above; old sub-step labels below are retained only to locate technical details). Previous text: owner reviews and says "ok S0 round 1a". Each later part is shown with files + lines first, and this board is updated in the same zip with real test results.
 
-## STATUS BOARD (read this first; keep it true in EVERY zip - rule 16)
+## LEGACY STATUS / COMPLETED HISTORY (old labels retained for traceability; canonical order is the MASTER ROADMAP at the top)
 Order: 1 WAITING FOR OWNER, 2 DONE, 3 RUNNING NOW (big items cut into parts), 4 UPCOMING. Details of every row are in sections 3, 4c, 10 below. Version 2 (S0-S13) work has its OWN board right above this one. The single ordered colour list of ALL pending work (old + V2) = V2 MASTER ORDER BOARD at the very top.
 
 ### 1. WAITING FOR OWNER (his data, his ok or his phone check) - nothing here is built by Claude by itself
@@ -873,7 +880,7 @@ Every screen that changes gets loading, error, empty, stale and offline states (
 | Old pending items (owner, 29 Oct) | S0, S8, S13 (merged); S14-S19 (renamed) | section 15.14 | n/a | V2-MAP |
 
 ### 15.12 Open decisions (owner)
-- D1 OLD vs NEW ITEMS: the owner said (29 Oct): same job = do once, different job = keep and rename with V2 names. Mapping is in 15.14; he confirms it with "mapping ok". Order between the renamed items and the main V2 phases is still his choice; V2 S0 starts only when he says "ok S0 round 1a".
+- D1 OLD vs NEW ITEMS: same job = do once; distinct job = keep as a separate row in the canonical Part 19–24 range. Old labels remain for traceability and do not change the master order.
 - D2 COHORT TIME: which snapshot stands for "the day's official cohort". Default (INF): the last snapshot before the 00:00 UTC boundary closes the day. Every 5-min snapshot is saved anyway, so the choice can change later without data loss.
 - D3 api_server.py router mount (S1): separate approval at that stage.
 - D4 api/trade.py live-mode preview fix (S5): separate approval at that stage.
@@ -894,7 +901,7 @@ Existing paper / Dual / Brain DBs --(read-only)--> inventory, Ledger (v2_ledger.
 - The owner can open this README and know: what was planned, why, what is done (board), what is next, and which decisions are still his.
 
 
-### 15.14 Old pending items -> V2 names (D1, owner order 29 Oct: "same = do once; different = rename")
+### 15.14 Legacy-ID → canonical Part mapping (historical IDs; the Part numbers at the top control order)
 Proposed by Claude from reading sections 3, 4, 4a, 4b, 4c, 5, 7, 8, 9. Old history (change log, section 3 DONE) is NOT renamed; only pending items get a V2 name, and the old name stays in brackets so searches still work.
 | Old item (where) | Same job as a V2 item? | Decision | V2 name | Note |
 |---|---|---|---|---|
@@ -909,4 +916,4 @@ Proposed by Claude from reading sections 3, 4, 4a, 4b, 4c, 5, 7, 8, 9. Old histo
 | Backend cleanup (9) | no | renamed, owner decides | V2-S19 | owner-run tools, nothing deleted by Claude |
 | U1-U5 archive, universe, desk, reports (DONE) | related but different | stay DONE | n/a | the 7-day universe stays and is shown as RETROSPECTIVE PROXY (V2-S7) |
 | Section 7 decisions on hold (Dual explore mode, no Dual SQLite, gold / multi-asset / live last) | not phases | stay as decisions | n/a | V2 collectors use their own new DB |
-Status: PROPOSED. Until the owner says "mapping ok", the old rows keep their own rules; the renamed text added to them is only a pointer.
+Status: documentation mapping for navigation. The 24-Part master roadmap at the top controls order and progress; historical rows remain references and do not create extra work. This mapping does not authorize changes to live-trading behaviour.
