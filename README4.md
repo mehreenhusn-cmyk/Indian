@@ -1,11 +1,101 @@
-# OWL TERMINAL - README4 IS THE ONE FILE TO FOLLOW (merged 30 Oct 2026, v85, README ONLY - no code, no test, no build)
+# OWL TERMINAL - README4 IS THE ONE FILE TO FOLLOW (v91, 30 Oct 2026, PART 3 BUILT + watcher v5f fix)
 
 ## RESUME BOX (updated in every delivery)
-- Last zip: owl_README4_merge (README only)
-- Last Part done: none of the V2 Parts 1-25 (V2 code = 0 lines)
-- Applied by owner on phone? unknown - owner confirms
-- Next Part: Part 1 (about 380 lines) - waits for the owner's "ok S0 round 1a"
+- **PROGRESS: 3 of 71 Parts DONE | building now: none | NEXT: Part 4** (status board = FLAT PART SEQUENCE below)
+- Last zips: owl_fix_watcher (tools/owl_auto.sh v5f, BUILD 41) then owl_Part3 (Part 3 code + tests + this README).
+- Last Part built: **Part 3** (backend/v2_inventory.py 305 lines + test/test_v2_inventory.py 204 lines = 509 lines; the 350 estimate was low). Tests: 14 passed in sandbox, network blocked; Part 1 (11) and Part 2 (14) tests still pass. Not run on the phone yet.
+- Parts 1-2 LIVE (logs 30 Oct 04:21 and 04:27). Part 3: waiting for the phone log line "OVERLAY applied from owl_Part3.zip".
+- **WHY README4 DID NOT REACH GITHUB BEFORE (found 30 Oct, log 04:34):** the watcher push list allowed only README.md, so README4.md was always skipped and a README-only zip was ignored as "no code files". Fixed in tools/owl_auto.sh v5f (BUILD 41): README4.md and README2.md are now pushed too. The fix zip must be saved FIRST (log: "self-update: owl_auto.sh BUILD 40 -> 41"), then owl_Part3.zip.
+- Parts 4-71: NOT DONE. V2 code = 3 modules + 3 tests. No protected (trading) file touched.
+- **OWNER TODO after Part 3 is live:** run once in Termux: `python3 ~/owl_code/backend/v2_inventory.py` -> it writes Download/owl_inventory.json; send that JSON to Claude. Collectors (Parts 14-18) need it.
+- Next Part: Part 4 (about 400 lines). Owner just says "Part 4".
 - App today: 5 bottom tabs (Dashboard, Market, Positions, Brain, More); under More: Signals, Dual Bot, AI (AI has 7 inner tabs); India mode is a separate screen set
+
+## NEXT UP (update in every delivery)
+| Part | Name | Files to build | Lines (EST) |
+|---:|---|---|---:|
+| 4 | Protected strategy-rule tests + paper/live routing record | test/test_v2_protected_rules.py (pins EMA50 cross entry, stop = signal candle low/high, TP1-TP4, TP1 -> break-even), test/test_v2_exec_routing.py (paper XOR live for close_one / close_all / profit / loss; records the preview gap, fixes nothing), README4 | about 400 |
+| 5 | P&L reconciliation, zip 1 of 3 | backend/v2_pnl.py (realized / floating / gross / net / fees / funding, live and paper apart, read-only), test/test_v2_pnl_contamination.py, README4 | about 400 |
+| 6 | P&L reconciliation, zip 2 of 3 | backend/v2_pnl_fees.py or extension of v2_pnl.py (fees, funding, net vs gross; exact file list fixed when Part 5 is built), its test, README4 | about 400 |
+Do Part 4 alone, or 4 + 5 + 6 together? Owner says "Part 4" or "4, 5 and 6 together". Collectors (14-18) wait for the inventory JSON from Part 3.
+
+## OWNER COMMAND RULE (read first, any Claude)
+- The owner says only **"Part N"** (example: "Part 7"). Build THAT Part right away: no plan, no extra "ok", no long talk. Old labels (S0, NEXT-x, 6j, "ok S0 round 1a") are NOT needed any more.
+- Ask ONE short question only if a real decision is missing (for example a blocked Part, or a protected file).
+- One Part = one zip = 300-400 lines (max 400), 4-5 small files. Ends with the short report: what was done, what was tested (real result or Not Run), what is left, live safety (protected path changed? default NO), next Part.
+- **EVERY DELIVERY ENDS WITH A "NEXT UP" MENU** (so the owner can answer in 3 words): (a) next Part, its file list and file count, (b) the TWO Parts after it with their file lists, (c) ask: "Do Part N alone, or N + N+1 + N+2 together?" If he says "Part N" -> build only that Part. If he says "N and N+1 together" -> build them in ONE cumulative zip (still max 400 lines per Part; say the total lines first in one line).
+- **README4 IS THE HAND-OVER FILE FOR ALL ACCOUNTS.** The owner has 3-4 Claude accounts. When one hits its limit he uploads the latest repo zip (or just README4) to another account. Any Claude must: read the RESUME BOX + BUILT PARTS + NEXT UP, say in 3 lines "work stopped at Part X, N files built, next is Part Y with these files", then show the NEXT UP menu above. Do NOT ask the owner to explain the history.
+- **STATUS BOARD RULE (owner, 30 Oct):** in EVERY zip, update the STATUS column of the FLAT PART SEQUENCE table (🟢 DONE / 🟡 BUILDING NOW / 🔵 NEXT / ⚪ PENDING / ⛔ BLOCKED) and the PROGRESS line in the RESUME BOX. So anyone opening README4 on GitHub sees at once what is done, what is running and what is left, in Part order.
+- **END OF EVERY DELIVERY (owner, 30 Oct):** after finishing a Part, the reply must say: next Part number, its files, its line count, and the two Parts after it (same as the NEXT UP table).
+- **README4 IS UPDATED IN EVERY ZIP** (resume box, BUILT PARTS row with real test result, NEXT UP, change log). No zip without a README4 update, even for a tiny Part.
+- **ZIP FORMAT (owner's phone):** name `owl_PartN.zip` (never `Indian-main*.zip`, that triggers a full swap), ONE top folder `Indian-main/`, only changed files + README4. The owner only taps the download file once; the phone watcher (owl_auto.sh) does overlay + GitHub push by itself. Never ask him to unzip, copy or run anything. If the phone shows a SAVE name box, that is the Claude app's own save step, not the repo. Since watcher v5f the README4.md inside every zip is pushed to GitHub together with the code (before v5f it was skipped).
+- Part numbers NEVER change once given. A new idea from the owner gets the NEXT free number at the bottom of the table, with a "Starts after" note. Do not renumber finished or planned Parts.
+- Reply language: English, very simple (WhatsApp style).
+
+## BUILT PARTS (update in every zip)
+| Part | Status | Files | Test evidence |
+|---:|---|---|---|
+| 1 | 🟢 BUILT + deployed (log 30 Oct 04:21) | backend/v2_inv_safe.py, test/test_v2_inv_safe.py | 11 tests passed in sandbox, network blocked; overlay + push confirmed in owl_auto.log; tests not run on phone |
+| 2 | 🟢 BUILT + deployed (log 30 Oct 04:27) | backend/v2_inv_redact.py, test/test_v2_inv_redact.py | 14 tests passed in sandbox, network blocked; not run on phone; Flutter not touched |
+| 3 | 🟡 BUILT (phone log waiting) | backend/v2_inventory.py, test/test_v2_inventory.py (+ tools/owl_auto.sh v5f in owl_fix_watcher.zip) | 14 tests passed in sandbox, network blocked; WAL db read by copy, source files and folder listing unchanged; secret in a key name scrubbed; not run on phone |
+
+## FLAT PART SEQUENCE (THE ORDER TO FOLLOW - replaces the 24-Part list in 8.2 and in Part III)
+Total: **71 Parts (71 zips), about 23,555 lines (EST)**. Parked ideas below add about 1,300 more. V2 built so far: Parts 1-3 (see BUILT PARTS above).
+Status: Parts 1-3 are DONE (3 waits for its phone log line); Part 4 is NEXT; Parts 5-71 are PENDING. Part 8 and later may need data from earlier Parts (see "Starts after" in 8.2 for the old label). Blocked ones: Collectors (14-18) need the Part 3 inventory report; Radar (29-34) needs 1 day of collector data; Scalp Lab (50-57) and Stop-wick (58-60) need 3-4 weeks of candles.
+
+| Part | Status | Name | Work | Lines (EST) | Zips | Old name |
+|---:|:---:|---|---|---:|---:|---|
+| 1 | 🟢 DONE | Safety base A | Read-only database opener, WAL/SHM + symlink safety | 380 | 1 | old Part 1 / S0 1a |
+| 2 | 🟢 DONE | Safety base B | Fail-closed secret redaction + tests | 270 | 1 | old Part 2 / S0 1b |
+| 3 | 🟢 DONE (built, phone log waiting) | Safety base C | Inventory CLI + evidence labels + report (owner runs once, sends JSON) | 350 | 1 | old Part 3 / NEXT-1 |
+| 4 | 🔵 NEXT | Safety base D | Protected strategy-rule tests + paper/live routing record (changes nothing) | 400 | 1 | old Part 4 (CI job + import guard moved to Part 70-71) |
+| 5-7 | ⚪ PENDING | P&L | Live/paper P&L reconciliation, fees, data separation (moved UP) | 990 | 3 | old Part 7 / S2 |
+| 8-10 | ⚪ PENDING | Money Map | NEW: where money is made + where it leaks, by hour / setup / market state / coin / timeframe / event | 900 | 3 | NEW |
+| 11-13 | ⚪ PENDING | Indicator Playbook | NEW: post-mortem of your 2 indicators: what each state does next, when to use, when NOT to use | 1,100 | 3 | NEW |
+| 14-18 | ⚪ PENDING (needs data) | Collectors | Public collectors, snapshots, official cohorts, 3m/5m candles, v2_market.db, gaps, 300 MB cap | 1,820 | 5 | old Part 6 / S1 |
+| 19-20 | ⚪ PENDING | Positions | Positions + safe close preview (live-mode preview fix) | 670 | 2 | old Part 10 / S5 |
+| 21-22 | ⚪ PENDING | Charts | Chart audit and fixes (EMA50/SD, TSI/Z) | 520 | 2 | old Part 11 / S6 |
+| 23-26 | ⚪ PENDING | Diagnostics | Health strip + detail/history page + pinned feed fix | 1,380 | 4 | old Part 8 / S3 |
+| 27-28 | ⚪ PENDING | UI states + route map | SHRUNK: central route map + reusable loading/empty/error states (look is already built) | 700 | 2 | old Part 9 / S4 (shrunk) |
+| 29-34 | ⚪ PENDING (needs data) | Radar | Today/yesterday/2/3/7-day cohorts, authentic vs proxy + 1/2/3/7-day outcomes | 2,010 | 6 | old Part 12 / S7 |
+| 35-38 | ⚪ PENDING | Data Explorer | Data summaries, Data Explorer, evidence-based AI Vision (A+/A/B/NO TRADE) | 1,530 | 4 | old Part 13 / S8 / NEXT-9 |
+| 39-42 | ⚪ PENDING | Knowledge Ledger | Ledger with source/provenance + experiment traceability | 1,230 | 4 | old Part 14 / S9 |
+| 43-46 | ⚪ PENDING | EMA-free Setup Finder | NEW: find setups WITHOUT the EMA cross: formation types, forward price tracking (hour/day/week), hypothetical only | 1,500 | 4 | NEW |
+| 47-49 | ⚪ PENDING | Pre-pump Watch | NEW: watch coins whose numbers look like earlier pre-pump cases, track them from now; watch only, no orders | 900 | 3 | NEW |
+| 50-57 | ⛔ BLOCKED (needs 3-4 wks candles) | Scalp Lab | Framework + first 2 categories + large-trade 3m/5m replay | 2,910 | 8 | old Part 15 / S10 |
+| 58-60 | ⛔ BLOCKED (needs 3-4 wks candles) | Stop-wick + re-entry | After a stop-out: continuation, quick re-entry timing, scalp style (hypothetical) | 960 | 3 | old Part 16 / S11 |
+| 61-63 | ⚪ PENDING | Settings + fees/tax | Settings taxonomy + fees/tax report | 1,060 | 3 | old Part 17 / S12 |
+| 64-65 | ⚪ PENDING | Final check | Integration, performance, accessibility, acceptance, README close-out | 500 | 2 | old Part 18 / S13 / NEXT-10 |
+| 66 | ⚪ PENDING | Brain A/B paper | Brain-assisted PAPER A/B comparison | 350 | 1 | old Part 19 / NEXT-8 |
+| 67 | ⚪ PENDING | Brain Skip card | Brain Skip card in Flutter (backend done) | 130 | 1 | old Part 20 / NEXT-7 |
+| 68 | ⚪ PENDING | Brain proposals | B3 / G1 / G2 proposals (each needs his separate ok) | 270 | 1 | old Part 21 |
+| 69 | ⚪ PENDING | Graduation gate | NEW: pass/fail report before any real money: weeks of paper results, net of fees, drawdown, trade count | 300 | 1 | NEW |
+| 70-71 | ⚪ PENDING | Safety extras | Mock-only live-client tests, import-isolation guard, informational CI test job | 425 | 2 | old Part 5 |
+
+
+**Why this order:** (1) safety and truth first (1-4); (2) fee-correct money numbers (5-7) because floating profit is not money; (3) Money Map and Indicator Playbook (8-13) answer "when does it make money, when does it leak, when NOT to use the indicators" using data we already have; (4) collectors and screens (14-34); (5) research Parts (35-60) that need collected data; (6) Brain items and the Graduation gate (66-69); (7) safety extras last (70-71).
+**What changed vs the old 24-Part list:** P&L moved up; design-system Part shrunk (look already built: UI1-UI5, Silent Rich); safety base trimmed to 4 zips (CI job + import guard moved to the end); NEW Parts: Money Map, Indicator Playbook, EMA-free Setup Finder, Pre-pump Watch, Graduation gate.
+
+### Parked ideas (not numbered into the build yet - owner decides later)
+| Idea | Lines (EST) | Note |
+|---|---:|---|
+| Screenshot Check: owner sends a coin screenshot, Brain says "wait / setup forming / scenarios / probability" | 700 (2 zips) | Reads the coin's recorded numbers (candles + the 2 indicators), NOT guesses from pixels; the picture only picks the coin and time. Answer always shows sample count and an evidence label. Needs Parts 11-13, 43-46 first |
+| Conversational Brain grounded in the Ledger | 600 (2 zips) | Needs Parts 35-42 and provider decision D9 |
+| Dual Bot H1 auto-start + TP-LAST target | not estimated | Needs its own plan (touches Dual exits) |
+| Backend cleanup review (dead Kivy main.py, config.py) | not estimated | Review only, no deletion without a plan |
+| E4 / E5 / E6, Brain v2 backlog | - | Only if the owner asks |
+When the owner says "Part 72" etc., Claude first gives these a number at the bottom of the table.
+
+## OWNER VISION - THE INDICATOR BRAIN (owner words, 30 Oct 2026; kept so no idea is lost)
+The owner wants the Brain to learn by itself, from recorded evidence (an "indicator post-mortem"):
+1. How his two indicators work: main chart (EMA50 + SD bands) and the separate pane (TSI slow, Z-score with Z-SMA, sigma bands, price-vs-Z divergence, TSI above/below zero, histogram). When they give profit, when NOT to use them, on which setup, at which time/session, on which timeframe. -> Parts 8-13.
+2. After a stop-out: how a quick re-entry on a shorter timeframe (scalp) should look. -> Parts 58-60 and 50-57.
+3. Setups WITHOUT the EMA cross: how many formation types exist, how price moves after each (minutes, hours, day, week), tracked forward and backward. -> Parts 43-46.
+4. Before a pump: watch coins whose numbers look like earlier pre-pump cases and keep tracking them. Watch only, no orders. -> Parts 47-49 (needs collectors 14-18 and Radar 29-34).
+5. Profit leakage and where money is made: by time, setup, event, scenario. -> Parts 5-10.
+6. Later (parked): send any coin screenshot and get "wait / setup / scenarios / probability". -> parked Screenshot Check.
+7. The owner may forget scenarios while speaking. The Brain should also find scenarios by itself (data-driven clusters of indicator states), not only the ones he lists. Every finding keeps its evidence label (Insufficient Data ... Validated in Limited Conditions) and sample count; nothing is called "works" from a few trades; no future information is used.
+**Goal (NOT a promise):** after the Brain has proven itself on PAPER trades, the owner may try a very small real amount (for example 10 USD) and take small daily profit out while compounding the rest. Honest rule: no system can promise "risk free" or a fixed daily profit; fees at 10x are about 1% of ROI per trade, and his own 27 Oct numbers show closed trades losing. So the Graduation gate (Part 69) decides: weeks of paper results, net of fees, drawdown, enough trades. Only then a tiny live test, with his separate approval and a daily loss cap. Nothing in this vision changes live trading by itself.
 
 HOW THIS FILE IS BUILT (nothing deleted):
 1. PART I = README4 (the combined brief) in full.
@@ -246,6 +336,8 @@ Phone / build check of the newest zips is still WAITING on the owner (README.md 
 
 ### 8.2 THE MASTER LIST (canonical order = README.md 24 Parts; lines are EST from README.md; "x" = extra added by README4)
 
+> **OLD 24-PART TABLE - OUTDATED. Do NOT use these numbers or statuses. The live order and status are in "FLAT PART SEQUENCE" at the top of this file.**
+
 | Part | Status | Work (in order) | EST lines | Starts after |
 |---:|---|---|---:|---|
 | 1 | 🟡 WAITING owner "ok S0 round 1a" | Safety foundation: read-only DB opener, WAL/SHM + symlink safety | 380 | — |
@@ -294,8 +386,8 @@ V2 built so far: **0 files, 0 lines, 0 tests run.**
 ### 8.4 Old label → Part (so nothing is counted twice)
 NEXT-1 → Part 3 · NEXT-7 Flutter card → Part 20 · NEXT-8 → Part 19 · NEXT-9 → Part 13 · NEXT-10 → Part 18 · B3 / G1 / G2 → Part 21 · H1 + TP-LAST → Part 22 · E4 / E5 / E6 + Brain v2 → Part 23 · backend cleanup (old section 9) → Part 24 · V2-S0..S13 → Parts 1-18. The 7-day universe (U2) stays DONE and is always shown as PROXY.
 
-### 8.5 The ONE next step
-Part 1 (about 380 lines, 4-5 files: `backend/v2_inv_safe.py`, `test/test_v2_inv_safe.py` + README). It writes nothing to any live setting or database. Needs his words: "ok S0 round 1a". Parts 9 and 11 can start in parallel only if he asks.
+### 8.5 The ONE next step (v86: numbering is now the FLAT PART SEQUENCE at the top; use the old 8.2 table only to find old labels)
+Part 3 (about 350 lines, inventory CLI). Parts 1-2 are built (see BUILT PARTS at the top).
 
 ---
 
@@ -319,7 +411,7 @@ Part 1 (about 380 lines, 4-5 files: `backend/v2_inv_safe.py`, `test/test_v2_inv_
 
 ## 10. HOW TO FOLLOW README4 (rules for every delivery)
 
-R1. Order: read this file → take the first not-DONE Part in 8.2 → open ONLY its files (README.md sec 12 CODE MAP) → tell the owner FILES + LINES + any one question → STOP → his "ok" → build that one Part → update README (status, real test evidence, date) in the same zip → ONE cumulative zip → say "download the zip, push is automatic" → STOP.
+R1. Order (v86): owner says "Part N" -> build that Part now (see OWNER COMMAND RULE at the top; this replaces the old "plan, STOP, wait for ok" rule) -> update README (status, real test evidence, date) in the same zip -> ONE cumulative zip -> say "download the zip, push is automatic" -> STOP.
 R2. Size: about 300 lines per zip (max 400), 4-5 small files, new modules under about 250 lines. If more is needed, split (Part 15 delivery 1, 2 …). Do not add big blocks to api_server.py, main.py or smart_brain.py; thin hooks only.
 R3. Never edit protected files (5.1). Never mix data domains (5.2). Only the two indicators.
 R4. Every delivery ends with this report: **Kya kiya → Kya test hua (command + real result, or "Not Run") → Kya baaki hai → Live safety: protected path changed? (default NO) → Next step (one task).**
@@ -1229,6 +1321,16 @@ A: Brain only watches (now). B: shadow "would take / would skip" - DONE as the "
 - Not seen: Claude never ran the app; a file started by a Termux script outside the repo would look dead.
 
 ## 10. CHANGE LOG (newest first)
+
+- 30 Oct 2026 (v91): PART 3 BUILT + WATCHER FIX. Owner: README4 still not updated on GitHub; "Part 3, README must update with every Part, I only download the zip". Cause found in his log (04:34 "github sync skipped ... no code files"): tools/owl_auto.sh ALLOWED list had README.md but not README4.md. Fix: owl_auto.sh v5f (BUILD 41) allows README2.md + README4.md (3 lines changed, no other change; self-update installs it). Part 3: new backend/v2_inventory.py (read-only data inventory: finds .db/.json/.jsonl/.csv under the data folder, per table schema, row count, first/last time, symbols/timeframes, duplicate rate, timestamp problems, paper/live column values or NV, evidence label Not collected / Data incomplete / Insufficient data / Exploratory / Watch, safe_for_research flag; uses Part 1 opener and Part 2 scrubber; CLI writes owl_inventory.json, refuses on any leftover secret) + test/test_v2_inventory.py (14 tests). No trading file touched.
+
+- 30 Oct 2026 (v90): README ONLY. Owner: show done / pending / current per Part. Added STATUS column to the FLAT PART SEQUENCE, PROGRESS line in the resume box, Status Board rule, marked the old 24-Part table outdated. (This README-only zip was skipped by the watcher: see v91.)
+
+- 30 Oct 2026 (v89): README ONLY (no code, no test). Owner: "update readme4 after every new push, so another account can see where work stopped, how many files are built, and ask me which Parts to do together; I only want to tap the download once". Added: NEXT UP table (Parts 3, 4, 5 with files and lines), NEXT UP menu rule at the end of every delivery (next Part + two after it, "alone or together?"), hand-over rule for several Claude accounts, "README4 in every zip" rule, zip format rule for the phone watcher. Resume box unchanged (Part 2 is the last built Part). Next: Part 3.
+
+- 30 Oct 2026 (v88): PART 2 BUILT. Owner: "if everything good do part 2" after his log showed Part 1 live. New backend/v2_inv_redact.py (fail-closed scrubber): pass 1 scrubs every string AND every key name (private keys, Bearer / Basic auth, URLs with user:pass, secret URL parameters, Telegram-style tokens, JWT, vendor keys sk- / nvapi- / ghp_ / AKIA / AIza / xox, key=value secrets, 32+ char hex, random-looking long tokens; plain names like ping_state_2026_10_30_backup and 15m style names are NOT flagged); a secret-looking dictionary key (token, secret, password, api key, signature ...) loses its value; bytes become "<bytes N>"; pass 2 verifies leaf by leaf and the whole text, and if anything survives or a type is unknown it raises RedactionFailed with FIELD PATHS ONLY (never a value); write_report writes atomically (temp file + rename, mode 0600) and on refusal creates or changes nothing; key_paths turns a config JSON into key names only. Known limit: a 32+ char hex string (for example a file hash) refuses the report on purpose. New test/test_v2_inv_redact.py = 14 checks (all fake secrets built at run time; each secret kind removed and nothing survives a second look; names, numbers and times untouched; idempotent; keys, nesting, lists, bytes; sensitive keys; unknown types refused; config key paths; clean report passes; scrubbed report; refusal when a pattern survives with only the path in the message, also for a secret in a key name; atomic write, old report untouched, no new file on refusal; imports only json / math / os / re / tempfile). Result: 14 passed (Part 1: 11 passed) in the sandbox with sockets blocked, Python 3.12. Not run on the phone, Flutter not touched, no protected file touched, nothing calls the module yet (Part 3 will). Next: Part 3.
+
+- 30 Oct 2026 (v87): PART 1 BUILT. Owner: "Part 1 kar, readme bhi update kar, zip updated hona chahiye". New backend/v2_inv_safe.py (safe read-only database opener: realpath + allowed folders + symlink escape rejected; header bytes 18/19 tell WAL; rollback DB opened "mode=ro" + query_only + a write-deny authorizer; WAL DB or non-empty -journal is copied (db + -wal + -shm + -journal) to a temp folder after a free-space check and the COPY is opened with the same locks, label "copied snapshot"; temp copy removed on close; no network, no trading import). New test/test_v2_inv_safe.py = 11 checks: direct open reads and source db + side files keep size/mtime/sha256 and no new file appears; 14 kinds of write denied (INSERT, UPDATE, DELETE, CREATE, DROP, ALTER, ATTACH, VACUUM, PRAGMA journal_mode / writable_schema / user_version, BEGIN, CREATE INDEX, TEMP TABLE) plus extension load; hot journal and empty journal; WAL with a live writer (row only in -wal is seen, source untouched, writer still works afterwards); low disk space refuses; symlink / ../ / outside path rejected, symlink inside the root allowed; junk, empty, missing, folder = plain refusal with no file content in the message; module imports only hashlib/os/shutil/sqlite3/tempfile. Result: 11 passed in the sandbox with sockets blocked (Python 3.12). Not run on the phone, Flutter not touched, no protected file touched, no other backend file changed. Nothing calls the new module yet (Part 3 will). Next: Part 2.
 - 29 Oct 2026 (v84): README ONLY. No code, no build, no test run (zip owl_V2_README_v84, only Indian-main/README.md; it ALSO CONTAINS v80-v83). Owner: one column with estimated lines, and TOTAL files + TOTAL lines side by side at the bottom, all kinds of work in one table. Added to the V2 MASTER ORDER BOARD: columns Files and Est. lines on every row, a derived row 5b (S0 README share), a TOTAL row (110 file touches, about 101 distinct files, 18,760 lines, S0-S16 only) and a BUILT SO FAR row (0 / 0). FIXED two mistakes in my own v83 / v81 text: the S8 line count in 15.9 said 1,350 (it left out the 180-line evidence helper, 15.8 and the board say 1,530), and the board said mapping rows 17-23 (correct: 19-23). Nothing deleted.
 - 29 Oct 2026 (v83): README ONLY. No code, no build, no test run (zip owl_V2_README_v83, only Indian-main/README.md; it ALSO CONTAINS v80, v81 and v82). Owner: one place, start to end, in order, with colours; and a rule that Claude talks in simple WhatsApp-style Roman English. Added: V2 MASTER ORDER BOARD at the very top (one numbered list of all pending work, old items under their V2 names, colours green / blue / yellow / red), pointers from the V2 board and the old STATUS BOARD, rule 18 (talk style) in section 0, item 8 in 15.1. Nothing deleted. The old -> V2 mapping is still PROPOSED until the owner says "mapping ok".
 - 29 Oct 2026 (v82): README ONLY. No code, no build, no test run (zip owl_V2_README_v82, only Indian-main/README.md; it ALSO CONTAINS v80 and v81). Owner: 'purane readme ke pending kaam aur naya plan: same hai to dono kyu karna, alag hai to new naming ke saath rename'. Added: section 15.14 (old pending -> V2 names: NEXT-1 merged into V2-S0-INV, NEXT-9 merged into V2-S8, NEXT-10 merged into V2-S13, NEXT-8 = V2-S14, NEXT-7 card = V2-S15, B3 / G1 / G2 = V2-S16, H1 / TP-LAST = V2-S17, backlog = V2-S18, cleanup = V2-S19), phase entries S14-S19 in 15.8, totals (now about 18,700 lines for S0-S16), pointers on the old rows (old text kept), V2 board rows. FIX: section 5 'PATH TO REAL MONEY' said 'Live-order code does not exist in this repo'; that is wrong (two live paths, 15.4 F3) and is now marked CORRECTED with the old text kept. Mapping is PROPOSED until the owner says 'mapping ok'. Proof: diff against the v79 zip shows ONLY README.md changed; 0 code, 0 test, 0 protected file touched. Next: owner says 'mapping ok' and 'ok S0 round 1a'.
