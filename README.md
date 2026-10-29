@@ -1,12 +1,77 @@
 # Owl Terminal - MASTER NOTES (the ONLY notes file in this repo)
 
-OWL MASTER NOTES v79 - last updated: 29 Oct 2026
+OWL MASTER NOTES v80 - last updated: 29 Oct 2026
 
-Crypto paper-trading app (Flutter) + Python backend. Dual Bot v1 collects trades. Smart Brain learns on the side, paper only.
+Crypto paper-trading app (Flutter) + Python backend. Dual Bot v1 collects trades. Smart Brain learns on the side, paper only. CORRECTION (v80): the main bot code CAN send LIVE Binance orders when live_trading_enabled is on (two paths, see the VERSION 2 STATUS BOARD). Dual Bot and Smart Brain stay paper.
 
+
+## VERSION 2 STATUS BOARD (added v80, 29 Oct 2026 - README only, NO V2 CODE YET)
+Overall: PLAN APPROVED (owner, 29 Oct: the short plan S0-S13 with the decisions below). NO V2 CODE WRITTEN. NO V2 TEST RUN. Last verified: 29 Oct 2026 by READING files only (no pytest, no Flutter build was run).
+"Version 2" is the product / roadmap name only. Legacy repo, module, package and file names do NOT change without a separate approval.
+Status words: DONE = built AND proven (tests really run, result written here). WORKING = built, only partly proven. NOT DONE. BLOCKED = a named blocker. NEEDS VALIDATION = file or data evidence is missing. A parent is DONE only when ALL its children are DONE and its acceptance test passed. Labels: VF = verified from a file (path + line), OR = owner requirement, NV = needs validation.
+
+### V2 owner decisions (29 Oct 2026)
+- SCOPE: S0-S13 in the order below. Only his 2 existing indicators: (1) EMA50 + SD bands, (2) Special Master TSI + Z-score. No ADX, Hurst, RSI, MACD, VWAP or any third indicator in any V2 feature, score or replay.
+- LIVE BINANCE SAFETY: two live paths stay untouched (VF): A = execution_router.py -> binance_trader.py / protection_manager.py; B = ai_live_client.py -> ai_live_executor.py. Entry, exit, sizing, leverage, SL, TP, break-even, protective orders, close behaviour and live_trading_enabled change ONLY with his separate explicit approval. Tests use fakes; no test ever places, amends, cancels or closes a real order. Research collectors, Scalp Lab and replay must never import or call live code.
+- COLLECTORS (S1): public GET only; no link to orders, leverage, SL, TP or trading settings. New separate DB v2_market.db, hard cap 300 MB. Before any purge: table-level size accounting and a transaction-safe delete; tests must prove cohort_official and gap_log are never auto-deleted. At 100% the collector pauses and Diagnostics shows the reason. First limits (tune later from real storage + completeness): every 5 min save top 20 gainers + top 20 losers; official daily cohort = top 5 + top 5 at 00:00 UTC = 05:30 IST (VF: the scanner day open is the UTC 1d candle open, scanner/5mins_scanner_binance_top10_bothside.py L64-130, binance_client.py L154-230); 3m / 5m candles for at most 40 symbols, kept 14 d / 30 d. Missing data is logged as a gap, never invented.
+- S0 INVENTORY TOOL: truly read-only (no write to any DB or live setting; SQLite opened read-only, WAL / SHM side effects and symlinks handled), secrets redacted FAIL-CLOSED, evidence-based quality labels. He runs it once on the phone and sends the JSON. S1 final schema is confirmed only after that report.
+- DATA SEPARATION: 10 domains, never mixed, overwritten or relabelled: live Binance, paper, indicator observations, public candles / snapshots, authentic cohorts, retrospective proxy cohorts, Scalp Lab / replay, AI Vision / Brain, diagnostics / gaps, Knowledge Ledger. The 7-day coin list built from 1d candles (universe_7d.py) is a RETROSPECTIVE PROXY, never an authentic ranking (VF). No existing data is deleted or destructively migrated.
+- APPROVAL: he approved the SHORT plan only. The long plan (file-level tables, Claude Docs artifact) is a proposal until each part is shown with files + lines and he says ok (rule 13).
+
+### V2 findings from the repo audit (VF unless marked)
+1. CLOSE ALL PREVIEW IN LIVE MODE: /api/preview_close_all (api/trade.py L123) calls paper_trader.preview_close_all, i.e. the PAPER snapshot, even when live is on; live close_all_profit / close_all_loss read the exchange positions (execution_router.py L243-260). Flutter uses the preview only for profit / loss close (positions_screen.dart L63-67); plain close-all and panic flatten show no preview. A Round 2 test will only RECORD this; the fix is S5 and needs a separate approval.
+2. CI (.github/workflows/flutter-build.yml) has no test step, although a test file comment says tests run in CI. The S0 CI job starts informational and reports pass / fail honestly. It is NOT a safety gate.
+3. ADX / ATR / regime tags exist in code as metadata only (strategy.py Signal fields, entry_context.py, variant_lab.py, scoreboard.py, strategy_doctor_screen.dart). They stay untouched and V2 never uses them.
+4. The Pine sources of both indicators are NOT in this repo: exact Pine match = NV.
+5. The data stores (dual_archive.db, brain_archive.db, owl.db, trades.db) are created at run time and are NOT in the repo. Contents, coverage and any paper / live mixing = NV until the inventory report exists.
+6. trade_archive.py, protection_manager.py and db.py use SQLite WAL, so the inventory tool must not open those files in a way that creates -shm / -wal side effects.
+7. The Ping tab is the volume-ping research lab, not connectivity diagnostics.
+8. Not seen: no screenshots, no running backend, no git history, no real database were available.
+
+### V2 phases (line counts are rough estimates from the long plan; the owner has not verified the file tables)
+| Phase | Status | Parts / rough lines | Depends on / blocker |
+|---|---|---|---|
+| V2-S0 Safety baseline + data inventory | NOT DONE | 1a, 1b, 1c, 2a, 2b / about 2,100 | owner: "ok S0 round 1a" |
+| V2-S1 Collectors (public GET only) | BLOCKED | about 1,820 | inventory JSON from the owner |
+| V2-S2 P&L reconciliation (live and paper apart) | NOT DONE | about 990 | S0 inventory |
+| V2-S3 Diagnostics (Dashboard summary + detail page) | NOT DONE | about 1,260 | S1 status data |
+| V2-S4 Design system + navigation | NOT DONE | about 1,200 | none |
+| V2-S5 Positions + safe close preview (live-mode fix) | NOT DONE | about 670 | separate approval for any api/trade.py change |
+| V2-S6 Charts audit + fixes | NOT DONE | about 520 | none |
+| V2-S7 Radar cohort view (real vs proxy) | NOT DONE | about 1,610 | S1 data (at least 1 day) |
+| V2-S8 Data summaries + Data Explorer + AI Vision evidence | NOT DONE | about 1,350 | S0 inventory |
+| V2-S9 Knowledge Ledger | NOT DONE | about 1,230 | S1, S8 |
+| V2-S10 Scalp Lab (framework + 2 categories) | NOT DONE | about 2,560 | S1 candles (3-4 weeks of data) |
+| V2-S11 Stop-wick / continuation / re-entry study | NOT DONE | about 960 | S1 candles |
+| V2-S12 Settings taxonomy + fees / tax report | NOT DONE | about 1,060 | S0 inventory |
+| V2-S13 Performance, accessibility, final README | NOT DONE | about 500 | all |
+
+### V2-S0 children (nothing built yet; test evidence = none)
+| ID | Status | Planned location | Part | Remaining / acceptance |
+|---|---|---|---|---|
+| V2-S0-SAFE read-only opener (mode=ro, WAL / hot-journal copy path, symlink check, write-deny authorizer) | NOT DONE | backend/v2_inv_safe.py + test/test_v2_inv_safe.py | 1a | source files (db, -wal, -shm) hash + mtime unchanged, no new side files, writes denied |
+| V2-S0-REDACT fail-closed redaction | NOT DONE | backend/v2_inv_redact.py + test/test_v2_inv_redact.py | 1b | synthetic secrets never in output; report not written if a pattern survives |
+| V2-S0-INV inventory tool + CLI + quality labels | NOT DONE | backend/v2_inventory.py + test/test_v2_inventory.py | 1c | owner runs it once and sends the JSON; paper / live mix only flagged when schema + records support it, else NV |
+| V2-S0-RULES protected rules tests (EMA50 cross entry, signal-candle stop, TP1-TP4, TP1 -> break-even) | NOT DONE | test/test_v2_protected_rules.py | 2a | tests pass offline |
+| V2-S0-ROUTE paper XOR live routing + preview-gap characterization | NOT DONE | test/test_v2_exec_routing.py | 2a | documents current behaviour only, no fix |
+| V2-S0-MOCK live client mock tests (network blocked) | NOT DONE | test/test_v2_live_clients_mock.py | 2b | no real order possible |
+| V2-S0-GUARD live import guard | NOT DONE | test/test_v2_isolation_guard.py | 2b | only the allow-list imports live modules |
+| V2-S0-CI informational tests job | NOT DONE | .github/workflows/flutter-build.yml | 2b | job reports real pass / fail; APK build does not depend on it |
+
+### V2-S1 children (parent BLOCKED until the inventory report is reviewed)
+| ID | Status | Planned location | Remaining |
+|---|---|---|---|
+| V2-S1-STORE v2_market.db schema (additive, versioned) | BLOCKED | backend/v2_store.py | final schema after the inventory report |
+| V2-S1-DEFS versioned definitions (rank, time-to-peak, drawdown, volume decay, 7-day same-hour median baseline) | NOT DONE | backend/v2_defs.py | baseline shown as unavailable if samples are too few |
+| V2-S1-COLLECT 5-min snapshots + official cohort + kill-switch | NOT DONE | backend/v2_collector.py | restart-safe, gaps logged |
+| V2-S1-PURGE size accounting + transaction-safe purge + 300 MB cap | NOT DONE | backend/v2_store.py | tests: cohort_official and gap_log never deleted |
+| V2-S1-CANDLES 3m / 5m candles (max 40 symbols) | NOT DONE | backend/v2_candles.py | rate budget, gap refill |
+| V2-S1-COH cohort save (no overwrite, proxy flagged) | NOT DONE | backend/v2_store.py | tests for overwrite and proxy label |
+
+Next action: owner reviews and says "ok S0 round 1a". Each later part is shown with files + lines first, and this board is updated in the same zip with real test results.
 
 ## STATUS BOARD (read this first; keep it true in EVERY zip - rule 16)
-Order: 1 WAITING FOR OWNER, 2 DONE, 3 RUNNING NOW (big items cut into parts), 4 UPCOMING. Details of every row are in sections 3, 4c, 10 below.
+Order: 1 WAITING FOR OWNER, 2 DONE, 3 RUNNING NOW (big items cut into parts), 4 UPCOMING. Details of every row are in sections 3, 4c, 10 below. Version 2 (S0-S13) work has its OWN board right above this one.
 
 ### 1. WAITING FOR OWNER (his data, his ok or his phone check) - nothing here is built by Claude by itself
 | What | What the owner must do | Where to read more |
@@ -17,6 +82,8 @@ Order: 1 WAITING FOR OWNER, 2 DONE, 3 RUNNING NOW (big items cut into parts), 4 
 | H1 auto-start when data is ready | Say ok | 4b |
 | 'TP ladder last target' idea | Say ok after the plan (it touches Dual exits, rule 1) | 4b |
 | NEXT-7 skipped-signal study, NEXT-8 paper A/B, NEXT-9 Vision + evidence | Each needs its own plan and his ok | 4c |
+| V2 S0 round 1a (safe read-only opener for the data inventory tool + its tests) | Say "ok S0 round 1a" | VERSION 2 STATUS BOARD |
+| How the old NEXT-8 / NEXT-9 / NEXT-10 rows fit with the V2 phases (they overlap: Vision + evidence, ledger) | Owner decides the order | VERSION 2 STATUS BOARD |
 
 ### 2. DONE (green)
 | Group | Items |
@@ -271,6 +338,7 @@ A: Brain only watches (now). B: shadow "would take / would skip" - DONE as the "
 - Not seen: Claude never ran the app; a file started by a Termux script outside the repo would look dead.
 
 ## 10. CHANGE LOG (newest first)
+- 29 Oct 2026 (v80): README ONLY. No code, no build, no test run (zip owl_V2_README_v80, only Indian-main/README.md). Owner: 'sabse pahle readme update karna hai', after he approved the SHORT Version 2 plan S0-S13 and its decisions (inventory tool yes, 300 MB cap yes, 2 live paths protected, public GET only, 2 indicators only). Added: (1) VERSION 2 STATUS BOARD above the old board (nothing marked DONE; S0 NOT DONE, S1 BLOCKED by the inventory report); (2) two rows in old board section 1 + a pointer line; (3) line 5 correction about live orders; (4) this entry; header v79 -> v80. Proof: a diff against the v79 zip shows ONLY README.md changed, 0 code files, 0 test files, none of the protected live files touched. Not done: section 3 / section 4 rows (nothing was built). Next: owner says 'ok S0 round 1a'.
 - 29 Oct 2026 (v79): NEXT-6i + NEXT-7 (backend), ONE cumulative zip (owner: 'dono karo, ek hi file, neeche wali download karunga'). Zip owl_NEXT6i_7 ALSO CONTAINS owl_NEXT6h2_6j (6h-2, 6j, liveState build fix). (1) 6i: the last 49 routes cut out of api_server.py by first / last route of each of 5 groups and replaced by includes at the SAME places: api/ai_core.py (226 lines: make_router_ask, make_router_lab(_safe_status), make_router_observer), api/ai_reports.py (55), api/ai_live.py (168: make_router_tools(require_api_token) + make_router_live(require_api_token)), api/ai_chats.py (84: make_router_chats(DATA_DIR)). `_swr_prewarm` calls 8 handlers directly (book, coach, pick, ab_board, desk, observer, levels, advice): every one is exposed on its router and linked as a module name in api_server.py (ai_pick_endpoint, ai_ab_board_endpoint, ai_desk_endpoint, ai_observer_endpoint, ai_levels_endpoint, ai_advice_endpoint). The 14 token-protected routes (_auth=Depends(require_api_token)) kept it (counted before / after = 14). api_server.py 1200 -> 787. (2) NEXT-7 backend: FOUND that skipped signals are already simulated to the end by dual_lab (status skipped / skipped_done with net, mfe, giveback, mode skip) and saved in dual_archive.db trades, so the plan became READ-ONLY: new brain_skip.py (124 lines) compares finished skipped signals with finished taken trades; under 30 = NOT ENOUGH DATA; verdict from brain_stats._judge (older and newer half must agree + luck test); text says worse / better only at EARLY HINT / SUPPORTED; per-timeframe counts and means; unit = ROI points net of fee. Cached like learn.shadow. Hook: brain_learn.view_summary adds key `skip` in its own try/except (+6 lines). NOT touched: dual_lab.py, trade_archive.py, smart_brain.py, strategy, entry, exit, SL, TP, Telegram, Vision, Flutter. Never mixed into the taken-trade stats. Test: test_brain_skip.py 12 checks. Checks run here: py_compile, name check of the 4 new api modules, route decorators 49 = 49 in the same order, test_brain_skip 12, test_brain_shadow3 8, test_brain_learn 21, test_brain_stats 36, test_smart_brain 92, test_dual_lab 68, test_brain_obs 17, test_brain_edge 21 pass. test_brain_pattern2 fails ALSO in the zip you sent (its source guard sees BP. in test_brain_shadow3.py): old problem, not touched. NOT run here: test_api_split.py (FastAPI is not installed in Claude's sandbox; checks for 6h-2, 6i, 6j are added), Flutter. Not done on purpose: Flutter card for learn.skip, LIVE-SPEED. Files: README, api_server.py, api/ai_core.py, ai_reports.py, ai_live.py, ai_chats.py, ai_pages.py, ws.py, brain_skip.py, brain_learn.py, test_brain_skip.py, test_api_split.py, providers/app_provider.dart.
 - 29 Oct 2026 (v78): NEXT-6h PART 2 + NEXT-6j + BUILD FIX, one zip (owner: '6H2 aur 6J kar, aur log ka error fix kar, wait mat karwa'). (1) 6h-2: AI Coach routes (/api/ai/coach, coach/reset, plan/config, coach/config) + /coach page moved to api/ai_pages.py as make_router_coach(require_api_token); _COACH_HTML stays at module level, sha256 identical (ed04d0ba...). Included at the old spot (after /api/ai/free_trade, before /api/ai/desk/reset); `ai_coach_endpoint` is exposed on the router and linked in api_server.py because _swr_prewarm calls it directly. (2) 6j: api/ws.py (201 lines) = ConnectionManager, MAX_SOCKETS 3, SEND_TIMEOUT_SEC 10, BROADCAST_INTERVAL_SEC 0.25, status_broadcaster(_display_status), snapshot_msg(_display_status), _dumps, make_router(_display_status) with the /ws route; included LAST like before. api_server.py keeps thin links (manager, _dumps, ConnectionManager, limits, _snapshot_msg, _status_broadcaster) so the start-up task and everything else is unchanged; _display_status stays in api_server and is passed in. api_server.py 1456 -> 1200. (3) BUILD FIX (the 'log' error): GitHub build logs (28 Oct, web + APK) failed with 4 identical errors: AppProvider had no getter `liveState` / `liveAgeSec`, used by widgets/live_status_chip.dart and screens/market_screen.dart (the UI-LIVE chip was added without its two getters). Added both to providers/app_provider.dart right after wsStale (+18 lines): liveState = offline (socket down) / delayed (no data yet or quiet > 3 s) / live; liveAgeSec = seconds since the last WebSocket message. Display only, no data or trading change. Checks done here: py_compile, name check of the new modules, route decorators in the same order (only the 6 moved routes left api_server.py), ws.py run with a stubbed fastapi (3-socket limit, broadcast, 0.25 s ticks, watchlist sent once). NOT run here: FastAPI is not installed in Claude's sandbox, so test_api_split.py (new checks added for coach, /ws last, same objects) must run on the owner's side; Flutter NOT compiled (bracket check only): send any build error. Not done on purpose: 6i; LIVE-SPEED (faster data than the 0.25 s push) waits for the owner's ok. Zip owl_NEXT6h2_6j: README, api_server.py, api/ai_pages.py, api/ws.py, test_api_split.py, app_provider.dart.
 - 29 Oct 2026 (v77): NEXT-6h PART 1 ONLY (owner: '6H do part me divide karke abhi ek part de'). Part 1 = the AI Trade Diary (the smaller half): api/ai_pages.py (55 lines), factory make_router_diary(), include at the old spot (right after /api/ai/levels). api_server.py 1487 -> 1456. LESSON: a big HTML string must NOT be indented with the code, so `_DIARY_HTML` stays at module level byte for byte (checked: identical, sha256 cb7ebdc1...; the same will be done for _COACH_HTML in part 2). Also re-checked 6d-6g: no multi-line string literal outside docstrings changed (the 3 in the old file are still identical). PROOF (static, no FastAPI here): 153 routes same order, same bodies, no undefined names. NOT run here: test_api_split.py (+5 checks, incl. the page hash). Zip owl_NEXT6h1 is CUMULATIVE (rule 14): all earlier zips can be ignored. Backend restart needed. Next: 6h-2 (coach, ~110 lines) only after the owner's ok.
