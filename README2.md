@@ -1,476 +1,429 @@
-# README2 — OWL1 Ultra Upgrade Master Prompt
-**Purpose:** This is the canonical audit-and-implementation brief for Claude or another coding agent working on `mehreenhusn-cmyk/Indian`, branch `main`.
+# README2 — OWL1 COMPLETE REQUIREMENTS & IMPLEMENTATION PROMPT
 
-**Owner expectation:** No compromise on correctness, safety, clarity, test evidence, architecture, data quality, or presentation. “Ultra” means dependable and polished—not adding technology for its own sake, not claiming unproven AI performance, and never silently changing live trading behavior.
-
-**How to use:** First ask the coding agent to audit the current repository and this prompt. It must produce a file-by-file gap report and proposed execution plan before implementation. Then execute in small, reviewable deliveries in dependency order. Preserve this document as the working master brief; update its progress table with commit IDs, commands, results, and evidence.
-
+**Project:** OWL1  
 **Repository:** https://github.com/mehreenhusn-cmyk/Indian  
-**Primary stack:** Flutter frontend + Python/FastAPI backend + Binance market/trading integrations.  
-**Language for explanations:** Plain English or simple Roman Hinglish. Keep developer reports understandable and concise, with details available below.
+**Branch:** main  
+**Stack today:** Flutter Android app + Python/FastAPI backend + Binance market scanner/data  
+**Document purpose:** This is the detailed prompt for Claude to understand the owner's actual requirements, inspect the existing project, compare this document with README.md, report what is already done versus missing, and then propose a safe, ordered implementation plan.
+
+> IMPORTANT: Read this entire file and the existing README.md before changing code. Do not start by rewriting the app. The first task is an audit and a plain-language report.
 
 ---
 
-# PART A — MANDATORY FIRST MESSAGE TO THE CODING AGENT
-
-You are the senior software architect, Python/FastAPI engineer, Flutter engineer, quantitative-research engineer, data-quality engineer, QA lead, and security reviewer for OWL1.
-
-Do not start by rewriting the app. First inspect the actual repository at the current branch and identify what exists, what is broken, what is duplicated, what is unused, what is unsafe, what is already complete, and what is only documented. Do not infer that a feature works because a file or screen exists. Verify code paths, callers, configuration, tests, runtime logs and CI evidence.
-
-Deliver these audit artifacts before modifying application code:
-
-1. `README2_AUDIT.md` — repository map, current architecture, data flow, risks, broken behavior, test status and recommended plan.
-2. `README2_FILE_MATRIX.md` — every in-scope file marked KEEP / MODIFY / ADD / DEPRECATE / DELETE-CANDIDATE, reason, dependencies, tests and risk. “DELETE-CANDIDATE” is not permission to delete.
-3. `README2_TEST_BASELINE.md` — commands run, pass/fail/skipped results, environment, known blockers and captured evidence. Never label unrun tests as passed.
-4. `README2_DECISIONS.md` — architecture decisions, alternatives considered, assumptions needing owner confirmation, and any feature explicitly deferred.
-5. A short human-readable report: what is done, what is broken, what is next, and whether any live-trading behavior is at risk.
-
-After audit, implement only low-risk, clearly authorized work. Before touching anything that can affect live orders, exits, stops, leverage, position sizing or trade routing, stop and present the exact proposed change and test plan for separate owner approval. Documentation, read-only audit tools, mock tests and isolated paper/research components may proceed without changing live behavior.
-
-Do not hide failures, reduce tests to make CI green, invent market data, claim profitability, or delete code/data merely because a search suggests it is unused.
-
-# PART B — PRODUCT GOAL AND USER REQUIREMENTS
-
-OWL1 is intended to become a high-quality crypto trading and research app with an exchange-grade Flutter experience, dependable backend, trustworthy data, explainable AI Vision and disciplined testing. The objective is to reduce avoidable losses caused by weak/fake signals and choppy markets, improve evidence-based decision support, make actual realized results visible, and make the entire product easy to understand and operate.
-
-The owner expects:
-- A coherent architecture and a single understandable roadmap—not several conflicting lists.
-- Backend work organized first, frontend work next, then integration and end-to-end verification. If a genuine dependency requires overlap, document the reason and keep the dependency explicit.
-- Premium, professional, responsive, exchange-like UI—not just backend features or placeholder cards.
-- AI Vision that studies the behavior of the user's indicators and historical outcomes, explains its reasoning with evidence, and initially assists/filters rather than blindly creating trades.
-- Correct separation of live, paper, historical, retrospective/proxy, and research data.
-- Data quality, traceability, testing and safe cleanup built into the project.
-- Small, reviewable deliveries with exact file paths, tests, acceptance criteria and progress tracking.
-- Honest statements about uncertainty, untested items and missing data.
-- No compromise on safety just to make a feature appear complete.
+## 1. OWNER'S MAIN GOAL — WHAT OWL1 SHOULD BECOME
 
-## Current strategy context to verify against actual code
+The owner wants OWL1 to grow into a high-end, dependable trading terminal with an evidence-based AI Vision/Brain layer. This is not merely a request to change colours, add a chatbot, or create another BUY/SELL indicator.
 
-The owner has described the current entry as an EMA50 cross with candle close direction. The rule described so far is close crossing EMA50 for BUY/SELL; initial SL uses the signal candle low/high; TP1–TP4 are based on 200-candle standard-deviation bands. The owner believes the live bot may rely on one primary indicator and does not currently use TSI in its entry logic. Treat these as owner-reported behavior to verify, not as a substitute for code inspection.
+The app should help answer, using real recorded evidence:
 
-Indicator concepts previously discussed:
-- Special 13 and Special Master Pine scripts (inspect actual source if present; do not recreate missing formulas by guessing).
-- EMA 10/30/50/100/200 and EMA50; EMA30/EMA50 cloud where applicable.
-- SD bands using 200-period SMA and standard deviation, including ±1/±2/±3 bands.
-- Z-score / Z-SMA 50 and a lower pane where price SD curves are reprojected meaningfully, not displayed as unrelated flat Z levels.
-- TSI Fast 25/5/14 and Slow 25/13/13, subject to verification against source scripts.
-- Trend/Structure, Momentum, Statistical and MTF/Liquidity score concepts (30/25/25/20) and grades A+ ≥90, A ≥80, B ≥70, under 60 no-trade were discussed as candidate rubric. They are not automatically production rules: audit, backtest and document them before enabling.
-- A price move upward while a lower-pane Z-score/TSI or momentum signal weakens may indicate divergence or reduced confidence. AI should measure and explain outcomes rather than hardcode a universal rule that always closes a trade.
+- What is happening in the market and in this position right now?
+- Is the existing signal likely to be useful or weak, and why?
+- When does a setup begin forming, when does it become confirmed, and is there a safe way to identify a valid setup earlier without using future information?
+- Which timeframe and trend context are useful for a particular setup?
+- Which setups work in trending, sideways/choppy, compression, expansion, retest, exhaustion or reversal conditions?
+- How many trades are worth taking? When is WAIT or NO NEW TRADE better than taking every signal?
+- What happened to profit after a position showed a good open P&L? How much was actually realized after fees and other costs?
+- What did similar historical setups do, how many examples exist, and how reliable is that evidence?
+- What has the Brain learned from previous mistakes, and what is still unknown?
+- What should the user see on the screen to understand the answer quickly without digging through developer logs?
 
-The desired learning behavior is to discover where signals fail, how outcomes differ by market regime, when no-trade is better, how fees change expectancy, and whether exits/profit booking improve realized outcomes. Open PnL is not the same as realized/withdrawable profit. Report both clearly.
+**The owner does not want to hand-author a long list of fixed indicator rules.** The system should capture accurate features and real outcomes, then discover candidate relationships, measure them, test them out-of-sample and explain them honestly. Examples like “price rising while Z-score falls” are research hypotheses, not rules to hard-code.
 
-## Non-negotiable live-trading protection
+“Ultra / no compromise” means correctness, trustworthy data, safe behaviour, low latency, a clear architecture, maintainable code, a polished UI and real acceptance evidence. It does not mean adding every available framework or promising profits.
 
-Treat all live-trading paths as protected:
-- Do not change live entry/exit logic, order placement, close/partial-close behavior, SL/TP calculations, leverage, position sizing, margin mode, symbol selection, trade frequency, execution routing, retry behavior or protection settings without separate explicit owner approval.
-- Do not enable an experimental strategy or AI proposal in live mode.
-- Do not silently alter defaults, feature flags, environment variables or settings that could change execution.
-- Do not run real-order tests. Use mocks, test doubles, recorded fixtures or paper/sandbox endpoints as appropriate.
-- If a safety issue is discovered, document severity and propose a minimal fix; do not conceal it or bundle a behavior-changing fix into an unrelated UI change.
-- AI Vision is advisory/shadow/paper-first. It cannot place, amend or close live orders in this project phase.
-- A UI preview must never imply that an action will execute differently from what the backend will actually do. Resolve preview/execution mismatches with a documented, approved plan.
-- Maintain an explicit kill switch / disabled-by-default state for experimental execution-related features.
+## 2. HOW README.md AND README2.md MUST WORK TOGETHER
 
-# PART C — REQUIRED ARCHITECTURE AND DATA FLOW
+There must not be two competing roadmaps.
 
-Claude must draw the current architecture from source code, then propose a target architecture with explicit boundaries. Do not add microservices or new infrastructure without a demonstrated need.
+- **README.md remains the existing project master record.** It contains historical work, current status, prior decisions, old task IDs, code references, dependencies, and the existing sequential roadmap. Preserve those details.
+- **README2.md is this full requirement and implementation brief.** It explains what the owner wants and how Claude must audit, verify and implement it.
+- If a supporting matrix is needed, create one file called `README2_RECONCILIATION.md`. Do not create several competing status documents without a real need.
 
-## Preferred high-level flow
+Before coding, compare the complete current README.md and README2.md, plus relevant recovered prompts that are actually available. Classify each item as:
+- SAME — accurately covered in both.
+- README1_ONLY — in README.md but missing or too vague here.
+- README2_ONLY — added requirement here.
+- CONFLICT — the notes disagree or source code contradicts a note.
+- HISTORICAL_DONE — completed earlier; retain the record and do not restart without evidence.
+- NEEDS_EVIDENCE — requires current source, test, runtime or device verification.
 
-1. **Market data ingestion:** exchange/public source → WebSocket or REST collector → validation/normalization → timestamped raw/normalized records.
-2. **Indicator computation:** validated OHLCV/candles → deterministic indicator engine → versioned feature snapshot (EMA, SD bands, Z-score, TSI, volume/volatility, regime, missing-data flags).
-3. **Existing strategy path:** current strategy engine remains isolated and unchanged during the passive-learning phase → existing bot routing. Preserve and test the actual live/paper separation.
-4. **Shadow/AI Vision path:** market/indicator snapshot + strategy signal + market regime + prior labeled outcomes → deterministic filters/research models → optional LLM explanation layer → evidence-backed recommendation. This path is asynchronous and must not block the live bot's critical path.
-5. **Trade and P&L accounting:** exchange fills/orders/fees/funding where available → reconciled trade ledger → realized P&L, unrealized P&L, fees, slippage, funding and paper/live separation.
-6. **Research and evaluation:** immutable snapshots + signal decisions + outcome labels → time-aware cohorting → backtest/walk-forward evaluation → comparison report.
-7. **API layer:** typed, versioned FastAPI endpoints with validation, pagination, stable error contracts, authentication/authorization where required, redaction and rate limits.
-8. **Flutter client:** API/WebSocket state → repository/data layer → domain models/state management → reusable UI components/screens. Avoid putting trading rules in widgets.
-9. **Observability:** structured logs, request/correlation IDs, health metrics, collector freshness, data gaps, AI/model version, decision provenance, test evidence and safe diagnostics.
+Every important requirement, previous decision, completed item, open bug, test, dependency and old roadmap ID must be accounted for. If README.md contains a useful requirement missing here, add it to this file or reference it clearly. Never silently drop detail because it is inconvenient. Do not call a feature “done” merely because an old note says it was once completed; check current code and tests. Keep historical completion separate from current verification.
 
-## Required architecture deliverables
+The existing README uses a canonical 24-Part sequence and older aliases including A–F, U1–U5, NEXT-1–10, B3/G1/G2, H1, S0–S19 and 6a–6j. Preserve and cross-reference those names; do not create a new conflicting sequence.
 
-- Current and target architecture diagrams (Mermaid is acceptable).
-- Data-flow diagram from exchange input through indicator calculation, AI Vision, database/API and Flutter presentation.
-- Entity/data dictionary with timestamp/timezone, symbol, timeframe, source, mode (live/paper/historical/proxy), schema version, quality status and provenance.
-- API contract list with request/response examples and error behavior.
-- Database ownership map: which database/table is authoritative for each data type; read/write owners; retention; migration and backup strategy.
-- Dependency map and startup/shutdown lifecycle.
-- Threat model for secrets, live endpoints, dangerous commands, malformed data, replay/duplicate events and unauthorized mode changes.
-- Performance budgets and measurement methodology. Set numeric targets only after measuring current baseline or explicitly label them as proposed targets.
+## 3. CONFIDENTIALITY, SECURITY AND PROJECT OWNERSHIP
 
-# PART D — DATA QUALITY, STORAGE AND SAFE CLEANUP
+This is the owner's private product and trading-strategy work. The repository is currently private; keep the project and its details private.
 
-Data quality is a core feature, not a later cleanup. Never delete data because it looks old, odd, duplicated or unused without establishing its role and retention obligations.
+- Do not make the repository or prompt public, create a public mirror, or share the strategy, architecture, trade history, reports or screenshots outside the owner's workspace.
+- Never put API keys, exchange credentials, passwords, tokens, account identifiers, private URLs, or real personal/account secrets in README files, source code, prompts, logs, screenshots or test fixtures.
+- Keep Claude/NVIDIA/API credentials on the backend using environment variables or an appropriate secret store. Never ship secrets to Flutter or Android assets.
+- Redact credentials from exceptions, logs, reports, generated prompts and diagnostic endpoints.
+- Do not paste private exchange data into third-party AI services unless the owner has approved the data flow and it is necessary. Prefer minimal, redacted, derived features. Explain any data sent to an external provider.
+- Do not alter GitHub visibility, permissions, secrets, integrations or external sharing settings.
+- Treat live trading, destructive database operations, new recurring spend and data export outside the private project as approval-required actions.
+- Do not claim privacy is guaranteed by a README; enforce it in repository settings, application code, permissions and provider configuration.
 
-## Inventory first
-- Inventory every database, table, schema, file-based store, cache, log, generated artifact, model file, dataset and migration.
-- Identify owner, creation path, last access if reliably available, callers/readers/writers, retention requirement, size and mode.
-- Detect duplicate datasets, inconsistent timestamps, timezone mistakes, invalid OHLCV, impossible high/low relationships, missing candles, duplicate candles, stale data, NaNs/infinities, schema drift and conflicting sources.
-- Label records: trusted official/source data, validated derived data, historical proxy, retrospective approximation, paper, live, synthetic fixture, corrupted/quarantined, unknown provenance.
-- Never mix paper/live P&L or actual exchange observations with retrospective/proxy data in one unlabelled metric.
-- Do not train/evaluate on data that leaks future information into past decisions.
-- Use explicit quality flags and quarantine suspect rows; keep enough evidence to reproduce the diagnosis.
+## 4. CURRENT PRODUCT AND REPORTED PROBLEMS TO VERIFY
 
-## Deletion protocol
-Before deleting or overwriting any database, table, file, row set or cache:
-1. Prove the item is unused with static references plus runtime evidence where possible.
-2. Check migrations, backups, scheduled jobs, dynamic imports, configuration references, user exports and recovery needs.
-3. Produce a dry-run report listing exact targets, counts, sizes and reasons.
-4. Confirm whether the item is user data, evidence, training data, source code, generated output or disposable cache.
-5. Back up or export recoverable data and verify the backup.
-6. Prefer archive/quarantine/deprecation first. Use a reversible migration where possible.
-7. Require owner approval for destructive removal of user data, trading history, databases or ambiguous artifacts.
-8. Add tests proving current functionality no longer depends on removed items.
-9. Record what was removed, why, when, by which commit, and how recovery works.
+The following are owner-reported history and starting points, not proof that every issue still exists. Check the current source, tests, logs and runtime before labelling anything an active bug.
 
-Do not use broad `rm -rf`, wildcard deletion, database recreation or destructive migrations as a cleanup shortcut. Do not commit secrets, API keys, Telegram credentials, account identifiers or private user data.
-
-# PART E — AI VISION / SMART BRAIN RESEARCH SPECIFICATION
-
-## Intended role
-AI Vision is an evidence-based research assistant and signal-quality analyst, not an autonomous live trader. It should observe existing strategy signals, learn from labeled outcomes, explain candidate filters, compare alternatives and present uncertainty. It should not pretend to learn reliably from a few wins or a single market regime.
-
-## Phased operation
-**Phase 0 — Audit:** inspect existing `ai_ind_features.py`, shadow-lab logging, TSI/Z/SD/reversal-arrow features, Vision screens, strategy doctor, filter lab, reports, and any existing model/provider integrations. Reuse verified components rather than creating parallel systems.
-
-**Phase 1 — Passive shadow logging:** log the existing bot's unmodified decisions and all features needed to reconstruct them. Do not alter order routing or block the bot. Capture signal timestamp, symbol, timeframe, side, signal candle, entry reference, stop/targets as observed, feature values, regime, data quality, strategy/version, fees assumption and later outcome labels. Avoid storing secrets or unnecessary personal information.
-
-**Phase 2 — Data readiness:** require enough clean, time-aligned candles and outcomes; report coverage, missingness, duplicate rate, candle gaps, class imbalance and label quality. If data is insufficient, say “not enough evidence” instead of generating confident grades.
-
-**Phase 3 — Baseline and cohorts:** measure existing strategy without AI, with actual available fees and slippage assumptions. Segment by symbol, timeframe, market regime, session/time, volatility, trend/chop, indicator configuration and setup family. Keep authentic real-time observations separate from retrospective proxies.
-
-**Phase 4 — Candidate filters:** evaluate TSI, Z-score, SD-band shape, EMA structure, reversal arrows, divergence, momentum decay, volume/liquidity and MTF agreement as candidate features. Compare each independently and in combinations. Avoid leakage and overfitting; use chronological train/validation/test splits and walk-forward evaluation. Keep an untouched out-of-sample window.
-
-**Phase 5 — A/B and paper-only:** compare baseline bot vs candidate filters under matched periods and assumptions. Maintain a paper-only comparison board. Do not enable candidate execution in live mode. Require owner approval before any future change to live strategy behavior.
-
-**Phase 6 — Explanation/UI:** each recommendation shows evidence, confidence/calibration, missing data, model/rule version, sample count, applicable regime, expected limitations and a concise reason. Clearly distinguish observed facts from model interpretation.
-
-## Required outcome metrics
-Report at minimum:
-- Number of eligible signals, taken/skipped, wins/losses/breakeven, win rate and sample size.
-- Gross P&L, fees, funding, slippage assumption, net realized P&L, average win/loss, expectancy per trade, profit factor and drawdown.
-- MAE/MFE where data permits, stop/target hit rates, time-in-trade and missed-opportunity trade-off.
-- Results by regime, symbol, timeframe and setup cohort.
-- Baseline vs candidate delta with uncertainty and out-of-sample results.
-- Data quality and coverage beside every metric.
-- Open/unrealized P&L separately from realized P&L.
-
-Never optimize only for win rate. A filter that raises win rate while lowering net expectancy or increasing drawdown is not automatically better. Do not invent confidence percentages. Calibrate scores on held-out data.
-
-## AI/provider architecture
-- Keep the LLM out of the latency-sensitive market-data and order-execution path.
-- Use deterministic Python code for indicator math, feature validation, metric calculation, risk checks and eligibility gates.
-- Use the LLM for summarizing evidence, explaining research findings and answering questions from approved/traceable app data.
-- If Claude API is used, isolate it behind a provider interface, configurable model/timeout/budget, retry/circuit breaker, redacted inputs and explicit logging of provider/model/version. Do not hardcode keys.
-- LLM output must be schema-validated and treated as untrusted text; it cannot override deterministic safety rules.
-- Cache repeatable analyses, enforce token/cost limits and degrade gracefully when a provider is unavailable.
-- RAG/retrieval must cite the exact dataset/report/source used and return “not found” rather than fabricate an answer.
-- NVIDIA Nemotron or other models are optional experiments, not mandatory replacements for Claude. Compare cost, latency, quality, hardware, license, privacy and operational burden before adopting them.
-
-## Candidate safety controls to validate
-The owner previously discussed a 100 USDT paper account, daily target lock around +30 USDT and daily loss limit around -10 USDT, adjustable. Treat these as configurable paper-test proposals, not as verified current production settings and never silently apply them to live trading. Validate reset timezone, fees, partial fills, duplicate events, restarts and stale account state. UI must show whether a limit is simulated, paper-only or live-enforced.
-
-# PART F — NVIDIA / AI RESEARCH REFERENCES
-
-The exact five URLs shared in an earlier chat are not available in the currently retrievable context. Do not claim these are the exact original five. The following are verified official NVIDIA references relevant to the discussed themes; compare them with the owner's original group links if those are supplied later.
-
-1. **NVIDIA NeMo Agent Toolkit — agent integration, profiling and evaluation**
-   https://developer.nvidia.com/blog/how-to-build-custom-ai-agents-with-nvidia-nemo-agent-toolkit-open-source-library/
-   Potential use: profile agent workflows, instrument tool calls, evaluate latency/cost and keep integrations modular. Do not add a multi-agent framework unless it solves a measured need.
-
-2. **NVIDIA Nemotron model catalog**
-   https://build.nvidia.com/models
-   Potential use: research optional model endpoints for structured explanations, tool use or multimodal/document analysis. Check current model availability, endpoint limits, pricing, license, data handling and latency before implementation.
-
-3. **NVIDIA Agentic RAG learning path / NeMo Retriever**
-   https://developer.nvidia.com/topics/ai/agentic-ai-learning-path/how-to-build-agentic-ai-rag
-   Potential use: retrieve approved research reports, indicator documentation and data dictionary entries with traceable source citations. RAG is not a substitute for clean structured trading data.
-
-4. **NVIDIA Nemotron document processing / multimodal RAG**
-   https://developer.nvidia.com/blog/how-to-build-a-document-processing-pipeline-for-rag-with-nemotron/
-   Potential use: only if the app needs to parse indicator documentation, PDFs, reports, tables or chart images. It is not required for core OHLCV processing.
-
-5. **NVIDIA cuDF GPU-accelerated dataframes**
-   https://developer.nvidia.com/topics/ai/data-science/cuda-x-data-science-libraries/cudf
-   Potential use: consider only if profiling shows large research/backtest data processing is a bottleneck and a suitable NVIDIA GPU environment exists. Do not add GPU dependencies to the ordinary phone/backend path by default.
-
-6. **NVIDIA NeMo RL / agentic evaluation research**
-   https://developer.nvidia.com/blog/mastering-agentic-techniques-ai-agent-reinforcement-learning
-   Potential use: future controlled experiments if there is a well-defined environment, reward, reproducible simulator and enough data. Not a first-step solution for reducing fake trading signals.
-
-7. **NVIDIA Nemotron model card example**
-   https://build.nvidia.com/nvidia/nemotron-3-ultra-550b-a55b/modelcard
-   Potential use: inspect model capabilities, hardware requirements and license. A very large model may be impractical for this app; do not assume it can run on the user's laptop or Android phone.
-
-Research rule: these links are starting points, not automatic adoption decisions. For each proposed technology, provide a one-page decision: problem solved, alternatives, integration location, measured benefit, cost, privacy/security impact, deployment needs, test plan and rollback. Keep the existing Flutter UI unless an evidence-based reason justifies a targeted change. Avoid replacing Flutter with React Native/WebView or introducing multiple frontend frameworks.
-
-# PART G — PREMIUM FRONTEND / PRESENTATION REQUIREMENTS
-
-A high-end UI is part of the product acceptance criteria, not optional decoration. Audit existing Flutter screens and widgets before redesigning.
-
-## Visual system
-- Create a consistent design system: color tokens, semantic status colors, typography scale, spacing, radii, elevations, icon rules, light/dark theme if supported, responsive breakpoints and reusable components.
-- Premium exchange-style hierarchy: readable prices, clear P&L, clean candlesticks, disciplined information density, clear primary/secondary actions and restrained visual effects.
-- Avoid clutter, oversized gradients, excessive borders, random colors, inconsistent paddings and decorative charts that do not represent real data.
-- Show currency, units, symbol, timeframe, timestamp and mode wherever needed.
-- Positive/negative P&L and risk status must be unambiguous, accessible and not color-only.
-- Provide skeleton/loading, empty, error, offline, stale-data, partial-data, reconnecting and permission-denied states. Never show fake placeholder numbers as live data.
-- Support small Android screens, text scaling, safe areas, keyboard visibility, orientation where relevant and accessibility labels.
-- Add tasteful motion/micro-interactions only where they clarify state. Avoid animations that delay trading-related information.
-- Use Flutter/Impeller capabilities appropriately; measure rendering before considering native Kotlin plugins. Use native code selectively only when a demonstrated requirement cannot be met cleanly in Flutter.
-
-## Screens and components to audit
-- Dashboard: overall health, mode, realized/unrealized P&L, fees, data freshness, open positions and clear alerts.
-- Positions: symbol, side, quantity, entry/current price, stop/targets, realized/unrealized P&L, fees and safe action previews.
-- History: reliable trade history, filters, pagination, clear distinction between actual fills and simulated records.
-- Charts: candles, EMA50, SD bands, TSI/Z-score panes and crosshair/labels; exact calculations must match validated indicator sources.
-- AI Vision: signal quality evidence, regime, reasons to take/skip/watch, confidence limitations, sample size and baseline-vs-filter results.
-- Radar / cohorts: today, yesterday, 2/3/7-day windows as supported by real data; separate live-observed and retrospective proxy cohorts.
-- Data Explorer / Knowledge Ledger: source, provenance, data health, experiment/model version and reproducibility.
-- Diagnostics: API, database, collector freshness, websocket state, errors, recent history and non-sensitive health details.
-- Settings: grouped and named settings, safe descriptions, current mode, paper/live separation, fees and INR/tax-reporting options where relevant.
-- Brain Skip card and Strategy Doctor: present only when supported by backend evidence; no fake green statuses.
-- Report/export flows: clear time range, timezone, currency, mode and included/excluded data.
-
-## Frontend engineering
-- Separate widgets from domain rules; use typed models, repository/API layer, clear state management and centralized error handling.
-- WebSocket updates must be incremental and resilient to reconnects; do not rebuild the entire app on every tick.
-- Cache only with explicit freshness rules and show stale status.
-- Prevent duplicate requests, memory leaks, chart jank, unbounded lists and unnecessary polling.
-- Add widget tests for visual states, interaction tests for important flows and integration tests for critical API contracts.
-- Capture before/after screenshots where tooling permits and include a screen checklist in the final report.
-
-# PART H — BACKEND ENGINEERING AND SECURITY
-
-- Keep FastAPI endpoints typed, validated, versioned where appropriate, and consistent in response/error shape.
-- Keep public market-data collectors separate from authenticated trading/account clients.
-- Isolate import-time side effects. Importing modules for tests must not start collectors, connect to exchanges, send Telegram messages or place orders.
-- Enforce secret redaction by default and fail closed if safe redaction cannot be guaranteed.
-- Keep environment/configuration validation explicit; never log API secrets or authentication headers.
-- Use timeouts, bounded retries, backoff, rate-limit handling and circuit breakers for external services.
-- Make collectors idempotent; handle duplicate/out-of-order messages, reconnects, gaps and stale snapshots.
-- Store timestamps in UTC internally and render in local timezone (India/IST when selected). Make day-boundary logic explicit.
-- Add migrations rather than silently recreating tables; support safe startup/shutdown and recoverable storage.
-- Separate market-data DB from trading/account data where architecture requires it. Do not mix research proxies with source-of-truth exchange records.
-- Protect health endpoints from exposing sensitive details. Provide detailed diagnostics only to authorized contexts.
-- Test Telegram/API integrations with mocks. Credentials are read from environment/settings at send time; never bake credentials into source.
-- Keep requirements/dependencies minimal and pinned/managed according to existing project conventions. Do not install NVIDIA GPU libraries in the normal app environment without measured justification.
-
-# PART I — CANONICAL SEQUENTIAL EXECUTION PLAN
-
-Use this order as the planning backbone. The existing root README contains legacy section details, file paths and historical IDs; map each legacy item to this canonical sequence rather than deleting it. Verify every path against the actual repository. The rough line estimates below are planning estimates from the existing roadmap, not promises or measurements.
-
-## Phase 0 — Audit and baseline (before implementation)
-- Confirm branch, commit, tree layout, runtime entrypoints and CI workflows.
-- Inventory every backend module, Flutter screen/widget, database, configuration file, test, migration, background task and generated artifact.
-- Run existing safe tests and record baseline failures. Never run real orders.
-- Map all legacy labels (A–F, U1–U5, NEXT-1–10, B3/G1/G2, H1, S0–S19, 6a–6j) to one canonical Part ID.
-- Produce the five audit artifacts in Part A.
-- Verify all NVIDIA links and the actual earlier user-provided links if available; distinguish verified source from inference.
-- Exit criteria: complete file matrix, dependency graph, risk list, test baseline and proposed plan approved before risky implementation.
-
-## Phase 1 — Backend safety and observability foundations
-**Part 1: Read-only database safety (roughly 380 lines).** Inspect safe database openers, WAL/SHM handling, symlink/path safety. Add focused tests. Do not modify data during inventory.
-**Part 2: Fail-closed redaction (roughly 270 lines).** Add/verify central redaction and tests for API keys, tokens, headers, Telegram credentials, URLs and nested objects.
-**Part 3: Database inventory/evidence report (roughly 350 lines).** Build a read-only inventory CLI with evidence labels and a report. Run it once against the actual repo/data environment and save a redacted report.
-**Part 4: Protected strategy behavior tests (roughly 450 lines).** Characterize current rules and paper/live routing. Test existing behavior; do not change it.
-**Part 5: Mock-only exchange client/import isolation/CI guard (roughly 425 lines).** Ensure imports do not perform network/trading side effects; mock all clients; add an informational CI job and safe tests.
-**Exit gate:** safety tests pass or remaining failures are explicitly documented; no real order executed; owner sees a protected-path report.
-
-## Phase 2 — Backend market data and accounting
-**Part 6: Public market collectors and separate market store (roughly 1,820 lines; blocked on inventory).** Collect public Binance data, snapshots, official cohorts and 3m/5m candles; define gap handling, idempotency and storage cap. Do not collect private account data through public collectors.
-**Part 7: Live/Paper P&L reconciliation (roughly 990 lines).** Separate realized/unrealized, fees, funding, fills and paper/live records. Compare internal records with source records where accessible; flag unreconciled differences rather than hiding them.
-**Part 8: Diagnostics health API (roughly 1,260 lines).** Expose collector freshness, database status, API health, errors and history with safe redaction.
-**Part 17: Settings taxonomy, fees and tax reporting (roughly 1,060 lines).** Audit configuration categories and provide transparent fees/INR/tax reports where data supports them. India-specific tax outputs must be clearly labeled as estimates/reports, not legal or tax advice.
-**Backend data readiness gate:** collector tests, gap/duplicate tests, storage cap, timezone tests, P&L reconciliation fixtures and data-quality report all pass.
-
-## Phase 3 — Backend AI Vision and research evidence
-**Part 13: Data summaries, Data Explorer API and evidence-based AI Vision (roughly 1,530 lines).** Provide validated feature snapshots, coverage and summaries; explanations must cite underlying data.
-**Part 14: Knowledge Ledger/provenance (roughly 1,230 lines).** Track source, feature/model version, run parameters, experiment results and report lineage.
-**Part 15: Scalp Lab framework + first two research categories (roughly 2,560 lines).** Historical/paper research only; wait for 3–4 weeks of usable candle data before drawing conclusions.
-**Part 16: Stop-wick → continuation → re-entry study (roughly 960 lines).** Study as a hypothesis; do not turn into an automatic strategy.
-**Part 19: Brain-assisted paper A/B (roughly 350 lines).** Wait for P&L and provenance readiness; compare baseline and candidate filters on matched data.
-**Part 21: Brain-to-trading proposals B3/G1/G2 (roughly 270 lines).** Research/proposal only until evidence and separate owner authorization. No live behavior change.
-**Exit gate:** no look-ahead leakage, clear cohort provenance, reproducible runs, enough data or explicit “insufficient evidence,” paper-only operation.
-
-## Phase 4 — Frontend design system and screens
-**Part 9: Premium Flutter design system/navigation/reusable states (roughly 1,200 lines).** Build tokens, components, routing and consistent loading/empty/error/offline/stale states.
-**Part 10: Positions and safe close preview (roughly 670 lines).** Improve clarity and ensure preview exactly matches backend behavior. Any change to actual live close path requires separate approval.
-**Part 11: Chart audit (roughly 520 lines).** Verify EMA50, SD and Special Master TSI/Z-score against original source. Do not approximate missing formulas.
-**Part 20: Brain Skip card (roughly 130 lines).** Use existing backend key if verified; show evidence and status honestly.
-**Part 8 frontend counterpart:** diagnostics health strip/detail/history using the backend contract.
-**Part 13 frontend counterpart:** Data Explorer and Vision evidence presentation.
-**Part 17 frontend counterpart:** grouped settings, fees and report UI.
-**Frontend gate:** all required screens have realistic states; no fake live data; widget tests and screenshots/evidence captured; accessibility and performance checks documented.
-
-## Phase 5 — Radar, integration and acceptance
-**Part 12: Radar cohorts (roughly 1,610 lines; depends on collector data).** Support today/yesterday/2/3/7-day views as available; distinguish authentic observations from retrospective proxies.
-**Part 18: Final integration/performance/accessibility/acceptance/README close-out (roughly 500 lines).** Validate contracts end-to-end, mobile screens, reconnects, database migration, logs, permissions, performance and accessibility.
-**Part 22: Dual Bot H1 auto-start + TP-LAST proposal.** Separate scope/estimate and risk review. TP-LAST affects exits; do not implement or enable without separate explicit approval.
-**Part 23: E4/E5/E6 and Brain v2 backlog.** Not planned until separately scoped and approved.
-**Part 24: Backend cleanup review.** Produce safe cleanup candidates, evidence and rollback plan. No unapproved destructive deletion.
-**Final gate:** complete acceptance checklist, test evidence, known limitations, rollback notes, build/deployment instructions and plain-language handover.
-
-### Dependency rules
-- Market-data research (Parts 12, 15, 16, 19, 21) cannot claim reliable results until the required clean data and labels exist.
-- Frontend screens can be prototyped against documented mock contracts, but must not be marked integrated until real API contract tests pass.
-- Part 3 inventory must precede any database cleanup or destructive migration.
-- Part 4/5 tests protect current trading behavior before research/architecture changes.
-- Part 7 accounting and Part 14 provenance are prerequisites for credible Brain A/B comparisons.
-- Part 18 is the final integration gate, not a substitute for tests during earlier parts.
-
-# PART J — TESTING STANDARD (MANDATORY FOR EVERY DELIVERY)
-
-For each task, specify:
-1. Goal and observed problem.
-2. Exact files added/modified/deprecated.
-3. Risk level and whether live behavior could be affected.
-4. Unit tests and expected assertions.
-5. Integration/contract tests.
-6. Regression tests for adjacent functionality.
-7. Security/data-quality tests where relevant.
-8. Manual Android/Flutter check if UI is affected.
-9. Exact command executed and exit code.
-10. Actual result: PASS / FAIL / BLOCKED / NOT RUN.
-11. Evidence path or CI URL/commit.
-12. Known limitations and rollback instructions.
-
-Test categories:
-- Python unit tests; API tests; schema/contract tests; database migration tests; collector fixture tests; duplicate/out-of-order/gap/stale-data tests; timezone/day-boundary tests; redaction/security tests; mock exchange client tests; import-side-effect tests.
-- Flutter unit/widget tests; repository/state tests; API error/empty/offline/reconnect tests; chart rendering and data-label checks; accessibility/text scaling checks; responsive layout checks; important user-flow integration tests.
-- End-to-end tests with paper/mock accounts only. No real order submission.
-- Performance profiling for API latency, data processing, WebSocket update rates, Flutter frame stability, memory growth and large lists.
-- CI must not misrepresent skipped/optional tests as passes. A baseline failure must be reported even if unrelated.
-
-Never say “all tests pass” unless the recorded commands actually ran and passed. Distinguish code review, static analysis, unit tests, device tests and production verification.
-
-# PART K — PERFORMANCE, RELIABILITY AND ACCESSIBILITY
-
-Measure before optimizing. Establish baselines for:
-- API latency and error rates.
-- Collector lag, reconnect time, missed/duplicate candles and storage growth.
-- Feature/indicator computation time and AI explanation latency.
-- WebSocket update-to-render latency and UI frame jank.
-- Startup time, memory use and long-list/chart behavior.
-- Provider spend, timeouts, cache hit rate and graceful fallback.
-- Screen-reader labels, contrast, text scaling, touch targets and focus/navigation.
-
-Do not introduce GPU/cuDF, a second frontend framework, multiple agents, vector databases, message brokers or additional services merely because they sound advanced. Add them only when profiling and a written decision show measurable value and operational feasibility.
-
-# PART L — SECURITY, PRIVACY AND OPERATIONS
-
-- Never commit secrets or print them in reports. Redact before logs, AI prompts, error messages and exported artifacts.
-- Use least privilege; separate public market data from private account operations.
-- Ensure the UI cannot switch live mode or relax safety controls through an unvalidated client-only setting.
-- Validate all API inputs and LLM outputs. Do not execute code or commands derived from model output.
-- Use bounded network timeouts and retries; avoid retry storms.
-- Maintain data backups and verify restore procedures for important stores.
-- Provide clear health status and useful diagnostics without exposing secrets.
-- Document environment variables and safe setup. Avoid requesting or printing the user's credentials in chat.
-- Check licenses and data-provider terms before adopting external models or datasets.
-- If a dependency has a known vulnerability or is unmaintained, document severity, reachability and a tested upgrade plan.
-
-# PART M — INTEGRITY RULES FOR IMPLEMENTATION
-
-1. Inspect before editing; map actual code before proposing a replacement.
-2. Do not rewrite working modules simply for style.
-3. Do not create duplicate sources of truth.
-4. Do not fabricate data, test output, screenshots, benchmarks, source URLs or completed status.
-5. Do not delete code, data or historical roadmap detail without evidence and authorization.
-6. Keep changes small and traceable; one logical change per commit.
-7. Keep existing repository root structure; do not add a nested `Indian-main/` folder.
-8. Do not overwrite unrelated owner changes or reset the branch destructively.
-9. Keep the canonical roadmap and old historical IDs cross-referenced until migration is verified.
-10. When a requirement is ambiguous, record the ambiguity and safest default; ask the owner only when the decision affects product behavior, data deletion, costs, privacy or live trading.
-11. Every UI value must have a traceable source and mode; no fake live metrics.
-12. A TODO or placeholder is not a completed feature.
-13. “Ultra” means quality and evidence, not maximum complexity.
-14. If a required external tool/service is unavailable, document the limitation and provide a practical fallback.
-15. Keep all experimental trading changes paper-only until explicitly approved.
-
-# PART N — DELIVERY AND PROGRESS REPORT FORMAT
-
-After each delivery, update the progress table below and provide a concise report in this format:
-
-- **Kya kiya / Completed:** exact behavior, files and commit.
-- **Kya test hua / Tests:** exact commands and real results.
-- **Kya baaki hai / Remaining:** blockers, unrun tests and missing evidence.
-- **Next:** the next dependency-ready task.
-- **Safety:** explicitly state whether live trading paths/configuration were untouched.
-- **Data:** state whether any data was added, migrated, archived or deleted.
-- **UI:** if applicable, list screens/states checked and evidence.
-- **Rollback:** how to revert safely.
-
-Never report progress by counting lines alone. Count accepted requirements and verified tests.
-
-## Initial progress table (must be refreshed after audit)
-
-| Area | Status before audit | Required evidence |
-|---|---|---|
-| Current architecture | Unknown until re-inspected | Architecture/data-flow diagrams and actual entrypoints |
-| Existing backend tests | Unknown until run | Command log and pass/fail/blockers |
-| Existing Flutter tests/build | Unknown until run | Command log, build result and environment |
-| Data/database quality | Inventory pending verification | Read-only inventory, provenance and gap report |
-| AI Vision readiness | Existing pieces reported; behavior unverified | Feature map, clean-label coverage and shadow baseline |
-| NVIDIA integration | Research references only; no adoption assumed | Decision record for each proposed component |
-| Premium presentation | Requirements documented; screen quality unverified | Screen-by-screen audit, tests and screenshots |
-| Live-trading safety | Protected; current paths must be characterized | Routing tests and explicit no-real-order evidence |
-| Cleanup candidates | No deletions authorized | Dry-run report, dependency proof and rollback plan |
-
-# PART O — ACCEPTANCE CHECKLIST
-
-Do not mark the project complete until the applicable items are evidenced:
-
-## Architecture
-- [ ] Current and target architecture diagrams exist and match actual code.
-- [ ] Backend/frontend/data ownership boundaries are documented.
-- [ ] API and database contracts have tests.
-- [ ] No unexplained duplicate source of truth.
-- [ ] Failure/reconnect/startup/shutdown behavior is documented.
-
-## Safety and security
-- [ ] Live-trading behavior was characterized and protected with tests.
-- [ ] No real orders were sent by test runs.
-- [ ] Experimental AI paths are isolated and disabled for live execution.
-- [ ] Secrets are redacted and never committed.
-- [ ] Destructive data/code cleanup follows the deletion protocol.
-
-## Data and research
-- [ ] Records include source, timestamp, mode and quality/provenance labels.
-- [ ] Gaps, duplicates, stale records and invalid candles are detected.
-- [ ] Live, paper, historical and proxy metrics are separate.
-- [ ] P&L separates realized/unrealized, fees, funding and slippage assumptions.
-- [ ] AI comparisons are time-aware, leakage-resistant and reproducible.
-- [ ] Insufficient data produces an explicit uncertainty state.
-
-## AI Vision
-- [ ] Passive/shadow behavior is verified.
-- [ ] Baseline and candidate comparisons use matched data and costs.
-- [ ] Results include net expectancy/drawdown, not only win rate.
-- [ ] Every explanation has evidence/provenance and model/rule version.
-- [ ] Provider failure does not affect bot critical path.
-- [ ] No AI-generated recommendation can directly execute live orders.
-
-## Flutter presentation
-- [ ] Consistent design system and navigation.
-- [ ] Dashboard, positions, history, charts, Vision, diagnostics and settings audited.
-- [ ] Loading, empty, error, offline, stale and partial-data states implemented.
-- [ ] UI displays correct mode, units, timestamps and data provenance.
-- [ ] Accessibility and responsive layout checked.
-- [ ] Real-device/screenshot evidence recorded where available.
-- [ ] UI previews agree with backend behavior.
-
-## Delivery quality
-- [ ] Each change has exact files, tests, result and rollback.
-- [ ] CI status verified for the actual commit.
-- [ ] Known failures and limitations are disclosed.
-- [ ] README and roadmap statuses reflect evidence, not intention.
-- [ ] Final handover states what is done, what remains and the next safe step.
-
-# PART P — FINAL INSTRUCTION TO CLAUDE
-
-Start with **AUDIT ONLY**. Inspect the repository, current README/master notes, tests, workflows, databases, runtime entrypoints, existing AI Vision modules and Flutter screens. Verify the official NVIDIA references above and distinguish them from the exact original links, which may not be present in the current context.
-
-Then produce the audit artifacts and a reconciled file-by-file plan. Do not begin a broad rewrite. Preserve historical work, keep the root structure correct, and do not modify live-trading behavior. After the audit, implement the smallest safe first delivery, report actual test evidence, and wait for owner approval before any change that can affect live orders, exits, risk, destructive data cleanup or new recurring costs.
-
-**The owner’s priority is a dependable, evidence-backed, premium OWL1 app—not a flashy demo.**
+### Trading and results
+- The owner reports too many weak/fake signals in choppy markets.
+- The existing bot has been described as relying mainly on an EMA50 close-cross/direction signal, with the signal candle low/high used for the initial stop and TP1–TP4 based on 200-candle standard-deviation bands. Verify the current implementation and every live order path.
+- The owner has observed high open/unrealized P&L at times but wants to improve the amount actually realized and retained after fees.
+- The owner wants to know when a setup starts, whether entry timing is late, which trend/timeframe context matters and which scalping setups can deliver a useful net result without excessive low-quality trades.
+- The user wants historical outcome-based learning rather than manually fixed “price up + Z down = exit” rules.
+
+### App and backend issues reported across earlier work
+- Prior work has included Vision, Strategy Doctor, Filter Lab, Brain/Brain Skip, diagnostics, report, ping worker, PumpDump and SWR tuple-key fixes. Locate and reuse these systems where valid; avoid building duplicate replacements.
+- Earlier discussion raised black/blank or empty positions/history screens, close/TP preview consistency, a Binance-like fast interface, backend startup and ping/worker issues, and a deprecated FastAPI startup-event warning. Check whether these are still present and reproduce where possible.
+- The user has encountered ZIP updates that created an unwanted nested `Indian-main/` directory. Keep the correct repository root and never introduce `Indian-main/Indian-main/`.
+- Heavy research/collector workloads may slow or freeze the phone/backend. Measure resource use and bound background work.
+- Previous notes said CI may not actually run the tests that comments imply it runs. Inspect the current workflows and report the real commands/results.
+
+For every issue report: current status, reproduction steps, actual source path/symbol, root-cause evidence, test coverage, proposed minimal fix and regression test. If not reproduced, say so instead of inventing a fix.
+
+## 5. LIVE-TRADING SAFETY — NON-NEGOTIABLE
+
+The current bot is the baseline and must remain available for comparison. Do not replace it just to add AI.
+
+The master notes state that the main bot can send LIVE Binance orders when live trading is enabled. Historically identified paths include:
+- `execution_router.py` → `binance_trader.py` / `protection_manager.py`
+- `ai_live_client.py` → `ai_live_executor.py`
+
+These names are a starting map only; verify the current call graph and exact files.
+
+**Do not change without separate explicit owner approval:**
+- live entry or exit conditions;
+- order routing or execution;
+- stop loss, take profit, break-even or protective-order behaviour;
+- quantity/position sizing, leverage or risk defaults;
+- close/reduce/re-entry behaviour;
+- the meaning/default of `live_trading_enabled`;
+- any Brain/Vision proposal that gains authority to block, allow or manage a live trade.
+
+No test may create, amend, cancel or close a real exchange order. Use mocks/fakes and isolated paper/sandbox testing. Research collectors, replay and Scalp Lab must not import or call live execution paths. AI failure, timeout, invalid output or unavailable API must never stall or change the existing bot.
+
+A future live pilot is not approved by this document. It requires a separate owner decision, strong paper/shadow evidence, explicit risk limits, monitoring, rollback and tests.
+
+## 6. INDICATOR SCOPE AND EXACTNESS
+
+The owner has described two indicator families as the intended V2 research scope:
+
+1. **EMA50 + statistical-deviation (SD) bands** — including the existing 200-candle basis and bands where present.
+2. **Special Master momentum/statistical pane** — TSI and Z-score/Z-SMA behaviour.
+
+Previously discussed components include EMA10/30/50/100/200, EMA30/50 cloud, 200-candle SMA/SD bands at ±1/±2/±3, Z-SMA50, TSI Fast 25/5/14, TSI Slow 25/13/13, reversal arrows and timeframe/structure context. Verify exact formulas from source. These parameter notes do not authorize changing current rules.
+
+The existing README has explicitly restricted extra indicator families in V2: do not add ADX, ATR, RSI, MACD, VWAP, Hurst or a third indicator to V2 features/scores/replay unless the owner separately changes scope. Any allowed metadata already present must remain metadata-only unless approved.
+
+The exact original Pine scripts for Special 13 and Special Master have previously been reported as unavailable in the repository. If still missing, mark exact parity as NOT VERIFIED and request the source files. Do not invent formulas, silently approximate them, or claim exact parity from screenshots.
+
+Required checks:
+- candle-close versus intrabar signal timing;
+- repainting or use of incomplete candles;
+- duplicate or delayed signals;
+- correct symbol/timeframe/timezone alignment;
+- EMA/SD formula and band alignment;
+- TSI/Z-score raw values, slope and state;
+- signal candle plus preceding context;
+- repeatability from saved market data.
+
+## 7. STRATEGY IMPROVEMENT: TIMING, TREND, EARLY SETUP AND SCALPING
+
+This is a central owner requirement. The goal is not merely to filter existing signals. The owner wants to understand **when a setup begins forming, whether an entry can be identified before the move is mostly over, which trend/timeframe context helps, and which short-duration setups retain positive net results after costs**.
+
+Study, do not assume:
+
+1. **Baseline replay:** reproduce the current strategy using timestamped candles and trade/signal logs. Show the earliest time each input was genuinely available.
+2. **Setup lifecycle:** separate precursor, setup forming, trigger, candle close, bot decision and actual execution timestamps.
+3. **Early-entry research:** identify candidate precursor patterns before the existing signal; replay using only data available at that time. Measure false starts, adverse excursion, missed moves, net expectancy and stability. Never use future candles to pretend an entry was knowable earlier.
+4. **Trend/timeframe context:** test higher-timeframe context against lower-timeframe trigger using only the approved indicator scope. Report exact timeframe and timestamp alignment.
+5. **Timing Sync:** compare same-candle indicator alignment with one- or two-candle delays. Check whether earlier alignment really helps or just creates false starts.
+6. **Scalping/time in trade:** study supported candle timeframes and time-of-day/session cohorts. Measure hold duration, time to MFE/MAE, net expectancy, fees, slippage, drawdown, trade count and stability.
+7. **Trend vs chop:** compare trending, sideways/choppy, compression, expansion, retest, exhaustion and reversal conditions. These are labels/hypotheses until defined reproducibly and validated; do not hard-code “chop = no trade.”
+8. **Indicator interaction:** study EMA/SD position and shape alongside TSI/Z-score, including agreement/disagreement, momentum weakening while price rises, momentum strengthening, extremes, retests and continuation/reversal. Do not hard-code any one pattern as a universal action.
+9. **Profit leakage:** record open P&L, peak/MFE, MAE, realized exit, giveback, hold duration, exit reason, fees, funding and slippage. Compare possible exit/protection variants in offline replay or paper mode only.
+10. **Re-entry / stop-wick:** study stop-wick → continuation → re-entry as a research category; do not auto-re-enter live positions.
+11. **Setup ranking:** compare net expectancy, drawdown, profit factor, sample size, out-of-sample stability, trade frequency and uncertainty. Do not optimize only for win rate or gross/open P&L.
+12. **Evidence-based result:** return TAKE-AS-RESEARCH-CANDIDATE, WATCH or SKIP-AS-RESEARCH-CANDIDATE with reason, sample size, counterexamples and uncertainty. These are research labels, not live order commands.
+
+A previous project note reportedly found same-candle Timing Sync at about +1.33 USDT/trade over 61 trades, and “Z first, main 1–2 candles later” at about −4.98 USDT over 27 trades. This is a historical recorded result only. Re-run from the original rows and verify dates, definitions, fees and leakage before relying on it. Do not present it as current verified performance.
+
+## 8. AI VISION AND BRAIN — REQUIRED SEPARATION
+
+The user wants AI to discover useful behaviour from real data, not be forced into a long list of invented rules.
+
+Keep these roles distinct:
+
+- **Existing bot:** deterministic baseline; initially unchanged.
+- **AI Vision:** interprets the current timestamped market/indicator snapshot and explains what it sees.
+- **Brain:** stores and evaluates historical judged outcomes, similar setups, past mistakes and lessons.
+- **LLM reasoning:** generates a structured explanation from supplied evidence; this is not the same as model training or proven statistical learning.
+- **Replay/statistical evaluation:** measures whether a candidate relationship predicts outcomes.
+- **Production strategy:** live rules, protected until separately approved.
+
+Target data flow:
+
+Existing bot / market data  
+→ timestamped signal and state-change event  
+→ feature/event collector  
+→ validated, versioned dataset and outcome labels  
+→ Vision current-state analysis + Brain historical evidence  
+→ optional Claude explanation  
+→ shadow/paper A/B evaluation  
+→ actual outcome reconciliation  
+→ versioned research result  
+→ human-reviewed proposal.
+
+AI should investigate signal quality, continuation/reversal, false signals, expected move, adverse/favourable excursion, regime-specific performance, indicator agreement/disagreement, profit giveback, hold/exit behaviour and trade-frequency trade-offs.
+
+For every signal/event, store only fields that can be supported, such as timestamp, symbol, timeframe, direction, OHLC and preceding candles, approved indicator values/slopes, EMA relationships, SD/band state, data-quality flags, bot decision, Vision output/version, historical evidence count, entry/SL/TP as actually recorded, MFE, MAE, time to MFE/MAE, actual exit, realized P&L, fees, funding/slippage estimates and final outcome.
+
+Separate:
+- features genuinely available at decision time;
+- future outcome labels used only after the event for evaluation/training.
+
+Never leak future values into a live decision feature. Never invent sample counts, indicator values or confidence percentages. “Not enough data” is a valid result. Do not call Claude on every price tick. Use event-driven analysis, timeouts, bounded concurrency and caching; the trading/data path must not wait for the LLM.
+
+Initial Vision should be passive/shadow. Compare:
+- A = existing bot baseline;
+- B = existing bot plus a simulated Vision filter/recommendation.
+
+Compare trade count, win rate, net P&L, fees, drawdown, profit factor, expectancy, MFE/MAE, avoided losers, missed winners and performance by regime/indicator relationship. Use matched periods and costs, out-of-sample validation and honest uncertainty. A 2–3 day passive observation period was discussed as an initial check, not proof of a reliable edge. Some research may need several weeks of clean data. A previously noted 100-judged-trade Brain readiness target is a checkpoint, not a guarantee of profitability or sufficient proof by itself.
+
+A paper account around 100 USDT, daily target lock around +30 USDT and daily loss limit around -10 USDT were discussed as adjustable paper-test proposals. Verify current settings; do not silently apply these to live trading.
+
+## 9. MARKET DATA, MOVERS, DUAL BOT AND SCALP LAB
+
+The user wants the system to retain historical context rather than only show today's movers. Verify the existing rolling universe logic and whether it uses authentic snapshots.
+
+A previously recorded requirement was today's top 5 movers plus coins that appeared in the top 5 on each of the previous seven completed days, deduplicated. Historical memory matters because a coin may pump, digest/sideways, retest a higher timeframe, continue for another day or two, then lose volume and slide. Treat this as a lifecycle research hypothesis, not a guaranteed pattern.
+
+Keep these clearly distinguished:
+- current live snapshot;
+- authentic historical snapshot captured at that time;
+- retrospective reconstruction from candle history;
+- synthetic/test fixture.
+
+Never label a retrospective reconstruction as an authentic historical snapshot. Historical top-five gainers/losers for 1/2/3/7 days must use the correct historical window and source.
+
+Price-action and volume layers previously discussed included signal-candle strength, rejection wicks, candle size relative to prior candles, EMA50 retest held/broken, relative volume and follow-through. The recorded intention was report/measurement-only, not active trade filters, unless separately approved. Do not add a volume floor or trade exclusion just because volume is measured.
+
+Research collection must be bounded by measured CPU, memory, network and storage. Earlier notes discussed roughly 21 symbols/two timeframes and caps around 30 or 51 coin-timeframe items depending on inclusion rules; these are planning notes, not permanent truth. Measure the current load before setting caps. Collect public market data using public endpoints where possible, respect rate limits, handle gaps and restarts idempotently, and avoid authenticated trade permissions for research collectors.
+
+The prior design calls for a separate `v2_market.db`, public GET-only collectors, explicit gap logs and a hard cap near 300 MB. Verify current code before relying on this. On capacity, pause and report the reason; never silently remove protected trade history or gap evidence.
+
+Scalp Lab should separate each research category's definitions, setup records, trade results, fees, sample size, failure cases and conclusions. Shared raw candles may be reused, but category P&L must not be double-counted. Initial Scalp Lab research may require 3–4 weeks of clean candle data; report coverage and gaps rather than pretending the sample is sufficient.
+
+## 10. DATA INVENTORY, QUALITY, RETENTION AND CLEANUP
+
+The user wants a clean, understandable data architecture and removal of genuinely unnecessary clutter, but does not want valuable history lost.
+
+Inventory all current databases/tables, JSON/CSV/Parquet data, candle caches, logs, model outputs, report exports, temporary files, migrations, generated artefacts and dynamic storage paths. For each item, identify:
+- authoritative/source-of-truth or derived;
+- owner/module and readers/writers;
+- paper/live/research/synthetic mode;
+- age, size, coverage, quality and retention;
+- backup/rebuild path;
+- proven references from runtime/tests/jobs/settings.
+
+Validate OHLCV order and relationships, missing/duplicate candles, gaps, timestamps/timezones, symbol/timeframe consistency, stale snapshots, outcome labels and mixed-mode records.
+
+The owner previously stated that trade data must not be deleted while the Brain is being evaluated and before it is ready for real-money consideration. Therefore:
+- Default to read-only inventory, dry-run report, quarantine/archive and deduplication proposals.
+- Do not delete live/paper trade history, Brain journeys, outcomes, mistakes, lessons or historical cohorts without separate explicit approval.
+- Do not decide something is unused based only on lack of static references.
+- If storage pressure is real, report growth and safe alternatives first.
+- The market-data retention cap is not permission to delete trade data.
+- SQLite WAL/SHM behaviour matters: verify that read-only inventory does not mutate databases or create unwanted sidecar files.
+- If an artefact is reproducible, prove the source and rebuild before proposing removal.
+
+India-specific requirements: verify INR conversion, timezone/day-boundary handling, fees, funding, realized net P&L and tax/report exports if present or explicitly in scope. Label estimates and limitations; do not present the app as a tax/legal authority. Binance crypto data is not the same as Indian securities-market data.
+
+## 11. BACKEND AND DATA-FLOW ARCHITECTURE
+
+Map actual FastAPI routers, services, schemas/models, database owners, collectors, workers, schedulers, startup/shutdown, WebSocket/polling and execution entrypoints.
+
+Expected principles:
+- Keep market-data/trading processing separate from slower AI reasoning.
+- Keep public market data separate from authenticated account/trading access.
+- Use typed request/response schemas, validation, consistent errors and pagination/versioning where useful.
+- Record source timestamp, received timestamp, symbol, timeframe, schema/version, mode, provenance and quality flags.
+- Make collectors idempotent, rate-limit aware, restart-safe and gap-aware.
+- Handle reconnect/backoff, stale state, duplicate events, cancellation, timeouts and partial failures.
+- Avoid heavy synchronous work in the request/event loop.
+- Provide safe health/diagnostics endpoints and bounded logs without credentials.
+- Verify Telegram formatting/links and environment-based credentials where present.
+- Verify the correct backend requirements file, commands, CI and deployment setup from the repository rather than guessing.
+
+Document a concrete data-flow diagram using actual source paths. Every displayed UI value should have a traceable source: exchange/API → backend owner → storage/cache → API contract → Flutter state → screen. Do not put business rules inside widgets.
+
+## 12. FRONTEND — HIGH-END EXCHANGE TERMINAL, NOT A GENERIC DASHBOARD
+
+Keep Flutter unless measured evidence proves a specific bottleneck that cannot be fixed reasonably. Do not replace Flutter for fashion. Native Android/Kotlin is acceptable only for a demonstrated capability/performance need. Do not mix Flutter, React Native, WebView and other UI frameworks without a clear reason.
+
+The desired result is a premium, fast, unique OWL1 terminal. “Premium” means clear hierarchy, correct data, low latency, useful interactions, reliability and accessibility—not gradients alone.
+
+Audit and improve, using current screen structure:
+- **Wallboard/Home/Dashboard:** glanceable market state, backend/scanner health, data freshness, PAPER/LIVE/SHADOW mode, realized and unrealized P&L, positions and important alerts.
+- **Navigation:** coherent primary tabs and nested pages for Dashboard, Market/Radar, Positions/History, Brain/Vision, Scalp Lab/experiments, Dual Bot/Wallet, reports, settings and diagnostics as applicable. A previous proposal was Dashboard, Market, Positions, Brain, More; verify fit with current screens before changing navigation.
+- **Positions/history:** no black/blank screens; correct loading/empty/offline/stale/error states; filters and refresh; correct mode and P&L labelling.
+- **Position cards:** compact and readable; entry/current price, quantity, stop/targets, fees/funding, realized net vs floating P&L, data freshness and mode. A close preview must match the authoritative backend action.
+- **Charts:** candles, EMA50, SD bands, entries/exits and SL/TP overlays aligned to correct symbol/timeframe/timestamps; TSI and Z-score panes where available; crosshair, zoom/pan and clear candle-close/provisional state. Do not fake an overlay or formula.
+- **AI Vision/Brain:** current observation, historical evidence, sample size, similar setups, uncertainty, past mistakes and recommended research action. Distinguish current Vision from historical Brain evidence. “Not enough data” must be visible.
+- **Radar/movers:** correct time window, authentic vs retrospective label, source and timestamp.
+- **Strategy Doctor / Filter Lab / Brain Skip:** useful evidence and actionable explanation, not decorative badges.
+- **Diagnostics feed:** prior concern was that feed/status moved down or disappeared after scrolling. Inspect current scroll structure; keep summary/status in the intended visible position, allow history to scroll independently, avoid gesture conflicts and unexpected auto-jumps.
+- **Settings:** grouped logically, units and defaults clear, PAPER/LIVE labels unmistakable, fees/report configuration transparent and dangerous actions guarded.
+- **Reports/history:** timeframe, timezone, currency, mode, fees and inclusion rules explicit.
+- **Performance:** granular state updates, no full-screen rebuild for one value, efficient WebSocket propagation, chart/list virtualization, caching, bounded buffers, light animations and no expensive work on the UI thread.
+- **Presentation system:** consistent OWL1 identity, semantic colours, typography, spacing, cards, radii, icon rules, responsive layouts, safe areas, text scaling, accessible touch targets and screen-reader labels.
+- **Every data-driven screen:** loading/skeleton, empty, offline, stale, partial, error, retry and reconnect states.
+- Never insert fake numbers or green health statuses to make the app appear complete. Never use excessive animations, giant empty cards, unreadably dense cards, repeated content or decoration that harms performance.
+
+## 13. CLAUDE API AND NVIDIA RESEARCH
+
+Claude API is the first reasoning-provider candidate discussed by the owner. Keep it behind a provider interface and on the backend. Do not replace it just because Nemotron exists.
+
+Five NVIDIA Skills/catalog URLs recovered from the earlier user-shared prompt:
+1. https://build.nvidia.com/skills?pageSize=96&filters=domain%3Adomain_ai_and_machine_learning&page=1
+2. https://build.nvidia.com/skills?pageSize=96&filters=domain%3Adomain_ai_and_machine_learning&page=2
+3. https://build.nvidia.com/skills?pageSize=96&filters=domain%3Adomain_ai_and_machine_learning%2Cdomain_infrastructure%2Cdomain_developer_tools%2Cdomain_graphics_and_media%2Cdomain_physical_ai%2Cdomain_accelerated_computing%2Clibrary%3Alibrary_tao_toolkit%2Clibrary%3Alibrary_nemo_megatron_bridge%2Clibrary%3Alibrary_bionemo_open_models%2Clibrary%3Alibrary_nemo%2Clibrary%3Alibrary_bionemo_nims%2Clibrary%3Alibrary_monai%2Clibrary%3Alibrary_deepstream_sdk%2Clibrary%3Alibrary_earth2studio%2Clibrary%3Alibrary_megatron_core%2Clibrary%3Alibrary_nemotron_for_digital_health%2Clibrary%3Alibrary_jetson%2Clibrary%3Alibrary_dynamo%2Clibrary%3Alibrary_nemo_framework%2Clibrary%3Alibrary_nemotron%2Clibrary%3Alibrary_rag%2Clibrary%3Alibrary_nemo_rl%2Clibrary%3Alibrary_nemo_retriever%2Clibrary%3Alibrary_physicsnemo%2Clibrary%3Alibrary_riva%2Clibrary%3Alibrary_cosmos%2Clibrary%3Alibrary_cuopt%2Clibrary%3Alibrary_nemo_agent_toolkit%2Clibrary%3Alibrary_dali%2Clibrary%3Alibrary_doca%2Clibrary%3Alibrary_holoscan%2Clibrary%3Alibrary_nvshmem%2Clibrary%3Alibrary_cuda_tile%2Clibrary%3Alibrary_trustworthy_ai%2Clibrary%3Alibrary_cudf%2Clibrary%3Alibrary_nvflare&page=3
+4. https://build.nvidia.com/skills?pageSize=96&filters=domain%3Adomain_ai_and_machine_learning%2Cdomain_infrastructure%2Cdomain_developer_tools%2Cdomain_graphics_and_media%2Cdomain_physical_ai%2Cdomain_accelerated_computing%2Clibrary%3Alibrary_nemo%2Clibrary%3Alibrary_nemotron%2Clibrary%3Alibrary_rag%2Clibrary%3Alibrary_nemo_retriever%2Clibrary%3Alibrary_nemo_agent_toolkit%2Clibrary%3Alibrary_trustworthy_ai%2Clibrary%3Alibrary_cudf%2Clibrary%3Alibrary_nvflare&page=4
+5. https://build.nvidia.com/skills?pageSize=96&filters=domain%3Adomain_ai_and_machine_learning%2Cdomain_infrastructure%2Cdomain_developer_tools%2Cdomain_graphics_and_media%2Cdomain_physical_ai%2Cdomain_accelerated_computing%2Clibrary%3Alibrary_nemo%2Clibrary%3Alibrary_nemotron%2Clibrary%3Alibrary_rag%2Clibrary%3Alibrary_nemo_retriever%2Clibrary%3Alibrary_nemo_agent_toolkit%2Clibrary%3Alibrary_trustworthy_ai%2Clibrary%3Alibrary_cudf%2Clibrary%3Alibrary_nvflare&page=5
+
+Also evaluate:
+- Nemotron: https://developer.nvidia.com/topics/ai/nemotron
+- Quantitative Signal Discovery Agent: https://build.nvidia.com/nvidia/quantitative-signal-discovery-agent
+- NeMo Agent Toolkit: https://developer.nvidia.com/nemo-agent-toolkit
+- NVIDIA blueprint/RAG ecosystem: https://build.nvidia.com/blueprints
+
+For each candidate, research the current official documentation and state the exact OWL1 use case, measurable benefit, required hardware/GPU/hosted service, license, privacy, latency, recurring cost, operational burden, test and rollback. Prioritize quantitative signal discovery/evaluation, retrieval of historical similar setups and tool orchestration only if useful. Do not add unrelated NVIDIA technologies or a GPU dependency just for fashion. The user previously mentioned a roughly $10 Claude plan/API budget; verify actual billing model and current costs instead of assuming subscription includes API credits.
+
+## 14. TESTING AND ACCEPTANCE
+
+Audit existing tests before writing new ones. Identify the actual commands and run only feasible, relevant tests during the initial audit. Report skipped tests and why.
+
+Required coverage as applicable:
+- deterministic strategy/indicator characterization and regression tests;
+- no-live-order tests using mocks/fakes;
+- API schemas, validation, errors and mode separation;
+- data quality, timestamp alignment, gaps, deduplication and retention;
+- AI output schema, provider timeout/failure, redaction and missing-data handling;
+- replay leakage prevention and train/evaluation separation;
+- P&L/fees/funding reconciliation and MFE/MAE;
+- frontend state, loading/error/empty/offline cases and preview/backend parity;
+- performance/resource measurements for collector and UI;
+- CI commands and Android/Flutter build when the environment supports them.
+
+Do not claim tests passed unless they were actually run. Distinguish code review, unit tests, integration tests, CI, Android build and real-device validation. Never fabricate screenshots, benchmarks, test output or historical sample counts.
+
+Acceptance requires observable results, not merely a file being created. Each delivery must state:
+- exact changed files;
+- why each change was needed;
+- tests/commands actually run and results;
+- current limitations;
+- rollback approach;
+- what remains;
+- the single next dependency-ready step;
+- confirmation that live-trading paths/settings remained untouched, or explicit approval and details if a change was authorized.
+
+## 15. CLEAN IMPLEMENTATION ORDER
+
+Do not start all features at once. After audit and owner approval, use the current canonical README.md 24-Part roadmap as the source of ordering and dependencies. The high-level execution should be easy to understand:
+
+### Phase A — Audit and safety foundation
+- Read both READMEs and relevant recovered prompts.
+- Map architecture, all live execution paths, database owners, API routes, Flutter screens and CI.
+- Record baseline test status and reported bugs.
+- Complete requirements reconciliation, file matrix, data inventory and risk plan.
+- Implement safety/redaction/inventory foundation only after approval.
+
+### Phase B — Backend and data reliability
+- Complete approved safety, redaction and inventory foundations.
+- Characterize protected trading rules with no-live-order tests.
+- Build isolated public market-data collection/storage and candle validation as approved.
+- Add reliable event/feature collection, provenance, health/diagnostics and P&L reconciliation.
+- Establish Vision/Brain schemas, outcome labels, provider isolation and shadow/replay evaluation.
+- Keep research data and trade data separate; preserve historical records.
+
+### Phase C — Research and strategy evidence
+- Validate indicator formulas and timestamp alignment.
+- Run baseline replay, timing/early-entry, trend/timeframe, chop, scalp, MFE/MAE and profit-giveback studies.
+- Evaluate historical movers, Scalp Lab categories and re-entry hypotheses.
+- Report sample coverage and uncertainty; do not enable live strategy changes.
+
+### Phase D — Flutter presentation
+- After API contracts and source-of-truth data are stable, implement the premium design system and screen states.
+- Improve dashboard/wallboard, charts, positions/history, Vision/Brain, Radar, Strategy Doctor, diagnostics, reports and settings.
+- Optimize live updates and test on Android where possible.
+- Do not fake missing backend functionality with frontend-only placeholder numbers.
+
+### Phase E — Integration and acceptance
+- Verify end-to-end flow from market source/database through API to Flutter.
+- Run backend tests, Flutter tests/analyze/build, contract checks and CI as environment permits.
+- Compare paper/shadow outcomes against the baseline.
+- Update README.md with evidence and the exact next task.
+- Only then consider another approved delivery.
+
+Actual subtask order must follow the dependencies in README.md. If a dependency means a small frontend/backend slice must alternate, explain why, but preserve the broad grouping so the owner can follow progress.
+
+## 16. AUDIT-ONLY FIRST RESPONSE REQUIRED FROM CLAUDE
+
+Before changing code, return a concise owner-friendly report containing:
+
+1. **What the owner wants:** in plain English/Roman Hinglish.
+2. **What the app currently has:** based on files actually found.
+3. **Architecture/data flow:** actual current backend → API/storage → Flutter flow.
+4. **Requirements reconciliation:** what README.md has that README2 missed, what is duplicated, and what conflicts.
+5. **Reported problems:** currently reproduced, not reproduced, historical or unverified.
+6. **Strategy research:** timing, early setup, trend/timeframe, scalping, chop and realized-profit plan.
+7. **AI Vision/Brain:** what exists, what is missing and what evidence is available.
+8. **UI/presentation:** screen-by-screen current status and design/performance gaps.
+9. **Data inventory:** protected stores, questionable data and safe cleanup proposal. Do not delete anything.
+10. **NVIDIA/Claude:** relevant verified findings, likely costs/prerequisites and what should be deferred.
+11. **Exact file matrix:** current paths, proposed paths, dependencies, acceptance criteria and tests.
+12. **Test evidence:** commands actually run, exact results and anything not run.
+13. **Risks/decisions needed:** especially anything affecting live trading, data loss, privacy or recurring cost.
+14. **One next step:** the single safest dependency-ready task and why it comes first.
+
+Do not begin a broad implementation in the first response. Wait for owner approval of the proposed first delivery.
+
+## 17. CONTINUOUS WORKFLOW — DO NOT MAKE THE OWNER RE-EXPLAIN
+
+For every future update/ZIP/commit:
+1. Read README.md and the relevant README2 sections.
+2. Identify the latest evidence-backed DONE milestone.
+3. Find the first unfinished, dependency-ready task.
+4. Inspect the relevant files and existing tests.
+5. State the intended small delivery and risk before editing.
+6. Implement only the approved scope.
+7. Run the relevant tests; do not run expensive unrelated tests without reason.
+8. Update README.md status, test evidence and next action.
+9. Keep cumulative ZIP/repository root correct if packaging is requested; no nested `Indian-main/`.
+10. Summarize in plain language: **Kya kiya → Kya test hua → Kya baaki hai → Next kya hai.**
+11. Stop and wait for the next owner instruction.
+
+Do not ask again for decisions already recorded in README.md. If a genuinely new conflict exists, ask only the necessary focused question.
+
+## 18. FINAL PRODUCT SUCCESS CRITERIA
+
+OWL1 is progressing toward success when:
+- The existing trading baseline remains intact and reproducible.
+- The two approved indicator families are accurately represented or parity limitations are explicit.
+- Signal and market events are timestamped and reproducible.
+- Historical evidence distinguishes authentic snapshots from retrospective proxies.
+- Fake-signal behaviour, setup timing, scalp outcomes and profit leakage can be measured honestly.
+- Net results account for costs and drawdown, not only open P&L or win rate.
+- AI Vision explains current state; Brain evidence remains traceable to historical outcomes.
+- LLM output cannot invent numbers or override safety.
+- Flutter is premium, fast, readable, accessible and correct on a real Android device.
+- Backend research cannot freeze or destabilize the bot.
+- Data cleanup preserves protected trade history and is reversible/approved.
+- Each feature has tests and evidence; each unknown is labelled unknown.
+- The owner can understand progress without repeating the same requirements.
+- No live-trading authority has been silently granted.
+
+**Final instruction:** Audit first. Reconcile README.md with this file. Keep private project details private. Preserve working code and historical records. Do not change live trading. Propose one clear next delivery, wait for approval, then implement and prove it.
