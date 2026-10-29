@@ -1,42 +1,46 @@
 # Owl Terminal - MASTER NOTES (the ONLY notes file in this repo)
 
-OWL MASTER NOTES v83 - last updated: 29 Oct 2026
+OWL MASTER NOTES v84 - last updated: 29 Oct 2026
 
 Crypto paper-trading app (Flutter) + Python backend. Dual Bot v1 collects trades. Smart Brain learns on the side, paper only. CORRECTION (v80): the main bot code CAN send LIVE Binance orders when live_trading_enabled is on (two paths, see the VERSION 2 STATUS BOARD). Dual Bot and Smart Brain stay paper.
 
 
 ## V2 MASTER ORDER BOARD (added v83, 29 Oct 2026 - README only, ONE list, start to end, in order)
 Owner order (29 Oct): "sab ek hi jagah, shuru se aakhir tak, order mein, color ke saath". This is the ONE list to read first. Details of each row = the boards and section 15 below. If two places differ, THIS list and the V2 board below it win. Claude flips the colour in the SAME zip as the work.
+Columns Files + Est. lines (owner, 29 Oct): files = files touched in that part (new + changed + tests; README not counted), lines = rough estimate from section 15.8 / 15.9; the TOTAL and BUILT SO FAR rows are at the bottom. Rows with n/a are not estimated yet and are NOT in the total.
 Colours: 🟢 DONE (built AND proven, test result written) | 🔵 WORKING (built, partly proven) | 🟡 waiting for the owner's ok, his data or his phone check | 🔴 NOT DONE or BLOCKED (named blocker in the last column).
-Nothing is 🟢 or 🔵 in V2 yet. No V2 code is written, no V2 test was run. The old->V2 mapping (rows 17-23) is PROPOSED until the owner says "mapping ok".
-| # | Colour | ID | What | Next step / waiting for |
-|---|---|---|---|---|
-| 0 | 🟢 | before V2 | Everything built before V2 (Parts 1-3, A-F, U1-U5, Brain B4, NEXT-2 ... NEXT-6j, UI, H2, IS1) | nothing; list = old STATUS BOARD block 2 |
-| 0b | 🟡 | phone check | Newest old zips (NEXT-2 ... NEXT-6, UI, SR, H2, IS1) | owner downloads, watches the GitHub build, sends any error |
-| 1 | 🟡 | V2-S0 round 1a | backend/v2_inv_safe.py + test (safe read-only opener) | owner says "ok S0 round 1a" |
-| 2 | 🔴 | V2-S0 round 1b | v2_inv_redact.py + test (fail-closed redaction) | after 1a |
-| 3 | 🔴 | V2-S0 round 1c | v2_inventory.py + test (inventory tool + CLI, replaces old NEXT-1) | after 1b; then the owner runs it once on the phone and sends the JSON |
-| 4 | 🔴 | V2-S0 round 2a | protected-rules tests + paper/live routing tests (preview gap only recorded) | after 1c |
-| 5 | 🔴 | V2-S0 round 2b | live-client mocks + import guard + CI tests job (informational) | after 2a |
-| 6 | 🔴 | V2-S1 | Collectors: 5-min top 20/20 snapshots, daily cohort, 3m/5m candles, v2_market.db, 300 MB cap, gap_log, kill-switch | BLOCKED: needs the inventory JSON (row 3) |
-| 7 | 🔴 | V2-S2 | P&L reconciliation (live and paper kept apart) | after S0 inventory |
-| 8 | 🔴 | V2-S3 | Diagnostics: Dashboard strip + detail page | after S1 status data |
-| 9 | 🔴 | V2-S4 | Design system + navigation | none |
-| 10 | 🔴 | V2-S5 | Positions + safe Close All preview (live-mode fix) | separate approval for any api/trade.py change |
-| 11 | 🔴 | V2-S6 | Charts audit + fixes | none |
-| 12 | 🔴 | V2-S7 | Radar cohort view (real vs retrospective proxy) | BLOCKED: S1 data, at least 1 day |
-| 13 | 🔴 | V2-S8 | Data summaries + Data Explorer + AI Vision evidence (includes old NEXT-9) | after S0 inventory |
-| 14 | 🔴 | V2-S9 | Knowledge Ledger | after S1 and S8 |
-| 15 | 🔴 | V2-S10 | Scalp Lab (framework + 2 categories) | BLOCKED: S1 candles, 3-4 weeks of data |
-| 16 | 🔴 | V2-S11 | Stop-wick / continuation / re-entry study | S1 candles |
-| 17 | 🔴 | V2-S12 | Settings taxonomy + fees / tax report | after S0 inventory |
-| 18 | 🔴 | V2-S13 | Performance, accessibility, final README (includes old NEXT-10) | last of the main plan |
-| 19 | 🟡 | V2-S14 | Brain-assisted PAPER A/B (old NEXT-8) | needs S2 + S9, own plan + ok |
-| 20 | 🟡 | V2-S15 | Brain Skip card in the app (old NEXT-7 Flutter card; backend DONE) | own small plan + ok |
-| 21 | 🟡 | V2-S16 | Brain-to-trading rules B3, G1, G2 | WAIT FOR DATA (Ready Check) + separate approval each |
-| 22 | 🟡 | V2-S17 | Dual Bot options H1, TP-LAST | own plan + ok (TP-LAST touches Dual exits) |
-| 23 | 🔴 | V2-S18 / S19 | Backlog E4, E5, E6, Brain v2 / backend cleanup (old section 9) | NOT planned / owner decides |
-| 24 | 🟡 | decision | "mapping ok" for the old -> V2 renames (section 15.14) | owner says "mapping ok" |
+Nothing is 🟢 or 🔵 in V2 yet. No V2 code is written, no V2 test was run. The old->V2 mapping (rows 19-23) is PROPOSED until the owner says "mapping ok".
+| # | Colour | ID | What | Files | Est. lines | Next step / waiting for |
+| --- | --- | --- | --- | --- | --- | --- |
+| 0 | 🟢 | before V2 | Everything built before V2 (Parts 1-3, A-F, U1-U5, Brain B4, NEXT-2 ... NEXT-6j, UI, H2, IS1) | - | - | nothing; list = old STATUS BOARD block 2 |
+| 0b | 🟡 | phone check | Newest old zips (NEXT-2 ... NEXT-6, UI, SR, H2, IS1) | - | - | owner downloads, watches the GitHub build, sends any error |
+| 1 | 🟡 | V2-S0 round 1a | backend/v2_inv_safe.py + test (safe read-only opener) | 2 | 380 | owner says "ok S0 round 1a" |
+| 2 | 🔴 | V2-S0 round 1b | v2_inv_redact.py + test (fail-closed redaction) | 2 | 270 | after 1a |
+| 3 | 🔴 | V2-S0 round 1c | v2_inventory.py + test (inventory tool + CLI, replaces old NEXT-1) | 2 | 350 | after 1b; then the owner runs it once on the phone and sends the JSON |
+| 4 | 🔴 | V2-S0 round 2a | protected-rules tests + paper/live routing tests (preview gap only recorded) | 2 | 450 | after 1c |
+| 5 | 🔴 | V2-S0 round 2b | live-client mocks + import guard + CI tests job (informational) | 3 | 425 | after 2a |
+| 5b | 🔴 | V2-S0 README | README board + change log updates in the 5 S0 rounds (derived: S0 total 2,100 minus the 1,875 above) | - | 225 | each round |
+| 6 | 🔴 | V2-S1 | Collectors: 5-min top 20/20 snapshots, daily cohort, 3m/5m candles, v2_market.db, 300 MB cap, gap_log, kill-switch | 9 | 1,820 | BLOCKED: needs the inventory JSON (row 3) |
+| 7 | 🔴 | V2-S2 | P&L reconciliation (live and paper kept apart) | 7 | 990 | after S0 inventory |
+| 8 | 🔴 | V2-S3 | Diagnostics: Dashboard strip + detail page | 8 | 1,260 | after S1 status data |
+| 9 | 🔴 | V2-S4 | Design system + navigation | 7 | 1,200 | none |
+| 10 | 🔴 | V2-S5 | Positions + safe Close All preview (live-mode fix) | 5 | 670 | separate approval for any api/trade.py change |
+| 11 | 🔴 | V2-S6 | Charts audit + fixes | 4 | 520 | none |
+| 12 | 🔴 | V2-S7 | Radar cohort view (real vs retrospective proxy) | 9 | 1,610 | BLOCKED: S1 data, at least 1 day |
+| 13 | 🔴 | V2-S8 | Data summaries + Data Explorer + AI Vision evidence (includes old NEXT-9) | 6 | 1,530 | after S0 inventory |
+| 14 | 🔴 | V2-S9 | Knowledge Ledger | 5 | 1,230 | after S1 and S8 |
+| 15 | 🔴 | V2-S10 | Scalp Lab (framework + 2 categories) | 13 | 2,560 | BLOCKED: S1 candles, 3-4 weeks of data |
+| 16 | 🔴 | V2-S11 | Stop-wick / continuation / re-entry study | 3 | 960 | S1 candles |
+| 17 | 🔴 | V2-S12 | Settings taxonomy + fees / tax report | 4 | 1,060 | after S0 inventory |
+| 18 | 🔴 | V2-S13 | Performance, accessibility, final README (includes old NEXT-10) | 4 | 500 | last of the main plan |
+| 19 | 🟡 | V2-S14 | Brain-assisted PAPER A/B (old NEXT-8) | 3 | 350 | needs S2 + S9, own plan + ok |
+| 20 | 🟡 | V2-S15 | Brain Skip card in the app (old NEXT-7 Flutter card; backend DONE) | 3 | 130 | own small plan + ok |
+| 21 | 🟡 | V2-S16 | Brain-to-trading rules B3, G1, G2 | 9 | 270 | WAIT FOR DATA (Ready Check) + separate approval each |
+| 22 | 🟡 | V2-S17 | Dual Bot options H1, TP-LAST | n/a | n/a | own plan + ok (TP-LAST touches Dual exits) |
+| 23 | 🔴 | V2-S18 / S19 | Backlog E4, E5, E6, Brain v2 / backend cleanup (old section 9) | n/a | n/a | NOT planned / owner decides |
+| 24 | 🟡 | decision | "mapping ok" for the old -> V2 renames (section 15.14) | - | - | owner says "mapping ok" |
+| | | **TOTAL S0-S16** | all V2 work, rough (range 12,000-22,000 lines, about 30 deliveries); about 101 distinct files because a file changed in 2 phases counts once | **110** | **18,760** | S17, S18, S19 are NOT in this total (not estimated) |
+| | | **BUILT SO FAR** | V2 code written and proven | **0** | **0** | no V2 code yet; this row grows with every delivery |
 Rule: parts are small (about 300 lines, 4-5 files, rule 14). Claude shows files + lines first and starts only after the owner's "ok" (rule 13). One zip per part, README inside every zip.
 
 ## VERSION 2 STATUS BOARD (added v80, 29 Oct 2026 - README only, NO V2 CODE YET)
@@ -384,6 +388,7 @@ A: Brain only watches (now). B: shadow "would take / would skip" - DONE as the "
 - Not seen: Claude never ran the app; a file started by a Termux script outside the repo would look dead.
 
 ## 10. CHANGE LOG (newest first)
+- 29 Oct 2026 (v84): README ONLY. No code, no build, no test run (zip owl_V2_README_v84, only Indian-main/README.md; it ALSO CONTAINS v80-v83). Owner: one column with estimated lines, and TOTAL files + TOTAL lines side by side at the bottom, all kinds of work in one table. Added to the V2 MASTER ORDER BOARD: columns Files and Est. lines on every row, a derived row 5b (S0 README share), a TOTAL row (110 file touches, about 101 distinct files, 18,760 lines, S0-S16 only) and a BUILT SO FAR row (0 / 0). FIXED two mistakes in my own v83 / v81 text: the S8 line count in 15.9 said 1,350 (it left out the 180-line evidence helper, 15.8 and the board say 1,530), and the board said mapping rows 17-23 (correct: 19-23). Nothing deleted.
 - 29 Oct 2026 (v83): README ONLY. No code, no build, no test run (zip owl_V2_README_v83, only Indian-main/README.md; it ALSO CONTAINS v80, v81 and v82). Owner: one place, start to end, in order, with colours; and a rule that Claude talks in simple WhatsApp-style Roman English. Added: V2 MASTER ORDER BOARD at the very top (one numbered list of all pending work, old items under their V2 names, colours green / blue / yellow / red), pointers from the V2 board and the old STATUS BOARD, rule 18 (talk style) in section 0, item 8 in 15.1. Nothing deleted. The old -> V2 mapping is still PROPOSED until the owner says "mapping ok".
 - 29 Oct 2026 (v82): README ONLY. No code, no build, no test run (zip owl_V2_README_v82, only Indian-main/README.md; it ALSO CONTAINS v80 and v81). Owner: 'purane readme ke pending kaam aur naya plan: same hai to dono kyu karna, alag hai to new naming ke saath rename'. Added: section 15.14 (old pending -> V2 names: NEXT-1 merged into V2-S0-INV, NEXT-9 merged into V2-S8, NEXT-10 merged into V2-S13, NEXT-8 = V2-S14, NEXT-7 card = V2-S15, B3 / G1 / G2 = V2-S16, H1 / TP-LAST = V2-S17, backlog = V2-S18, cleanup = V2-S19), phase entries S14-S19 in 15.8, totals (now about 18,700 lines for S0-S16), pointers on the old rows (old text kept), V2 board rows. FIX: section 5 'PATH TO REAL MONEY' said 'Live-order code does not exist in this repo'; that is wrong (two live paths, 15.4 F3) and is now marked CORRECTED with the old text kept. Mapping is PROPOSED until the owner says 'mapping ok'. Proof: diff against the v79 zip shows ONLY README.md changed; 0 code, 0 test, 0 protected file touched. Next: owner says 'mapping ok' and 'ok S0 round 1a'.
 - 29 Oct 2026 (v81): README ONLY. No code, no build, no test run (zip owl_V2_README_v81, only Indian-main/README.md; it ALSO CONTAINS everything of v80, so the v80 zip is not needed). Owner: 'readme me poora systematic daal, kya kab kaise kyun, taaki har insaan aur Claude samajh sake'. Added: section 15 VERSION 2 - THE FULL PLAN (15.1 reading rules, 15.2 why, 15.3 words, 15.4 verified facts + protected files, 15.5 ten data domains, 15.6 the two indicators, 15.7 collector + cohort design, 15.8 phases S0-S13 with what / why / when / how / files / tests / acceptance / risk, 15.9 totals, 15.10 screen audit, 15.11 traceability, 15.12 open decisions D1-D8, 15.13 end state); rule 17 in section 0; one pointer line in the V2 board; header v80 -> v81. The file-level rows are a PROPOSAL, not verified by the owner; the short plan S0-S13 stays the approved one. S0 estimate corrected 1,465 -> about 2,100 lines (extra safeguards), plan total about 17,800. Proof: a diff against the v79 zip shows ONLY README.md changed, 0 code, 0 test, 0 protected file touched. Next: owner says 'ok S0 round 1a'.
@@ -817,7 +822,7 @@ Estimates are rough (confidence Low-Med). Conf = High / Med / Low. Lines = chang
 | S5 | 0 | 2 | 3 (1 optional) | 0 | 670 |
 | S6 | 0 | 2 | 2 | 0 | 520 |
 | S7 | 4 | 2 | 3 | 0 | 1,610 |
-| S8 | 2 | 2 | 2 | 0 | 1,350 |
+| S8 | 2 | 2 | 2 | 0 | 1,530 |
 | S9 | 3 | 1 | 1 | 0 | 1,230 |
 | S10 | 8 | 4 | 1 | 0 | 2,560 |
 | S11 | 2 | 1 | 0 | 0 | 960 |
