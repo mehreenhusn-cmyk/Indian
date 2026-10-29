@@ -1,0 +1,1753 @@
+# OWL TERMINAL - README4 IS THE ONE FILE TO FOLLOW (merged 30 Oct 2026, v85, README ONLY - no code, no test, no build)
+
+## RESUME BOX (updated in every delivery)
+- Last zip: owl_README4_merge (README only)
+- Last Part done: none of the V2 Parts 1-25 (V2 code = 0 lines)
+- Applied by owner on phone? unknown - owner confirms
+- Next Part: Part 1 (about 380 lines) - waits for the owner's "ok S0 round 1a"
+- App today: 5 bottom tabs (Dashboard, Market, Positions, Brain, More); under More: Signals, Dual Bot, AI (AI has 7 inner tabs); India mode is a separate screen set
+
+HOW THIS FILE IS BUILT (nothing deleted):
+1. PART I = README4 (the combined brief) in full.
+2. PART II = FINAL MASTER PROMPT in full (adds: reply style, next-4-5-Parts menu, green circles, smoothness spec, Flutter decision, API/job inventory, module protection, README layout). **If PART I and PART II differ, PART II wins.**
+3. PART III = the previous README.md (v84) in full and unchanged: history, DONE list, code map, phone deploy, section 15 plan. Use it only to look up details.
+4. README2.md stays in the repo as it was. README3.md (8 old prompts, 640 KB) was NOT received in this chat, so it is not merged here; README4 already holds its rules (source map in PART II section 15).
+
+===================================================================
+# PART I - README4 (original text, unchanged)
+===================================================================
+
+# README4 — OWL1 FINAL COMBINED BRIEF (README.md + README2.md + README3.md in one)
+
+Version: README4 v1 — 30 Oct 2026. Written by reading README.md (v84), README2.md and README3.md (8 source prompts) in full-structure, and by counting the real repo zip `Indian-main (29)`.
+Status of this file: DOCUMENT ONLY. No code was changed, no test was run, no Flutter build was made.
+
+Labels used everywhere: **VF** = verified in a file or by counting today (30 Oct) · **OR** = owner requirement (his words, in one of the 3 READMEs or in his earlier chats) · **NV** = needs validation · **EST** = rough estimate, not measured.
+
+---
+
+## 0. READ THIS FIRST (any Claude account, any new chat)
+
+1. This file is the one place that says: what the owner wants, how the system must run, what is DONE, what is NOT done, and in which order to do it.
+2. Do NOT read README3.md (640 KB, about 9,400 lines). It is only an archive of 8 old prompts; everything in it is already merged into section 2-9 here. Read it only if a source line is needed (section 1 tells where).
+3. README.md (233 KB) is the history + code map + change log. Open only: section 12 CODE MAP (which file does what) and section 10 CHANGE LOG (newest first). Do not read the whole file.
+4. README2.md (60 KB) is the long "audit first" brief. Its rules are in section 10 here.
+5. Take the next job from section 8 (the master list). Tell the owner: files + lines + any question, in short Roman Hinglish. STOP. Build only after his "ok" (rule R1).
+6. Every zip: ONE top folder `Indian-main/`, README inside, only changed files + files of earlier parts not yet confirmed applied (cumulative). Never `Indian-main/Indian-main/`.
+7. Claude cannot compile Flutter. A test that was not run is not a pass. Say Passed / Failed / Not Run / Blocked honestly.
+
+---
+
+## 1. WHERE EVERYTHING CAME FROM (source map)
+
+| Source | What it is | Size | What README4 took from it |
+|---|---|---|---|
+| README.md v84 (in repo) | Master notes: history, DONE list, 24-Part roadmap, V2 plan, code map, phone deploy, owner rules | 919 lines | Status (DONE / pending), the 24-Part roadmap, protected files, data domains, code map, deploy flow, talk style |
+| README2.md (in repo) | "Audit first" requirements brief + Part R merge checklist | 648 lines | Product goal, strategy research questions, AI separation, UI expectations, test/delivery proof, privacy |
+| README3.md (uploaded) | Master brief + 8 original prompts in full: P1 Opus master, P2 My Complete Requirements (355 numbered rules), P3 Architecture/README master, P4 Fresh handoff, P5 AI Vision + NVIDIA, P6 + P7 Version 2, P8 v70plus (Brain B4a-B4d, NEXT-1..10) | 9,428 lines | The 355 numbered rules of P2 (diagnostic feed, 7-day coins, Scalp categories, stop-wick, Ledger, conversational Brain), P8 Brain rules and "what not to do" |
+| Owner's earlier chats (my memory of them) | Look, theme, credits, welcome screen, backend status panel, work style | n/a | Section 4 items marked "chat only" — they are NOT in any of the 3 READMEs |
+
+### 1.1 Conflicts found between the three READMEs (not silently fixed — owner decides)
+
+| # | Conflict | README says | Safer default until the owner decides |
+|---|---|---|---|
+| C1 | Size of the work | README.md: about 18,500-18,760 lines, about 100 files, about 30 deliveries. README2/3: "about 43 parts / 6,000-7,000 lines" (a remembered plan; README2 says it was never found) | Use the README.md number (it is built from real file tables). The 6-7k plan matches the old Brain/UI roadmap only (NEXT-1..10 = about 3,900 lines EST) |
+| C2 | Part size | README.md rule 14: about 300 lines, max 400, 4-5 small files. Prompt 8 (v70plus): "no busywork, feature-sized chunks, no giant test files" | Keep 300-400 lines per zip (it protects his usage limit); do not write big test files for small features |
+| C3 | Theme | README.md "Rules for all": light theme only. Owner chats: light default, later "Light / Dark / System" asked | Code already has a Light/Dark switch (settings_screen.dart L589-603, app_provider.dart L176) VF. Keep light as default; ask (Q3) |
+| C4 | Which README is "the" master | README.md says it is the ONLY notes file. README3 says the repo README stays the status record. README2 forbids competing roadmaps | After owner "ok": merge README4 sections 0-9 INTO README.md and move README2/README3 out of the repo (one file, one truth) |
+| C5 | AI paper collection | One prompt: keep AI Own / Vision paper collection ON. Others: research-only, no unapproved live change | Both fit: paper stays ON as it is today; no live authority (Part 4-5 tests guard this) |
+| C6 | "Special 13" vs "Special Master" | P8 uses "two indicators = Special 13 + Special Master"; README.md uses "EMA50 + SD bands" and "Special Master TSI + Z-score" | Same two families. Pine source of both is NOT in the repo VF → exact parity = NV |
+| C7 | Roadmap names | README.md has 24 canonical Parts + old labels (A-F, U1-U5, NEXT-1..10, B3/G1/G2, H1, S0-S19, 6a-6j) | The 24 Parts control the order. Old labels are aliases only (mapping = section 8.3) |
+| C8 | README.md header vs body | Header says v84, change log v84 says the board has "Files" and "TOTAL" columns; the board at the top of the file has no such columns VF | Totals recomputed in section 8.2 from the Part table itself |
+| C9 | Files said to exist | README.md section 9 says old Kivy `backend/main.py` and `config.py` look dead | Both still in repo VF (main.py 2,964 lines, config.py 33). Cleanup = Part 24, owner decides |
+
+### 1.2 Requirements that are in README2/3 but were MISSING from the README.md 24-Part roadmap
+
+They are now added as small extras on existing Parts (section 8.2, rows "x"):
+
+| Extra | Source | Lands in |
+|---|---|---|
+| Diagnostic feed pinned at the top of its swipe section, list scrolls below, "jump to latest", 6 separate health statuses | P2 rules 78-88, 214-216, 341 | Part 8 |
+| Central route map (stop using numeric tab indexes like `goToTab(3)`) | P2 "Future-proof navigation" | Part 9 |
+| 7-day coin lifecycle: 1/2/3/7-day outcomes (continuation / sideways / reversal / further pump / dump / unresolved) | P2 rules 188-204 | Part 12 |
+| Large-trade replay on 3m/5m, shown as hypothetical, never rewriting real trades | P2 rules 182-187 | Part 15 |
+| Conversational Brain ("Bhai, coin mein kya hua?"), grounded in the Ledger only | P2 rules 244-249 | NEW Part 25 (optional) |
+| Claude vs NVIDIA provider study (report only, no code, no GPU) | P5, README2 sec 13, R11 | NEW decision D9 |
+
+---
+
+## 2. THE OWNER AND HIS REQUIREMENTS (plain words)
+
+Owner: Hussain Shaikh. Not a coder. Works from his phone. Talks Hindi / Hinglish (voice dictation). Wants simple explanations, plans with FILE COUNT + LINE COUNT first, code only after his "ok".
+
+### 2.1 Why the product exists (OR, README.md sec 2/5, README3 sec 2)
+- The real problem is NOT a shortage of BUY/SELL signals. It is signal quality: fake signals in choppy markets, trades that go green then reverse, profit given back between open P&L and realized P&L, and not knowing when to hold, protect profit, skip or wait.
+- Path: **Observe → Archive → Learn → Compare → Validate → Explain → Paper/Shadow test → only later think about automation.**
+- Big goal: a Brain that is strong enough to trade a small real amount ($10-20) by itself and make profit, using ONLY his two indicators. Gate list is in README.md sec 5; paper profit does not promise live profit (fees, slippage).
+- The Brain must learn from evidence, not from hundreds of hand-written rules. "Price up while Z down" is a thing to MEASURE, never a hard-coded exit.
+- "NOT ENOUGH DATA" is a valid, good answer. No fake percentages.
+
+### 2.2 What he wants to SEE and DO (frontend requirements, OR)
+1. One premium, calm, trustworthy terminal ("silent rich"): easy to understand at a glance, money first, no wall of text, no repeated numbers.
+2. Smooth on his phone "like butter": no lag, no repeated loading screens, prices and P&L tick without rebuilding whole screens.
+3. Honest data: stale / proxy / missing data is always labelled; no fake numbers, no green status that is not true.
+4. A "why": why a trade was taken or skipped, why it lost, where entry and exit happened (chart), what the Brain thinks and how sure it is.
+5. India market screens run fast like his broker app (option chain and chart tick about every second, chart opens instantly) — README.md Part IS1 / India work; India is out of V2 scope unless he says otherwise (D8).
+
+### 2.3 Hard rules from the owner (OR, README.md sec 0 and 1)
+- Main bot and the two live Binance paths: untouched (section 5).
+- Only two indicator families: (1) EMA50 + SD bands, (2) Special Master TSI + Z-score (Z-SMA). No ADX, Hurst, RSI, MACD, VWAP or a third indicator in any V2 feature, score or replay.
+- No trade data is deleted until the Brain is ready for real-money consideration. More data is better.
+- Dual Bot v1 stays in explore mode (takes every signal). Brain only reads its data.
+- Trading day = 00:00 UTC = 5:30 AM IST. BTC has its own margin and totals.
+- Small parts, ONE latest cumulative zip, only changed files, push is automatic (owl_auto.sh), no Termux commands unless the auto push failed.
+- Talk style: simple WhatsApp-style Roman English / Hinglish, short, no Devanagari in replies, end each reply with 2-4 numbered steps (what to download, what he should see, what to send back). Code, file names and README stay English.
+- Time format everywhere: over 60 min = "2 h 10 min" (Dart `fmtSpan` / `fmtMins`, Python `timefmt`).
+
+---
+
+## 3. HOW THE SYSTEM IS BUILT (backend + frontend + data + deploy)
+
+### 3.1 Parts (VF counts, 30 Oct 2026, from the zip)
+
+| Area | Where | Size now |
+|---|---|---|
+| Python backend (FastAPI + workers) | `backend/` | 252 .py files, 69,460 lines (123 files in `backend/recovered_bot/`, 14 in `backend/api/`, 66 `test_*.py` inside backend/) |
+| Flutter app | `frontend/lib/` | 158 .dart files, 49,434 lines |
+| Extra tests | `test/` | 86 files, about 6,586 python lines; Flutter has 1 test (`test/widget_test.dart`) |
+| Scanner | `scanner/` | 1 file (5-min top-10 both-side scanner) |
+| CI | `.github/workflows/` | `flutter-build.yml`, `cleanup-storage.yml`. NO test step in CI VF |
+| Phone tools | `tools/` | owl_auto.sh (watcher/deploy), db_check.py, archive_export.py, old_check.sh, clean_old_notes.sh |
+| V2 code | none | `backend/v2_*.py` does not exist VF → V2 has 0 lines built |
+
+Existing code about 125,000 lines (backend + Flutter + tests). Size of key files: api_server.py 787, smart_brain.py 1,258, dual_lab.py 1,308, app_provider.dart 1,273, vision_tab_screen.dart 2,026, candle_chart.dart 2,235.
+
+### 3.2 Data flow (how it must run systematically)
+
+```
+Binance (public GET + WebSocket)
+   → market_ws.py / binance_client.py  (candles, tickers)
+   → strategy.py  (EMA50 cross entry, SD-band TP1-TP4, signal-candle stop)
+   → MAIN BOT  paper_trader.py  ──(live_trading_enabled)──► execution_router → binance_trader / protection_manager   [LIVE path A]
+   → DUAL BOT  dual_lab.py (paper, takes every signal)  → dual_lab_data.json + append-only dual_archive.db
+   → SMART BRAIN  smart_brain.py + brain_*.py  (reads Dual data READ-ONLY, writes own json + brain_archive.db; observation only)
+   → AI Vision / AI Live  ai_live_client → ai_live_executor                                                       [LIVE path B, protected]
+   → api_server.py + api/*.py (184+ routes, /ws every 0.25 s)  → Flutter AppProvider → screens
+Phone: tools/owl_auto.sh watches Download for a zip → copies backend into ~/owl_code → restarts workers → pushes to GitHub → GitHub Actions builds the app.
+Data lives OUTSIDE the code (~/storage/shared/owl_data), so a deploy never touches trades or settings.
+```
+
+Rules of the flow (OR + VF): every screen value must trace back: exchange/API → backend owner → storage/cache → API contract → Flutter state → widget. No business rules inside widgets. Slow AI or research work must never block scanning, trading or the event loop. The LLM is never on the price/candle path.
+
+### 3.3 Which coins each part watches (VF README.md sec 12)
+Main bot: its own watchlist (never touch). Dual Bot: today top-10 gainers + 10 losers + BTC + coins with open trades + 7-day extra names (cap 30, from `universe_ctl.json`). Brain own scan: today's 20 + up to 30 names of the last 7 days. The 7-day names come from 1d candles = RETROSPECTIVE PROXY, never an authentic ranking.
+
+### 3.4 Phone deploy (VF README.md sec 13-14, NOT run by Claude)
+Download `owl_X.zip` → watcher sees it in ~10 s → backend overlay + restart → push to GitHub → app build. Zip must have everything inside ONE top folder `Indian-main/` or the phone ignores it. When `tools/owl_auto.sh` changes, raise its `BUILD=` number.
+
+---
+
+## 4. FRONTEND SPEC — LOOK, FEEL, SCREENS (Flutter stays Flutter)
+
+### 4.1 Look: "Silent Rich" (OR, built as SR1a-SR3, phone check pending)
+- Light theme default, off-white canvas (`F4F5F8`) so white cards lift; hairline borders; card radius 16-18; neutral soft shadow; calm status pill (`OWLStatusPill.calm`); money hero 34-36 px; muted section titles; screen titles 22 px w800.
+- Premium means: clear hierarchy, readable numbers, fast, stable scrolling, trustworthy values. NOT: glow, rainbow status colours, nested cards, heavy animation (P8 sec 24, README2 R7).
+- One shared card language: `owl_card.dart` (OwlHero, OwlFold, OwlChip, OwlSegmented), `app_theme.dart`, `app_spacing.dart`, `app_typography.dart`. Change look there, not screen by screen.
+- Easy to understand: headline = the key number, details one tap away (OwlFold); plain sentence labels ("Buyers coming in"); no duplicated numbers (R0 rule: Positions up/down once, Dual Now open P&L once).
+- Status is never colour alone: text label + colour. Text scaling, contrast, 48 dp touch targets, long symbols, large P&L must not clip.
+- Numbers: same USDT/INR precision, signed P&L, time-zone and timeframe labels everywhere.
+
+### 4.2 Chat-only frontend wishes (OR — in my memory of his chats, NOT in README 1/2/3; please confirm, Q5)
+- Opening / welcome "wow": copper-coloured credits "Crypto app design by Hussain Shaikh" and "Indian market design by Faisal Shaikh" (code already has both names in `widgets/owl_load_sequence.dart` L42-43 VF; the wish is not written in README.md); a full "heavy terminal" background (trading-room / chip / AI-chart themed, clean, no blur).
+- Light theme by default on fresh install; a left-swipe Backend status panel (zip live, restarts, errors); compact organised Settings; app choices restored from backend after reinstall.
+- His full "Master Product + Engineering prompt" of 29 Oct (UI-A..N, synced chart panes, Light/Dark/System, Flutter modernization) is NOT in these three files and I could not search for it. If you want it merged, send it (Q4).
+
+### 4.3 Navigation
+- 5 bottom tabs: Dashboard · Market · Positions · Brain · More (built, NEXT-4). Signals, Dual Bot, AI sit under More; screen indexes 3/4/5/7 are used by `goToTab` (fragile — Part 9 replaces numbers by a route map).
+- Child pages live inside parents (Brain: Overview, Evidence, Learning, Scalp Lab, Experiments, Coin lifecycle, Knowledge). No duplicate bottom bars. Android back must work; a child tab must never reset other screens. No essential action may be gesture-only.
+
+### 4.4 Screen states (every data screen, Part 9 component)
+Loading skeleton · populated · empty · stale (with age) · offline · reconnecting · partial · error + retry. "Live / Paper / Shadow / Replay / Hypothetical" badge on anything that shows P&L. "NOT ENOUGH DATA" visible in Brain cards.
+
+### 4.5 Specific fixes asked (OR, P2)
+1. Diagnostic feed stays pinned at the top of its swipeable section; list scrolls independently; no auto-jump to newest; "jump to latest"; show separately: backend alive · WebSocket connected · data fresh · scanner active · strategy ready · execution healthy. Today: `widgets/diagnostics_card.dart` (452 lines) sits at the END of the dashboard list VF → Part 8.
+2. Position cards: realized net USDT and floating P&L separate; % secondary; entry, LTP, size, margin, leverage, fees, SL/TP, progress. Close preview must use the same backend selection as the real close — today the preview uses the PAPER snapshot even when live is on VF (`api/trade.py` L123) → Part 10 (needs his separate approval, D4).
+3. Charts: candles + EMA50 + SD bands (+ entries/exits/SL/TP) with TSI and Z panes time-aligned; closed vs provisional candle shown; no fake overlay.
+4. Radar: today / yesterday / 2 / 3 / 7-day cohorts, each marked AUTHENTIC or PROXY, with source and timestamp (Part 12).
+
+### 4.6 Frontend engineering rules
+Granular updates (no full-screen rebuild per tick), virtualized lists, bounded buffers, WebSocket reconnect with backoff, no duplicate subscriptions, measure before optimizing. Do not replace Flutter, add GraphQL, React Native or a GPU stack without measured evidence. AppProvider already split into part files (NEXT-5); do not re-split.
+
+---
+
+## 5. BACKEND SPEC AND SAFETY (protected)
+
+### 5.1 The two LIVE Binance paths (VF — the main bot CAN send live orders when `live_trading_enabled` is on)
+- Path A: `execution_router.py` → `binance_trader.py` / `protection_manager.py`.
+- Path B: `ai_live_client.py` → `ai_live_executor.py`.
+- Protected files (16, 8,474 lines VF, all exist): strategy.py 337 · paper_trader.py 1,407 · execution_router.py 388 · binance_trader.py 941 · protection_manager.py 1,155 · ai_live_client.py 222 · ai_live_executor.py 473 · exchange.py 240 · reconciliation.py 310 · settings_store.py 276 · idempotency.py 141 · market_ws.py 812 · api/ai_live.py 168 · universe_7d.py 237 · filter_lab.py 688 · variant_lab.py 679. Keep byte-identical; a SHA-256 list goes into README at each stage.
+- Two exceptions that each need his OWN approval: `api_server.py` (only mount a router / start collector behind a default-OFF flag) and `api/trade.py` (additive read-only preview route).
+- Entry, exit, sizing, leverage, SL, TP, break-even, protective orders, close behaviour, `live_trading_enabled` change ONLY with his separate explicit approval. Tests use fakes; no test ever places, amends, cancels or closes a real order. Collectors, Scalp Lab, replay and the Ledger never import live code.
+
+### 5.2 Ten data domains — never mixed, overwritten or relabelled
+1 live Binance · 2 paper · 3 indicator observations · 4 public candles/snapshots (NEW `v2_market.db`) · 5 authentic cohorts (`cohort_official`, append-only) · 6 retrospective proxy cohorts (`is_proxy=1`) · 7 Scalp Lab/replay (NEW `v2_scalp.db`) · 8 Brain/AI Vision evidence · 9 diagnostics/gaps · 10 Knowledge Ledger (NEW `v2_ledger.db`). Existing DBs opened READ-ONLY (SQLite WAL/SHM side effects handled). Every derived row has `calc_version`. Missing data = logged gap, never invented.
+
+### 5.3 Collector rules (S1, Part 6)
+Public GET only; kill-switch `v2_collector_enabled` default OFF; every 5 min save top 20 gainers + top 20 losers; official daily cohort top 5 + 5 at 00:00 UTC; 3m/5m candles for max 40 symbols (kept 14 d / 30 d); hard cap 300 MB, transaction-safe purge, `cohort_official` and `gap_log` never auto-deleted, at 100% the collector pauses and Diagnostics shows why.
+
+### 5.4 Backend engineering
+Typed requests/responses, timeouts, bounded concurrency, idempotent restart-safe collectors, no heavy sync work in the event loop, redact secrets in logs and reports. api_server.py is already split into routers (6a-6j: 2,633 → 787 lines, 184 routes unchanged). Old Kivy `main.py` / `config.py` look dead (Part 24, owner decides, nothing deleted by Claude).
+
+### 5.5 Secrets (VF today — act on this)
+- `backend/.env` is in the zip (89 bytes). It holds API_HOST, API_PORT, DEBUG and a 20-character `SECRET_KEY` that looks like a placeholder; `.gitignore` lists `.env` VF. Keep real keys out of the repo.
+- Telegram-bot-token-shaped strings exist in `backend/main.py` and `scanner/5mins_scanner_binance_top10_bothside.py` VF (values not printed here). Earlier chats already flagged a leaked token: **rotate it in BotFather and move it to an environment variable / app Settings.** README2 R14: the repo and prompts stay private; no secrets in README, code, logs, ZIPs or fixtures.
+
+---
+
+## 6. STRATEGY SPEC (what the system trades, and what must be studied)
+
+### 6.1 The strategy today (VF from README.md + file list; exact code behaviour NV until Part 4 tests)
+- Signal: EMA50 close-cross on closed candles (3m originally; 5m and 15m now). Stop = signal-candle low/high. TP1-TP4 from 200-candle standard-deviation bands; after TP1 the stop moves to entry (break-even); Dual Bot adds TP5-TP7 (H2). Trade follows the latest signal (close-then-open reversal). Binance fee about 1% of ROI per trade at 10x → all learning uses fee-adjusted numbers.
+- Indicators: (1) main chart EMA50 + SD bands; (2) Special Master pane: TSI slow 25/13/13 (OB/OS ±30) and Z-score lookback 200 with Z-SMA 200 (black line), 1/2/3 sigma bands, reversal arrows off. Owner reading: TSI signal-line light green = buying weakening; Z above Z-SMA = strong; price up while Z down = possible divergence (or just sideways); SD bands act as support/resistance.
+- Paper test proposals only (not live): 100 USDT margin x 10x per trade; BTC 1,000 USDT; daily target about +30 and loss about -10 USDT (adjust, verify in settings).
+
+### 6.2 Facts from his own live numbers (27 Oct, keep visible)
+Closed trades lose, open trades float high (about -744 locked vs +3,600 floating, 18% win): floating is NOT money. Both indicators on the SAME candle = positive (+81 over 65 trades); Z only = -224; Main only = -601; sideways cost about 955 USDT. Recorded timing result (+1.33 vs -4.98 USDT per trade) must be re-run from original rows before relying on it.
+
+### 6.3 Research questions the system must answer with data (README2 sec 7, P2)
+When does a setup START forming vs trigger? Is a safe earlier entry possible using only information available then? Which higher-timeframe context helps? Trending vs chop vs compression vs retest vs exhaustion (labels, not hard rules). Timing Sync (same candle vs 1-2 candles later). Profit leakage: open P&L → peak (MFE) → adverse (MAE) → giveback → realized, with fees/funding/slippage. Hold vs protect vs skip vs wait. Stop-wick → continuation → re-entry (hypothetical only, never auto re-entry). Rank by net expectancy, drawdown, profit factor, sample size, out-of-sample stability, trade count — not win rate or open P&L.
+Result labels (research only, never live orders): Insufficient Data · Exploratory · Watch · Promising Candidate · Validated in Limited Conditions · Rejected · Approved for Controlled Test.
+
+---
+
+## 7. BRAIN, AI VISION, SCALP LAB, LEDGER
+
+### 7.1 Roles — keep separate (README2 sec 8)
+Existing bot = deterministic baseline, unchanged · AI Vision = explains the current timestamped snapshot (A+/A/B/NO TRADE, LLM only explains, numbers stay local) · Brain = historical evidence (journeys, look-alikes, mistakes, shadow calls) · LLM = writes the explanation from supplied evidence, never the source of statistical truth · replay/statistics = tests a relationship · production rules = protected.
+
+### 7.2 Brain built so far (🟢 DONE, observation only, phone check pending)
+B4a per-candle observations (22 numbers) · B4b journey ENTRY→MFE→first weakness→giveback→exit + statistics vs strict baseline + mistakes ledger · B4c look-alikes (8 numbers tsi, hist, z, zg, sm, bw, ed, sc; K=15, same side/timeframe/state, past-only scaling) + frozen `look_call` rows · B4d shadow rule r1 (HOLD_OK / PROTECT_LOOKS_BETTER / NO_OPINION), insert-only `shadow_rec`, scoring, `learn.shadow` key · NEXT-2/3 Flutter evidence cards · NEXT-7 skipped-signal check (backend) · Edge decay B3a/B3b · Brain own paper trades (stages exploring 0-29 → learning 30-99 → medium 100+ → quality 300+).
+Brain states: S strong · T stable · W weakening · R reversed. Frozen calls are never rewritten; rules are versioned.
+
+### 7.3 Anti-false-learning rules (must stay true)
+No look-ahead (call at time T uses only evidence frozen before T) · past-only scaling · one trade = one evidence point · time-block luck control · walk-forward (older judges newer) · minimum samples → NOT ENOUGH DATA · frozen history · rule versioning · no fishing through dozens of features · no LLM, no ML library, no extra database in the local Brain path.
+
+### 7.4 Not built yet (all 3 READMEs agree)
+Inventory tool and safety tests (Parts 1-5) · public collectors and authentic cohorts (6) · P&L reconciliation (7) · Diagnostics page (8) · Radar (12) · Data Explorer + AI Vision evidence (13) · Knowledge Ledger (14) · Scalp Lab (15, 9 categories planned: EMA Re-entry/Retest, SD Band Reaction, TSI Momentum, Z-score Behaviour, Combined, Quick Exit 1/3/5 candles, Pump/Dump Scanner, Brain Explorer, Results; Part 15 builds the framework + first two; the rest optional, D5) · Stop-wick study (16) · Fees/tax report (17) · Brain A/B paper test (19) · Brain Skip card (20) · Brain-to-trading proposals B3/G1/G2 (21, wait for data + separate approval each).
+Ready Check (README.md sec 6) must be true before any Brain rule touches trading: trust earned (100 judged trades), luck "Looks real", "what if the bot had listened" 30+ judged and SKIP beats TAKE ALL, exit advice 10+ opinions with hit-rate above 60%. On 27 Oct 1 of 4 was true.
+
+---
+
+## 8. WHAT IS DONE, WHAT IS NOT, AND IN WHICH ORDER
+
+### 8.1 DONE (🟢, before V2 — do not rebuild, only phone-check)
+Round 1, Parts A-F, N1-N2, BE1, BE2, BE2b · Part U archive + 7-day universe + desk + reports (Z1a-Z3b), time format Z1c · Brain memory M2, edge B3a/B3b, B4a-B4d-4, NEXT-7 backend · UI1-UI5, UI-D, SR1a-SR3 (Silent Rich), NEXT-2, NEXT-3, NEXT-4 (5-tab bar) · Dual Bot H2 extra TPs, India IS1 chart photo · NEXT-5 AppProvider split (5a-5c) · NEXT-6 api_server.py split (6a-6j) · phone deploy owl_auto.sh v5-v5e.
+Phone / build check of the newest zips is still WAITING on the owner (README.md block 1).
+
+### 8.2 THE MASTER LIST (canonical order = README.md 24 Parts; lines are EST from README.md; "x" = extra added by README4)
+
+| Part | Status | Work (in order) | EST lines | Starts after |
+|---:|---|---|---:|---|
+| 1 | 🟡 WAITING owner "ok S0 round 1a" | Safety foundation: read-only DB opener, WAL/SHM + symlink safety | 380 | — |
+| 2 | 🔴 NOT DONE | Fail-closed secret redaction + tests | 270 | 1 |
+| 3 | 🔴 NOT DONE | Inventory CLI + evidence labels + report (owner runs once, sends JSON; replaces NEXT-1) | 350 | 2 |
+| 4 | 🔴 NOT DONE | Protected strategy-rule tests + paper/live routing characterization (records behaviour, changes nothing) | 450 | 3 |
+| 5 | 🔴 NOT DONE | Mock-only live-client tests, import-isolation guard, informational CI test job | 425 | 4 |
+| 6 | ⛔ BLOCKED | Public collectors, snapshots, official cohorts, 3m/5m candles, `v2_market.db`, gaps, 300 MB cap | 1,820 | 3 (inventory report) |
+| 7 | 🔴 | Live/paper P&L reconciliation, fees, data separation | 990 | 3 |
+| 8 | 🔴 | Diagnostics: health strip + detail/history page **+ x: pinned feed fix (+120)** | 1,260 +120x | 6 data |
+| 9 | 🔴 | Premium design system, navigation, reusable states **+ x: central route map (+150)** | 1,200 +150x | none |
+| 10 | 🔴 | Positions + safe close preview (live-mode mismatch fix, D4) | 670 | 4, approval |
+| 11 | 🔴 | Chart audit/fixes (EMA50/SD, TSI/Z); exact Pine parity NV | 520 | none |
+| 12 | ⛔ BLOCKED | Radar: today/yesterday/2/3/7-day cohorts, authentic vs proxy **+ x: 1/2/3/7-day lifecycle outcomes (+400)** | 1,610 +400x | 6 (1 day of data) |
+| 13 | 🔴 | Data summaries, Data Explorer, evidence-based AI Vision (A+/A/B/NO TRADE; replaces NEXT-9) | 1,530 | 3 |
+| 14 | 🔴 | Knowledge Ledger with provenance + experiment traceability | 1,230 | 6, 13 |
+| 15 | ⛔ BLOCKED | Scalp Lab framework + first 2 categories **+ x: large-trade 3m/5m hypothetical replay (+350)** | 2,560 +350x | 3-4 weeks of candles |
+| 16 | ⛔ BLOCKED | Stop-wick → continuation → re-entry study | 960 | 6 candles |
+| 17 | 🔴 | Settings taxonomy + fees/tax report | 1,060 | 3 |
+| 18 | 🔴 | Final integration, performance, accessibility, acceptance, README close-out (replaces NEXT-10) | 500 | all |
+| 19 | 🟡 WAITING | Brain-assisted PAPER A/B (replaces NEXT-8) | 350 | 7, 14 |
+| 20 | 🟡 WAITING | Brain Skip card in Flutter (backend done) | 130 | own ok |
+| 21 | 🟡 WAITING DATA | Brain-to-trading proposals B3 / G1 / G2 (each separate approval) | 270 | Ready Check |
+| 22 | 🟡 WAITING | Dual Bot H1 auto-start + TP-LAST target | not estimated | own plan |
+| 23 | ⚪ NOT PLANNED | E4 / E5 / E6 and Brain v2 backlog | — | owner asks |
+| 24 | 🟡 WAITING | Backend cleanup review (dead Kivy main.py, config.py) | not estimated | owner decides |
+| 25 | ⚪ OPTIONAL (new x) | Conversational Brain grounded in the Ledger | about 600 | 13, 14, provider decision D9 |
+
+### 8.3 Totals (EST; arithmetic checked today)
+
+| Group | New / changed lines (EST) |
+|---|---:|
+| Parts 1-5 (safety + inventory foundation) | 1,875 (README.md sec 15.9 says S0 = 2,100; 225 difference = extra safeguards/CI, not itemised) |
+| Parts 6-18 (V2 build) | 15,910 |
+| Parts 19-21 (old Brain items renamed) | 750 |
+| **Subtotal Parts 1-21 (README.md plan)** | **18,535** (18,760 with S0 = 2,100) |
+| README4 extras x (rows 8, 9, 12, 15) | +1,020 |
+| Part 25 optional | +600 |
+| **Grand total if everything is built** | **about 20,150** lines (range 12,000-22,000, confidence Low-Med) |
+| Optional Scalp categories 3-8 (D5) | +3,000 on top |
+
+Files (README.md sec 15.9 table, re-added): about 39 new code files + 36 new test files + about 24 distinct existing code files changed (the table rows add to 33 before de-duplication) + README in every delivery = **about 100 distinct files**; README4 extras add about 3 files (route map, lifecycle outcome module, optional Q&A). Deliveries: about 30 at 300-400 lines each. The old "about 50 files, 4,000-7,000 lines" guess covers only the Brain/UI part (NEXT-1..10 ≈ 3,900 lines EST) — not V2.
+Existing code today: about 125,000 lines (section 3.1). Old/new split of the plan: roughly 15% extra on top of existing code; nothing existing is rewritten (cleanup Part 24 is review only).
+V2 built so far: **0 files, 0 lines, 0 tests run.**
+
+### 8.4 Old label → Part (so nothing is counted twice)
+NEXT-1 → Part 3 · NEXT-7 Flutter card → Part 20 · NEXT-8 → Part 19 · NEXT-9 → Part 13 · NEXT-10 → Part 18 · B3 / G1 / G2 → Part 21 · H1 + TP-LAST → Part 22 · E4 / E5 / E6 + Brain v2 → Part 23 · backend cleanup (old section 9) → Part 24 · V2-S0..S13 → Parts 1-18. The 7-day universe (U2) stays DONE and is always shown as PROXY.
+
+### 8.5 The ONE next step
+Part 1 (about 380 lines, 4-5 files: `backend/v2_inv_safe.py`, `test/test_v2_inv_safe.py` + README). It writes nothing to any live setting or database. Needs his words: "ok S0 round 1a". Parts 9 and 11 can start in parallel only if he asks.
+
+---
+
+## 9. VERIFIED TODAY (30 Oct) — what I really checked
+
+| Check | Result |
+|---|---|
+| README.md claims: Flutter 158 files / about 49.4k lines | MATCH (158 / 49,434) |
+| README.md claims: 86 files in `test/`, 66 `test_*.py` in backend | MATCH |
+| api_server.py 787 lines after split | MATCH (787) |
+| All 16 protected files exist | YES, 8,474 lines total |
+| `/api/preview_close_all` at `api/trade.py` L123 | MATCH |
+| CI has no test step | MATCH (only flutter-build.yml and cleanup-storage.yml; no pytest / flutter test) |
+| V2 code exists | NO (`backend/v2_*.py` absent) |
+| app_provider.dart line count | 1,273 now vs 1,256 in README.md (small drift; README.md is slightly stale) |
+| Light/Dark switch in app | EXISTS (settings_screen.dart, app_provider.dart) but README.md says light only |
+| Credits names in app | EXISTS in `owl_load_sequence.dart`, not in README.md |
+| Not verified | Pytest not run · Flutter not compiled · app/backend not run · no database, screenshot or git history seen · Pine sources not in repo · second repo not received |
+
+---
+
+## 10. HOW TO FOLLOW README4 (rules for every delivery)
+
+R1. Order: read this file → take the first not-DONE Part in 8.2 → open ONLY its files (README.md sec 12 CODE MAP) → tell the owner FILES + LINES + any one question → STOP → his "ok" → build that one Part → update README (status, real test evidence, date) in the same zip → ONE cumulative zip → say "download the zip, push is automatic" → STOP.
+R2. Size: about 300 lines per zip (max 400), 4-5 small files, new modules under about 250 lines. If more is needed, split (Part 15 delivery 1, 2 …). Do not add big blocks to api_server.py, main.py or smart_brain.py; thin hooks only.
+R3. Never edit protected files (5.1). Never mix data domains (5.2). Only the two indicators.
+R4. Every delivery ends with this report: **Kya kiya → Kya test hua (command + real result, or "Not Run") → Kya baaki hai → Live safety: protected path changed? (default NO) → Next step (one task).**
+R5. Never claim a push, build, test pass, learning, latency gain or profit that did not happen. Estimates are estimates.
+R6. Brain work stays observation / paper. Nothing in Brain, Vision, Scalp Lab, collectors or replay may create a live order or change a live filter.
+R7. Old labels are aliases; do not make them new tasks.
+R8. Owner decisions already taken are not asked again (README.md sec 15.12 D1-D8 list below).
+
+### Open decisions (owner)
+D1 old vs new items: same job once, different jobs renamed (proposed mapping 8.4 — needs "mapping ok") · D2 which 5-minute snapshot counts as a day's official cohort (default: last one before 00:00 UTC) · D3 api_server.py router mount at Part 6 · D4 live-mode preview fix in `api/trade.py` at Part 10 · D5 Scalp categories 3-8 · D6 share the two Pine scripts (lets exact parity be marked) · D7 CI test job becomes a gate only when green and he says so · D8 India screens in or out of V2 · D9 Claude API vs NVIDIA tools (study only; Claude stays the first provider behind a backend interface; no GPU).
+
+---
+
+## 11. QUESTIONS FOR THE OWNER (answer in one line each)
+
+Q1. Where is the second repo? Only `Indian-main (29)` came with this message. Which one is the other (crypto-only `owl1`?), and should its README be merged too?
+Q2. After you approve README4: may I merge it into README.md (so there is again ONE notes file) and take README2/README3 out of the repo?
+Q3. Theme: keep "light by default + Dark switch" (what the code does now) or "light only" (what README.md says)?
+Q4. Your 29 Oct "Master Product + Engineering prompt" (UI-A..N, synced panes, Light/Dark/System) is not inside these 3 files. Send it if you want it merged.
+Q5. Do the chat-only wishes in 4.2 (copper credits, heavy-terminal background, status panel) stay as requirements?
+Q6. "mapping ok" for section 8.4?
+Q7. Rotate the Telegram bot token (5.5): done or not yet?
+
+---
+
+## APPENDIX A — Requirement → Part traceability (short)
+
+| Requirement (source) | Part |
+|---|---|
+| Live safety + tests with fakes (README.md 15, README2 sec 5, P2 11-16) | 1-5 |
+| Inventory, redaction, read-only DB (README.md S0, README2 sec 10) | 1-3 |
+| Authentic 5-min snapshots, official cohorts, gaps (README.md S1, P2 189-204) | 6 |
+| P&L net vs floating, fees/funding (README2 R8, P2 89-103) | 7, 17 |
+| Diagnostic feed pinned + 6 statuses (P2 78-88) | 8 |
+| Design system, nav map, states (P2 58-77, README2 R7) | 9 |
+| Position cards + safe close (P2 89-103) | 10 |
+| Charts EMA50/SD + TSI/Z aligned (P2 104-114) | 11 |
+| 7-day Radar + lifecycle (P2 188-204) | 12 |
+| Data Explorer + AI Vision evidence (P8 sec 28, README2 sec 8) | 13 |
+| Knowledge Ledger, versioned findings (P2 237-249) | 14, 25 |
+| Scalp Lab categories, replay, quick exits (P2 158-187) | 15 |
+| Stop-wick → re-entry (P2 146-157) | 16 |
+| Settings, reports, tax estimate labels (README2 R9, R8) | 17 |
+| Performance, accessibility, final README (P2 259-272) | 18 |
+| Brain A/B paper, Skip card, B3/G1/G2 (P8 sec 29-31, 42-44) | 19-21 |
+| Claude / NVIDIA study (P5, README2 R11) | D9, 25 |
+
+## APPENDIX B — Terms
+Cohort = top 5 gainers + 5 losers of one UTC day · Snapshot run = one 5-minute public read · Official cohort = the one that counts for a day · Retrospective proxy = ranking rebuilt later from 1d candles (always PROXY) · Gap = a time slot with no data (logged, never filled) · MFE / MAE = best / worst move while a trade was open · Giveback = MFE minus final result · Characterization test = records what code does today without fixing it · Protected file = live-trading file that must stay byte-identical.
+
+END OF README4 v1.
+
+
+===================================================================
+# PART II - FINAL MASTER PROMPT (original text, unchanged)
+===================================================================
+
+# OWL / VERSION 2 — FINAL MASTER PROMPT (one file for any Claude)
+
+Version: FINAL v1 — 30 Oct 2026. Built by reading: Version_2 Complete Plan (PDF), Version_2 Master Prompts (2 txt), OWL1 Project Brief (355 numbered rules), OWL1 MASTER PROMPT v70plus (2 PDFs, same text), OWL_HANDOFF.md (25 Oct), Claude_Opus_Upgrade_Prompt.txt, README4.md, and the repo `Indian-main (29).zip` (README.md v84, README2.md, file tree).
+Status of THIS file: DOCUMENT ONLY. No code changed. No test run. No Flutter build made.
+
+Labels used everywhere: **VF** = verified in a file (or by counting) · **OR** = owner requirement · **NV** = needs validation · **EST** = rough estimate, not measured.
+
+---
+
+## 0. HOW TO USE THIS FILE
+
+1. Owner pastes/uploads this file + the latest `Indian-main.zip` into any new Claude chat and says: **"Read the prompt and continue with the next part."**
+2. Claude reads this file fully, then reads ONLY these from the repo: `README.md` top (MASTER ROADMAP + V2 STATUS BOARD), section 0 (rules), section 12 (CODE MAP), section 15 (full V2 plan). Do NOT read the whole 233 KB README. Do NOT read README3 (old prompt archive).
+3. Claude finds the first not-DONE Part in section 8 below (cross-check with README.md top table; **the repo README wins if they differ**), then follows the first-response protocol in section 1.
+4. Everything older is superseded by this file (section 14 lists what was dropped and why).
+
+---
+
+## 1. ROLE AND FIRST-RESPONSE PROTOCOL
+
+**Role:** senior product architect + Flutter UX lead + FastAPI engineer + market-data engineer + quant researcher + QA lead + README owner. This is an EXISTING app (about 125,000 lines). Not a demo. Do not rewrite it.
+
+**Every new chat, in this order (plan first, code only after the owner's "ok"):**
+1. Read this file → read the repo README parts named in section 0.
+2. Tell the owner in 6-10 short lines: which Part is next, which files (names), line estimate, any ONE essential question, and the **next 4-5 Parts as a menu (files + line estimate each)** so he can pick one or combine several (he often says "do 6e + 6f together").
+3. **STOP and wait for his "ok".** No code, no zip before "ok".
+4. After "ok": open only the files that Part needs, build, sanity-check (py_compile, bracket balance), update README, make ONE zip, report, STOP. Do not start the next Part by yourself.
+
+**Honesty rules (never break):**
+- Never say a test passed unless it was run. Use: **Passed / Failed / Not Run / Blocked**.
+- Claude cannot compile Flutter. Say so every time; the GitHub build is the real test.
+- Never claim a push, build, latency gain, learning, profit or data coverage that did not happen.
+- If data/source is missing, say what is missing. Never invent numbers, history, fills, rankings, candles or outcomes.
+- If the owner's request conflicts with a rule here, say so and offer choices. Do not silently skip.
+
+---
+
+## 2. THE OWNER AND HOW TO TALK / DELIVER (OR)
+
+**Owner:** Hussain Shaikh. Not a coder. Android phone only. Dictates in Hindi/Hinglish.
+
+**Talk style:** reply in **English, casual WhatsApp-like, short and simple** (Roman Hinglish words are fine; **no Devanagari** in replies). No walls of text. End every reply with **2-4 numbered steps**: what to download, what he should see, what to send back. Code, file names and README stay English.
+
+**Delivery rules:**
+- ONE zip per delivery. Top folder exactly `Indian-main/` (never `Indian-main/Indian-main/`). README at `Indian-main/README.md`.
+- Zip = **only changed files**, but **cumulative**: also include files of earlier Parts he has not confirmed applied. If unclear which Parts he applied, ask once.
+- Part size: about 300 lines, max about 400, 4-5 small files, new modules under about 250 lines. If a Part needs more, split ("Part 15 — delivery 1, delivery 2"). Thin hooks only in big files (`api_server.py`, `main.py`, `smart_brain.py`).
+- No big test files for small features. Add a test only when there is a real safety reason (and always for protected-behaviour, isolation and P&L math).
+- Exclude from zips: caches, build output, secrets, `.env`, unrelated files.
+- Push is automatic (`tools/owl_auto.sh` watches Downloads → deploys backend → pushes to GitHub → build). **Do not give Termux/git commands unless he asks** or the auto push failed. (Phone repo folder, if needed: `~/Indian-cleanup`.)
+- When `tools/owl_auto.sh` changes, raise its `BUILD=` number.
+- README: **every finished item shows a green circle 🟢**. Other marks: 🟡 WAITING (owner data/check/decision) · 🔴 NOT DONE · ⛔ BLOCKED · ⚪ NOT PLANNED.
+- Time format everywhere: over 60 min = "2 h 10 min" (Dart `fmtSpan`/`fmtMins`, Python `timefmt`).
+
+**Owner "do NOT" list (from his own chats):**
+- Do not touch the Telegram token/config unless he asks. (Real fix = he rotates it in BotFather; see 5.5.)
+- Do not add Panic-close buttons, Take/Skip/Watch buttons, Risk Center, drag-widget edit mode.
+- Do not change tap-to-chart, TP-tap, welcome screen, Dual Bot chart behaviour.
+- Do not change the India market code (it works well). All strategy work is for **crypto only** unless he says otherwise (decision D8).
+- Do not delete any trade data until the Brain is ready for real-money consideration. More data is better.
+- Dual Bot v1 stays in explore mode (takes every signal). Brain only READS its data.
+
+---
+
+## 3. WHY THE PRODUCT EXISTS (OR)
+
+- The problem is **NOT too few signals**. It is **signal quality**: fake signals in choppy markets, trades that go green then reverse, open profit given back before it is realized, and not knowing when to HOLD, PROTECT profit, SKIP or WAIT.
+- Path: **OBSERVE → ARCHIVE → LEARN → COMPARE → VALIDATE → EXPLAIN → PAPER/SHADOW TEST → only later consider automation.**
+- Long-term dream: a Brain/AI strong enough to trade a small real stake ($10-20) alone, using ONLY his two indicators. Paper profit does not promise live profit (fees, slippage). Live authority must be earned by evidence and needs his separate approval.
+- The Brain learns from **evidence**, not from hundreds of hand-written rules. "Price up while Z down" is something to MEASURE, never a hard-coded exit.
+- **"NOT ENOUGH DATA" is a good, honest answer.** No fake confidence percentages.
+- His live numbers (27 Oct, keep visible): closed trades lose while open trades float high (about -744 locked vs +3,600 floating, 18% win) → **floating is not money**. Both indicators on the SAME candle = positive; Z only and Main only = negative; sideways cost about 955 USDT. Re-check the timing result from original rows before relying on it.
+- Binance fee is about 1% of ROI per trade at 10x → all learning uses fee-adjusted numbers.
+
+**What he wants to see and feel (frontend, OR):**
+1. One premium, calm, trustworthy terminal ("silent rich"): clear hierarchy, money first, no wall of text, no repeated numbers.
+2. Smooth on his phone "like butter": no lag, no repeated loading screens, ticks do not rebuild whole screens.
+3. Honest data: stale / proxy / missing is always labelled; no fake numbers; no green status that is not true.
+4. A "why": why a trade was taken/skipped/lost, where entry and exit happened (chart), what the Brain thinks and how sure it is.
+5. He should be able to understand accumulated data (AI Vision, Strategy Lab, Brain) from summaries, charts and examples — without reading raw JSON/CSV/logs.
+
+---
+
+## 4. CURRENT VERIFIED STATE (VF, 30 Oct 2026, from zip 29 + README4)
+
+| Area | Where | Size |
+|---|---|---|
+| Python backend | `backend/` | 252 .py, about 69,460 lines (123 in `recovered_bot/`, 14 in `api/`, 66 `test_*.py`) |
+| Flutter app | `frontend/lib/` | 158 .dart, about 49,434 lines |
+| Extra tests | `test/` | 86 files; Flutter has 1 test (`widget_test.dart`) |
+| Scanner | `scanner/` | 1 file (5-min top-10 both-side scanner) |
+| CI | `.github/workflows/` | `flutter-build.yml` (APK build only), `cleanup-storage.yml`. **No pytest / flutter test step** |
+| Phone tools | `tools/` | `owl_auto.sh`, `db_check.py`, `archive_export.py`, … |
+| V2 code | — | `backend/v2_*.py` does **not exist** → **V2 = 0 lines, 0 tests run** (re-checked in zip) |
+
+- `api_server.py` was split into routers (6a-6j): 2,633 → 787 lines, 184 routes unchanged. AppProvider already split into part files (NEXT-5). Do not re-split either.
+- README.md (v84) has: MASTER ROADMAP (24 Parts) at top, V2 STATUS BOARD, section 12 CODE MAP, section 13 PHONE DEPLOY, section 15 FULL V2 PLAN.
+- **DONE before V2 (🟢, do not rebuild, only phone-check):** Round 1, Parts A-F, N1-N2, BE1/BE2/BE2b; Part U (Dual Bot archive + 7-day universe + desk + reports); Brain memory M2, edge B3a/B3b; **Brain B4a-B4d-4** (observation, journey, look-alike, mistakes, shadow rule r1); NEXT-2/3 Brain UI; NEXT-4 5-tab bar; NEXT-5 AppProvider split; NEXT-6 API split (6a-6j); NEXT-7 backend skip check; UI1-UI5, Silent Rich SR1a-SR3; Dual Bot H2 (TP5-TP7); India IS1; phone deploy `owl_auto.sh` v5-v5e.
+- **Not verified (be honest about it):** pytest not run · Flutter not compiled · app/backend not run · real databases (`dual_archive.db`, `brain_archive.db`, `owl.db`, `trades.db`) are on the phone, not in the zip · Pine sources of the two indicators are NOT in the repo · no screenshots/git history seen.
+- Small drift: `app_provider.dart` is 1,273 lines now (README says 1,256). README is slightly stale there.
+
+---
+
+## 5. SAFETY — LIVE BINANCE IS REAL (VF, ABSOLUTE)
+
+### 5.1 The bot CAN send real orders
+When `live_trading_enabled` is on, the main bot places real Binance orders. Two paths (re-confirm from the zip every time):
+- **Path A:** `api/trade.py` → `execution_router.py` (paper XOR live switch) → `binance_trader.py` (`place_market_order`, `set_leverage`, `open_market_order`, `close_position_market`) + `protection_manager.py` (algo/stop orders, cancels).
+- **Path B:** `api/ai_live.py` → `ai_live_executor.py` → `ai_live_client.py` (marginType, leverage, order, algoOrder, cancels).
+- No third order route was found by grep of `/fapi` order endpoints (NV for dynamically built URLs).
+
+### 5.2 Protected files — keep byte-identical (record SHA-256 in README each stage)
+`strategy.py` 337 · `paper_trader.py` 1,407 · `execution_router.py` 388 · `binance_trader.py` 941 · `protection_manager.py` 1,155 · `ai_live_client.py` 222 · `ai_live_executor.py` 473 · `exchange.py` 240 · `reconciliation.py` 310 · `settings_store.py` 276 · `idempotency.py` 141 · `market_ws.py` 812 · `api/ai_live.py` 168 · `universe_7d.py` 237 · `filter_lab.py` 688 · `variant_lab.py` 679 (all under `backend/` or `backend/recovered_bot/`; 8,474 lines).
+Two exceptions, each needing his OWN separate approval: `api_server.py` (only mount a router / start the collector behind a default-OFF flag) and `api/trade.py` (one additive read-only preview route).
+
+### 5.3 What must never change without his separate, explicit approval
+Entry rule (EMA50 close-cross), signal-candle stop, SD-band TP1-TP4, TP1→break-even, order placement/parameters, sizing, leverage, protective orders, close behaviour, retry logic, signing, `live_trading_enabled`, paper/live routing, live risk limits.
+
+### 5.4 Test rules
+All tests use mocks/fakes/offline fixtures (mock `_signed_request` and exchange clients, block sockets). **No test ever places, amends, cancels or closes a real order. No production credentials in tests.** Collectors, replay, Scalp Lab, Ledger, Data Explorer must **never import or call live code** (guard test).
+
+### 5.5 Secrets (VF — act on it)
+- `backend/.env` is in the zip (89 bytes: API_HOST, API_PORT, DEBUG, a 20-char `SECRET_KEY` that looks like a placeholder). `.gitignore` lists `.env`. Keep real keys out of the repo.
+- Telegram-bot-token-shaped strings exist in `backend/main.py` and `scanner/5mins_scanner_binance_top10_bothside.py` (values not printed). **Owner should rotate the token in BotFather and move it to an environment variable.** Never print the value. No secrets in README, code, logs, ZIPs, fixtures, screenshots.
+
+---
+
+## 6. THE TWO INDICATORS — HARD SCOPE (OR)
+
+Strategy research, scoring, filtering, replay and recommendations use **ONLY** his two existing indicators:
+1. **EMA50 + SD bands** (main chart; SD = rolling SMA200 ± standard deviation; EMA50 close-cross entry).
+2. **Special Master: TSI + Z-score** (TSI slow 25/13/13, OB/OS ±30; Z-score lookback 200 with Z-SMA; 1/2/3 sigma bands; also referred to as "Special 13" in one old prompt — same two families).
+
+**No ADX, Hurst, RSI, MACD, VWAP, extra MAs, extra oscillators, third-party packs** in any V2 feature, score or replay without explicit approval. ADX/ATR/regime tags already exist in code as metadata (`adx`, `ema_gap_atr`, `htf_trend`, `atr_pct`) → **leave them, never use them in V2.**
+Raw market facts (price, OHLCV, volume, fees, spread, funding) may be CONTEXT/evaluation data; keep them distinct from indicator features and from model output.
+Pine sources are NOT in the repo → exact Pine equivalence stays **NEEDS VALIDATION** until he shares both scripts (decision D6). Every V2 snapshot stores: timestamp, candle state (closed/provisional), formula version, source candle, missing-data flags. Validate values against a fixed fixture before trusting. Never use future data for a signal-time snapshot; never rewrite old results with a new formula.
+Owner reading of the indicators (hypotheses to MEASURE, not rules): TSI signal line light green = buying weakening; Z above Z-SMA = strong; price up while Z down = possible divergence (or just sideways); SD bands may act as support/resistance. Study all four: price↑Z↓, price↓Z↑, both↑, both↓ — equal in importance to TSI.
+
+---
+
+## 7. DATA SEPARATION — 10 DOMAINS, NEVER MIXED, OVERWRITTEN OR RELABELLED
+
+| # | Domain | Store | Status |
+|---|---|---|---|
+| 1 | Live Binance orders, fills, positions, protection, realized P&L | existing `trades.db` / protection tables | EXISTING, V2 reads only (read-only connection) |
+| 2 | Paper trading + simulated P&L | existing paper tables | EXISTING. NV: does paper share a table with live? If yes → mode filter + contamination test |
+| 3 | Indicator observations + derived features | existing `obs` (dual_archive.db) | EXISTING, V2 adds nothing |
+| 4 | Public candles + market snapshots | NEW `data/v2_market.db` (`snapshot_run`, `snapshot_row`, `candle_3m`, `candle_5m`) | NEW |
+| 5 | Authentic scan-time cohorts | NEW `v2_market.db: cohort_official` (append-only, unique day+kind+rank) | NEW |
+| 6 | Retrospective proxy cohorts | NEW `v2_market.db: proxy_cohort` (`is_proxy=1`, source `universe_days.json`) | NEW |
+| 7 | Scalp Lab + replay (hypothetical) | NEW `data/v2_scalp.db` | NEW |
+| 8 | AI Vision / Brain scores + evidence | existing `brain_archive.db` + AI tables | EXISTING, read-only |
+| 9 | Diagnostics, collector health, gaps | NEW `v2_market.db: gap_log, collector_health` | NEW |
+| 10 | Knowledge Ledger (versioned conclusions) | NEW `data/v2_ledger.db` | NEW |
+
+Rules: no cross-store writes · existing DBs opened `mode=ro` (handle WAL/SHM side effects and symlinks) · nothing deleted or destructively migrated · schemas additive + versioned · every derived row has `calc_version`, source record IDs, created time · shared symbol/timestamp never means merge (use IDs/foreign keys, not copies) · raw records append-only where practical · paper/replay never labelled live · proxy never labelled authentic · actual trades and hypothetical candidates never share an ID or get counted together · automated contamination tests must fail on any cross-domain leak · UTC internally, local time only for display · money in decimal-safe or tested integer arithmetic.
+
+---
+
+## 8. THE ORDERED ROADMAP (canonical = repo README 24 Parts; EST lines)
+
+Old labels (A-F, U1-U5, NEXT-1..10, B3/G1/G2, H1, S0-S19, 6a-6j) are **aliases only** — never count them as extra tasks. Mapping: V2-S0 → Parts 1-5 · S1 → 6 · S2 → 7 · S3 → 8 · S4 → 9 · S5 → 10 · S6 → 11 · S7 → 12 · S8 → 13 · S9 → 14 · S10 → 15 · S11 → 16 · S12 → 17 · S13 → 18 · NEXT-1 → 3 · NEXT-7 card → 20 · NEXT-8 → 19 · NEXT-9 → 13 · NEXT-10 → 18 · B3/G1/G2 → 21 · H1+TP-LAST → 22 · E4/E5/E6 → 23 · backend cleanup → 24.
+
+| Part | Status | Work (in order) | EST lines | Starts after |
+|---:|---|---|---:|---|
+| 1 | 🟡 WAITING owner "ok S0 round 1a" | Safety foundation: read-only DB opener, WAL/SHM + symlink safety | 380 | — |
+| 2 | 🔴 | Fail-closed secret redaction + tests | 270 | 1 |
+| 3 | 🔴 | Database inventory CLI + evidence labels + report (owner runs once on phone, sends JSON) | 350 | 2 |
+| 4 | 🔴 | Protected strategy-rule tests + paper/live routing characterization (records behaviour, changes nothing) | 450 | 3 |
+| 5 | 🔴 | Mock-only live-client tests, import-isolation guard, informational CI test job | 425 | 4 |
+| 6 | ⛔ BLOCKED | Public collectors, snapshots, official cohorts, 3m/5m candles, `v2_market.db`, gaps, 300 MB cap | 1,820 | 3 (inventory report) |
+| 7 | 🔴 | Live/Paper P&L reconciliation, fees, data separation | 990 | 3 |
+| 8 | 🔴 | Diagnostics: dashboard health strip + detail/history page + pinned-feed fix | 1,260 (+120) | 6 data |
+| 9 | 🔴 | Premium design system, central route map, reusable UI states | 1,200 (+150) | none |
+| 10 | 🔴 | Positions + safe close preview (live-mode preview mismatch fix, D4) | 670 | 4 + approval |
+| 11 | 🔴 | Chart audit/fixes (EMA50/SD, TSI/Z); exact Pine parity NV | 520 | none |
+| 12 | ⛔ BLOCKED | Radar: today/yesterday/2/3/7-day cohorts, authentic vs proxy, 1/2/3/7-day lifecycle outcomes | 1,610 (+400) | 6 (≥1 day data) |
+| 13 | 🔴 | Data summaries, Data Explorer, evidence-based AI Vision (A+/A/B/NO TRADE) | 1,530 | 3 |
+| 14 | 🔴 | Knowledge Ledger with provenance + experiment traceability | 1,230 | 6, 13 |
+| 15 | ⛔ BLOCKED | Scalp Lab framework + first 2 categories + large-trade 3m/5m hypothetical replay | 2,560 (+350) | 3-4 weeks candles |
+| 16 | ⛔ BLOCKED | Stop-wick → continuation → re-entry study | 960 | 6 candles |
+| 17 | 🔴 | Settings taxonomy + fees/tax report | 1,060 | 3 |
+| 18 | 🔴 | Final integration, performance, accessibility, acceptance, README close-out | 500 | all |
+| 19 | 🟡 WAITING | Brain-assisted PAPER A/B comparison | 350 | 7, 14 |
+| 20 | 🟡 WAITING | Brain Skip card in Flutter (backend done) | 130 | own ok |
+| 21 | 🟡 WAITING DATA | Brain-to-trading proposals B3 / G1 / G2 (each separate approval) | 270 | Ready Check |
+| 22 | 🟡 WAITING | Dual Bot H1 auto-start + TP-LAST target (affects Dual exits) | not estimated | own plan |
+| 23 | ⚪ NOT PLANNED | E4/E5/E6 + Brain v2 backlog | — | owner asks |
+| 24 | 🟡 WAITING | Backend cleanup review (dead Kivy `main.py` 2,964 lines, `config.py`) — no deletion without a plan | not estimated | owner decides |
+| 25 | ⚪ OPTIONAL | Conversational Brain grounded in the Ledger ("Bhai, coin mein kya hua?") | about 600 | 13, 14, D9 |
+
+Totals (EST, Low-Med confidence): Parts 1-21 about 18,535-18,760 lines · extras about +1,020 · Part 25 +600 · grand total about 20,150 (range 12,000-22,000) · about 100 distinct files, about 30 deliveries at 300-400 lines. Optional Scalp categories 3-8: +3,000. The old "6-7k lines / 43 parts" figure covers the Brain/UI roadmap only — not V2.
+**Next step today = Part 1** (about 380 lines: `backend/v2_inv_safe.py`, `test/test_v2_inv_safe.py` + README; writes nothing to any live setting or DB). Parts 9 and 11 can run in parallel only if he asks.
+
+### 8.1 What each Part must contain (file-level plan from the Version 2 PDF; PROPOSAL, owner approved the S0-S13 direction)
+
+**Parts 1-5 (S0 — safety baseline + inventory, about 1,900-2,100 lines):**
+`test/test_v2_protected_rules.py` (pin EMA50 entry, signal-candle stop, TP1-TP4, TP1→BE through `strategy.py`/`paper_trader.py`, ~230) · `test/test_v2_exec_routing.py` (paper XOR live; close-all-profit/loss selection equals `preview_close_all`, ~220) · `test/test_v2_live_clients_mock.py` (`binance_trader`, `protection_manager`, `ai_live_client` with fake HTTP, sockets blocked, ~230) · `test/test_v2_isolation_guard.py` (only an allow-list may import live modules; `/fapi` order strings only in 3 files, ~150) · `.github/workflows/flutter-build.yml` (new job: pytest + flutter analyze + flutter test; informational first, gate only when green and he says so, ~45) · `backend/v2_inventory.py` (read-only scan of all SQLite/JSON stores: tables, counts, date ranges, quality; writes only a JSON report, ~320) · `test/test_v2_inventory.py` (read-only proof, ~120) · README top Version 2 status board + corrected live-execution disclosure (~150).
+Acceptance: all new tests pass offline with network blocked; protected hashes unchanged; inventory report produced on the phone. Rollback: delete files, revert workflow.
+
+**Part 6 (S1 — collectors, ~1,820, 3 deliveries):** `v2_store.py` (schema, provisional until inventory reviewed) · `v2_defs.py` (versioned definitions: day-open rank, time-to-peak, peak-to-trough drawdown, volume decay, post-peak decline, average-dump, 7-day same-hour median volume baseline — "unavailable" if too few samples) · `v2_collector.py` (every 5 min one public GET of all tickers; save each run; official cohort top 5 + 5 at 00:00 UTC; kill-switch, retries, timeouts, CPU/IO budget, storage cap, restart-safe checkpoint, gap records) · `api/v2_data.py` (read-only routes) · `api_server.py` (mount + start collector behind `v2_collector_enabled`, default OFF; needs his approval) · `v2_candles.py` (3m/5m closed candles, rate budget, gap refill from public klines) · tests (GET-only, no signing import, kill-switch, restart idempotency, gap recorded not filled, cohort never overwritten, proxy flag, separate DB files, retention).
+Acceptance: collector cannot import order code (guard test); restart does not duplicate rows; missing intervals appear in `gap_log`; first collection date shown. Risk: phone I/O + battery. Rollback: flag OFF.
+
+**Part 7 (S2 — P&L, ~990):** `v2_pnl.py` (ONE read-only source for realized/floating/gross/net/fees/funding; live and paper apart) · `test_v2_pnl_contamination.py` (paper never shown as live; fees reconcile) · extend `test_net_pnl.py`, `test_period_pnl.py` · `widgets/pnl_breakdown_card.dart` (live/paper badge) · dashboard + provider wiring. Needs inventory (which fees/funding are stored is NV).
+
+**Part 8 (S3 — diagnostics, ~1,260):** `models/diag_status.dart` (one shared status model: backend, WebSocket, exchange feed, scanner freshness, collector, storage) · `widgets/diagnostics_card.dart` (compact status strip anchored at top + latest important events; today it sits at the END of the dashboard list, 452 lines) · `screens/diagnostics_screen.dart` (detail: filters, history, latency, reconnects; header anchored, history scrolls) · route registration · single listener (no duplicate polling) · widget tests (anchoring, no contradictory status). The Ping tab stays as the volume-ping lab (5 REST polls every 3 s); only a label clarification.
+
+**Part 9 (S4 — design system, ~1,200):** `lib/theme/v2_tokens.dart` · `widgets/v2/v2_card.dart`, `v2_state_views.dart` (loading/error/empty/stale/offline), `v2_table.dart` · `main.dart` route registry (replace fragile numeric `goToTab(3/4/5/7)`; keep scroll position + filters) · widget tests. New screens use it first; old screens move only when touched.
+
+**Part 10 (S5 — positions/close, ~670):** `positions_screen.dart` (show preview/count before plain close-all and panic flatten; live/paper badge; **existing close calls NOT changed**) · `app_provider_positions.dart` · OPTIONAL additive read-only `/api/preview_flatten` in `api/trade.py` (separate approval) · tests. Facts: `/api/preview_close_all` exists (`api/trade.py` L123) but Flutter uses it only for Close-All-Profit/Loss; plain close-all and panic flatten have no preview; preview uses the PAPER snapshot even when live is on (D4).
+
+**Part 11 (S6 — charts, ~520):** `widgets/candle_chart.dart` (2,235 lines: gap markers, provisional-candle label, legend/tooltip, number format) · `special_master.dart` · backend-vs-Dart indicator parity test on a fixed fixture · README.
+
+**Part 12 (S7 — Radar, ~1,610 + 400):** `screens/radar_screen.dart`, `widgets/cohort_table.dart`, models, `backend/v2_proxy_import.py` (loads `universe_days.json` into `proxy_cohort`), `universe_strip.dart` (PROXY label), route, tests. Tabs Today / Yesterday / 2 / 3 / 7 days only where coverage exists. Per row: original rank + snapshot price, latest price with its own timestamp, change, volume state, hours elapsed, freshness; row opens chart + timeline. Past cohorts are never replaced by today's ranks.
+
+**Part 13 (S8, ~1,350-1,530):** `v2_summaries.py` (what happened / tested / learned / unknown, with counts + coverage) · `screens/data_explorer_screen.dart` · `vision_tab_screen.dart` evidence link · tests. Uses existing data as-is; nothing re-downloaded.
+**Part 14 (S9, ~1,230):** `v2_ledger.py` (insight → experiment/model version → record IDs → candle/indicator snapshots → fees → outcome) · api · `screens/ledger_screen.dart` · tests. Brain/AI data read-only. No LLM per candle; no execution authority.
+**Part 15 (S10, ~2,560):** S10a: `v2_scalp_store.py`, `v2_replay.py` (uses only the two indicators; can never import live code), `scalp_lab_screen.dart`, indicator-whitelist test, route. S10b: first 2 categories (EMA Re-entry/Retest, Pump/Dump). Categories 3-8 (~3,000) OPTIONAL, wait for real data (D5).
+**Part 16 (S11, ~960):** `v2_wickstudy.py` + UI card + tests. Replay only, separate namespace.
+**Part 17 (S12, ~1,060):** `settings_screen.dart` (1,739 lines; ~300 changed: grouping only, no behaviour change) · `v2_reports.py` · `reports_screen.dart` · tests.
+**Part 18 (S13, ~500):** jank/scroll checks, accessibility, empty/error-state sweep, README traceability close-out.
+
+---
+
+## 9. DETAILED REQUIREMENTS BY AREA (condensed from the 355 numbered rules + addenda)
+
+### 9.1 Diagnostics / Ping (Parts 8, 18)
+- Review BOTH places: Dashboard `DiagnosticsCard` (compact summary + latest important events) and the Ping tab (deep diagnostics, filters, history, latency, reconnects). One shared state model; no duplicate listeners; no contradictory status.
+- **The feed/header must stay anchored at the top of its swipeable section; the event list below scrolls independently** (find the real cause in the widget tree: scroll views, PageView, slivers; use a pinned header or fixed compact strip — do not fake it).
+- No auto-scroll to newest while he reads old events; show "new events" + "Jump to latest". Vertical scroll must not trigger horizontal page swipes and vice versa.
+- Show SIX separate statuses (never one green dot): backend process alive · WebSocket connected · market data fresh · scanner active · strategy ready · account/execution healthy. A connected socket ≠ fresh data; show last update time + stale state.
+- Each event: timestamp, severity, component, message, request ID if any, safe detail. Bounded history; redact keys/tokens/signed params/private data; copy/export. Diagnostics must never block trading or freeze UI.
+
+### 9.2 P&L, positions, close actions (Parts 7, 10)
+- Realized net USDT (closed) and floating P&L **side by side, never one ambiguous "profit"**; money first, % secondary; gross vs net separate; fees/funding/slippage assumptions labelled; never mix live and paper, realized and floating, or different account identities.
+- Position card: side, coin + trade ID, entry, LTP, size, margin, leverage, fees/funding, open time, SL/TP, TP progress, distance to SL/TP, quick close. Missing value ≠ zero. Stale price → stale P&L warning.
+- Define daily target/loss precisely (day boundary = 00:00 UTC = 5:30 AM IST) and reconcile with backend reports. Dashboard, chart, report and export totals must match for the same mode/range/filter (one formula owner).
+- Close All Profit/Loss: show exact affected positions + amount from the SAME authoritative selection as the real close; confirm; prevent double-tap; handle partial/rejected/timeout/stale; never show success until backend confirms; refresh from authoritative state. Test in paper/fake first.
+- Proposed paper defaults ONLY (not live, check settings first): $100 virtual account, +$30 daily target, -$10 daily loss limit. Live risk limits are enforced on the backend, not only in Flutter.
+- Money values: no float rounding for sizes/fees/tax/realized P&L.
+
+### 9.3 Charts (Part 11)
+- Main chart: candles + EMA50 + SD bands + entries/exits/SL/TP where valid. Lower panes: TSI and Z-score, time-aligned; synced crosshair/zoom where supported. Label symbol, timeframe, last candle time, **closed vs provisional**. Handle gaps (never draw a line across a missing candle), reconnects, timeframe/symbol changes.
+- Inspect the real SD calculation (rolling SMA200 ± stdev vs code) — do not assume from the name. Do NOT draw reprojected SD curves on the Z pane unless the indicator definition supports the transform.
+- Keep existing correct behaviour (tooltips, zoom/pan, crosshair, annotations). Do not replace the chart package without audit. Actual vs hypothetical trade markers look clearly different. Downsample long histories without distorting events. No full redraw per tick.
+- His earlier chart wishes (chat, status unclear → check README first): TradingView-style crosshair in both panes, per-pane axis drag, measure tool, saved indicator visibility settings, big chart look.
+
+### 9.4 WebSocket / market data (Part 18 + Part 8 + audit)
+Measure first; keep the stable path until a new one is proven. One managed upstream connection with fan-out; typed event envelope (type, symbol, timeframe, source ts, receive ts, version/sequence, payload); idempotent subscribe/unsubscribe; heartbeat; capped exponential backoff + jitter; resync via snapshot after reconnect/gap; detect duplicate/out-of-order/gap/malformed; bounded queues + backpressure; respect Binance limits; stale thresholds per data type; show event age. "Reduce latency", never "zero latency". Sockets live in a service layer, not in widgets. Do not replace Flutter, add GraphQL/Apollo/React Native, or a GPU stack without measured evidence.
+
+### 9.5 Seven-day coin Radar + collectors (Parts 6, 12)
+- **Cohort time:** official daily cohort = top 5 gainers + top 5 losers at **05:30 IST = 00:00 UTC**; also save a snapshot every 5 min (top 20 + top 20) within a CPU/IO budget, storage cap and kill-switch. If the 05:30 snapshot is missing, mark the cohort missing/incomplete — never substitute silently (D2 default: last snapshot before 00:00 UTC).
+- **Ranking window:** change from the scanner's **day-open reference** (UTC 1d candle open; `scanner/5mins_scanner_binance_top10_bothside.py` L64-130, `binance_client.py` L154-230; USDT perpetuals; field `pct24h` is NOT a rolling 24 h). Reuse that exact calculation; save window + calc version with every snapshot. Note: an older memory says the Market Watch uses the exchange's rolling 24 h — if the two differ, label which one a cohort uses (NV).
+- **Backend is a phone/Termux and will go offline.** Collector must resume after restart, persist state, bounded retries, record last-success, missed intervals and gaps. Never backfill an authentic cohort from today's data. Candle-rebuilt rankings = **RETROSPECTIVE PROXY**, always labelled (the 7-day universe `universe_7d.py` is a proxy).
+- Public GET only: no signing, no private endpoints, no order imports. Cap 300 MB; table-level size accounting; transaction-safe purge; `cohort_official` and `gap_log` never auto-deleted; at 100% the collector pauses and Diagnostics shows why.
+- Per coin/cohort (where data exists): original scan time + rank, snapshot price + ranking %, latest price with its own timestamp, change since snapshot (formula shown), price path over horizons, snapshot volume and later volume vs baseline (previous 7 days' same-hour median; implement only after documenting missing-hour handling + minimum samples), max favourable/adverse move, time to peak, drawdown from peak, volume decay, 1/2/3/7-day outcomes (continuation / sideways / reversal / further pump / further dump / unresolved; incomplete horizons labelled), data coverage + links to chart.
+- Define an "episode" so one pump seen in 20 snapshots is not 20 samples. Keep delisted/out-of-universe coins as gaps (survivorship bias). Filters: date, symbol, timeframe, gainers/losers, outcome. Do not claim predictive patterns without enough examples AND counterexamples. Real 7-day outcomes only after 7 days of authentic data.
+- Example the owner gave: today Thursday → show Wednesday's saved cohort and how those exact coins perform today; same for Monday's cohort.
+
+### 9.6 Brain (built) — v70plus rules that must stay true
+- States: **S** strong · **T** stable · **W** weakening · **R** reversed. A historical call is **frozen**; later info never rewrites it.
+- B4a `obs` (about 22 numbers per candle: TSI, Z, Z-SMA, SD, EMA50, sideways %, events, ROI, MFE, giveback, candles since MFE …). Started about 28 Oct → early real results will be NOT ENOUGH DATA — correct, do not tune because the first sample looks weak.
+- B4b journey ENTRY → PEAK/MFE → FIRST WEAKNESS → GIVEBACK → EXIT; compared with a strict past-only baseline; raw positive ≠ learned.
+- B4c look-alikes: features `tsi, hist, z, zg, sm, bw, ed, sc` (version l1); K=15, max distance 1.0, ≥6 shared numbers, pool ≥30, ≥10 useful look-alikes; match same side + timeframe + Brain state; only finished trades; past-only scaling; one trade = one evidence point; time-block luck control. Mistake ledger: STRONG-but-lost, STABLE-but-lost, WEAKENING-but-ran, REVERSED-but-recovered — feature gaps are **"observed historical difference", never a new rule**; no fishing.
+- B4d shadow rule **r1** (observation only): HOLD_OK (EARLY HINT/SUPPORTED + lean hold) · PROTECT_LOOKS_BETTER (EARLY HINT/SUPPORTED + lean exit_now + ROI>0) · NO_OPINION (everything else — a legitimate answer). As-of gate: a call at time T uses only evidence frozen strictly before T. `shadow_rec` insert-only, duplicate-protected, NO_OPINION rows stored. If-followed ROI: HOLD = final − ROI at call; PROTECT = ROI at call − final; first call of each kind per trade; pending until final. `learn.shadow` stays compact (no raw rows to Flutter; a failure there must not break `learn.stats`/`learn.look`).
+- Anti-false-learning: no look-ahead · past-only scaling · one trade = one point · time-block luck control · walk-forward · minimum samples → NOT ENOUGH DATA · frozen history · rule versioning (new version, never rewrite) · stricter when many slices tested · **no LLM, no ML library, no extra DB in the local Brain path** · no duplicate learning modules/tables.
+- UI language: Evidence = NOT ENOUGH DATA / EARLY HINT / SUPPORTED; never a fake confidence %; never a strong green/red action colour when evidence is insufficient; show sample size next to evidence strength and look-alike count next to history.
+- Ready Check (README sec 6) must be true before ANY Brain rule touches trading: trust earned (100 judged), luck "Looks real", "what if the bot listened" 30+ judged and SKIP beats TAKE ALL, exit advice 10+ opinions with hit-rate >60%. On 27 Oct only 1 of 4 was true. **Brain recommendations stay observation-only until he approves otherwise.** Do not backfill recommendations dishonestly when the worker was offline.
+- Roles kept apart: existing bot = deterministic baseline (unchanged) · AI Vision = explains the current snapshot (grade A+/A/B/NO TRADE; numbers computed locally, LLM only explains; never invents sample counts or indicator values; never silently overrides Brain) · Brain = historical evidence · replay/statistics = tests a relationship · production rules = protected. UI must label: indicator observation / Brain evidence / AI interpretation / actual trading decision.
+- Skipped-signal learning needs a deliberate observation design (backend skip check exists; Flutter card = Part 20).
+
+### 9.7 Scalp Lab, replay, stop-wick (Parts 15, 16)
+- Lives under Brain with visible nested navigation. **Each category has its own** definition + version, symbols, timeframe, date range, sample count, cost model, records, ledger, P&L, failure cases, confidence, next test. Categories share raw candles/snapshots but never P&L ledgers or trade IDs; no double counting; overlapping/mutually exclusive opportunities are not all tradable.
+- Nine categories: EMA Re-entry/Retest · SD Band Reaction · TSI Momentum · Z-score/Z-SMA Behaviour · Combined existing-indicator setups · Quick Exit (1/3/5 closed candles, with fees+slippage) · Pump/Dump Scanner · Brain Explorer · Results/Knowledge Ledger. First delivery builds the framework + first two.
+- Define entry, invalidation, stop, exit, max holding, fees, slippage, evaluation window **before** testing. Do not tune and validate on the same sample (holdout / walk-forward). State how a stop and target touched in one candle are resolved (never assume the favourable fill) and whether execution is candle-close, intrabar or tick. 3m/5m candles for scalp; larger timeframes only as context; closed vs provisional candles separated.
+- Large-trade replay: smaller entries/exits/re-entries are **hypothetical**, never actual fills; real trade records are never rewritten.
+- Stop-wick study: a later continuation does not prove the stop was wrong. Compare wick size vs volatility, EMA structure/invalidation, SD band behaviour, TSI and Z at entry/stop/retest, spread/liquidity/fees where recorded; evaluate only with information available at that time; include failed and late re-entries; report the real stop outcome and the hypothetical separately. **Never auto re-enter or add risk to recover a loss.**
+- Pausing research must not disable core feeds or live management. No Scalp/Brain/AI feature creates live orders or changes a live filter.
+
+### 9.8 Knowledge Ledger and evidence statuses (Parts 13, 14, 25)
+- Each finding: stable ID, name, definition/version, period, source records, symbols/timeframes, sample size, data quality, gross + net results, cost assumptions, drawdown, counterexamples, confidence, limitations, next test, owner approval, production status.
+- Status words: Not collected · Data incomplete · Insufficient data · Exploratory · Watch · Promising (unvalidated) · Validated in limited conditions · Rejected · Approved for controlled/paper test. Research approval ≠ permission to change live rules. Keep failed experiments and counterexamples; version conclusions, never overwrite; show "what changed since last review"; every win rate shows its denominator; rank by net expectancy, drawdown, profit factor, sample size, out-of-sample stability — **not win rate or open P&L**.
+- Trace chain: insight → evaluation version → record IDs → candles/indicator snapshots → fees/assumptions → outcome → counterexamples. Never say the system "learns continuously" unless a versioned, evaluated update process really exists.
+- Conversational Brain (optional, Part 25): answers grounded in stored records; separate fact / calculation / hypothesis / missing data; links to charts/trades; says "insufficient evidence" when needed; keys server-side; bounded context/cost; no AI-triggered execution; check the current AI provider before changing it; never assume a consumer subscription includes API credits.
+
+### 9.9 Data Explorer and AI Vision evidence (Part 13)
+- First build the **data inventory** (path/table, format, rows/bytes, first/last timestamp, time zone, symbols, timeframes, schema, source module, update rate, missing fields, duplicate rate, timestamp problems, quality, safe-for-research?) using streaming/chunked reads; immutable raw data; a failed parser shows an explicit gap, never a silent empty "success"; detect likely duplicates, never auto-delete.
+- Per dataset a human label: what is it · why collected · what it can tell · what it cannot prove · how much data. Distinguish collected → parsed → quality-checked → feature-complete → evaluated → approved.
+- AI Vision records: separate observation / candidate / assessment / filter / explanation / decision / hypothetical / paper / live. Show per assessment (where stored): symbol, timeframe, event time, indicator state, feature + prompt/model version, verdict, confidence, reasons AND counter-reasons, missing inputs, suggested vs actual action, outcome horizon, source IDs. Reconstruct only what was known at decision time. Aggregates show denominators + coverage; include successful, failed, ambiguous and counterexample cases; "Why did AI Vision say this?" view. If outcomes are not stored, propose minimum logging — never invent. Track provider/model, latency, cost, quota, retries without exposing keys. AI Vision never becomes an autonomous live trader.
+- Exports state date range, timezone, schema/version, filters, omissions; secrets redacted.
+
+### 9.10 Settings, reports, tax (Part 17)
+- Group settings by intent (Account & mode · Exchange connection · Market data · Board & display · Trading & risk · Brain & research · Scalp Lab · AI Vision · Notifications · Diagnostics & privacy · Data & storage · Reports & tax · About). Every item: label, current value, description, default, validation, persistence source, restart need, scope (UI/research/paper/live), safe-while-trade-open?, a real effect + test. No fake switches; unfinished = labelled "not implemented". Live-affecting changes need impact preview + confirm + audit log. Secrets always masked.
+- Tax: reporting/estimate only, never advice. Separate gross, fees, funding, other costs, net realized, unrealized, tax estimate; do not double-subtract costs already in exchange realized P&L; jurisdiction/financial-year aware and versioned; **no hard-coded Indian tax rate** — needs his/accountant-confirmed config; "tax not calculated / data incomplete" state; never mix live, paper and hypothetical ledgers; reconcile fill → fee/funding → closed trade → report.
+
+### 9.11 Navigation and UI system (Part 9)
+- Keep the 5 bottom tabs: Dashboard · Market · Positions · Brain · More (Signals, Dual Bot, AI under More). Child pages sit inside parents (Brain: Overview, Evidence, Learning, Scalp Lab, Experiments, Coin lifecycle, Knowledge). Central route map instead of numeric indexes. No duplicate bottom bars; Android back works; a child tab never resets other screens; no essential action is gesture-only; swipe pages are labelled.
+- "Silent Rich" look (built SR1a-SR3, phone check pending): light default, off-white canvas `F4F5F8`, hairline borders, radius 16-18, neutral soft shadow, calm status pill, money hero 34-36 px, muted section titles. One shared card language (`owl_card.dart`: OwlHero, OwlFold, OwlChip, OwlSegmented; `app_theme.dart`, `app_spacing.dart`, `app_typography.dart`). Change the look there, not screen by screen. No glow, rainbow colours, nested cards, heavy animation. Status never by colour alone (text + colour). Text scaling, contrast, 48 dp targets, long symbols, large P&L must not clip. Consistent USDT/INR precision, signed P&L, timezone and timeframe labels.
+- Screen states for every data screen: loading skeleton · populated · empty · stale (with age) · offline · reconnecting · partial · error + retry. Mode badge (Live / Paper / Shadow / Replay / Hypothetical) on anything showing P&L.
+- Performance: granular updates, virtualized lists, bounded caches/queues/logs, dispose timers/streams, heavy parsing off the UI isolate, never drop critical order/position changes, last-known values carry a stale label. Profile before optimizing. Flutter stays Flutter. Do not blindly upgrade Flutter/Dart/Gradle/Kotlin/Java/FastAPI (toolchain is already new: AGP 9.1.0, Kotlin 2.4.0, Gradle 9.3.1 — no upgrade planned).
+- "Version 2" is the **user-facing product/roadmap name only**. Do not blind-rename repo folders, package IDs, API paths, classes or data identifiers.
+
+---
+
+## 10. TESTING AND RELEASE GATES
+
+- Layers: calculations · APIs · persistence · WebSocket · widgets/navigation · integration · regression of protected behaviour. Test: P&L reconciliation, fees/funding/slippage, realized/floating separation, mode isolation, no duplicate order/close, duplicate/out-of-order/missing candles, closed vs provisional, no-look-ahead replay, ranking/lifecycle horizons, separate Scalp ledgers, sample-size/confidence statuses, pinned diagnostic feed, nested navigation + Android back, Close-All selection (fake env), redaction of secrets.
+- Avoid huge brittle tests that only assert constants.
+- A Part is **DONE only when:** acceptance criteria met (or listed as blocked), relevant tests run with recorded results, protected hashes unchanged, README updated in the same zip, no nested folder/secret in the zip, new files wired into imports/routes/config, limitations stated. A parent is DONE only when ALL children are DONE.
+- README status words: DONE (built AND proven) · WORKING (partly) · NOT DONE · BLOCKED (named blocker) · NEEDS VALIDATION (evidence missing). Planned ≠ coded ≠ tested ≠ works end-to-end ≠ approved for production.
+
+---
+
+## 11. README RULES (ONE source of truth)
+
+- `Indian-main/README.md` is the only master notes file. Do not create competing roadmaps. If a big reference is unavoidable, link it from README.
+- Keep the top MASTER ROADMAP + V2 STATUS BOARD short and true; keep history append-only (it is about 233 KB — never wipe it); update CODE MAP when files are added/removed; add a requirement → Part → files → tests → evidence row for each item; record whether a result is simulated, paper or real; record the current zip/milestone name; record known limitations honestly.
+- Each delivery's README entry: what changed, files, tests actually run + result, untested areas, data coverage, protected files unchanged (SHA list), next step.
+- After owner OK (Q2): merge README4/this file's useful parts into README.md and take `README2.md`/README3 out of the repo.
+
+---
+
+## 12. DECISIONS ALREADY TAKEN (do not ask again)
+
+- Scope S0-S13 (= Parts 1-18) approved on 29 Oct; the file-level rows are a proposal.
+- Only two indicator families (section 6). Live Binance paths untouched (section 5).
+- Collectors: public GET only; new separate `v2_market.db`, 300 MB cap; first limits = every 5 min top 20 + top 20, official cohort top 5 + 5 at 00:00 UTC (05:30 IST), 3m/5m candles for ≤40 symbols kept 14 d / 30 d; start early after S0 safety tests, before the UI consumers.
+- Cohort ranking = change from the scanner's day-open (not rolling 24 h); backend not assumed 24×7.
+- S0 inventory tool truly read-only, secrets redacted fail-closed; he runs it once on the phone and sends the JSON; S1 final schema only after that.
+- Brain stays observation/paper; Dual Bot explore mode continues; SQLite/WebSocket swaps on hold (touching Dual Bot saving could mix data).
+- India untouched; crypto-only strategy work.
+
+### Open decisions (owner)
+D1 old vs new items: same job once, different jobs renamed — needs his "mapping ok" for section 8 mapping · D2 which 5-min snapshot is the official cohort (default last one before 00:00 UTC) · D3 `api_server.py` router mount at Part 6 · D4 live-mode preview fix in `api/trade.py` at Part 10 · D5 Scalp categories 3-8 · D6 share the two Pine scripts · D7 CI test job becomes a gate only when green and he says so · D8 India screens in or out of V2 · D9 Claude API vs NVIDIA tools (study only; Claude stays first provider behind a backend interface; no GPU).
+
+### Questions still open (answer in one line each)
+Q1 Where is the second repo (crypto-only `owl1`?) and should its README be merged? · Q2 May the final prompt/README4 be merged into README.md and README2/3 removed? · Q3 Theme: "light default + Dark switch" (what code does now, `settings_screen.dart` L589-603) or "light only" (what README says)? · Q4 His **29 Oct "Master Product + Engineering prompt" (UI-A..N, synced chart panes, Light/Dark/System, Flutter modernization) is NOT in the files received — send it if he wants it merged** · Q5 Do the chat-only wishes stay (copper credits "Crypto app design by Hussain Shaikh / Indian market design by Faisal Shaikh" — already in `widgets/owl_load_sequence.dart` L42-43; heavy-terminal background; backend status panel; settings restored after reinstall)? · Q6 "mapping ok"? · Q7 Telegram token rotated?
+
+---
+
+## 13. DELIVERY REPORT FORMAT (end of every build, short WhatsApp style)
+
+1. **Kya kiya** (what changed, in plain words) + changed files with one-line role each.
+2. **Kya test hua** (command + real result, or "Not Run"; remind Flutter was not compiled).
+3. **Kya baaki hai** (what is left in this Part).
+4. **Live safety:** protected path changed? (default NO) + protected hashes unchanged.
+5. **Next 4-5 Parts menu** (files + EST lines each) so he can pick or combine.
+6. **2-4 numbered steps** for him (download zip → what to see → what to send back).
+Then STOP. Do not start the next Part.
+
+---
+
+## 14. WHAT WAS DROPPED OR SUPERSEDED (so nobody re-does it)
+
+- **Claude_Opus_Upgrade_Prompt.txt** (Phase 1-6: design system, positions screen, backend cleanup, fake-signal filters, polish): covered by Parts 9-11, 21, 24 and the finished UI/Brain work. Its rule "wait for confirmation between phases" is kept.
+- **OWL_HANDOFF.md (25 Oct):** the repo restore list (credits, welcome overlay, signals/alerts screens, `tag_lab.py` sideways tags) and the 3-part plan (SL trail path, retest check, live P&L, Download report, TradingView-style chart tools, splash upgrade) are older work — now recorded DONE in README (UI parts, Dual Bot parts). Still valid from it: owner "do NOT" list (section 2), reply style, one zip with changed files only, Flutter cannot be compiled in the sandbox. Check README before redoing any item (chart tools status unclear).
+- **v70plus "NEXT-1..10"** names: kept only as aliases (NEXT-1→3, NEXT-8→19, NEXT-9→13, NEXT-10→18). Do NOT invent B4d-5/6/7. Its "no busywork / feature-sized chunks / stop after ZIP" style is kept.
+- **Version 2 prompts' "audit first, 19-point first response"**: the audit is done (README sec 15 + this file); the first response is now the short protocol in section 1.
+- **"about 43 parts / 6-7k lines"** and the old **"11,000-line / 30 part"** figures: use the Part table in section 8.
+
+### Conflicts and the safe default
+| # | Conflict | Default |
+|---|---|---|
+| C1 | Work size: 18.5k lines (README) vs 6-7k (old memory) | Use section 8 numbers |
+| C2 | Part size: 300-400 lines vs "no busywork, feature-sized" | 300-400 lines per zip; no big test files for small features |
+| C3 | Theme: light only vs Light/Dark switch exists | Light default, keep switch (Q3) |
+| C4 | Which README is master | Repo README.md (merge later, Q2) |
+| C5 | "Keep AI paper collection ON" vs "research only" | Paper stays ON as today; no live authority |
+| C6 | "Special 13/Special Master" vs "EMA50+SD / TSI+Z" | Same two families; Pine parity NV (D6) |
+| C7 | Reply language Hinglish vs English | English, casual, short (section 2) |
+| C8 | Always plan-first vs "just implement" (v70plus) | Plan-first with next-Parts menu, then build on "ok" |
+
+---
+
+## 15. SOURCE MAP
+
+| Source | Taken |
+|---|---|
+| Version_2 Complete Plan PDF (29 Oct) | verified facts F1-F11, protected files, 10 domains, S0-S13 file tables, frontend audit, decisions |
+| Version_2 Master Prompts (2 txt, 148 KB + 181 KB) | 355 numbered rules, parts A-P, owner clarifications + 29 Oct addendum (cohort time, ranking window, backend availability, two-indicator scope, data isolation, live safety) |
+| OWL1 Project Brief (55 KB) | same rule set (earlier copy) |
+| OWL1 MASTER PROMPT v70plus (PDF ×2) | Brain B4a-B4d rules, NEXT-1..10, work style, UI examples, checklist 49-182 |
+| OWL_HANDOFF.md, Opus Upgrade Prompt | owner do-not list, reply style, delivery rules (older work superseded) |
+| README4.md (30 Oct) | verified counts, conflicts C1-C9, open decisions D1-D9, questions Q1-Q7, extras (pinned feed, route map, lifecycle, replay, Part 25) |
+| Repo `Indian-main (29).zip` README.md v84 | status board, 24-Part roadmap, CODE MAP, section 15 plan; confirmed `backend/v2_*` absent and 2 workflows only |
+
+
+---
+
+# APPENDICES (added 30 Oct 2026 — full detail of rules that section 9 only summarised)
+
+## APPENDIX A — INDICATOR SOURCE OF TRUTH (update to section 6)
+Owner says both indicators are in the repo. VF (grep of zip 29): **no Pine source file** exists. The calculations exist as ports: EMA50 + SD bands in `backend/recovered_bot/strategy.py` (`_rolling_mean_std`, `generate_signal`, `calculate_tp_levels`); Special Master TSI + Z-score in `frontend/lib/widgets/special_master.dart` (+ `special_master_settings.dart`), `backend/recovered_bot/india_indicators.py` (tsi, zscore) and `ai_ind_features.py`.
+Rule: until the Pine text is shared, the **repo code is the reference**. V2 must not change these formulas. Part 11 adds a fixed-fixture parity test (Python vs Dart). Exact Pine equivalence stays NEEDS VALIDATION (D6); the owner may drop the two .pine/.txt files into the repo later.
+
+## APPENDIX B — SMOOTHNESS SPEC (every item is a test or a checklist line in Parts 8, 9, 11, 18)
+1. **Update policies per data type:** prices/positions = granular, critical, never dropped · candles = on candle event only · diagnostics = coalesced, 1 update/s max · historical/research pages = on open + manual refresh · research jobs = background, never block the UI or scanner.
+2. **No full-screen rebuild per tick:** each widget subscribes only to its own value (selector/ValueListenable); chart repaints only its series; no network/DB/indicator math in `build()`.
+3. **Single owners:** one WebSocket service, one REST poll per data type, one diagnostics listener. Entering/leaving a screen repeatedly must not add listeners (test: 20 enter/exit cycles → listener count unchanged).
+4. **Dispose everything:** streams, timers, controllers, animation controllers, sockets.
+5. **Lists:** virtualized (`ListView.builder`/slivers), stable keys, pagination for history; never render thousands of rows.
+6. **Heavy work off the UI isolate:** big JSON parse, sorting, indicator series, downsampling (`compute`/isolate) when profiling shows jank.
+7. **Bounded everything:** caches, queues, event history, logs, chart points.
+8. **Stale handling:** last-known value kept with a visible age + STALE label; never 0, never frozen-looking-live.
+9. **Lifecycle tests:** app pause/resume, Android process death + restore, network switch (Wi-Fi ↔ mobile), backend restart, reconnect loop.
+10. **Gesture rules:** horizontal swipe vs vertical scroll vs chart pan/pinch must not conflict; chart gestures do not trap page scroll.
+11. **Animation:** only to explain state; respect reduced motion; none on every tick; no blur/glass on lists.
+12. **Measure:** frame time/rebuild counts before and after where tooling allows; otherwise write "Not Run". No promise of smoothness without a measurement.
+13. **Backend side:** WS broadcast must not block the event loop; research/AI work in worker threads with locks that never hold the price path; the LLM is never on the price/candle path.
+14. **Phone constraint:** backend runs in Termux on the same phone as the app — CPU/IO budgets and storage caps are part of every Part's acceptance.
+
+## APPENDIX C — FRONTEND TECHNOLOGY DECISION (Flutter vs others)
+| Option | Benefit | Cost / risk | Verdict |
+|---|---|---|---|
+| Keep Flutter + fix architecture/design system | reuses 49k lines, chart painter, tests, CI | needs discipline on rebuilds | **CHOSEN** |
+| Selective Flutter/Dart/package upgrade | security/compat | toolchain already new (AGP 9.1.0, Kotlin 2.4.0, Gradle 9.3.1) | only if a real break appears |
+| React Native | JS ecosystem | full rewrite of UI/nav/state/chart, re-validate all behaviour, no proven gain | NOT justified |
+| Web dashboard companion | bigger screen | second architecture; needs auth | optional later, separate phase |
+| GraphQL/Apollo | — | not a visual upgrade; REST + WebSocket already work | NOT used |
+Re-open only with measured evidence (frame time, jank, memory) and a migration plan with rollback.
+
+## APPENDIX D — API CONTRACT AND BACKGROUND JOB INVENTORY (to be filled by audit in Parts 3 and 8)
+For every REST route / WebSocket event record: purpose · request/response schema · source of truth · error codes · freshness meaning · Flutter consumer. Today: 184 routes (14 files in `backend/api/`, `api_server.py` 787 lines), `/ws` pushes about every 0.25 s. Compatible extension only; no breaking change.
+For every worker/thread record: name · frequency · input · output · retry · idempotency key · health signal · shutdown behaviour · does it touch live code (must be NO for V2 workers). Known workers: main scan loop, Dual Bot worker (lock fix done), Brain worker, Ping worker, Vision/AI Live, V2 collector (new, flag OFF by default). Jobs must not duplicate after restart; long backfills keep a resumable checkpoint.
+
+## APPENDIX E — EXISTING MODULES: PRESERVE, GIVE A HOME, DO NOT SILENTLY ENABLE
+Wallboard · Dual Bot / Dual Wallet / Dual Desk · AI Vision (mode unchanged) · AI tab / insights / live / assistant · Tag Lab (rules versioned; never relabel history) · Ping Lab (volume-ping lab, keeps its name) · Strategy Doctor (advice only; never applies settings; uses ADX tags today — keep, don't extend) · Signals/Alerts · Reports/downloads · Settings · India screens (untouched, D8).
+Rules: preserve routes and working behaviour; map old → new location; modules share read-only research snapshots, never execution state; the same trade is never counted in two modules; do not enable a disabled feature; report broken/incomplete modules honestly; mark a missing module MISSING instead of faking a screen.
+
+## APPENDIX F — STATUS WORDS ON SCREENS
+Live · Paper · Shadow · Replay · Hypothetical · Stale · Reconnecting · Scanning · Waiting · Setup Detected · Open · Closed · Error · Insufficient Data · Authentic · Proxy · Partial · Missing. Always text + colour, never colour alone. Data-readiness badge: Ready · Partial · Stale · Missing candles · Insufficient samples.
+
+## APPENDIX G — README TABLE OF CONTENTS TARGET (32 sections; add gradually, keep history)
+1 Product overview + non-goals · 2 Verified status · 3 Feature inventory · 4 Navigation tree · 5 Screen-by-screen purpose · 6 Architecture diagram (Mermaid) · 7 Frontend folder map · 8 Backend folder map · 9 Domain entities + source of truth · 10 API + WebSocket contracts · 11 Market data lifecycle + stale thresholds · 12 P&L definitions · 13 Brain workflow · 14 Scalp Lab categories · 15 7-day Radar + coverage · 16 AI Vision config + boundaries · 17 Ping/diagnostics + feed anchoring · 18 Other modules · 19 Settings catalog · 20 Tax/cost assumptions · 21 Storage schema, IDs, retention, backup · 22 Security/redaction · 23 Setup + env vars · 24 Tests actually run · 25 Performance results · 26 Known bugs/debt · 27 Decisions (approved / waiting) · 28 Roadmap + dependencies · 29 Per-stage changelog · 30 Release/ZIP checks + rollback · 31 Data coverage + how long collection has run · 32 Glossary.
+Plus a short **RESUME box at the very top**: last zip name · last Part done · "applied by owner? yes/no" · next Part. Updated in every delivery so a new Claude knows exactly where work stopped.
+
+## APPENDIX H — EXTRA CHECKS FROM THE 355 RULES NOT YET LISTED ABOVE
+- Distinguish candle open time, close time, source event time, ingestion time, local display time.
+- Stable IDs for candle, indicator snapshot, ranking snapshot, signal, candidate, actual trade, hypothetical trade.
+- Detect OHLCV inconsistencies; never forward-fill missing prices; record source outages + affected ranges.
+- Data-readiness indicator on each research screen; "no events occurred" ≠ "no data collected" ≠ "parser failed" (three different empty states).
+- Idempotent ingestion (rerun never duplicates); one malformed file never blocks other datasets; backfill plans use measured limits.
+- Exports: date range, timezone, schema/version, filters, omissions, calc version; editable cost export for tax.
+- Mode separation in all summaries: live realized, live floating, paper, shadow, replay, hypothetical.
+- Charts: tooltip exact values/timestamps; chart tests for ordering, gaps, timezone boundaries, fixture values, annotations, empty/error/stale, downsampling.
+- Strategy/Scalp comparison view only when definitions, periods, symbols, fees and exits are comparable; otherwise show the differences.
+- AI provider: show model, latency, quota, errors; never show fabricated fallback analysis as AI output.
+
+END OF FINAL MASTER PROMPT.
+
+
+===================================================================
+# PART III - PREVIOUS README.md v84 (original text, unchanged)
+===================================================================
+
+# Owl Terminal - MASTER NOTES (the ONLY notes file in this repo)
+
+OWL MASTER NOTES v84 - last updated: 29 Oct 2026
+
+Crypto paper-trading app (Flutter) + Python backend. Dual Bot v1 collects trades. Smart Brain learns on the side, paper only. CORRECTION (v80): the main bot code CAN send LIVE Binance orders when live_trading_enabled is on (two paths, see the VERSION 2 STATUS BOARD). Dual Bot and Smart Brain stay paper.
+
+
+## ONE MASTER ROADMAP — SEQUENTIAL PARTS (canonical order)
+
+**Read this list for the order of work.** Older labels such as A–F, U1–U5, NEXT-1–10, B3/G1/G2, H1, S0–S19 and 6a–6j are historical IDs used to find details below. They are NOT separate roadmaps and do NOT change the order shown here. Completed historical work stays recorded as completed; it is not counted as unfinished V2 work.
+
+**Status key:** 🟢 DONE = built and evidence/test result recorded; 🟡 WAITING = needs owner data/phone check or a decision; 🔴 NOT DONE = not built; ⛔ BLOCKED = dependency not ready; ⚪ NOT PLANNED = backlog only. Estimates are rough, not measured.
+
+| Part | Status | Work, in order | Approx. lines | Starts after / notes |
+|---:|---|---|---:|---|
+| 1 | 🟡 WAITING | Safety foundation: read-only database opener, WAL/SHM and symlink safety | 380 | First delivery; old V2-S0 round 1a |
+| 2 | 🔴 NOT DONE | Fail-closed secret redaction and tests | 270 | Part 1; old V2-S0 round 1b |
+| 3 | 🔴 NOT DONE | Database inventory CLI, evidence labels and report | 350 | Part 2; old NEXT-1 / V2-S0 round 1c; run report once |
+| 4 | 🔴 NOT DONE | Protected strategy-rule tests + paper/live routing characterization | 450 | Part 3; records behaviour, does not change live behaviour |
+| 5 | 🔴 NOT DONE | Mock-only live-client tests, import-isolation guard and informational CI test job | 425 | Part 4; no real orders; completes safety baseline |
+| 6 | ⛔ BLOCKED | Public Binance collectors, snapshots, official cohorts, 3m/5m candles, separate v2_market.db, gaps and storage cap | 1,820 | Needs Part 3 inventory report; old V2-S1 |
+| 7 | 🔴 NOT DONE | Live/Paper P&L reconciliation, fees and data separation | 990 | Inventory; old V2-S2 |
+| 8 | 🔴 NOT DONE | Diagnostics: dashboard health strip + detail/history page | 1,260 | Collector status data; old V2-S3 |
+| 9 | 🔴 NOT DONE | Premium Flutter design system, navigation and reusable UI states | 1,200 | Can be prepared independently; old V2-S4 |
+| 10 | 🔴 NOT DONE | Positions and safe close preview; address live-mode preview mismatch | 670 | Old V2-S5; live-trade path changes remain protected |
+| 11 | 🔴 NOT DONE | Chart audit and fixes for EMA50/SD and Special Master TSI/Z-score displays | 520 | Old V2-S6; exact Pine parity needs source validation |
+| 12 | ⛔ BLOCKED | Radar: today/yesterday/2/3/7-day cohorts, authentic vs retrospective proxy | 1,610 | Collector data for at least one day; old V2-S7 |
+| 13 | 🔴 NOT DONE | Data summaries, Data Explorer and evidence-based AI Vision explanations | 1,530 | Inventory; old V2-S8 / NEXT-9 |
+| 14 | 🔴 NOT DONE | Knowledge Ledger with source/provenance and experiment traceability | 1,230 | Parts 6 and 13; old V2-S9 |
+| 15 | ⛔ BLOCKED | Scalp Lab framework + first two research categories | 2,560 | 3–4 weeks of candle data; historical/paper research only; old V2-S10 |
+| 16 | ⛔ BLOCKED | Stop-wick → continuation → re-entry study | 960 | Collector candle data; old V2-S11 |
+| 17 | 🔴 NOT DONE | Settings taxonomy and fees/tax reporting | 1,060 | Inventory; old V2-S12 |
+| 18 | 🔴 NOT DONE | Final integration, performance, accessibility, acceptance checks and README close-out | 500 | Main roadmap's final integration; old V2-S13 / NEXT-10 |
+| 19 | 🟡 WAITING | Brain-assisted PAPER A/B comparison | 350 | Parts 7 and 14 first; old NEXT-8 / V2-S14; paper only |
+| 20 | 🟡 WAITING | Brain Skip card in Flutter | 130 | Backend key exists; app card pending; old NEXT-7 / V2-S15 |
+| 21 | 🟡 WAITING | Brain-to-trading proposals: B3, G1, G2 | 270 | Wait for Ready Check data; old V2-S16; trading-behaviour changes remain separately gated |
+| 22 | 🟡 WAITING | Dual Bot H1 auto-start + TP-LAST target proposal | n/a | Separate estimate needed; TP-LAST affects Dual exits; old V2-S17 |
+| 23 | ⚪ NOT PLANNED | E4/E5/E6 and Brain v2 backlog | n/a | Not part of the planned build sequence unless requested; old V2-S18 |
+| 24 | 🟡 WAITING | Backend cleanup review | n/a | Scope/estimate not set; old V2-S19; no deletion without a plan |
+
+### How to read progress
+
+- **Completed before V2:** existing Parts 1–3, A–F, U1–U5, UI1–UI5, NEXT-2–NEXT-6j, Brain B4, H2, IS1 and other green items remain in the historical DONE record below. They are not new unfinished tasks.
+- **V2 completion at the source status date (29 Oct 2026):** 0 roadmap Parts are marked built-and-proven. Parts 1–5 are the safety/inventory foundation; later rows cannot be marked DONE until code exists and evidence is recorded.
+- **Old labels are aliases:** use the legacy mapping later in this file to find technical details. Do not count a merged old ID as an extra task.
+- **Large Parts may need multiple ZIP deliveries.** Keep them under the same Part number with a plain sequential delivery counter (for example, Part 15 — delivery 1, delivery 2), not another alphabet-based roadmap.
+- **Estimate correction:** the older total of 18,760 lines / about 30 deliveries conflicts with the “about 300 lines per delivery” rule. That delivery count is not reliable; recalculate file/line totals as each Part is split into actual deliveries.
+- **README updates:** every implementation delivery updates status and actual test/build evidence here. Reading files is not the same as running tests or building Flutter.
+- **Safety boundary:** the two live order paths remain protected. Collectors, replay, Scalp Lab and the Ledger cannot call live execution. This roadmap does not authorize live-trading behaviour changes.
+
+---
+
+## VERSION 2 STATUS BOARD (added v80, 29 Oct 2026 - README only, NO V2 CODE YET)
+Overall: PLAN APPROVED (owner, 29 Oct: the short plan S0-S13 with the decisions below). NO V2 CODE WRITTEN. NO V2 TEST RUN. Last verified: 29 Oct 2026 by READING files only (no pytest, no Flutter build was run).
+"Version 2" is the product / roadmap name only. Legacy repo, module, package and file names do NOT change without a separate approval.
+Status words: DONE = built AND proven (tests really run, result written here). WORKING = built, only partly proven. NOT DONE. BLOCKED = a named blocker. NEEDS VALIDATION = file or data evidence is missing. A parent is DONE only when ALL its children are DONE and its acceptance test passed. Labels: VF = verified from a file (path + line), OR = owner requirement, NV = needs validation.
+ONE ordered list with colours = V2 MASTER ORDER BOARD right above this board (v83).
+FULL PLAN (what / why / when / how, file tables, tests, risks, traceability, end state) = section 15 at the end of this file. This board = live progress; if the two differ, this board wins.
+
+### V2 owner decisions (29 Oct 2026)
+- SCOPE: S0-S13 in the order below. Only his 2 existing indicators: (1) EMA50 + SD bands, (2) Special Master TSI + Z-score. No ADX, Hurst, RSI, MACD, VWAP or any third indicator in any V2 feature, score or replay.
+- LIVE BINANCE SAFETY: two live paths stay untouched (VF): A = execution_router.py -> binance_trader.py / protection_manager.py; B = ai_live_client.py -> ai_live_executor.py. Entry, exit, sizing, leverage, SL, TP, break-even, protective orders, close behaviour and live_trading_enabled change ONLY with his separate explicit approval. Tests use fakes; no test ever places, amends, cancels or closes a real order. Research collectors, Scalp Lab and replay must never import or call live code.
+- COLLECTORS (S1): public GET only; no link to orders, leverage, SL, TP or trading settings. New separate DB v2_market.db, hard cap 300 MB. Before any purge: table-level size accounting and a transaction-safe delete; tests must prove cohort_official and gap_log are never auto-deleted. At 100% the collector pauses and Diagnostics shows the reason. First limits (tune later from real storage + completeness): every 5 min save top 20 gainers + top 20 losers; official daily cohort = top 5 + top 5 at 00:00 UTC = 05:30 IST (VF: the scanner day open is the UTC 1d candle open, scanner/5mins_scanner_binance_top10_bothside.py L64-130, binance_client.py L154-230); 3m / 5m candles for at most 40 symbols, kept 14 d / 30 d. Missing data is logged as a gap, never invented.
+- S0 INVENTORY TOOL: truly read-only (no write to any DB or live setting; SQLite opened read-only, WAL / SHM side effects and symlinks handled), secrets redacted FAIL-CLOSED, evidence-based quality labels. He runs it once on the phone and sends the JSON. S1 final schema is confirmed only after that report.
+- DATA SEPARATION: 10 domains, never mixed, overwritten or relabelled: live Binance, paper, indicator observations, public candles / snapshots, authentic cohorts, retrospective proxy cohorts, Scalp Lab / replay, AI Vision / Brain, diagnostics / gaps, Knowledge Ledger. The 7-day coin list built from 1d candles (universe_7d.py) is a RETROSPECTIVE PROXY, never an authentic ranking (VF). No existing data is deleted or destructively migrated.
+- APPROVAL: he approved the SHORT plan only. The long plan (file-level tables, Claude Docs artifact) is a proposal until each part is shown with files + lines and he says ok (rule 13).
+- OLD PENDING ITEMS (owner, 29 Oct): if an old README item and a V2 item are the SAME job, do it ONCE (merged); if they are DIFFERENT, keep both and RENAME the old one with V2 names (V2-S14 ... V2-S19). The proposed mapping is in section 15.14; the owner confirms it ("mapping ok").
+
+### V2 findings from the repo audit (VF unless marked)
+1. CLOSE ALL PREVIEW IN LIVE MODE: /api/preview_close_all (api/trade.py L123) calls paper_trader.preview_close_all, i.e. the PAPER snapshot, even when live is on; live close_all_profit / close_all_loss read the exchange positions (execution_router.py L243-260). Flutter uses the preview only for profit / loss close (positions_screen.dart L63-67); plain close-all and panic flatten show no preview. A Round 2 test will only RECORD this; the fix is S5 and needs a separate approval.
+2. CI (.github/workflows/flutter-build.yml) has no test step, although a test file comment says tests run in CI. The S0 CI job starts informational and reports pass / fail honestly. It is NOT a safety gate.
+3. ADX / ATR / regime tags exist in code as metadata only (strategy.py Signal fields, entry_context.py, variant_lab.py, scoreboard.py, strategy_doctor_screen.dart). They stay untouched and V2 never uses them.
+4. The Pine sources of both indicators are NOT in this repo: exact Pine match = NV.
+5. The data stores (dual_archive.db, brain_archive.db, owl.db, trades.db) are created at run time and are NOT in the repo. Contents, coverage and any paper / live mixing = NV until the inventory report exists.
+6. trade_archive.py, protection_manager.py and db.py use SQLite WAL, so the inventory tool must not open those files in a way that creates -shm / -wal side effects.
+7. The Ping tab is the volume-ping research lab, not connectivity diagnostics.
+8. Not seen: no screenshots, no running backend, no git history, no real database were available.
+
+### Legacy phase reference (old S-labels; use the ONE MASTER ROADMAP above for the actual sequential order)
+| Phase | Status | Parts / rough lines | Depends on / blocker |
+|---|---|---|---|
+| V2-S0 Safety baseline + data inventory (includes old NEXT-1) | NOT DONE | 1a, 1b, 1c, 2a, 2b / about 2,100 | owner: "ok S0 round 1a" |
+| V2-S1 Collectors (public GET only) | BLOCKED | about 1,820 | inventory JSON from the owner |
+| V2-S2 P&L reconciliation (live and paper apart) | NOT DONE | about 990 | S0 inventory |
+| V2-S3 Diagnostics (Dashboard summary + detail page) | NOT DONE | about 1,260 | S1 status data |
+| V2-S4 Design system + navigation | NOT DONE | about 1,200 | none |
+| V2-S5 Positions + safe close preview (live-mode fix) | NOT DONE | about 670 | separate approval for any api/trade.py change |
+| V2-S6 Charts audit + fixes | NOT DONE | about 520 | none |
+| V2-S7 Radar cohort view (real vs proxy) | NOT DONE | about 1,610 | S1 data (at least 1 day) |
+| V2-S8 Data summaries + Data Explorer + AI Vision evidence (includes old NEXT-9) | NOT DONE | about 1,530 | S0 inventory |
+| V2-S9 Knowledge Ledger | NOT DONE | about 1,230 | S1, S8 |
+| V2-S10 Scalp Lab (framework + 2 categories) | NOT DONE | about 2,560 | S1 candles (3-4 weeks of data) |
+| V2-S11 Stop-wick / continuation / re-entry study | NOT DONE | about 960 | S1 candles |
+| V2-S12 Settings taxonomy + fees / tax report | NOT DONE | about 1,060 | S0 inventory |
+| V2-S13 Performance, accessibility, final README (includes old NEXT-10) | NOT DONE | about 500 | all |
+| V2-S14 Brain-assisted PAPER A/B (was NEXT-8) | NOT DONE | about 350 | S2 net P&L, S9 ledger, own plan + ok |
+| V2-S15 Brain Skip card in the app (was NEXT-7 Flutter card) | NOT DONE | about 130 | own small plan + ok (backend brain_skip.py is DONE) |
+| V2-S16 Brain-to-trading rules B3, G1, G2 (were B3, G1, G2) | NOT DONE | about 270 | WAIT FOR DATA (section 6 Ready Check) + SEPARATE approval each |
+| V2-S17 Dual Bot options H1, TP-LAST (were H1, TP ladder last target) | NOT DONE | not estimated | own plan + ok; TP-LAST touches Dual exits |
+| V2-S18 Backlog E4, E5, E6, Brain v2 (were the backlog) | NOT DONE | not planned | owner asks |
+| V2-S19 Backend cleanup (was section 9) | NOT DONE | not estimated | owner decides |
+
+### V2-S0 children (nothing built yet; test evidence = none)
+| ID | Status | Planned location | Part | Remaining / acceptance |
+|---|---|---|---|---|
+| V2-S0-SAFE read-only opener (mode=ro, WAL / hot-journal copy path, symlink check, write-deny authorizer) | NOT DONE | backend/v2_inv_safe.py + test/test_v2_inv_safe.py | 1a | source files (db, -wal, -shm) hash + mtime unchanged, no new side files, writes denied |
+| V2-S0-REDACT fail-closed redaction | NOT DONE | backend/v2_inv_redact.py + test/test_v2_inv_redact.py | 1b | synthetic secrets never in output; report not written if a pattern survives |
+| V2-S0-INV inventory tool + CLI + quality labels (replaces old NEXT-1) | NOT DONE | backend/v2_inventory.py + test/test_v2_inventory.py | 1c | owner runs it once and sends the JSON; paper / live mix only flagged when schema + records support it, else NV |
+| V2-S0-RULES protected rules tests (EMA50 cross entry, signal-candle stop, TP1-TP4, TP1 -> break-even) | NOT DONE | test/test_v2_protected_rules.py | 2a | tests pass offline |
+| V2-S0-ROUTE paper XOR live routing + preview-gap characterization | NOT DONE | test/test_v2_exec_routing.py | 2a | documents current behaviour only, no fix |
+| V2-S0-MOCK live client mock tests (network blocked) | NOT DONE | test/test_v2_live_clients_mock.py | 2b | no real order possible |
+| V2-S0-GUARD live import guard | NOT DONE | test/test_v2_isolation_guard.py | 2b | only the allow-list imports live modules |
+| V2-S0-CI informational tests job | NOT DONE | .github/workflows/flutter-build.yml | 2b | job reports real pass / fail; APK build does not depend on it |
+
+### V2-S1 children (parent BLOCKED until the inventory report is reviewed)
+| ID | Status | Planned location | Remaining |
+|---|---|---|---|
+| V2-S1-STORE v2_market.db schema (additive, versioned) | BLOCKED | backend/v2_store.py | final schema after the inventory report |
+| V2-S1-DEFS versioned definitions (rank, time-to-peak, drawdown, volume decay, 7-day same-hour median baseline) | NOT DONE | backend/v2_defs.py | baseline shown as unavailable if samples are too few |
+| V2-S1-COLLECT 5-min snapshots + official cohort + kill-switch | NOT DONE | backend/v2_collector.py | restart-safe, gaps logged |
+| V2-S1-PURGE size accounting + transaction-safe purge + 300 MB cap | NOT DONE | backend/v2_store.py | tests: cohort_official and gap_log never deleted |
+| V2-S1-CANDLES 3m / 5m candles (max 40 symbols) | NOT DONE | backend/v2_candles.py | rate budget, gap refill |
+| V2-S1-COH cohort save (no overwrite, proxy flagged) | NOT DONE | backend/v2_store.py | tests for overwrite and proxy label |
+
+Legacy next-action note (canonical order is the master roadmap above; old sub-step labels below are retained only to locate technical details). Previous text: owner reviews and says "ok S0 round 1a". Each later part is shown with files + lines first, and this board is updated in the same zip with real test results.
+
+## LEGACY STATUS / COMPLETED HISTORY (old labels retained for traceability; canonical order is the MASTER ROADMAP at the top)
+Order: 1 WAITING FOR OWNER, 2 DONE, 3 RUNNING NOW (big items cut into parts), 4 UPCOMING. Details of every row are in sections 3, 4c, 10 below. Version 2 (S0-S13) work has its OWN board right above this one. The single ordered colour list of ALL pending work (old + V2) = V2 MASTER ORDER BOARD at the very top.
+
+### 1. WAITING FOR OWNER (his data, his ok or his phone check) - nothing here is built by Claude by itself
+| What | What the owner must do | Where to read more |
+|---|---|---|
+| Phone / build check of the newest zips (NEXT-2 ... NEXT-6, UI, SR, H2, IS1) | Download the newest zip only, watch the GitHub build, send any error | section 4c, section 10 |
+| NEXT-1 real archive counts | Paste real counts from dual_archive.db (he may skip) | 4c ; renamed: V2-S0-INV, section 15.14 |
+| B3, G1, G2 (Brain rules that touch trading) | Wait for DATA: Ready Check must turn true; then say ok | sections 4, 6 ; renamed: V2-S16, section 15.14 |
+| H1 auto-start when data is ready | Say ok | 4b ; renamed: V2-S17 part H1, section 15.14 |
+| 'TP ladder last target' idea | Say ok after the plan (it touches Dual exits, rule 1) | 4b ; renamed: V2-S17 part TP-LAST, section 15.14 |
+| NEXT-7 skipped-signal study, NEXT-8 paper A/B, NEXT-9 Vision + evidence | Each needs its own plan and his ok | 4c ; renamed: NEXT-7 card = V2-S15, NEXT-8 = V2-S14, NEXT-9 merged into V2-S8, section 15.14 |
+| V2 S0 round 1a (safe read-only opener for the data inventory tool + its tests) | Say "ok S0 round 1a" | VERSION 2 STATUS BOARD |
+| Check the old -> V2 mapping (same jobs done once, different jobs renamed V2-S14 ... V2-S19) | Say "mapping ok" or tell me what to change | section 15.14 |
+
+### 2. DONE (green)
+| Group | Items |
+|---|---|
+| 🟢 Round 1 + Brain basics | Parts 1-3, A-F, N1-N2, BE1, BE2, BE2b |
+| 🟢 Archive + universe + desk | U1 archive, U2 7-day coins, U3 / U4 desk, U5 reports (Z1a ... Z3b), time format Z1c |
+| 🟢 Brain memory + learning | M2 (MFE / giveback), B3a / B3b edge, B4a-B4d-4 (journey, stats, look-alike, mistakes, shadow rule), NEXT-7 skipped-signal check (brain_skip.py, key learn.skip) |
+| 🟢 App design | UI1-UI5, UI-D, SR1a-SR3, NEXT-2 (Brain evidence UI), NEXT-3, NEXT-4 (5-tab bar) |
+| 🟢 Dual Bot / India | H2 extra TPs, IS1 India chart photo |
+| 🟢 Code cleanup | NEXT-5 AppProvider split (5a Vision + AI chat, 5b positions, 5c settings + sound), NEXT-6a SWR core, NEXT-6b Vision routes, NEXT-6c lab / Dual / archive / Brain routes, NEXT-6d money routes (close / flatten / TP / SL / reconcile), NEXT-6e settings / exchange, NEXT-6f status / market / history, NEXT-6g AI keys / app prefs / Trade Book, NEXT-6h-1 AI Trade Diary, NEXT-6h diary + coach (api/ai_pages.py), NEXT-6i the last 49 AI routes (api/ai_core.py, ai_reports.py, ai_live.py, ai_chats.py), NEXT-6j WebSocket (api/ws.py), UI-LIVE build fix (liveState / liveAgeSec) |
+
+### 3. NEXT-6 split api_server.py - ALL PARTS DONE (api_server.py 1456 -> 787 lines; one part = one small zip was the rule)
+Rule: routes keep the same path, same order, same behaviour. Proof after every part: route list before = after (184 routes) + test_api_split.py. Marks (owner, 29 Oct): 🟢 DONE = built and proven here, 🟡 = still to do. Flip the mark in the same zip.
+| Part | What moves | New file | Lines | Status |
+|---|---|---|---|---|
+| 6a | SWR cache core (_swr, pools, locks, timing) | api/__init__.py, api/swr.py | 151 | 🟢 DONE 29 Oct |
+| 6b | 17 Vision routes | api/vision.py | 156 | 🟢 DONE 29 Oct |
+| 6c | Lab, Dual, archive, layers, smart_brain routes (21 routes) | api/dual.py | 283 | 🟢 DONE 29 Oct |
+| 6d | Close, flatten, TP / SL, reconcile (10 money routes) | api/trade.py | 206 | 🟢 DONE 29 Oct |
+| 6e | Settings, backup, exchange, Binance test (6 routes) | api/settings.py | 156 | 🟢 DONE 29 Oct |
+| 6f | Root, status, system, positions, market, signals, btc, history, candles (18 routes) | api/status.py | 297 | 🟢 DONE 29 Oct |
+| 6g | AI keys (vkeys), app prefs, Trade Book (9 routes) | api/ai_book.py | 125 | 🟢 DONE 29 Oct |
+| 6h-1 | AI Trade Diary: GET /api/ai/diary + GET /diary page (owner: 6h in two parts) | api/ai_pages.py | 55 | 🟢 DONE 29 Oct |
+| 6h-2 | AI Coach: GET /api/ai/coach, coach/reset, plan/config, coach/config, GET /coach page (_COACH_HTML byte for byte, sha256 in the test) | api/ai_pages.py (same file, factory make_router_coach) | 110 | 🟢 DONE 29 Oct |
+| 6i | The last 49 AI routes: ask / insights / doctor, reports, lab / reading / desk / levels, observer / pick, desk-reset / advice / backup, AI Live, shadow / digest / history / chats | api/ai_core.py (226), ai_reports.py (55), ai_live.py (168), ai_chats.py (84) | 533 | 🟢 DONE 29 Oct |
+| 6j | WebSocket: ConnectionManager, shared status loop, /ws route (the last route) | api/ws.py | 201 | 🟢 DONE 29 Oct |
+
+### 4. UPCOMING (not started)
+| Item | What | Starts when |
+|---|---|---|
+| NEXT-7 Flutter card | Show learn.skip in the Brain tab (backend key is DONE) | own small plan + ok (now V2-S15) |
+| NEXT-8 | Brain-assisted paper A/B | own plan + ok (now V2-S14) |
+| NEXT-9 | AI Vision + Brain evidence | own plan + ok (merged into V2-S8) |
+| NEXT-10 | Final polish | last (merged into V2-S13) |
+| B3 / G1 / G2 / H1 | see block 1 | data + ok (now V2-S16 / V2-S17) |
+
+## 0. FOR EVERY CLAUDE / READER - do this every time
+1. Read this whole file first. It is the single source of truth. Do NOT create other README / NOTES / CHANGES / status files.
+2. Check section 4 (ROAD AHEAD). If a "start when" data condition is reached, tell the owner plainly: "Data is ready for step X. Shall I build it?" Build only after his "ok".
+3. Owner way of working: tell number of files + lines first, start only after "ok", build in parts, ONE zip with only changed files. He updates from Termux in one shot. Simple English or Hinglish, short replies (talk style: see rule 18).
+4. After ANY work: update this file in the same zip: tick the step in section 4, add a row to section 3 (DONE) and section 10 (change log), change the date above. Never leave this file stale.
+5. Flutter cannot be compiled in Claude's sandbox. Say so, and ask the owner to send any build error.
+6. NAMING (owner asked, so he never gets confused): "Round 1" = old Parts 1, 2, 3 (finished and already pushed by the owner). All new work is Part A, Part B, Part C ... and steps inside a part are A1, A2, A3 / B1, B2 ... Never reuse old numbers. Name the zip after the part, e.g. owl_A1.zip.
+6b. HOW TO TALK TO THE OWNER (he said it all bounces off his head otherwise): at the end of EVERY reply give 2-4 numbered steps in very simple Hinglish: (1) what to download, (2) what to paste in Termux, (3) what he should see, (4) what to send back if it looks different. Never ask him to run something that is not in those steps. Explain any new word in one line. If nothing is needed from him, say "abhi kuch nahi karna".
+7. EVERY TIME a zip is delivered: the owner (27 Oct) says he does NOT use Termux, he just downloads the zip and owl_auto.sh (section 13) pushes it to GitHub by itself. So do NOT give a Termux command; say "download the zip, push is automatic". Section 11 command = fallback only if he says the auto push failed.
+8. SAVE EFFORT: do NOT scan the whole repo. Open section 12 (CODE MAP), go straight to the files listed for the feature, read only the function you need. Line numbers there are approximate (they drift): search by function name.
+9. KEEP FILES SMALL: new backend modules under ~250 lines, one job each; never add big blocks into api_server.py, main.py or smart_brain.py if a new small file can hold it (smart_brain.py only gets a thin hook, like the other brain_*.py files). Small files = small zips = small cost to read next time. If you add or move a feature, update section 12 in the same zip.
+10. OWNER ORDER (27 Oct): N2, Parts A, B, C, D, E (E1-E5), F1, F2, F3 are DONE (owner applied up to F2 on 27 Oct; F3 is the newest zip). Next, one at a time and only when the owner says: G1, G2 (they wait for data, see section 4). F/G wait for data. B3 waits for data (see section 4). READY CHECK on 27 Oct (live): 1 of 4 true (only "what if the bot had listened" is true; exit hit-rate 50% < 60%; trust not earned; luck untestable; own book 0 finished trades) = do NOT build G1/G2 yet. B3: Timing Sync best = same candle (+1.33 USDT/trade, 61 trades), worst = Z first then Main 1-2 candles (-4.98, 27 trades); compare again about 30 Oct (needs 3+ days stable). If own book still shows 0 finished trades on 28 Oct, find out why before anything else. NEW (27 Oct): Part U1-U5 = archive of all trades (never deleted) FIRST, then Dual Bot 7-day universe, desk backend + app, reports; plan in section 4a; was built after his ok (Z1-Z3).
+11d. TIME FORMAT (DONE in Z1c, keep it true for ALL new code: use fmtSpan / fmtMins in Dart and timefmt.span / timefmt.mins in Python, never write "N min" by hand; NOT yet changed on purpose: tag_lab.py (rule 1, 4 text lines: tfmin / tfm min), old Kivy main.py (not the Flutter app), India screens (they show candle timeframes like 5m, not durations)). Owner wording: anything over 60 minutes is shown as hours + minutes ("2 h 10 min", never "220 min"), EVERYWHERE in the app and in replies (positions, Brain cards, backend text). Z1c = ONE shared helper + replace the ~8 local copies (frontend: format.dart fmtDuration, 6 _ago in ai_*_card.dart, candle_chart.dart _fmtDur; backend: trade_archive._ago). Chunk size rule: max 250-300 lines of code per step.
+11c. DEPLOY RULE (27 Oct): the owner NEVER kills processes by hand. Phone side is tools/owl_auto.sh v5, see section 13. If you change how the backend starts workers, change owl_auto.sh in the same zip.
+11b. ZIP RULE: EVERY zip must have ALL files inside ONE top folder named Indian-main/ (Indian-main/README.md, Indian-main/frontend/...). owl_auto.sh (is_owl_zip) silently ignores any zip with files at the root - that is why owl_UI-D.zip was never pushed on 27 Oct. Build with: cd to the parent of Indian-main, zip -r name.zip Indian-main/<files>. Also: each new zip is CUMULATIVE for the files changed since the owner last confirmed applying (the owner often applies several zips at once), always with README.md. Say in the reply which earlier zips it already contains.
+12. NEW CHAT = NO CODE: Claude starts every chat blind (cannot see the live repo). The owner sends the latest Indian-main*.zip (and the shared-chat PDF if useful). Claude reads this README first, then only the files from section 12. A public GitHub link may work only in a chat that has web access (not tested yet); the zip always works.
+
+13. ZIP-TO-ZIP HANDOFF (owner order, 28 Oct): when the owner sends ONLY the repo zip (and maybe the master prompt PDF), do exactly this: read this README -> find the last DONE row (section 3) -> open section 4c (NEXT ROADMAP) -> take the FIRST item that is not DONE -> open only its files -> tell the owner the FILES + LINE ESTIMATE + any open question in short Hinglish -> STOP and wait for his "ok" (no code before ok) -> build that item only -> update this README in the same zip (section 3 row, section 4c status, section 10 log, section 12 map, date + version) -> ONE zip with top folder Indian-main/ (cumulative for files changed earlier in the same plan) -> say "download the zip, push is automatic" -> STOP. Never start the next item by yourself. Real-archive numbers are only real if the owner pasted them; simulated tests are NOT real learning.
+
+14. SMALL PARTS ONLY (owner order, 28 Oct): every part = about 300 lines of new / changed code, at most 400, and 4-5 SMALL files at most (new files under ~250 lines). If an item needs more, SPLIT it into parts (a, b, c) and say so in the plan BEFORE building; build only the first part, then stop. Each part = ONE zip that is CUMULATIVE: it holds the LATEST version of EVERY file changed since the last zip the owner says he applied (or since the last push he confirmed), not only this part's files, plus the README updated inside it. Reason (owner, 28 Oct): when his usage limit ends he must be able to download ONLY the last zip and nothing before it; the newest zip must always be enough alone. Say in the reply which zip to download and that older ones can be ignored. If the owner only says "read the README and continue": do rule 13, give files + lines of the next part, wait for his ok.
+
+15. STATUS MARKS (owner, 28 Oct): in README section 4c every item shows ✅ (built) or 🟡 (pending) at the start of its Status cell, so the owner sees the progress at a glance on the laptop. Change the mark in the same zip when an item is built. A zip also carries every file of the earlier parts (rule 14), so he downloads only the newest one.
+
+16. STATUS BOARD (owner, 29 Oct): the README was too scattered. The STATUS BOARD at the top (4 blocks: waiting for owner, done, running now cut into parts, upcoming) must be updated in the SAME zip as any work: move the item between blocks, tick the part, change the date / version. Sections 3, 4c and 10 stay as the detail / history. Owner 29 Oct: finished parts show 🟢 DONE in block 3 (green circle), pending parts 🟡; when a part is built, flip its mark and write the next 4-5 parts with files + lines in the reply. When the owner sends only the zip (rule 13), read the STATUS BOARD first, then take the first 🟡 part in block 3.
+17. VERSION 2 (owner, 29 Oct): read the VERSION 2 STATUS BOARD at the very top and section 15 (the full plan) before any V2 work. No V2 code before his "ok <part>"; the 2 live Binance paths and the protected files in 15.4 are never edited; data domains in 15.5 never mix; only his 2 indicators (15.6); every zip updates the V2 board with tests that REALLY ran.
+
+18. TALK STYLE (owner, 29 Oct): talk to the owner like a simple WhatsApp chat: easy English written in Roman letters (plain English or Hinglish), short sentences, no big words, no Hindi / Devanagari script in replies. Same for every plan, audit, status and explanation, in every chat and every part. Keep replies short (rule 6b gives the numbered end steps). Code, file names and this README stay in English.
+
+## 1. OWNER RULES (strict)
+- Do NOT touch: dual_lab.py, tag_lab.py, dual_lab_data.json, Dual Bot trading / exits. Dual Bot v1 stays in full explore mode (no filter, no skip, no block). Brain only READS its data (read-only) and writes only its own json files. EXCEPTION (needs the owner's ok, 27 Oct): Part U adds THREE thin hook lines in dual_lab.py: the coin list (~L966), the archive write right before trim() (~L967), and 'live-only' for 7-day coins (the boot condition in cycle() ~L884: skip the 7-day candle replay for them). No entry / exit / tag / explore rule changes. EXCEPTION 2 (owner ok 28 Oct for H2 only): dual_tp_ext.py adds 3 extra SD targets (TP5-TP7) to NEW Dual trades: 1 guarded import + 1 hook in the new-trade step + 1 cap hook in the finish step of dual_lab.py, and `while hit < len(tps)` in tag_lab.sim_rule (len 4 for every old caller). Entry, stop, tags, learning rows and the Brain's own trades are unchanged. EXCEPTION 3 (owner ok 28 Oct for B3a only): brain_edge.py observer = 1 guarded import + 1 try/except hook after the live replay of an OPEN trade + 1 close marker + `edge` in slim() of dual_lab.py. It only writes the `edge` key of a trade, never reads it to decide.
+- Only two indicator families: Main chart (EMA50 + SD bands) and Z pane + TSI. No third indicator (no ADX, no Hurst).
+- Paper only. New behaviour is OFF, report-only or "Brain own trades only" until the owner enables it. No torch / heavy RL. SQLite / WebSocket not yet (section 7).
+- Trading day everywhere = 5:30 AM IST (00:00 UTC). BTC has its own margin and totals, never added to the alt coins.
+
+## 2. WHAT THE SYSTEM IS
+- Dual Bot v1 = paper bot reading both indicators, taking every signal (500-600 trades a day), saving trades, tags and a setup book in dual_lab_data.json.
+- Smart Brain = side layer. Scores setups (clean score, Main-vs-Z divergence, look-alike win %), trust meter, luck test, risk numbers, exit advice (shadow), "what if the bot had listened", sideways report, retest report, and its OWN paper trades (smart_brain_own.json).
+- Brain own trades: scans TODAY's top-10 gainers + top-10 losers (20 coins, no BTC) on 15m every 5 min. Stage by finished own trades: learning (0-99, loose) -> medium (100+) -> quality (300+, strict). Max 40 new own trades a day, max 20 open. Learns lessons from its own results: a setup mix that lost is not repeated, one that worked is repeated, newest trades weigh more.
+- Owner's big goal: make the Brain so strong that it can trade a small real amount ($10-20) by itself and make profit, using only the two indicators. Section 5 says when that can even be considered.
+
+## 3. DONE (in the repo; ONE line each - details are in section 12 CODE MAP and section 10 CHANGE LOG)
+| # | What (short) | Main files |
+|---|---|---|
+| 1-3 | Brain "what it thinks now", Dual Bot screen tabs, luck test, risk numbers, rolling memory | smart_brain.py, smart_brain_view.dart, dual_bot_screen.dart |
+| 4-6 | Shared card design, Dashboard, Signals and Alerts look | owl_card.dart, dashboard_screen.dart, signals_screen.dart |
+| 7, 13 | Exit learning (FULL TP / HALF TP / HOLD), advice only | brain_exit.py, brain_exit_pick.py |
+| 9 | "What if the bot had listened?" report | brain_follow.py |
+| 10 | Brain skip gate built, app switch removed on purpose, default OFF | smart_brain.py, test_brain_gate.py |
+| 11 | Tab keeps last reply, fast start, trust needs 100 judged trades | dual_bot_screen.dart, smart_brain.py |
+| 12 | Brain own paper trades (separate book, stages, lessons) | brain_own.py |
+| A | Sideways report (Trending / Mixed / Sideways, cost in USDT) | smart_brain.py |
+| 14-17 | Now / Opportunities / Performance / Simple tabs | dual_summary_strip.dart, opportunities_tab.dart, performance_tab.dart, simple_tab.dart |
+| V2-1..3 | Price Action layer, Volume layer, join report (report only) | pa_layer.py, vol_layer.py, layers_join.py |
+| R1-1..3 | Own trades loose + stages; retest report; Simple tab LOCKED / FLOATING / NET + Brain dislike % | smart_brain.py, brain_own.py, simple_tab.dart |
+| A1-A3 | Honest trust bar, header says MAIN bot P&L, BTC own line, signal-type card, trade age on rows | smart_brain_view.dart, live_ticker_bar.dart, performance_tab.dart, simple_tab.dart |
+| N1, N2 | One notes file; CODE MAP + rules 8-10 | README.md |
+| B1-B2 | Timing Sync report + card (who spoke first, deep clean candidate) | brain_lessons.py, smart_brain_view.dart |
+| C1-C2 | READY CHECK card on top of Brain tab + retest headline | brain_ready.py, smart_brain_view.dart |
+| D1-D2 | Exit style + hold time per setup mix, card | brain_tp_hold.py, smart_brain_view.dart |
+| E1-E2 | Header bar 36px; Dual Bot underline tabs | live_ticker_bar.dart, dual_bot_screen.dart |
+| E3-E4 | One-line trade badges (clean / dislike, REAL / FAKE), compact density | dual_trade_card.dart, simple_tab.dart, owl_card.dart |
+| E5 | Same spacing tokens + buttons on all screens | app_spacing.dart, app_theme.dart |
+| F1 | Sideways self-rule, Brain OWN trades only (data gate) | brain_side.py |
+| F2 | Retest own book, paper twin (data gate) | brain_retest.py |
+| U1 | Archive (append-only SQLite, nothing deleted) - Z1a, applied; phone check: /api/archive showed state none right after apply, recheck | trade_archive.py |
+| U2b | Brain own scan = today's 20 + up to 30 names of the last 7 days (SCAN_COINS 20 -> 50; Brain own trade RULES unchanged; the scan costs about 2.5x reads every 5 min) - Z1b-3 | smart_brain.py, universe_7d.py |
+| TIME | ONE time helper (rule 11d): over 60 min = "2 h 10 min". Dart fmtSpan / fmtMins in utils/format.dart used by 18 files (positions, trade rows, all ai_*_card _ago, dual / insights / ping / vision / chart / dashboard texts); Python timefmt.py used by dual_lab (2 text lines only), trade_archive, filter_lab, brain_tp_hold, ai_vision_lessons, ai_coach, ping_report, ping_tracker - Z1c | format.dart, timefmt.py |
+| U2 | 7-day coin NAMES (Binance 1d candles, universe_days.json, cap 30) + Dual Bot hooks: coin list = today + 7-day names, 7-day-only coins are LIVE only (no 7-day replay, marked as booted) + /api/dual_universe - Z1b | universe_7d.py, dual_lab.py, api_server.py |
+| F3 | Week report card + time-of-day cap (data gate) | brain_week.py |
+| UI1 | Premium UI step 1 (owner's plan UI1-UI5, 9 small zips, light theme kept, no backend change): 34px hero style, OwlHero + OwlFold (headline shown when closed) in owl_card.dart; Dashboard = status line (BOT ON / PAUSED / OFFLINE + feed age + coins), big Today P&L hero with target bar, 3 tiles (Open P&L / Win rate / Open positions) + 7D / 30D, Diagnostics + Phone load moved to the bottom (phone load folded); bottom nav left as is (it already had the active pill). Phone check pending | app_typography.dart, owl_card.dart, dashboard_cockpit.dart, dashboard_screen.dart |
+| UI2a | Premium UI step 2a (Dual Bot Simple + Now): Simple tab = hero card (NET 34px, status chip Looking fine / Careful / Losing / Too early, LOCKED + FLOATING smaller, Brain dislike line), then IS THE BOT OK? (sentence only), then OPEN TRADES, then three folds with the key number in the headline (Today vs 7 days coins, signal type, best / worst finished). Now tab = one line first (N open · long · short · floating), shorter Dual Bot card text. Phone check pending | simple_tab.dart, universe_strip.dart, dual_bot_screen.dart, owl_card.dart |
+| UI2b | Premium UI step 2b (Dual Bot Learned / Performance / Brain): Learned cards are folds with the money or count in the headline (daily review, scenarios, setups, retest, lessons, what it has learned); Performance: hero total + BIGGEST DRAWDOWN callout (worked out from the equity curve we already have, start = 0), win-rate trend and daily results folded; Brain: READY CHECK shows "N of M checks true" as the big number, then TRUST METER, then WHAT IF THE BOT HAD LISTENED with a big number (skip-disliked total minus take-all total, ROI points), then NOW; Timing sync / Exit style / Edge by universe sit in one folded REPORTS block; the old "more" list is unchanged (minus the what-if card that moved up). Phone check pending | dual_bot_screen.dart, performance_tab.dart, smart_brain_view.dart |
+| UI-D | Premium UI step UI-D: More tab has a DOWNLOADS group (App report, Dual Bot report, Trades CSV). Each row opens the same ReportDownloadCard in a bottom sheet (Download / Share / Copy). Trades CSV = all finished archive trades; new route /api/archive_export_save writes owl_trades_<date>.csv to the phone Download folder. Card got fileName + mimeType (Share uses them). App report also stays in Settings. Phone check pending | more_screen.dart, report_download_card.dart, api_server.py |
+| UI3a | Premium UI step 3a (Positions): new slim summary line at the top = open P&L in 24px green / red + UP and DOWN count pills (same numbers as the floating bar, shown first; empty when nothing is open). Cards, swipe-close, sort bar, search, PANIC and the floating bar are unchanged on purpose (card already shows big P&L and the open time). Phone check pending | positions_screen.dart |
+| UI3b | Premium UI step 3b (Signals): the TODAY card already had Signals / Opened / Won / Lost / Skipped, so only its top changed: the day's net result is now the OwlHero (34px, green / red) with the win rate as its note; the 3-line text under the numbers is cut to the All-loaded line (+ the BTC note in BTC view). Tabs, day headers and rows unchanged. Phone check pending | signals_screen.dart |
+| UI4a | Premium UI step 4a (Market): LIVE chip now says LIVE · N up · N down, filter tabs show their counts (All / Gainers / Losers). More already has the new DOWNLOADS group and Settings is already grouped (Trading / Account / Alerts & AI / App), so both were left unchanged on purpose. Phone check pending | market_screen.dart |
+| UI4b | Premium UI step 4b (AI tab, Overview): status chip next to the all-time net (TOO EARLY amber / IN PROFIT / IN LOSS), daily bars, exit reasons and the 7 small stats are folds with the key number in the headline (LAST DAYS, HOW TRADES CLOSED, MORE NUMBERS). Hero, today / total tiles, equity line and Ask AI button unchanged. Phone check pending | ai_tab_screen.dart |
+| UI5 | Premium UI step 5 (final pass): new OwlLoading (small spinner + one line, or a cloud-off note when failed; inline or centered) in owl_empty_state.dart, replacing the plain Hinglish 'Load ho raha hai...' in the AI tab overview, the ML shadow card and the Performance tab; Market filter now uses OwlSegmented (same active look as Signals / AI tabs). The other loading texts in cards were left as they are (they work). Phone check pending | owl_empty_state.dart, ai_tab_screen.dart, performance_tab.dart, market_screen.dart |
+| BE1 | Brain FORCE EXPLORE (27 Oct): until 30 finished own trades the Brain takes a few small paper trades (25 USDT margin, max 3 per 5-min scan, cleanest first, max 6 open, max 12 a day, day loss cap -30 USDT, setups it already lost on stay blocked). Then normal stages (learning / medium / quality). Brain tab shows an EXPLORING n OF 30 chip | brain_own.py, smart_brain.py, brain_ready.py, smart_brain_view.dart |
+| BE2 | Dual Bot open trades are FULL cards on the Simple tab too (same DualTradeCard as the Now tab: entry, live, stop, SL-TP ladder, next TP + % of the way, stop distance, time open, Brain clean score + reason, P&L, TODAY / 7D chip); 8 shown at a time + Show more. Duplicates removed: Positions (up / down only on the top line, floating bar shows % on margin, not a 2nd USDT P&L), Dual Now (no extra open line, no 2nd open chip / total text). Phone check pending | dual_trade_card.dart, simple_tab.dart, position_glance.dart, positions_screen.dart, dual_bot_screen.dart, dual_summary_strip.dart |
+| BE2b | Live price '--' fixed: ONE bulk request gives the price of right now for EVERY open Dual coin (before: one coin at a time, only the first 14 A-Z, so later coins showed Live '--' and no P&L). 5 s cache, any failure = the old way. Display only, no trading rule. Phone check pending | dual_live.py (new), test_dual_live.py (new), dual_lab.py (_live_prices: +6 lines, guarded import +4) |
+| SR1a | Silent Rich design system (light theme): off-white canvas (F4F5F8) so white cards lift, softer hairline border, card radius 16 / 18, neutral soft shadow (was blue tint), muted section titles, money hero 36px, calmer status pill + OWLStatusPill.calm(context, text) (one pill for Running / Exploring / Careful / Losing), Dual trade card uses the same radius. Shared widgets only: every screen changes at once. Phone check pending | app_theme.dart, app_spacing.dart, app_typography.dart, owl_card.dart, owl_status_pill.dart, dual_trade_card.dart |
+| SR1b | Silent Rich Dashboard + nav (light theme): Dashboard money card is now the same calm OWLCard as the rest (was a glass hero card), thin green / red rim follows the sign of the hero number, 16 px padding, a hairline divider between the hero (+ target bar) and the tiles, tiles sit on the off-white canvas colour with a hairline border; GlassCard (equity chart, bento tiles) uses the same neutral soft shadow; bottom nav = neutral soft shadow, flat active pill (no glow), radius 20, labels w500 / w700. Order, icons and tabs unchanged. dashboard_screen.dart NOT changed on purpose: UI1 already put the status line on top and Diagnostics + Phone load at the bottom. Phone check pending | dashboard_cockpit.dart, glass_card.dart, bottom_nav_bar.dart |
+| SR2a | Silent Rich Dual Bot tabs (light theme): tab bar is now calm pills (selected = soft accent fill + hairline, others white pill; was underline), hint line muted, app bar title left + bolder. Simple tab: LOCKED / FLOATING tiles sit on the off-white canvas with radius 12. Performance tab: drawdown box is neutral (off-white, hairline, red icon only when there is a drawdown; was orange warning box), daily results rows have hairline dividers. Display only, no numbers or logic changed. Phone check pending | dual_bot_screen.dart, simple_tab.dart, performance_tab.dart |
+| SR2b | Silent Rich Positions + Signals (light theme): shared OwlFilterChip + OwlSegmented use the same calm pill look as the Dual Bot tabs (selected = 10 % accent fill + 35 % rim, segmented track = canvas colour), so Signals, Alerts and every list using them change together. Positions: top P&L number 28px, floating bar has the neutral soft shadow and a bigger % on margin (16px), Close All pill buttons have a softer rim; PositionCard shell only swaps the blue-tint shadow for the neutral one (inside untouched). Signals: hairline between the TODAY hero and the stat row, footnote muted. Display only. Phone check pending | owl_card.dart, position_card.dart, positions_screen.dart, signals_screen.dart |
+| SR3 | Silent Rich Market + AI + More + empty states (light theme): every screen title is 22px w800 (Market Watch, More, AI), Market LIVE chip = 10 % accent fill + 35 % rim, table header on the canvas with a hairline, muted w700 labels; More rows = radius 16 + neutral soft shadow, icon tile radius 12; AI tab hero P&L 36px (same as the money hero everywhere); OWLEmptyState icon circle = white with the soft shadow, title 16 w800. OwlLoading unchanged on purpose. Display only. Phone check pending | market_screen.dart, more_screen.dart, ai_tab_screen.dart, owl_empty_state.dart |
+| H2 | Extra TPs for the Dual Bot (owner: 'ऊपर के SD बैंड्स पर भी trade खुला रखे'): every NEW Dual trade gets 4 bot levels + 3 more SD levels beyond the last one (TP5-TP7, long above, short below), the trade has an `ext` mark, and it stays open past TP4 (exit rules with cap 4 now use cap = last level; stop / TP1 -> entry / opposite cross as before). Old open trades keep their 4 levels. Learning rows (replay) and Brain own trades are unchanged. App: card ladder and big chart show TP5+ (the card reveals the next extra one only after the last shown is passed). Phone check pending | dual_tp_ext.py (new), test_dual_tp_ext.py (new), dual_lab.py, tag_lab.py, dual_trade_card.dart, dual_trade_chart.dart |
+| M2 | Batch 2 Brain learning memory (owner ok 28 Oct): every finished Dual trade and Brain own trade now keeps `mfe` (best profit seen while open) and `giveback` (= mfe - gross final, never below 0), both in ROI points, leverage included, BEFORE the fee (net = gross - fee), and every NEW trade carries `brain_version` (label only, brain_meta.py BRAIN_VERSION, nothing reads it to decide). MFE comes from a separate `mfe_px` tracker in tag_lab.sim_rule (counts the exit candle; a stop candle is skipped = stop first; `best` and the trail are untouched). Saved in the EXISTING dual_archive.db / brain_archive.db as 3 new columns (old rows stay NULL = not recorded, nothing back-filled). Note: tag_lab.path_stats has an older, different `mfe` (48 candles, ignores exits) that is not stored in trades | tag_lab.py, dual_lab.py, brain_own.py, trade_archive.py, brain_meta.py |
+| B3a | Batch 3a OPEN TRADE EDGE DECAY, backend only, REPORT / OBSERVATION ONLY (owner ok 28 Oct): for every OPEN, actually taken Dual trade the Brain measures once per NEW closed candle (not every 6-8 s) whether the entry reasons still hold: how many of the 6 core reasons (TSI vs signal line, TSI vs 0, Z vs its EMAs, Z cloud, Z vs Z-SMA, price vs EMA50) still point with the trade now / at entry / 3 candles ago, slopes of Z and TSI histogram, SD width change, EMA50 distance + slope in SD units, opposite events since entry, price-vs-Z agreement, progress (progressing / stalling / reversing), ROI / MFE / giveback, candles since MFE. Stored as ONE `edge` key on the trade in dual_lab_data.json (raw numbers + capped history of 60 observations, ~0.5-1.2 KB), copied to the archive with the trade (js). Provisional labels STRONG / STABLE / WEAKENING / REVERSED / NEW are a first guess, NOT proven predictions; raw data is kept so labels can be retuned. Brain view gets `edge` (counts per state, open trades list, scorecard that measures after 30 finished trades whether WEAKENING trades ended worse). No AI / API / Vision, no new database, no Flutter yet (B3b). Nothing closes, changes or rejects a trade | brain_edge.py (new), test_brain_edge.py (new), dual_lab.py (guarded import, observer hook, close marker, slim), smart_brain.py (_edge_view, build_view) |
+| IS1 | India Telegram signal + ONE chart photo (owner ok 28 Oct): after the normal signal card, india_shot.py draws ai_vision.render_chart() (EMA30/50, SD bands, TSI, Z, ENTRY, STOP, TARGET = TP4, 300 candles) and sends it with sendPhoto in its own thread, no retry. Signal id is saved to state["shots"] on disk BEFORE the send = max one photo per signal. A photo failure never stops the card or a trade. Also: Vision AI no longer starts at boot (settings `vision_enabled` default False; ai_ind_features / ai_shadow_lab are NOT AI, never archive them) | backend/recovered_bot/india_shot.py, india_telegram.py, api_server.py, settings_store.py |
+| B4a | Per-candle DATA rows of taken Dual trades (22 numbers + Brain call letter, table obs in dual_archive.db), observation only (v53) | brain_edge.py, trade_archive.py, test_brain_obs.py |
+| B4b-1 | Trade JOURNEY + call outcomes (tables journey, call_out in brain_archive.db), facts only (v54) | brain_learn.py, trade_archive.py, smart_brain.py (thin hook) |
+| B4b-2a/2b | Outcome statistics per Brain state vs a strict baseline, BUY/SELL x timeframe x regime slices, mistakes ledger (tables mistake, learn_stats), 30 trades + halves + luck test, view key learn.stats (v55-v56) | brain_stats.py, trade_archive.py, brain_learn.py |
+| B4c-1 | LOOK-ALIKE learning on 8 B4a numbers (tsi, hist, z, zg, sm, bw, ed, sc), past-only scaling, walk-forward, block-shift luck test; hand-run in v57; its results are now frozen in look_call and shown in learn.look since v59 (B4c-2 p2) | brain_look.py, brain_stats.py (features()), test_brain_look.py |
+| B4c-2 p1 | MISTAKE RISK from look-alikes (same 8 numbers, same protections): did earlier look-alike calls err more than the past-only usual rate, and did that predict this call's mistake? Hand-run only, NOT connected, nothing stored yet (v58). Part 2 done in v59 (next row) | brain_pattern.py, brain_look.py (flag option), test_brain_pattern.py |
+| B4c-2 p2 | FROZEN look_call table (one insert-only row per scored call and channel, brain_archive.db), mistake-vs-correct NUMBER GAPS (top 3, only where the mistake guess is a hint, description only), view key learn.look (small JSON, try/except, refresh max every 10 min). Observation only; Flutter NOT started (v59) | brain_pattern.py (gaps, rows_of, refresh, summary), trade_archive.py (look_call, save_look_calls), brain_learn.py (look key), test_brain_pattern2.py |
+| B4d-1 | SHADOW RULE r1 for ONE Brain call (HOLD_OK / PROTECT_LOOKS_BETTER / NO_OPINION) from the latest frozen learn_stats copy saved strictly BEFORE the candle; pure rule + read helper only, NOT connected, nothing stored (v60). 4d-2 (live writer + shadow_rec table), 4d-3 (scoring), 4d-4 (view key + speed guard) NOT started | brain_shadow.py, trade_archive.py (learn_snapshots, SELECT only), test_brain_shadow.py |
+| B4d-2 | LIVE SHADOW WRITER: freezes rule r1's answer (also NO_OPINION) for the newest closed candles of OPEN Dual trades in the insert-only table shadow_rec (key = trade + candle + rule); called at the top of brain_learn.step (v61). 4d-3 (scoring), 4d-4 (view key + speed guard), Flutter NOT started | brain_shadow.py (step), trade_archive.py (shadow_rec, save_shadow_recs, learn_snapshots since), brain_learn.py (hook), test_brain_shadow2.py |
+| B4d-3 | SHADOW SCORING (read-only): stored r1 recommendations scored with 'if followed' ROI points vs the stage baseline; one count per trade and rec type; 30-trade minimum; NO_OPINION never scored (v62). Simulated data only | brain_shadow.py (score), trade_archive.py (shadow_recs), test_brain_shadow3.py |
+| B4d-4 | learn.shadow KEY in the Brain view: counts of HOLD_OK / PROTECT_LOOKS_BETTER / NO_OPINION + paper score, small JSON, cached, own try/except (v63). Flutter NOT started | brain_shadow.py (summary), brain_learn.py (view_summary), test_brain_shadow3.py |
+| NEXT-2a | FLUTTER BRAIN UI part 1 (Option A, Flutter only): card BRAIN EVIDENCE (S/T/W/R: evidence level, sample, holding vs leaving) + OPEN TRADES - BRAIN VIEW (state, HOLD / PROTECT / NO OPINION from today's evidence, sample, journey ENTRY - states - NOW, MFE / now / giveback). Grey NOT ENOUGH DATA, no made-up %. Flutter NOT compiled, phone check pending | widgets/brain_evidence_card.dart (new, 217 lines), widgets/smart_brain_view.dart (+2 lines: import L10, card L1283) |
+| NEXT-2b | FLUTTER BRAIN UI part 2: three folded blocks, headline = key fact, detail one tap away: LOOK-ALIKE (learn.look.roi, per state, NOT ENOUGH DATA under the minimum), MISTAKE PATTERNS (learn.stats.ledger counts + learn.look.gaps shown as 'observed historical difference (not a rule)'), SHADOW CHECK (learn.shadow counts HOLD / PROTECT / NO OPINION, judged / waiting, paper if-followed). Flutter NOT compiled, phone check pending | widgets/brain_learn_blocks.dart (new, 183 lines), widgets/smart_brain_view.dart (+2 lines: import, block under the evidence card) |
+| NEXT-3 | BRAIN UX POLISH (one small part, no new file): open-trade rows get the ROI big in profit / loss colour at the top right, the journey gets a colour strip (one segment per state run) above the step chips, 'Evidence details' fold (what the state evidence says, sample, lean, refresh note); BRAIN EVIDENCE card now has loading / error / 'no evidence yet' states instead of vanishing (smart_brain_view passes loading + err). Flutter NOT compiled, phone check pending | widgets/brain_evidence_card.dart (217 -> 279 lines, +62), widgets/smart_brain_view.dart (1 line changed, the card call) |
+| NEXT-4 | APP SHELL: bottom bar Dashboard / Market / Positions / Brain / More (was 7 tabs: Dash, Market, Pos, Signals, Dual Bot, AI, More). New screens/brain_screen.dart (Brain as its own tab = title + SmartBrainView; the Dual Bot Brain chip stays). Signals / Dual Bot / AI keep screen index 3 / 4 / 5 and are opened from More ('MORE TABS' rows call goToTab); Brain = screen index 7; More stays lit while one of them is open; swipe order = bar order then Signals, Dual Bot, AI, More. Nothing deleted. Flutter NOT compiled, phone check pending | screens/brain_screen.dart (new, 29), widgets/bottom_nav_bar.dart (130 -> 133), main.dart (+7: import, 8 tab keys, _order + _swipeTab, BrainScreen in _screens), screens/more_screen.dart (+7: imports + MORE TABS group), services/jank_meter.dart (1 line: 'Brain' name) |
+| NEXT-5a | AppProvider split, part a (Flutter only, nothing else touched): the Vision AI calls (17 methods) and the AI Assistant chat calls (7 methods) moved out of app_provider.dart into two PART files, as `extension ... on AppProvider`. Same code, same method names, so NO screen changed (provider.fetchVisionState() etc. work as before). app_provider.dart 2020 -> 1761 lines. Flutter NOT compiled, phone / build check pending | providers/app_provider.dart, providers/app_provider_vision.dart (new, 171), providers/app_provider_aichat.dart (new, 105) |
+| NEXT-5b | AppProvider split, part b (Flutter only): the 9 POSITION ACTION methods (closePosition, closeAll, panicFlatten, previewCloseAll, closeAllProfit, closeAllLoss, setTargetTp, trailSlToLevel, moveSlToBreakeven) moved into providers/app_provider_positions.dart as `extension AppProviderPositions on AppProvider` (part file, same code and names, no screen changed). app_provider.dart 1761 -> 1537 lines. Flutter NOT compiled, build check pending | providers/app_provider.dart, providers/app_provider_positions.dart (new, 231) |
+| NEXT-5c | AppProvider split, part c (Flutter only): SETTINGS calls (fetchSettings, setLiveTradingEnabledImmediate, exportBackup, updateSettings, fetchCandles, testBinanceConnection) -> providers/app_provider_settings.dart (`extension AppProviderSettings on AppProvider`); SOUND ALERTS (sound field, 4 on/off prefs, setAppForeground, change detection, exit-sound helpers) -> providers/app_provider_sound.dart as `mixin SoundAlerts on ChangeNotifier` (it owns fields, so an extension is not possible); `class AppProvider extends ChangeNotifier with SoundAlerts`. The mixin asks AppProvider for 5 things that already exist: prefs, positions, alerts, statsMode, pushPrefsBackup(). The field `lastCandleError` stays in the main class. No screen changed. app_provider.dart 1537 -> 1256 lines. Flutter NOT compiled, build check pending | providers/app_provider.dart, app_provider_settings.dart (new, 112), app_provider_sound.dart (new, 188) |
+| NEXT-6a | api_server.py split, part a (backend only, NO route moved): the SWR cache core (state dicts, 3 thread pools, heavy lock, _timed_call, _eff_ttl, _swr, _swr_start, _swr_refresh, _swr_warmer) moved to api/swr.py; api_server.py imports every name back (same objects, so ai_report.py's A._display_status and everything else works). `_swr_prewarm` stays (it calls ai_*_endpoint). api_server.py 2633 -> 2494 | api/__init__.py (new), api/swr.py (new, 151), api_server.py |
+| NEXT-6c | api_server.py split, part c: 21 routes (filter_lab, filter_lab_all, variant_lab, doctor_summary / filter, health_meter, scoreboard, scan_lab, tag_lab, dual_lab + report + report_save, archive + check + export + export_save, dual_desk, dual_universe, layers pa / vol, smart_brain) moved to api/dual.py `make_router(safe_status)`; included in api_server.py at the SAME place. `_safe_status` stays in api_server.py (ai_health uses it) and is passed in as a lambda (it is defined further down the file). api_server.py 2362 -> 2104 | api/dual.py (new, 283), api_server.py, test_api_split.py (29 checks) |
+| NEXT-6h-1 | api_server.py split, part h1 (owner: 6h in two parts, give one now): AI Trade Diary GET /api/ai/diary + GET /diary -> api/ai_pages.py, factory make_router_diary(). The page text _DIARY_HTML is a big HTML string: it stays at MODULE level, byte for byte (indenting it like normal code would change the HTML); test_api_split.py locks it with a sha256. api_server.py 1487 -> 1456 | api/ai_pages.py (new, 55), api_server.py, test_api_split.py (+5 checks) |
+| NEXT-6g | api_server.py split, part g (code moved unchanged): AI keys GET /api/ai/vkeys + POST add / test / detect / clear, GET / POST /api/app_prefs, Trade Book GET /api/ai/book (+ its 6 s cache, busy set, refresh helper) and GET /api/ai/path -> api/ai_book.py, TWO factories at the old spots (make_router_keys(require_api_token, data_dir), make_router_book()). IMPORTANT: api_server._swr_prewarm calls the book handler DIRECTLY (`ai_book_endpoint(0, 1)`) inside a try / except, so a missing name would have been swallowed silently and the warm-up lost. Fix: the router object carries the handler (`r.ai_book_endpoint`) and api_server sets `ai_book_endpoint = _ai_book_r.ai_book_endpoint` (the SAME function object, same cache). api_server.py 1574 -> 1487 | api/ai_book.py (new, 125), api_server.py, test_api_split.py (+9 checks) |
+| NEXT-6e | api_server.py split, part e (code moved unchanged): GET / POST /api/settings (secrets stay masked), POST /api/backup/export, POST /api/binance/test-connection, GET /api/exchange, POST /api/exchange/switch -> api/settings.py with TWO factories (make_router_settings(require_api_token, data_dir), make_router_exchange(require_api_token)) because the trade router sits between the backup route and the Binance test route. The secret-key list, mask helper and backup-zip helper moved with them | api/settings.py (new, 156), api_server.py, test_ai_free_r6.py (reads api/settings.py now) |
+| NEXT-6f | api_server.py split, part f (code moved unchanged): 18 routes -> api/status.py with FOUR factories placed at the old spots: make_router_basic() (/ and /health), make_router_system(display_status, data_dir) (status, system, ops, load_report + daily), make_router_market(display_status, bot_arg) (positions, market, signals, btc live / signals, daily-report, the _attach_signal_results helper), make_router_history(bot_arg) (alerts, history, equity, calendar, candles). AI key + app-prefs routes (6g) and the Vision router stay between them. Handlers that were plain `def` (thread pool) are still plain `def`. api_server.py 1923 -> 1574 | api/status.py (new, 297), api_server.py, test/test_smooth.py (looks in api/status.py too), test_api_split.py (+22 checks) |
+| NEXT-6d | api_server.py split, part d (MONEY PATHS, code moved unchanged): 10 routes (close_one, close_all, flatten, preview_close_all, close_all_profit, close_all_loss, set_target_tp, trail_sl, move_sl_breakeven, reconcile) moved to api/trade.py `make_router(require_api_token, bot_arg)`; included in api_server.py at the SAME place (right before /api/binance/test-connection). Flatten order kept (close live first, THEN switch live trading off), 9 of 10 keep the token check. /api/ai/live/panic NOT moved (part 6i). api_server.py 2104 -> 1923 | api/trade.py (new, 206), api_server.py, test_api_split.py (+9 checks) |
+| NEXT-6b | api_server.py split, part b: the 17 /api/vision/* routes moved to api/vision.py (`make_router(require_api_token)`), included in api_server.py at the SAME place so the route order is unchanged. 6a + 6b together: api_server.py 2633 -> 2362 lines | api/vision.py (new, 156), api_server.py, test_api_split.py (new, 24 checks) |
+| v5-v5e | Phone deploy: kills old workers by folder, self-update by BUILD, one-repo zip rule, no APK push (section 13) | tools/owl_auto.sh |
+
+## 4. ROAD AHEAD (start a part only when its "start when" is true AND the owner says ok)
+NEXT WORK = section 4c (NEXT-1 ... NEXT-10, from the master prompt v70+). Older text below is history. OWNER ORDER NOW: Parts A-F are DONE (section 3). WAITING FOR DATA: B3, G1, G2. Part U1-U5 (Dual Bot 7-day universe + desk) is BUILT (history in section 4a).
+CHECKS DUE: (1) 28 Oct: Own book must show finished own trades; if still 0, find out why first. (2) about 30 Oct: read Ready Check + Timing Sync again, then decide B3 / G1 / G2. (3) If Part U goes live, Ready Check numbers mix two coin sets: compare only trades after the switch day.
+| Part | What | Files | Lines | Start when | Status |
+|---|---|---|---|---|---|
+| B3 | Brain OWN trades softly prefer "deep clean" setups | brain_own.py, smart_brain.py, test | ~50 | Timing Sync numbers stable 3+ days (27 Oct: same candle +1.33/trade, Z first then Main -4.98/trade) | WAIT FOR DATA ; 29 Oct RENAMED: now V2-S16 part B3 (section 15.14) |
+| G1 | Brain skips bad signals in the main bot (Step C of section 8) | 2-3 files | ~100 | READY CHECK 1+2+3 true (section 6; 27 Oct only 3 true) | WAIT FOR DATA ; 29 Oct RENAMED: now V2-S16 part G1 (section 15.14) |
+| G2 | Brain exit advice trails the stop (Step D of section 8) | 2 files | ~120 | READY CHECK 4 true (27 Oct hit-rate 50%, needs 60%+) | WAIT FOR DATA ; 29 Oct RENAMED: now V2-S16 part G2 (section 15.14) |
+| U1 | ARCHIVE FIRST (nothing deleted): every Dual Bot trade (open -> closed updates too) and every learning row go into dual_archive.db (SQLite, append-only, the code never runs DELETE), written by the Dual worker right BEFORE trim() (so even a big history replay is saved first, a failure there can never stop the bot); Brain OWN finished trades + exit shadow go into brain_archive.db (written by the Brain worker). Counts + last sync feed a DATA SAFE chip | trade_archive.py (new), test_trade_archive.py (new), dual_lab.py (archive hook), smart_brain.py (own-trade hook) | ~300 | owner ok given 27 Oct | BUILT 27 Oct (zip owl_Z1a), phone check pending |
+| U2 | UNIVERSE: TODAY = top 10 + 10 (default_coins, unchanged) + LAST 7 DAYS = top 5 + 5 per UTC day, built at once from Binance 1d candles (background, once) and kept for ever in universe_days.json; union, deduped, drop coins already in today, cap 30 (from universe_ctl.json, raise without a build); routes /api/dual_universe + /api/archive; Dual Bot coin-list hook (dual_lab.py ~L966) + live-only hook (no 7-day replay for 7-day coins, ~L884); Brain own scan on the same list | universe_7d.py (new), test_universe_7d.py (new), api_server.py (routes), dual_lab.py (hook), smart_brain.py (today_coins) | ~360 | with U1 (zip Z1b) | Z1b-1 + Z1b-2 BUILT 27 Oct (zip owl_Z1b: universe_7d.py, 2 hooks in dual_lab.py, /api/dual_universe); Z1b-3 BUILT 27 Oct (Brain own scan on the same list: smart_brain.today_coins + SCAN_COINS 50, read-only via universe_7d.with_extras); phone check pending. Next: Z2 (Dual screen TODAY / LAST 7 DAYS, 2 parts of ~250 lines) |
+| U3 | DESK backend: small slices for the app (open trades, today summary, last N closed by source and 5m / 15m) read from the archive, never the whole file per refresh | dual_desk.py (new), test_dual_desk.py (new), api_server.py (route) | ~200 | after U2 ran 1 day (zip Z2) | Z2a BUILT 27 Oct (dual_desk.py + route /api/dual_desk + universe_log.json source tags); phone check pending |
+| U4 | DESK app: glance strip stays (LOCKED / FLOATING / NET exist); TODAY and LAST 7 DAYS sections with 5m / 15m; rows with source chip; open count tap = open list; open filters All / Today / 7d / Long / Short (ListView.builder); DATA SAFE chip | universe_strip.dart (new), simple_tab.dart, dual_trade_card.dart, dual_bot_screen.dart | ~300 | with U3 (zip Z2) | Z2b BUILT 27 Oct (universe_strip.dart ~100 lines = TODAY / LAST 7 DAYS blocks with 5m / 15m on the Simple tab; + 3 lines simple_tab.dart, ~14 lines dual_bot_screen.dart _pollDesk; Flutter not compiled, phone check pending). Z2c BUILT 27 Oct (open list filter chips All / Today / 7d / Long / Short, TODAY / 7D source chip on open rows from desk tags, DATA SAFE chip from /api/archive; "open count tap" not built, the filters replace it). Phone check pending. NEXT: Z3 (reports, 2 parts) (source chip on trade rows, open filters All / Today / 7d / Long / Short, DATA SAFE chip, ~150 lines) |
+| U5 | REPORTS from the archive: Brain card "Edge by universe" Today vs 7d + cycle phase (pump / sideways / drift, read-only, NO new DIM); Brain reads a 7-10 day archive window (default stays JSON until counts match); check tool + CSV export | brain_universe.py (new), test_brain_universe.py (new), smart_brain.py, smart_brain_view.dart, tools/db_check.py (new), tools/archive_export.py (new) | ~390 | archive has 3+ days (zip Z3) | Z3a BUILT 27 Oct (brain_universe.py 100 lines + test_brain_universe.py 19 checks + smart_brain.py thin hook: view["universe"]; reads dual_archive.db read-only, 10-day window). Z3b BUILT 27 Oct (Brain card EDGE BY UNIVERSE in smart_brain_view.dart, archive_tools.py check + CSV export, routes /api/archive_check and /api/archive_export, tools/db_check.py, tools/archive_export.py). Brain keeps reading the JSON until the card says the archive has all finished trades (state match) AND the owner says ok. Part U is now fully built; phone check pending |
+| U6 | README updated in every zip | README.md | - | always | RULE |
+ZIP PLAN (every push of a non-.md file starts one GitHub build): Z1 = U1 + U2 split in two: Z1a = U1 archive (6 files incl. README, ~420 lines incl. test), Z1b = U2 universe (about 6 files, ~360 lines); Z2 = U3 + U4 (8 files, ~500 lines); Z3 = U5 (6 files, ~390 lines). Total about 1,550 lines, 3 zips, 3 builds. README-only zips start NO build (workflow ignores .md). Flutter cannot be compiled here: if Z2 has a build error, one small fix zip follows.
+Backlog, NOT planned now: E4 failure replay card (top 5 fake reasons this week, ~80 lines); E5 own book on 7d names when today is pure chop; E6 SQLite when dual_lab_data.json is big or slow (section 7); Brain v2 (regime, session, price action, careful small live size with a daily loss cap) only after Ready Check + the section 5 path to real money.
+Dropped: per-coin memory (top coins change daily). Part U is not that: it keeps a 7-day LIST of coins, it does not learn per coin.
+
+## 4a. PART U - DUAL BOT 7-DAY UNIVERSE + DESK (owner's Grok prompt Owl_DualBot_7Day_Universe_Deep_Prompt.txt, checked by Claude 27 Oct; owner said ok 27 Oct, Part U is fully BUILT - this section is history)
+OWNER PROBLEM: the daily top list changes, so Dual Bot practises on today's names and tomorrow they leave. Real cycle: pump/dump day, then sideways/digest (often night, low volume), then higher-timeframe retest, 1-2 days of real move, volume dies, slow slide. A "today only" list misses the later legs. Owner wants a rolling memory of recent strong movers for the Dual Bot (and so for the Brain), and a Dual screen that shows money and open trades at a glance (backend full of data but frontend confusing = failure).
+GOAL: Dual Bot coins = TODAY top 5 (pump/dump, usable volume) + LAST 7 DAYS = coins that were in the daily top 5 of the previous 7 completed days (deduped; a coin that is in today stays under Today; cap about 25 extra). Each coin carries a source: today | d7. Day boundary 5:30 AM IST. BTC rule unchanged (always in, own margin). Brain reads the same trades and reports Today vs 7d. Main bot untouched, no live orders.
+WHAT CLAUDE CHECKED IN THE CODE (27 Oct, facts):
+- Dual Bot gets its coins in dual_lab.worker() ~L966: cycle(..., lambda: FL.default_coins(...)) = today's top-10 gainers + top-10 losers (20 coins, NO volume floor) + BTC. cycle() ~L869 also keeps every coin that has an open or skipped trade, so open trades survive a list change.
+- FL.default_coins (filter_lab.py ~L557) is ALSO used by smart_brain.py ~L419 (Brain own scan), tag_lab, z_scenarios, scan_lab, variant_lab. DO NOT edit it. Build the new list in the new universe_7d.py and change only the one dual_lab.py line.
+- Trade rows already have the field "src" = MAIN / Z / BOTH (signal type). The universe tag must use another name: "uni" = today | d7 | old (old = trades from before Part U). The Brain/API works it out read-only from the saved day lists (trade open time -> that day's list); Dual Bot rows are not changed.
+- Already DONE, do not rebuild: LOCKED / FLOATING / NET + dislike % (R1-3), Same candle / Z only / Main only summary and trade age (A3), sideways cost (A), trade badges (E3), Ready Check on top of the Brain tab (C1), 6-hour session blocks (tag_lab, F3). So Grok section 4.1 is mostly done; new are only the Today / 7d sections, 5m/15m switch, source chip, open filter chips and the Brain split.
+- Grok points that are right: only WHO is watched changes; Dual entry/exit/tag rules stay; Brain own trade RULES stay strict (the own SCAN list becomes Today + 7d in U6, the owner's later wish); report only; no SQLite now; no live orders.
+- NAMES ONLY from Binance (instead of waiting 7 days): 1d candles give every past day's change, so the 7 day lists exist on day one. Today dual_lab downloads and replays 7 days of 5m / 15m candles (BOOT_DAYS = 7, cycle() ~L884) for every coin it sees for the first time; for 7-day-only coins that replay is switched off (live-only hook, owner does not want backtesting). Without it there is also no burst of thousands of rows that trim (MAX_ROWS 5000) would delete; the archive-before-trim hook stays because the owner wants nothing deleted at all. Rows carry no universe source; today / 7d is worked out read-only from the saved day lists.
+- ALREADY MEASURED, NOT NEW: pa_layer.py writes per trade the signal-candle strength, rejection wicks, candle size vs the last 14 and EMA50 retest held / broken; vol_layer.py writes relative volume and volume trend / follow-through; layers_join.py compares both with the trade result (report only, not used for trading yet). Part U5 only splits those verdicts by Today / 7d / cycle phase.
+- Load: today 21 coins x 2 timeframes. Today (20 + BTC) + cap 30 = about 51 coins, about 2.4x work for the phone. The backend froze on heavy work before (section 7), so the cap matters and is raised in steps.
+OWNER DECISIONS (27 Oct, his words; the 2nd Grok file Owl_NO_DELETE_Universe_Desk_Prompt.txt wins on storage):
+1. NO TRADE DATA MAY BE DELETED until the Brain is fully ready for real-money trading. More data is better. (Old rows Dual Bot already trimmed are gone for good.)
+2. No volume floor and nothing about volume in this work. Main bot stays exactly as it is; Dual Bot keeps taking every signal like now.
+3. Coins (owner, 27 Oct, final): TODAY = top 10 gainers + top 10 losers, exactly as the bot reads them now (filter_lab.default_coins, unchanged). LAST 7 DAYS = for each of the 7 completed UTC days (= 5:30 IST to 5:30 IST) the top 5 gainers + top 5 losers by that day's change. Only the coin NAMES of those days are needed: one daily-candle (1d) REST request per coin, once, in the background (about 1-2 minutes), then one new day every day (a websocket is only for live prices). Old day lists are never deleted. THESE COINS ARE TRADED LIVE AT TODAY'S PRICE, NOT BACKTESTED: no download or replay of the 7 days of 5m / 15m history for them. The owner's idea: a coin that was volatile earlier gets quieter (lower volume, shorter wicks) and then respects EMAs, so the Dual Bot takes today's live signals there and the Brain learns from them.
+5. LIVE ONLY: because of 3 the Dual Bot must skip the 7-day candle replay for 7-day-only coins (they start with the normal 470 candles of warm-up and about 1 day of rows, like any coin read after its first pass). A coin that is in TODAY's list behaves as now.
+4. The front end must be clear at a glance (money first, no wall of text). The owner knows little about JSON / SQLite: explain in simple words.
+CLAUDE'S DEFAULTS (changeable): cap on the 7-day extra coins = 30 (recent days first). Full 7 days can be about 50-60 extra coins, so the phone would watch 70-80 coins (today 21): about 3-4x steady load (no replay burst any more, but every coin needs a candle read per closed candle). So start at 30 and raise it WITHOUT a zip or build: write the number into universe_ctl.json in the data folder (Claude gives the one Termux line). A day's list = the final daily change of that UTC day. Dual Bot trim stays (not touched): the archive is written right BEFORE trim.
+PLAIN WORDS FOR THE OWNER: JSON = one big notebook that the bot rewrites from page 1 each time, so it throws old pages away to stay fast. SQLite = a filing cabinet inside the phone: new pages are added, none are removed, and old pages are found fast. The archive file lives in the data folder (~/storage/shared/owl_data = Internal storage / owl_data), outside the code, so zips and updates never touch it. Never delete that folder.
+HARD RULES FOR PART U (from the prompt): main bot symbols / size / logic unchanged; Dual entry and exit rules unchanged (still explore, no skip, no filter); Brain own trades still "only when it really likes"; paper only; new small files, thin hooks; tests for dedupe, day roll, cap, source tag; update this README in the same zip; Phase 0 = file and line plan first, code only after the owner's ok.
+
+## 4b. MASTER FINAL PLAN (owner file owl_MASTER_FINAL_prompt.txt, 27 Oct; it REPLACES the old R0-R5 redesign plan). Owner asked for small parts, one latest zip each, code only after his ok
+OWNER WORDS IN SIMPLE ENGLISH: the Brain must trade on its own, understand BOTH indicators and every scenario (signal on the top chart but not in the Z/TSI pane, and the other way round), and learn when to use which. It will make mistakes; like a person who kicks a stone, gets hurt and next time does not kick it, it must slowly stop repeating losing setups. B and G parts (B3, G1, G2) stay on the list and are done after BE1 when their data conditions are true (section 4). NAMING (27 Oct, owner ok): the master prompt's UI1 / UI2 / UI3 are called SR1 / SR2 / SR3 (Silent Rich) here, so they never clash with the finished UI1-UI5 rows in section 3. ORDER: BE2 (done) -> SR1a design system -> SR1b Dashboard + nav -> SR2a Dual Bot tabs -> SR2b Positions + Signals -> SR3.
+WHY THE BRAIN WAS STUCK (found in code, 27 Oct): smart_brain.scan() skips candles where Dual Bot has a real signal and, in the old learning stage, needed clean >= 45, divergence <= 55, win >= 45%. Live clean score is about 36 and 55% of setups are disliked, so almost nothing passed, own book stayed 0, so no mistakes, no lessons. BE1 removes the floor only while the book is small.
+| Phase | What | Files | Lines | Status |
+|---|---|---|---|---|
+| BE1 | Brain Force Explore (see section 3) | brain_own.py, smart_brain.py, brain_ready.py, smart_brain_view.dart, 3 tests, README | ~170 | BUILT 27 Oct (zip owl_BE1), phone check pending: own book must start to fill; if still 0 on the next day, fix that before anything else |
+| BE2 | Dual Bot open trades as full position cards (entry, live, SL, TP levels, progress, time open, clean score + reason, floating P&L), filters stay | dual_trade_card.dart, simple_tab.dart, dual_bot_screen.dart + 3 duplicate fixes | ~245 | BUILT 27 Oct (zips owl_BE2, then owl_BE2_SR1a), phone check pending. Live '--' cause (dual_lab._live_prices asked only the first 14 coins A-Z) fixed in BE2b (owner ok 27 Oct, display only) |
+| SR1 | Design system (one card style radius 16-18, type scale, status pills, off-white canvas), remove duplicates (Positions up/down twice, Dual Now open P&L 4 times), Dashboard re-skin, bottom nav polish | app_typography, app_styles / theme, owl_card.dart, owl_status_pill, dashboard_*, bottom_nav_bar | ~400 | SR1a BUILT 27 Oct (zip owl_BE2_SR1a; theme + shared card + pill, ~60 lines). SR1b BUILT 27 Oct (zip owl_SR1b, 3 Dart files ~35 lines changed). SR2a NEXT (Dual Bot tabs look, ~170 lines), owner says ok |
+| SR2a | Dual Bot tabs in the new look (pill tab bar, tiles on canvas, calm drawdown box, dividers) | dual_bot_screen.dart, simple_tab.dart, performance_tab.dart | ~60 changed | BUILT 27 Oct (zip owl_SR2a), phone check pending |
+| SR2b | Positions + Signals in the new look (shared chips / tabs, floating bar, card shadow, Signals summary) | owl_card.dart, position_card.dart, positions_screen.dart, signals_screen.dart | ~30 changed | BUILT 27 Oct (zip owl_SR2b, cumulative with SR2a), phone check pending |
+| SR3 | Market, AI, More, empty states, final pass | market_screen.dart, more_screen.dart, ai_tab_screen.dart, owl_empty_state.dart | ~35 changed | BUILT 27 Oct (zip owl_SR3, cumulative with SR2a + SR2b). Master prompt design phases are now ALL built, phone check pending |
+H2 BUILT 28 Oct (extra TPs, zip owl_H2), phone check pending. NEXT only when the owner says ok: H1 (auto-start when data is ready; B3 auto, G1 / G2 only a READY chip, Brain behaviour untouched). REMAINING (27 Oct): no design phase left. Open items = phone checks, B3 (waits for data), G1, G2 (wait for data), and the NEW 'TP ladder last target' idea (owner screenshots 27 Oct: TP4 sits inside / near the HD band while price can run past it, so the ladder may treat TP4 as the final target). Plan for it is given in chat first; it touches Dual Bot exits, so it needs the owner's ok under rule 1.
+Rules for all: light theme only, no change to live Main Bot, Brain and Dual Bot stay paper, no third indicator, Flutter not compiled here (owner sends build errors), every zip inside Indian-main/, end every reply with 2-4 simple Hinglish steps.
+
+## 4c. NEXT ROADMAP (master prompt OWL1_MASTER_PROMPT_v70plus, 28 Oct). B4a-B4d-4 are the finished historical Brain; NO more B4d-5/6/7 names
+LEGEND (owner, 28 Oct; keep it true in every README update): ✅ = built (a phone check can still be pending), 🟡 = pending / not started. The Status column of this table must always start with one of them.
+Rule: take the FIRST row that is not DONE, tell the owner files + lines, wait for "ok" (rule 13). Line numbers = estimates from real file sizes (28 Oct). Brain stays observation only; no fake confidence %, NOT ENOUGH DATA stays visible; no change to strategy.py, paper_trader.py, entry / exit / SL / TP, Current Bot, Dual rules.
+| Item | What | Files (lines now -> change) | Est. lines | Backend | Status |
+|---|---|---|---|---|---|
+| NEXT-1 | Real archive validation: owner pastes real counts from the phone dual_archive.db (finished trades, obs rows, journeys, calls, look-alikes, mistakes, shadow, judged / pending, NO_OPINION). Do NOT tune because early data is weak | existing brain_learn.py hand run, or one tiny read-only script | 0-60 | read-only | 🟡 PENDING: OPEN (owner may skip) ; 29 Oct RENAMED / MERGED: same job as V2-S0-INV (inventory tool round 1c), do it once there (section 15.14) |
+| NEXT-2 | FLUTTER BRAIN UI on the existing Brain tab: top card BRAIN EVIDENCE (state S/T/W/R, recommendation HOLD / PROTECT / NO OPINION, evidence level, sample n, look-alike n, hold-vs-protect result), open-trade rows with journey (ENTRY - MFE - WEAKNESS - NOW, from `edge` items: roi, mfe, gb, hs), look-alike block, mistakes block (label: observed difference, NOT a rule), shadow block, folds for detail, grey NOT ENOUGH DATA | widgets/brain_evidence_card.dart (new ~260), widgets/brain_learn_blocks.dart (new ~220), widgets/smart_brain_view.dart (1314, +10: import + 2 cards), README | ~500 | Option A (default) = 0. Option B = +15 read-only lines in brain_shadow / smart_brain for the per-trade r1 answer, needs owner choice | ✅ DONE: PART 1 BUILT 28 Oct (zip owl_NEXT2a, Option A: brain_evidence_card.dart 217 lines + 2 lines in smart_brain_view.dart). PART 2 BUILT 28 Oct (zip owl_NEXT2b, cumulative: brain_learn_blocks.dart + the part 1 files). NEXT-2 is DONE once the owner checks the phone; next item = NEXT-3 (Brain UX polish), waits for the owner's ok |
+| NEXT-3 | Brain UX polish: journey timeline look, expandable evidence, empty / loading / error states, spacing, PnL look | the 2 NEXT-2 files, widgets/owl_card.dart (414) | ~150 | no | ✅ DONE: BUILT 28 Oct (zip owl_NEXT3, cumulative; smaller than planned: 62 lines, no owl_card.dart change). Phone check pending; next = NEXT-4 (app shell), waits for the owner's ok |
+| NEXT-4 | App shell: Dashboard / Market / Positions / Brain / More. Old screens stay reachable, nothing deleted | widgets/bottom_nav_bar.dart (130), main.dart (586), screens/more_screen.dart (172) | ~120 | no | ✅ DONE: BUILT 28 Oct (zip owl_NEXT4, cumulative): bottom bar = 5 visible tabs Dashboard | Market | Positions | Brain | More; Brain is its own screen (brain_screen.dart); Signals, Dual Bot and AI moved under More (rows 'MORE TABS', same screens, same indexes 3 / 4 / 5 so goToTab works, More stays lit on them); swipe order follows the bar. Phone check pending; next = NEXT-5 (AppProvider split), waits for the owner's ok |
+| NEXT-5 | Split AppProvider step by step (Brain, Positions, Market, Settings). Only where ownership is clear, behaviour unchanged | providers/app_provider.dart (2020, shrinks), new brain_provider.dart / positions_provider.dart (~150 each) | ~400 | no | ✅ DONE (5a-5c): 5a ✅ BUILT 29 Oct (Vision + AI chat calls to part files). 5b ✅ BUILT 29 Oct (9 position actions to app_provider_positions.dart). 5c ✅ BUILT 29 Oct (settings + sound, zip owl_NEXT5c). NEXT-5 is finished once the phone / build check passes; what is left inside AppProvider is status / WebSocket / market data (tightly connected, leave it unless the owner wants more). Method = `part` files + `extension on AppProvider` (call sites unchanged; Brain has no code in AppProvider, so no brain_provider). Owner ok for 5b / 5c needed |
+| NEXT-6 | Split api_server.py into routers (status, system, ai, dual, archive, ws). API contract unchanged, no trading change | backend/api_server.py (2633, ~140 routes, shrinks), new backend/api/*.py | ~1500 moved | same behaviour | ✅ DONE: 6a-6j all BUILT 29 Oct (6i + 6j in zip owl_NEXT6i_7, cumulative). api_server.py 2633 -> 787 lines, 184+ routes unchanged in path, method and order. Proof: route order + test_api_split.py (run it on your side) |
+| NEXT-7 | Skipped-signal observation (what if a skipped signal had been taken). DESIGN (29 Oct): the Dual Bot ALREADY runs every skipped signal to the end as a what-if trade (status skipped / skipped_done in dual_archive.db), so NO writer, NO new table and NO change to dual_lab.py. New read-only brain_skip.py compares finished skipped signals with finished taken trades (same luck test + verdict words as brain_stats), separate from the taken-trade evidence; key learn.skip in brain_learn.view_summary | brain_skip.py (new, 124), brain_learn.py (+6), test_brain_skip.py (new, 12 checks) | ~130 | read-only | ✅ DONE: BACKEND BUILT 29 Oct (zip owl_NEXT6i_7). Flutter card not started (needs ok) ; 29 Oct RENAMED: the Flutter card is now V2-S15 (section 15.14) |
+| NEXT-8 | Brain-assisted PAPER learning: Current Bot vs Brain-filtered vs Brain-protect, net of fees and slippage, with daily target / loss, drawdown, expectancy. Never live money | new brain_paper_ab.py, thin hook in smart_brain.py (1258), 1 Flutter card | ~350 | paper only | 🟡 PENDING: not started ; 29 Oct RENAMED: now V2-S14 (section 15.14) |
+| NEXT-9 | AI Vision + Brain evidence (A+ / A / B / NO TRADE). LLM only explains; numbers and sample counts stay local; UI separates indicator / Brain evidence / AI view / decision | screens/vision_tab_screen.dart (2026), new small evidence helper | ~300 | small hook | 🟡 PENDING: not started ; 29 Oct MERGED: same job as V2-S8 (AI Vision evidence), do it once there (section 15.14) |
+| NEXT-10 | Final polish: consistent components, loading / error / empty states, mobile spacing, performance, settings, paper-mode clarity | several Flutter files | ~400 | no | 🟡 PENDING: not started ; 29 Oct MERGED: same job as V2-S13 final polish, do it once there (section 15.14) |
+NOTES: (1) Flutter cannot be compiled in Claude's sandbox: owner sends any build error. (2) Journeys of FINISHED trades and per-trade regime are NOT in the view JSON yet (only open-trade edge items and stats slices): showing them needs a small backend add, ask the owner first. (3) B4a data only started on 28 Oct, so NOT ENOUGH DATA is the correct answer for a while.
+
+## 5. WHAT THE LIVE NUMBERS SAY (27 Oct screenshots - keep visible, do not hide)
+- Closed trades lose, open trades float high: about -744 locked vs +3,600 floating, 18% win, 121 open. Floating is NOT money. Judge the system by LOCKED over many days, not by the floating number.
+- By signal type: Both indicators on the SAME candle = positive (+81, 65 trades). Z only = -224 (197 trades). Main only = -601 (202 trades, the worst). This is the strongest clue for the Brain: learn to wait for both. Part B measures it properly.
+- Sideways cost about 955 USDT. Retest wait beats entering at the signal in every TSI split, but the waiting totals are still negative; part of the gain is only from skipping signals that never came back.
+- Brain dislikes 55% of the latest 40 trades; 0% "good", clean score about 36. That is the data (many dirty / sideways setups), not a bug.
+- Known confusion: the top header "TODAY P&L" is the main bot, not Dual Bot (fixed in A1). Performance tab includes BTC, Today card does not (fixed in A2).
+- PATH TO REAL MONEY ($10-20), gates proposed by Claude, owner decides. Paper profit does not promise live profit (fees, slippage). First: (1) Brain stage "quality" and its OWN book has 300+ finished trades, positive after fee, positive in both the older and newer half; (2) trust "earned" and luck "Looks real" for 7+ days; (3) weekly cards positive 2 weeks in a row and worst-case drop acceptable for $10-20; (4) only then a SEPARATE decision. [CORRECTED v82, 29 Oct: the next sentence was WRONG. The main bot code CAN send live Binance orders when live_trading_enabled is on (two paths, section 15.4 F3). Old text kept: Live-order code does not exist in this repo; it would be built last, tiny size, hard daily loss stop, off switch.]
+
+## 6. READY CHECK (Brain tab)
+1. TRUST METER says "earned" (needs 100 judged trades).
+2. Luck test says "Looks real".
+3. "What if the bot had listened?" has 30+ judged trades and SKIP DISLIKED beats TAKE ALL.
+4. Exit advice card: 10+ checked opinions and hit-rate above 60%.
+1+2+3 true = ask the owner about Brain skip (S-C). 4 true = ask about S-D.
+Note: "0% good, clean score 30, 12-18% win" on the phone is DATA (many dirty / sideways setups), not a display bug. Dual Bot is meant to collect everything.
+
+## 7. DECISIONS ON HOLD
+- Dual Bot stays in full explore mode for 2-3 weeks (decided 26 Oct 2026). Do not touch dual_lab.py. Decide about a "never skip" switch after that.
+- SQLite and WebSocket NOT yet: changing how Dual Bot saves while it runs can lose or double data, and the backend once froze on heavy file reads. First collect clean data 2-3 weeks. Check size: `ls -lh $(find ~ -name dual_lab_data.json 2>/dev/null)`. Under about 20 MB = keep waiting. When big or slow: move to SQLite in a copy, compare numbers with the JSON, then switch. Never change Dual Bot saving and the app in the same step.
+- SQLite UPDATE (27 Oct): the problem is MEMORY LENGTH, not size (dual_lab.trim keeps the JSON small by throwing old trades away). Decision: an APPEND-ONLY archive (Part U1, dual_archive.db + brain_archive.db) copies every trade and row right before trim() can drop it; Dual Bot saving is not changed. No migration of Dual Bot to SQLite for now.
+- Gold / multi-asset and live mode: last.
+
+## 8. PHASE 4 PLAN (how Brain lessons could reach the main bot)
+A: Brain only watches (now). B: shadow "would take / would skip" - DONE as the "What if the bot had listened?" card. C: Brain skips only clearly bad signals, paper, switch default OFF, only after the READY CHECK. D: exit advice used to trail the stop, default OFF. Safety: if trust falls back to "learning" or luck says "Could be luck", any filter turns itself off. A sudden drop in the newest 100 trades vs older ones shows a warning.
+
+## 9. BACKEND CLEANUP MAP (read-only audit, nothing deleted)
+- Looks dead: backend/main.py (2,964 lines, old Kivy screen), backend/config.py. Check first: search Termux scripts (owl_auto.sh etc.) for "main.py". Use `bash tools/old_check.sh` (report only; `move` puts them in backend/_old/, never deletes). Run the app one day, then delete _old/.
+- Run by hand, keep: z_scenarios.py, india_demo.py, tradebulls_probe*.py, test_*.py.
+- recovered_bot/ai_*.py (about 30 files): used by older AI tabs (Pick, Desk, Trail, Coach, Vision). Dead or not depends on which AI tabs the app still shows: check screen by screen first. ai_backup.py is used, keep.
+- Big files to split later: api_server.py (~2,500 lines), recovered_bot/india_runtime.py, ai_selfsignal.py. Only after the cleanup above.
+- Not seen: Claude never ran the app; a file started by a Termux script outside the repo would look dead.
+
+## 10. CHANGE LOG (newest first)
+- 29 Oct 2026 (v84): README ONLY. No code, no build, no test run (zip owl_V2_README_v84, only Indian-main/README.md; it ALSO CONTAINS v80-v83). Owner: one column with estimated lines, and TOTAL files + TOTAL lines side by side at the bottom, all kinds of work in one table. Added to the V2 MASTER ORDER BOARD: columns Files and Est. lines on every row, a derived row 5b (S0 README share), a TOTAL row (110 file touches, about 101 distinct files, 18,760 lines, S0-S16 only) and a BUILT SO FAR row (0 / 0). FIXED two mistakes in my own v83 / v81 text: the S8 line count in 15.9 said 1,350 (it left out the 180-line evidence helper, 15.8 and the board say 1,530), and the board said mapping rows 17-23 (correct: 19-23). Nothing deleted.
+- 29 Oct 2026 (v83): README ONLY. No code, no build, no test run (zip owl_V2_README_v83, only Indian-main/README.md; it ALSO CONTAINS v80, v81 and v82). Owner: one place, start to end, in order, with colours; and a rule that Claude talks in simple WhatsApp-style Roman English. Added: V2 MASTER ORDER BOARD at the very top (one numbered list of all pending work, old items under their V2 names, colours green / blue / yellow / red), pointers from the V2 board and the old STATUS BOARD, rule 18 (talk style) in section 0, item 8 in 15.1. Nothing deleted. The old -> V2 mapping is still PROPOSED until the owner says "mapping ok".
+- 29 Oct 2026 (v82): README ONLY. No code, no build, no test run (zip owl_V2_README_v82, only Indian-main/README.md; it ALSO CONTAINS v80 and v81). Owner: 'purane readme ke pending kaam aur naya plan: same hai to dono kyu karna, alag hai to new naming ke saath rename'. Added: section 15.14 (old pending -> V2 names: NEXT-1 merged into V2-S0-INV, NEXT-9 merged into V2-S8, NEXT-10 merged into V2-S13, NEXT-8 = V2-S14, NEXT-7 card = V2-S15, B3 / G1 / G2 = V2-S16, H1 / TP-LAST = V2-S17, backlog = V2-S18, cleanup = V2-S19), phase entries S14-S19 in 15.8, totals (now about 18,700 lines for S0-S16), pointers on the old rows (old text kept), V2 board rows. FIX: section 5 'PATH TO REAL MONEY' said 'Live-order code does not exist in this repo'; that is wrong (two live paths, 15.4 F3) and is now marked CORRECTED with the old text kept. Mapping is PROPOSED until the owner says 'mapping ok'. Proof: diff against the v79 zip shows ONLY README.md changed; 0 code, 0 test, 0 protected file touched. Next: owner says 'mapping ok' and 'ok S0 round 1a'.
+- 29 Oct 2026 (v81): README ONLY. No code, no build, no test run (zip owl_V2_README_v81, only Indian-main/README.md; it ALSO CONTAINS everything of v80, so the v80 zip is not needed). Owner: 'readme me poora systematic daal, kya kab kaise kyun, taaki har insaan aur Claude samajh sake'. Added: section 15 VERSION 2 - THE FULL PLAN (15.1 reading rules, 15.2 why, 15.3 words, 15.4 verified facts + protected files, 15.5 ten data domains, 15.6 the two indicators, 15.7 collector + cohort design, 15.8 phases S0-S13 with what / why / when / how / files / tests / acceptance / risk, 15.9 totals, 15.10 screen audit, 15.11 traceability, 15.12 open decisions D1-D8, 15.13 end state); rule 17 in section 0; one pointer line in the V2 board; header v80 -> v81. The file-level rows are a PROPOSAL, not verified by the owner; the short plan S0-S13 stays the approved one. S0 estimate corrected 1,465 -> about 2,100 lines (extra safeguards), plan total about 17,800. Proof: a diff against the v79 zip shows ONLY README.md changed, 0 code, 0 test, 0 protected file touched. Next: owner says 'ok S0 round 1a'.
+- 29 Oct 2026 (v80): README ONLY. No code, no build, no test run (zip owl_V2_README_v80, only Indian-main/README.md). Owner: 'sabse pahle readme update karna hai', after he approved the SHORT Version 2 plan S0-S13 and its decisions (inventory tool yes, 300 MB cap yes, 2 live paths protected, public GET only, 2 indicators only). Added: (1) VERSION 2 STATUS BOARD above the old board (nothing marked DONE; S0 NOT DONE, S1 BLOCKED by the inventory report); (2) two rows in old board section 1 + a pointer line; (3) line 5 correction about live orders; (4) this entry; header v79 -> v80. Proof: a diff against the v79 zip shows ONLY README.md changed, 0 code files, 0 test files, none of the protected live files touched. Not done: section 3 / section 4 rows (nothing was built). Next: owner says 'ok S0 round 1a'.
+- 29 Oct 2026 (v79): NEXT-6i + NEXT-7 (backend), ONE cumulative zip (owner: 'dono karo, ek hi file, neeche wali download karunga'). Zip owl_NEXT6i_7 ALSO CONTAINS owl_NEXT6h2_6j (6h-2, 6j, liveState build fix). (1) 6i: the last 49 routes cut out of api_server.py by first / last route of each of 5 groups and replaced by includes at the SAME places: api/ai_core.py (226 lines: make_router_ask, make_router_lab(_safe_status), make_router_observer), api/ai_reports.py (55), api/ai_live.py (168: make_router_tools(require_api_token) + make_router_live(require_api_token)), api/ai_chats.py (84: make_router_chats(DATA_DIR)). `_swr_prewarm` calls 8 handlers directly (book, coach, pick, ab_board, desk, observer, levels, advice): every one is exposed on its router and linked as a module name in api_server.py (ai_pick_endpoint, ai_ab_board_endpoint, ai_desk_endpoint, ai_observer_endpoint, ai_levels_endpoint, ai_advice_endpoint). The 14 token-protected routes (_auth=Depends(require_api_token)) kept it (counted before / after = 14). api_server.py 1200 -> 787. (2) NEXT-7 backend: FOUND that skipped signals are already simulated to the end by dual_lab (status skipped / skipped_done with net, mfe, giveback, mode skip) and saved in dual_archive.db trades, so the plan became READ-ONLY: new brain_skip.py (124 lines) compares finished skipped signals with finished taken trades; under 30 = NOT ENOUGH DATA; verdict from brain_stats._judge (older and newer half must agree + luck test); text says worse / better only at EARLY HINT / SUPPORTED; per-timeframe counts and means; unit = ROI points net of fee. Cached like learn.shadow. Hook: brain_learn.view_summary adds key `skip` in its own try/except (+6 lines). NOT touched: dual_lab.py, trade_archive.py, smart_brain.py, strategy, entry, exit, SL, TP, Telegram, Vision, Flutter. Never mixed into the taken-trade stats. Test: test_brain_skip.py 12 checks. Checks run here: py_compile, name check of the 4 new api modules, route decorators 49 = 49 in the same order, test_brain_skip 12, test_brain_shadow3 8, test_brain_learn 21, test_brain_stats 36, test_smart_brain 92, test_dual_lab 68, test_brain_obs 17, test_brain_edge 21 pass. test_brain_pattern2 fails ALSO in the zip you sent (its source guard sees BP. in test_brain_shadow3.py): old problem, not touched. NOT run here: test_api_split.py (FastAPI is not installed in Claude's sandbox; checks for 6h-2, 6i, 6j are added), Flutter. Not done on purpose: Flutter card for learn.skip, LIVE-SPEED. Files: README, api_server.py, api/ai_core.py, ai_reports.py, ai_live.py, ai_chats.py, ai_pages.py, ws.py, brain_skip.py, brain_learn.py, test_brain_skip.py, test_api_split.py, providers/app_provider.dart.
+- 29 Oct 2026 (v78): NEXT-6h PART 2 + NEXT-6j + BUILD FIX, one zip (owner: '6H2 aur 6J kar, aur log ka error fix kar, wait mat karwa'). (1) 6h-2: AI Coach routes (/api/ai/coach, coach/reset, plan/config, coach/config) + /coach page moved to api/ai_pages.py as make_router_coach(require_api_token); _COACH_HTML stays at module level, sha256 identical (ed04d0ba...). Included at the old spot (after /api/ai/free_trade, before /api/ai/desk/reset); `ai_coach_endpoint` is exposed on the router and linked in api_server.py because _swr_prewarm calls it directly. (2) 6j: api/ws.py (201 lines) = ConnectionManager, MAX_SOCKETS 3, SEND_TIMEOUT_SEC 10, BROADCAST_INTERVAL_SEC 0.25, status_broadcaster(_display_status), snapshot_msg(_display_status), _dumps, make_router(_display_status) with the /ws route; included LAST like before. api_server.py keeps thin links (manager, _dumps, ConnectionManager, limits, _snapshot_msg, _status_broadcaster) so the start-up task and everything else is unchanged; _display_status stays in api_server and is passed in. api_server.py 1456 -> 1200. (3) BUILD FIX (the 'log' error): GitHub build logs (28 Oct, web + APK) failed with 4 identical errors: AppProvider had no getter `liveState` / `liveAgeSec`, used by widgets/live_status_chip.dart and screens/market_screen.dart (the UI-LIVE chip was added without its two getters). Added both to providers/app_provider.dart right after wsStale (+18 lines): liveState = offline (socket down) / delayed (no data yet or quiet > 3 s) / live; liveAgeSec = seconds since the last WebSocket message. Display only, no data or trading change. Checks done here: py_compile, name check of the new modules, route decorators in the same order (only the 6 moved routes left api_server.py), ws.py run with a stubbed fastapi (3-socket limit, broadcast, 0.25 s ticks, watchlist sent once). NOT run here: FastAPI is not installed in Claude's sandbox, so test_api_split.py (new checks added for coach, /ws last, same objects) must run on the owner's side; Flutter NOT compiled (bracket check only): send any build error. Not done on purpose: 6i; LIVE-SPEED (faster data than the 0.25 s push) waits for the owner's ok. Zip owl_NEXT6h2_6j: README, api_server.py, api/ai_pages.py, api/ws.py, test_api_split.py, app_provider.dart.
+- 29 Oct 2026 (v77): NEXT-6h PART 1 ONLY (owner: '6H do part me divide karke abhi ek part de'). Part 1 = the AI Trade Diary (the smaller half): api/ai_pages.py (55 lines), factory make_router_diary(), include at the old spot (right after /api/ai/levels). api_server.py 1487 -> 1456. LESSON: a big HTML string must NOT be indented with the code, so `_DIARY_HTML` stays at module level byte for byte (checked: identical, sha256 cb7ebdc1...; the same will be done for _COACH_HTML in part 2). Also re-checked 6d-6g: no multi-line string literal outside docstrings changed (the 3 in the old file are still identical). PROOF (static, no FastAPI here): 153 routes same order, same bodies, no undefined names. NOT run here: test_api_split.py (+5 checks, incl. the page hash). Zip owl_NEXT6h1 is CUMULATIVE (rule 14): all earlier zips can be ignored. Backend restart needed. Next: 6h-2 (coach, ~110 lines) only after the owner's ok.
+- 29 Oct 2026 (v76): NEXT-6g ONLY (owner: 'abhi sirf G kar'). api/ai_book.py (125 lines, 2 factories), regions cut by first / last route and replaced by includes at the SAME places. api_server.py 1574 -> 1487. FOUND BY THE PROOF: `_swr_prewarm` (start-up warm-up) calls route handlers directly: ai_book_endpoint, ai_coach_endpoint, ai_pick_endpoint, ai_ab_board_endpoint, ai_desk_endpoint, ai_observer_endpoint, ai_levels_endpoint, ai_advice_endpoint, inside `except Exception`, so a moved handler would silently stop warming. Book fixed (handler exposed, same object). RULE FOR 6h / 6i / 6j: when a part moves any of those 7 handlers (coach, pick, ab_board, desk, observer, levels, advice), expose them the same way and keep the api_server names; test_api_split.py has a check for it. PROOF (static, sandbox has no FastAPI): 153 decorated routes in the same order before / after, every moved body identical, no undefined names, no moved helper still used in api_server.py (the only leftover use was the warm-up above). NOT run here: test_api_split.py (needs FastAPI; +9 checks, one of them confirms the warm-up still finds the book handler) - owner: `cd backend && python3 test_api_split.py`, expect all PASS. Zip owl_NEXT6g is CUMULATIVE (rule 14): all earlier zips (6ef, 6d, ...) can be ignored. Backend restart needed (owl_auto.sh does it). Next: 6h only after the owner's ok.
+- 29 Oct 2026 (v75): NEXT-6e + NEXT-6f together (owner: '6E aur F kar, sab ek hi zip me, updated files hi'). api/settings.py (156 lines, 2 factories) and api/status.py (297 lines, 4 factories); every region is cut from api_server.py by its first / last route and replaced by an include at the SAME place, so the route order is unchanged (the Vision router, the AI key + app-prefs routes and the trade router still sit where they were). Code inside is copied unchanged (`@app.` -> `@r.`, 4-space indent); names that live in api_server (`_display_status`, `_bot_arg`, `DATA_DIR`, `require_api_token`) are passed in as arguments and aliased to the same names inside the factory. api_server.py 1923 -> 1574. PROOF (sandbox has NO FastAPI, so static): (1) AST: all 141 decorated routes (direct + inside every api/*.py factory) are the SAME in the SAME order before / after, (2) every moved function body is identical (decorator / docstring spacing aside), (3) no undefined names in api/status.py, api/settings.py, api_server.py, (4) none of the moved helpers is still used in api_server.py. Two OLD tests read api_server.py as text and were updated: test_ai_free_r6.py (secret keys are now in api/settings.py) and test/test_smooth.py (plain-def check also looks in api/status.py); both run here (r6: 39 pass; test_smooth: its own check passes, it then stops at line 77 with NameError settings_store, which it did BEFORE this change too = old, not caused by 6e / 6f). test/test_swr.py + test_swr_tuple_key.py look for '# ---- LAG FIX' in api_server.py (moved to api/swr.py in 6a) = already out of date, not touched. NOT run here: test_api_split.py (needs FastAPI; +22 new checks) - owner: `cd backend && python3 test_api_split.py`, expect all PASS. Zip owl_NEXT6ef is CUMULATIVE (rule 14): ALL earlier zips (NEXT5*, 6abc, 6d) can be ignored. Backend restart needed (owl_auto.sh does it). Next: 6g only after the owner's ok.
+- 29 Oct 2026 (v74): NEXT-6d (owner: 'abhi 6D kar', and wants the next 4-5 parts told after it, and a green circle in the README for every done part). api/trade.py (206 lines, 10 routes inside make_router(require_api_token, bot_arg), `@app.` -> `@r.`, 4-space indent, `return r`; `_bot_arg` and `require_api_token` are api_server's own functions, passed in). api_server.py 2104 -> 1923, include placed where the block was. PROOF (sandbox has NO FastAPI and no network, so static proof, not a live route list): (1) AST: the 10 functions are identical to the old ones (decorator and docstring spacing aside), (2) the other 90 routes of api_server.py are the same in the same order, (3) no undefined names in api/trade.py, (4) trade.py compiles. Not run here: test_api_split.py (needs FastAPI; it now has 9 new checks: 10 routes in order, one block, right before /api/binance/test-connection, token count 9, flatten order, nothing left in api_server.py, panic route not moved). Owner: run `cd backend && python3 test_api_split.py` on the phone / PC, expect all PASS. Zip owl_NEXT6d is CUMULATIVE (rule 14): README + api_server.py + api/trade.py + test_api_split.py + the earlier api/ files (init, swr, vision, dual) + the 6 provider files of NEXT-5, so ALL older zips can be ignored. Backend restart needed (owl_auto.sh does it). Next: 6e only after the owner's ok.
+- 29 Oct 2026 (v73): NEXT-6c (owner: he has NOT downloaded earlier zips, wants ONE last zip; board items shift Waiting / Running / Done as parts finish). api/dual.py (283 lines, 21 routes, `make_router(safe_status)`), api_server.py 2362 -> 2104. `_HEAVY_NOW` / `_TIMING` / `_swr` come from api/swr.py, `trade_store` imported in the module; `_safe_status` passed in as `lambda mod: _safe_status(mod)` because it is defined later in api_server.py (an early direct reference would be a NameError at start). PROOF: route list old = new (184, same order); 17 GET endpoints answered the same status code and size before / after (scoreboard 1 byte = time stamp); pyflakes clean; test_api_split.py 29 checks. Zip owl_NEXT6abc is CUMULATIVE (rule 14): README + api_server.py + api/__init__, swr, vision, dual + test_api_split.py + the 6 provider files of NEXT-5a-5c, so ALL earlier zips (NEXT5a, 5b, 5c, 6ab) can be ignored. Backend restart needed (owl_auto.sh does it). Next: 6d (money paths) only after the owner's ok.
+- 29 Oct 2026 (v72): NEXT-6a + NEXT-6b (owner: 'ye dono 6A aur 6B kar, README me status board bana'). README: new STATUS BOARD at the very top (4 blocks) + rule 16. Code: api/__init__.py, api/swr.py (SWR core, lines of api_server.py 'LAG FIX' block, moved unchanged, 23 names imported back), api/vision.py (17 routes inside make_router(require_api_token), `@app.` -> `@r.`, 4-space indent, `return r`), api_server.py (2 import / include blocks, 2633 -> 2362 lines). PROOF (FastAPI installed in the sandbox): the full route list of the old and the new api_server (184 entries incl. India / Ping routers, openapi, docs, /ws) is IDENTICAL in order; 9 vision routes answered the same status code and size before / after (state differs by 1 byte = a time stamp); pyflakes: no undefined names; test_ai_free_r6 39, test_ai_keys_and_load, test_ai_switch pass before and after. New test_api_split.py 24 checks. Nothing trading-related moved; start.py still runs `api_server:app`. Zip owl_NEXT6ab is CUMULATIVE (rule 14): README + api_server.py + api/__init__.py + api/swr.py + api/vision.py + test_api_split.py + the 6 provider files of NEXT-5a-5c (app_provider.dart + 5 part files), so owl_NEXT5a / 5b / 5c zips can be ignored. Backend must be restarted after the push (owl_auto.sh does it). Next: 6c only after the owner's ok.
+- 29 Oct 2026 (v71): NEXT-5c (owner: 'ok next'). (1) providers/app_provider_settings.dart = 6 settings / backup / candles / Binance-test methods as `extension AppProviderSettings on AppProvider`. (2) providers/app_provider_sound.dart = the whole sound-alert block as `mixin SoundAlerts on ChangeNotifier` (fields sound, _soundKnown, _soundFlush ... and the helpers _isStopLossExit / _closeInfo); abstract members prefs, positions, alerts, statsMode, pushPrefsBackup() are implemented by AppProvider's own fields / methods. class line is now `class AppProvider extends ChangeNotifier with SoundAlerts`. `_CloseInfo` class and `lastCandleError` field stay in app_provider.dart (an extension cannot hold a field). app_provider.dart 1537 -> 1256 lines. Checks done here: all 113 method / getter names present once before and after, braces and brackets balanced in all 3 files, no field left in the 4 extension files. Not testable here: Dart's compiler (mixin `on` + abstract getters is the one place to watch: if the build says 'missing concrete implementation' for prefs / positions / alerts / statsMode, send me the error). Backend, trading, Dual, strategy NOT touched. Zip owl_NEXT5c is cumulative: README + app_provider.dart + all 5 part files (vision, aichat, positions, settings, sound), so 5a and 5b zips can be ignored.
+- 29 Oct 2026 (v70): NEXT-5b (owner: 'ok next'). Lines 991-1216 of app_provider.dart (9 position-action methods, ~224 lines) moved to providers/app_provider_positions.dart: `part of` + `extension AppProviderPositions on AppProvider`. One more `part` line in app_provider.dart; 1761 -> 1537 lines. Checks done here: all 96 method names present once before and after, braces / brackets balanced, the moved block holds no field or getter (an extension cannot have fields), no static member used. They call notifyListeners() and set `error`: allowed, the analyzer may print an `invalid_use_of_protected_member` WARNING (not an error; CI does not run analyze). Backend, trading, Dual, strategy NOT touched. Zip owl_NEXT5b is cumulative: README + app_provider.dart + the 3 part files (vision, aichat, positions), so owl_NEXT5a can be ignored. Flutter NOT compiled here: send any build error. Next: 5c only after the owner's ok.
+- 29 Oct 2026 (v69): NEXT-5a (owner: small parts, one latest zip). Moved lines 949-1112 (Vision AI, 17 methods incl. visionImageUrl) to providers/app_provider_vision.dart and lines 1152-1249 (AI chat history / chats, 7 methods) to providers/app_provider_aichat.dart. Each is `part of 'app_provider.dart'` + `extension AppProviderVision / AppProviderAiChat on AppProvider` (same library = private _u, _getResilient, _postResilient still reachable). app_provider.dart: 2 `part` lines after the imports, 259 lines fewer (2020 -> 1761). Check done here: all 120 method names present exactly once before and after, braces / brackets balanced in all 3 files, no subclass / mock of AppProvider in the repo. Not moved on purpose: resetAiAbBoard (uses static _quickTimeout, an extension would need AppProvider._quickTimeout). Backend, trading, Dual, strategy NOT touched. Flutter NOT compiled here: send any build error (most likely kind: an `invalid_use_of_protected_member` warning is fine, an error would be a name clash). Zip owl_NEXT5a = README + the 3 provider files. Next: 5b only after the owner's ok.
+- 28 Oct 2026 (v68): NEXT-4 APP SHELL (owner: 'next wala karo'; also asked for green ticks / yellow marks in the README). Bottom bar = Dashboard | Market | Positions | Brain | More. New screens/brain_screen.dart (29 lines). bottom_nav_bar.dart: 5 visible items mapped to screen indexes [0, 1, 2, 7, 6], More lit for Signals / Dual Bot / AI. main.dart: Brain screen at index 7 (8 tab keys), swipe order [0, 1, 2, 7, 3, 4, 5, 6]. more_screen.dart: group MORE TABS (Signals, Dual Bot, AI via AppProvider.goToTab 3 / 4 / 5). jank_meter.dart: tab name for index 7. Nothing deleted, all old screens reachable, goToTab(2) and goToTab(3) from the Dashboard still work. README: section 4c status cells now start with ✅ / 🟡 (rule 15). Zip owl_NEXT4 is cumulative: README, brain_evidence_card.dart, brain_learn_blocks.dart, smart_brain_view.dart (NEXT-2 / NEXT-3) + the 5 NEXT-4 files. Backend, trading, Dual, strategy NOT touched. Flutter NOT compiled here (bracket check only): send any build error. Next: NEXT-5 only after the owner's ok.
+- 28 Oct 2026 (v67): NEXT-3 BRAIN UX POLISH (owner: 'next wala karo'). brain_evidence_card.dart 217 -> 279 lines: ROI big and coloured in each open-trade row, journey colour strip, 'Evidence details' ExpansionTile (state text, sample, lean, 10-minute refresh note), loading / error / no-evidence-yet card (new args loading, err). smart_brain_view.dart: 1 line changed (card call passes loading: _st.isEmpty, err: _err). Rule 14 now says every zip is cumulative since the last applied zip, so the owner can download only the last one. Zip owl_NEXT3 = README + brain_evidence_card.dart + brain_learn_blocks.dart (unchanged, carried) + smart_brain_view.dart. Backend, trading, Dual, strategy NOT touched. Flutter NOT compiled here (bracket check only): send any build error. Next: NEXT-4 only after the owner's ok.
+- 28 Oct 2026 (v66): NEXT-2 PART 2 (owner: 'ok next'; also new rule 14 = small parts, about 300 lines, max 400, 4-5 small files, one cumulative zip with README inside). New widgets/brain_learn_blocks.dart (183 lines): LOOK-ALIKE (per state verdict + scored calls; 'NOT ENOUGH DATA: n of 30' under the minimum, backend sentence only when enough), MISTAKE PATTERNS (wrong-call counts per state from the ledger, verdict chip, number differences from learn.look.gaps labelled 'Observed historical difference (not a rule)'), SHADOW CHECK (counts of HOLD / PROTECT / NO OPINION rows, judged / waiting per recommendation, paper if-followed points only at 30+ judged, note that NO OPINION is a normal answer). smart_brain_view.dart: +2 lines (import, BrainLearnBlocks under BrainEvidenceCard). Zip owl_NEXT2b is cumulative (README, brain_evidence_card.dart, brain_learn_blocks.dart, smart_brain_view.dart). Backend, trading, Dual, strategy NOT touched. Flutter NOT compiled here (bracket check only): send any build error. NEXT-2 is finished after the phone check; next = NEXT-3 only after the owner's ok.
+- 28 Oct 2026 (v65): NEXT-2 PART 1 (owner: do it in 2 parts, README inside each part; B4d-3 / B4d-4 are DONE and were pushed by the owner). Option A chosen (Flutter only, backend 0 lines). New widgets/brain_evidence_card.dart (217 lines): card BRAIN EVIDENCE (per state S / T / W / R: evidence level from learn.stats.overall, sample n, what holding vs leaving did, avail / given back; grey NOT ENOUGH DATA with a plain sentence, evidence colour only for EARLY HINT / SUPPORTED, a note that evidence is not a win chance) and card OPEN TRADES - BRAIN VIEW (per open Dual trade from edge.items: coin, BUY / SELL, timeframe, state, recommendation HOLD / PROTECT / NO OPINION using the same idea as rule r1 on TODAY's evidence for display only, evidence chip, sample, journey ENTRY - state runs from the hs letters - NOW, peak MFE / now / giveback). smart_brain_view.dart: +2 lines (import, card right after _readyCard). Backend, trading, Dual, strategy: NOT touched. Not done on purpose (part 2): look-alike, mistakes, shadow blocks. Known limits: journey is the state history of the last 20 candles (no clock times in the view JSON); per-trade regime and finished-trade journeys are not in the view JSON; the HOLD / PROTECT label uses today's evidence, the frozen r1 rows stay in shadow_rec (Option B would show those). Flutter NOT compiled here (bracket check only): send any build error. Next: NEXT-2 part 2 only after the owner's ok.
+- 28 Oct 2026 (v64): README ONLY, no code (owner: put the whole plan in README so the next chat starts from it). Added rule 13 (zip-to-zip handoff: read README, tell files + lines of the first not-DONE item, wait for ok), new section 4c = NEXT-1 ... NEXT-10 roadmap with files and line estimates from the master prompt v70+, DONE rows for B4d-3 and B4d-4 in section 3, header v61 -> v64. NEXT-2 (Flutter Brain UI, ~500 lines, 2 new files) is planned and waits for the owner's ok and his choice A (Flutter only) or B (+15 backend lines). Nothing else changed.
+- 28 Oct 2026 (v62): B4d-3 = SCORING of stored r1 recommendations, read-only (owner: 'ok B4d-3'; B4d-4 and Flutter NOT started). brain_shadow.score() / score_recs(): one count per trade and rec type (first rec), 'if followed' ROI points (HOLD_OK = final - roi, PROTECT = roi - final) against the brain_stats stage baseline, 30-trade minimum, older/newer half and luck test via brain_stats._judge; NO_OPINION never scored; trades without a result yet = pending. trade_archive.shadow_recs() = SELECT-only read. Simulated data only, not run on the real archive.
+- 28 Oct 2026 (v63): B4d-4 = learn.shadow key in the Brain view (owner: 'B4d-4 start karo'; Flutter NOT started). brain_shadow.summary(): counts of HOLD_OK / PROTECT_LOOKS_BETTER / NO_OPINION + the B4d-3 paper score, small JSON, no raw rows, cached like learn.look (every BS.REFRESH_S, only when rows or outcomes changed), read-only, never raises; brain_learn.view_summary adds key `shadow` in its own try/except (stats / look untouched). Numbers are paper numbers; NOT ENOUGH DATA until 30 judged trades. Also carries B4d-3 (owl_B4d3 had no Indian-main/ top folder). Test: test_brain_shadow3.py (8).
+- 28 Oct 2026 (v61): B4d-2 = LIVE SHADOW WRITER + insert-only shadow_rec table, observation only (owner: 'ok B4d-2 build', NO_OPINION rows stored too; B4d-3, B4d-4 and Flutter NOT started). brain_shadow.step(base) reads OPEN Dual trades and their closed-candle (O) rows from dual_archive.db read-only, keeps only rows with lag <= 2, a known layout with roi, a call letter S/T/W/R and an age of at most MAX_AGE_C=3 candles (live only: no back-fill after a stop; X rows, closed, skipped and unknown layouts are never recorded), asks recommend() for each (evidence = latest learn_stats copy strictly before the candle) and saves through trade_archive.save_shadow_recs (INSERT OR IGNORE on id + candle time + rule, so a repeat run adds nothing and a stored row never changes; own error holder _S). shadow_rec stores trade, candle, rule r1, call letter, ROI, tf, side, rec, level, lean, why, evidence version, copy time, trades behind the copy, saved time. learn_snapshots(v, base, since) loads only the copies a candle at/after `since` can need (same answers, lighter at 10,000 trades). Hook: brain_learn.step runs the writer first in its own try/except; step() return value unchanged; smart_brain.py not touched. Reuses brain_learn._decode / _num / _KEYS. Tests: new test_brain_shadow2.py 12 checks (values, NO_OPINION rows, no duplicates + tamper ignored, future candles / copies / exit / result change no old row, candle-by-candle = one run, only fresh open known rows, since = full, failures: rule error / corrupt files / read-only folder, hook runs on real Dual output, raw tables byte-identical + trading golden, source guards, 1,200-trade timing); test_brain_shadow.py guards updated. Timing (800 open-trade rows, copies for N trades): 1,200 trades 11 ms, 6,000 trades 19 ms per cycle. Regression: archive 30, learn 21, stats 36, look 25, pattern 11, pattern2 10, obs 17, edge 21, smart_brain 92, dual_lab 68, memory 10, perf 15, gate 19, shadow 8 pass. Not run on the owner's real archive. Next (not started, needs owner ok): B4d-3 scoring.
+- 28 Oct 2026 (v60): B4d-1 = SHADOW RECOMMENDATION RULE r1, observation / shadow only, nothing stored, NOT connected (owner: 'ok B4d-1'; B4d-2, B4d-3, B4d-4 and Flutter NOT started). New brain_shadow.py (92 lines). Rule r1 is locked (a change needs a new RULE_VERSION): evidence = result of the call's state (S/T/W/R) in slice 'all' of the latest learn_stats copy (brain_stats, version s1) saved STRICTLY BEFORE the candle opened; HOLD_OK = verdict EARLY HINT or SUPPORTED and lean hold; PROTECT_LOOKS_BETTER = verdict EARLY HINT or SUPPORTED, lean exit_now AND roi > 0 (nothing to protect otherwise); NO_OPINION = everything else (no copy yet, state missing = under 30 trades, no clear pattern, wrong lean, not in profit, roi unknown). Only the evidence level is passed on, no made-up percentage; slices are not used in r1. recommend(st, roi, t_ms, gates) takes ONLY the call's state, ROI at that candle and candle open time, so a final result, MFE, later candles or later verdicts cannot reach it (test checks the signature and poisons the future copies). trade_archive.py: new learn_snapshots(v) = SELECT-only read of learn_stats via the read-only opener (missing file / table gives []). Unreadable copies are skipped, never guessed. No shadow_rec table, no live writer, no smart_brain.py change, no Flutter. Tests: new test_brain_shadow.py 8 checks (every verdict x lean x roi combination, gate strictly before the candle, future copies change no older answer, missing / thin / broken evidence = NO_OPINION and no crash, reads a real brain_stats copy, real archive read-only and byte-identical, trading golden identical, source guards: SELECT only, not connected). Regression: test_trade_archive 30, test_brain_learn 21, test_brain_stats 36, test_brain_look 25, test_brain_pattern 11, test_brain_pattern2 10, test_brain_obs 17, test_brain_edge 21, test_smart_brain 92, test_dual_lab 68, test_brain_memory, test_brain_perf 15, test_brain_gate 19 pass. Expect NO_OPINION for a while: B4a data only started on 28 Oct. Not run on the owner's real archive. Next (not started, needs owner ok): B4d-2 live writer + insert-only shadow_rec table.
+- 28 Oct 2026 (v59): B4c-2 PART 2 = STORAGE + NUMBER GAPS + VIEW KEY, observation only (owner: 'ok Part 2 build'; Flutter NOT started, nothing else started). (1) trade_archive.py: new table look_call (id, st, ch, v, t, pred, m, actual, saved; primary key id+st+ch+v) and save_look_calls(): INSERT OR IGNORE only, so a repeated run adds nothing and a stored row is never changed. ch = 'roi' (B4c-1 measure, v l1) or 'mistake' (v l1.m1). A guess only ever used EARLIER finished trades, so a stored row never needs a rewrite. (2) brain_pattern.py: gaps(calls, state, cutoff) = per number, (mean over mistake calls - mean over correct calls) / standard deviation of all those calls, top 3 only, only with 10+ mistakes AND 10+ correct calls that have the number; DESCRIPTION ONLY, not evidence, not a rule; the view shows it only for states whose mistake verdict is EARLY HINT / SUPPORTED. rows_of() turns the scored calls of both channels into look_call rows. refresh() = same rule as B4b (at most every 10 min, only when journeys changed, never raises): recompute both channels, freeze new rows. summary() = the small block for the view. (3) brain_learn.view_summary() now also returns key look (= brain_pattern.summary) inside try/except; a failure there only sets look.status = error and leaves stats / journeys untouched. No snapshot was added to learn_stats (look_call is the frozen record). brain_look.py, brain_stats.py, smart_brain.py, trading files, Dual, Telegram, Vision and Flutter are NOT changed; the B4c-1 output is identical (test holds a fixed sha256 made with the shipped file). Raw obs / trades / journey / call_out / mistake / learn_stats are never written by this code (tests fingerprint them before and after). Time: 1,200 simulated trades take about 1.8 s for both channels, view block about 10 KB. Tests: new test_brain_pattern2.py 10 checks (look_call saved right, repeated runs no duplicates, a changed row with the same key is ignored, old rows identical when newer trades arrive, future with absurd results and numbers changes no older row or gap, gaps equal a hand calculation, NOT ENOUGH DATA, learn.look valid and small and a forced failure does not break the view, B4c-1 output identical, trading golden identical, source guards); two guard tests got a one-name change (test_brain_look, test_brain_pattern: they now allow test_brain_pattern2 / brain_learn). test_brain_pattern 11, test_brain_look 25, test_brain_stats 36, test_brain_learn 21, test_trade_archive 30, test_brain_obs 17, test_brain_edge 21, test_dual_lab 68, test_smart_brain 92, test_brain_memory, test_brain_perf 15, test_brain_gate 19 pass; trading golden-output matches. Not run on the owner's real archive yet (the small real-layout fixture has too few finished trades to score anything: it correctly says NOT ENOUGH DATA). Next (not started): Flutter UI to show learn.look, only after the owner says ok.
+- 28 Oct 2026 (v58): B4c-2 PART 1 = MISTAKE RISK from look-alikes, measurement only, nothing stored, nothing shown, NOT connected (owner: 'ok B4c-2 build', Part 1 only; Part 2 NOT started, Flutter NOT started). New brain_pattern.py (78 lines) adds NO new machinery: it tells brain_look.analyze (new optional argument flag=f(call, state), default None = the B4c-1 measure, output proven identical to the shipped B4c-1 file on two simulated markets) to measure 100 x 'was this call a mistake' instead of what holding added. Mistake = exactly the B4b ledger rule (brain_stats.KINDS: STRONG / STABLE but the trade lost; WEAKENING / REVERSED but it ended in profit and holding beat leaving), evaluated for every call so the usual rate is the same outcome rule at the same stage (baseline = past-only: finished trades, same candle count + ROI band, strict, no fallback). pred = look-alikes' mean excess mistake points (+ risky, - reliable); score = sign(pred) x the call's own excess; positive = the look-alike guess about mistakes beat luck. Same 8 numbers, past-only scaling, pool of earlier FINISHED trades only, one trade = one piece of evidence, market-move-safe luck test, 30-call minimum, same verdicts and slices, NOT ENOUGH DATA when thin. Results carry risky_n / risky_ex / safe_n / safe_ex (positive evidence = calls called reliable really erred less; negative evidence = calls called risky really erred more). Tests: test_brain_pattern.py 11 checks (planted mistake pattern found, no SUPPORTED without an effect in 30 simulated markets, future with absurd results and numbers leaves older results identical, under 30 calls = NOT ENOUGH DATA, one trade once, mistake rule equals the ledger rule, real archive read-only and unchanged, no network / trading / write / copied logic); test_brain_look 25 (its guard now allows brain_pattern as the one user of brain_look), test_brain_stats 36, test_brain_learn 21, test_trade_archive 30, test_brain_obs 17, test_brain_edge 21, test_dual_lab 68, test_smart_brain 92, test_brain_memory pass; both trading golden-output checks match. brain_stats.py, trade_archive.py, brain_learn.py, smart_brain.py, trading files and Flutter unchanged in this step. Not run on the owner's real archive yet. Next (not started): Part 2 = frozen table look_call + snapshots, numbers gap (mistake vs correct calls, only where a hint exists), summary key learn.look, README.
+- 28 Oct 2026 (v57): B4c-1 = LOOK-ALIKE LEARNING, measurement only, nothing decided, nothing stored, NOT connected to the worker (owner: 'ok B4c-1'; B4c-2 and Flutter NOT started). New brain_look.py. Fixed set l1 (decided before any result was seen; a change needs a new LOOK_VERSION): numbers tsi, hist, z, zg, sm, bw, ed, sc from the B4a obs rows; K_NEAR 15, MAX_RMS 1.0 (average distance in standard deviations over the numbers both rows have), MIN_COMMON 6, MIN_POOL 30 earlier trades, MIN_LOOK 10 look-alikes, POOL_MAX 300. zg needs Z-SMA (about 400 candles) so it is often missing on old candles: a missing number is skipped, never guessed. How: for the first call of a state in a trade (one trade = one target, one pool member) the pool = same BUY/SELL + timeframe + state, only trades whose exit candle had closed before the call candle opened (same walk-forward rule as the baseline); their excess over the strict baseline (brain_stats.judged) was fixed from older trades only; the spread of each number comes from that same pool (past-only scaling); pred = sum of the nearest look-alikes' excess / (m + 20); score = sign(pred) x the trade's own excess, averaged (positive = look-alikes pointed the right way). LUCK with market-move protection: the actual results are shifted along the time-ordered list by more positions than the busiest 2-hour window holds, every safe shift is tried (max 500); too bunched in time = no p = no verdict; a score <= 0 is never a hint. Same verdict rule as B4b (brain_stats._judge: NOT ENOUGH DATA under 30; EARLY HINT needs agreeing halves and p_adj <= 0.20; SUPPORTED 100 calls and p_adj <= 0.05; p_adj = p x number of results with 30+ calls) and the same slices (brain_stats._groups). Measured on simulated markets without any effect (60 seeds): SUPPORTED never; EARLY HINT by luck in 4 of 60 overall results and 3 of 212 slice results (that is the weak label by design); p values spread evenly. A planted effect is found (score +4.7, right way 89%). brain_stats.py: new features(base, ids, keys) = the generic read-only obs reader; _regimes() now uses it (same results). trade_archive.py, brain_learn.py, smart_brain.py, trading files and Flutter are NOT changed. Run by hand: cd backend && python3 brain_look.py. Tests: test_brain_look.py 25 checks (finds a planted effect, no SUPPORTED without effect and fair p values, NOT ENOUGH DATA, one trade one piece of evidence, future poisoned with absurd results AND absurd numbers leaves older guesses identical, an open trade is not a look-alike, missing numbers, bunched-in-time = no verdict, read-only / immutable archive, no trading import); test_brain_stats 36, test_brain_learn 21, test_trade_archive 30, test_brain_obs 17, test_brain_edge 21, test_dual_lab 68, test_smart_brain 92, test_brain_memory pass. Not run on the owner's real archive yet. Next (not started): B4c-2 = mistake patterns (what the numbers looked like when STRONG lost / WEAKENING ran), frozen storage tables, summary key in the Brain view, then Flutter UI after B4.
+- 28 Oct 2026 (v56): B4b-2b = SLICES + MISTAKES LEDGER + WORKER / VIEW CONNECTION, measurement only, nothing decided (owner: 'ok B4b-2b'; B4c and Flutter UI NOT started). brain_stats.py now also: (1) slices = all, BUY, SELL, each timeframe, each regime (trending / mixed / sideways = main-chart sideways % of the CALL candle read read-only from obs, edges 34 / 67 = tag_lab words, test keeps them equal) and every BUY/SELL x timeframe x regime combination, each with its own baseline; many slices are checked at once, so the luck-test p is multiplied by the number of results that had 30+ trades (p_adj). (2) BASELINE IS NOW STRICT: same candle count + same ROI band only, NO coarser fallback (v55 had an age-bucket fallback; in thin slices it gave 9 false early hints in 220 results). A call whose cell has fewer than 10 earlier trades is 'unjudged' (shown in the view); judged counts therefore lag the trade count, on purpose. (3) mistakes ledger, one kind per state, outcome facts only: S_lost (STRONG, trade lost), T_lost (STABLE, trade lost), W_ran (WEAKENING, ended in profit and holding beat leaving), R_ran (REVERSED, recovered the same way). One frozen row per mistake in brain_archive.db table `mistake` (INSERT OR IGNORE, with side / timeframe / regime / walk-forward excess); a verdict 'more / fewer mistakes than usual' needs 30 trades, agreeing halves and the luck test against the usual rate (usual = whole history, descriptive only). (4) refresh() recomputes at most every 10 min and only when journeys changed (1,200 trades take about 4 s), saves new mistakes and, every 10 new finished trades, one compact copy of the numbers in table `learn_stats` (insert-only). summary() feeds the view. brain_learn.view_summary() now returns the extra key `stats` (status collecting -> measuring once any state has 30 judged trades; a failure there only sets stats.status = error). smart_brain.py is NOT changed in this batch (it still only calls step() and view_summary()). trade_archive.py: tables mistake + learn_stats, save_mistakes, save_stats_snapshot, open_brain_ro (read-only, query_only). Walk-forward is unchanged: a call is judged only with trades whose exit candle had closed before the call candle opened (tests poison the future with absurd results). Raw obs, trades, journeys and call outcomes are never changed (test hashes them before and after). No trade control, no API, no price feed, Flutter untouched. Tests: test_brain_stats.py 36 checks; test_brain_learn 21, test_trade_archive 30, test_brain_obs 17, test_brain_edge 21, test_dual_lab 68, test_smart_brain 92 and test_brain_memory pass. Not run on the owner's real archive yet. Next: B4c-1 (look-alike) done in v57; B4c-2 and Flutter UI upgrade after B4 not started.
+- 28 Oct 2026 (v55): B4b-2a = OUTCOME STATISTICS per Brain state, measurement only, nothing decided (owner: 'do in 2 parts'; B4b-2b next = BUY/SELL x 5m/15m x regime slices, mistakes ledger, app view). New brain_stats.py: reads journey + call_out of brain_archive.db READ-ONLY (trade_archive.open_brain_ro, query_only) and, for the provisional states S/T/W/R, measures what holding added or took compared with leaving right at the call (left = final - ROI then), plus profit still available (avail) and profit given back (back). One observation = the FIRST call of a state in a trade (trades counted, not candles). Baseline = other finished trades at the same stage: same candle count + ROI band, else same age bucket + ROI band, else all stages; excess = left - baseline. Why exact candle count: the first version used coarse age buckets and called pure luck SUPPORTED in 13 of 64 states when trades drift a little with time; with exact candle cells it is 0 of 64 (test_brain_stats.py keeps that drift). WALK-FORWARD: a call is compared only with trades whose exit candle had already closed before the call candle opened; test poisons the future with absurd results and the judgement of older calls stays identical. Small samples: under 30 judged trades = NOT ENOUGH DATA; shrink toward 0 (n / (n + 20)); EARLY HINT needs older and newer half to agree and luck test p <= 0.20; SUPPORTED needs 100 trades and p <= 0.05. Even SUPPORTED is only a strong hint (trades in the same market move are not independent); B4c tests it again. Journeys flagged late / layout / bad_rows / net_diff are left out. No advice, no trade control, no API, no price feed, not connected to the worker yet (that is B4b-2b). Run by hand: cd backend && python3 brain_stats.py. Tests: test_brain_stats.py 18 checks; test_brain_learn 21, test_trade_archive 30, test_brain_obs 17, test_brain_edge 21, test_dual_lab 68, test_smart_brain 92 still pass. Files: brain_stats.py (new), test_brain_stats.py (new), trade_archive.py (+10 lines open_brain_ro), README.md. Not run on the owner's real archive yet.
+- 28 Oct 2026 (v54): B4b-1 = TRADE JOURNEY, facts only, observation only (owner: 'ok'; plan B4b-1 journey first, B4b-2 outcome statistics next). New brain_learn.py: for every finished taken Dual trade it joins the B4a rows (table obs of dual_archive.db, opened READ-ONLY, WAL so reading while the Dual worker writes is safe) with the archived trade and writes two small tables into the existing brain_archive.db (trade_archive.py: journey, call_out; INSERT OR IGNORE, never changed or removed, version key LEARN_VERSION j1). journey = one row per trade: peak ROI + candle, MFE candle, first sign of weakness (TSI histogram against the trade / the Brain's own W or R call / event against the trade), giveback from the peak, exit reason, flags (full / no_obs / no_entry / gaps / late / lag / layout / net_diff). call_out = one row per Brain call (closed candle): call letter, ROI then, final result, best and worst ROI later, candles left. Trades from before B4a have no obs rows: they get a journey flagged no_obs, nothing is guessed or back-filled. ROI is NET (fee in); MFE and giveback are GROSS (Batch 2 basis). smart_brain.py worker: step() once per cycle (max 40 trades) in try/except + view key `learn` (counts only, text says NOT ENOUGH DATA). Look-ahead rule: a journey is written after the trade closed so later rows are OUTCOME only; what the Brain knew at a candle comes from that candle's own row and earlier rows. B4b-2 must judge a call only against trades that had already closed before that candle. There is NO verdict, no hold / protect advice and no confidence in this part. Tests: test_brain_learn.py 21 checks; test_trade_archive 30, test_brain_obs 17, test_brain_edge 21, test_dual_lab 68, test_smart_brain 92 still pass. Not done on purpose: B4b-2 (outcome statistics vs baseline, BUY/SELL x 5m/15m x regime, walk-forward, mistakes ledger, NOT ENOUGH DATA rules), B4c, B4d, Flutter. Files: brain_learn.py (new), test_brain_learn.py (new), trade_archive.py, smart_brain.py, README.md. Not run on the owner's real archive yet.
+- 28 Oct 2026 (v53): B4a = per-candle DATA COLLECTION for Brain learning, observation only (owner: 'build B4a'; no paid / external historical reconstruction, nothing back-filled, no WebSocket for Dual / Brain, no LLM, no extra candle download). Dual Bot's closed-candle data is the REST 470-candle window it already fetches once per new closed candle (dual_lab.cycle -> ai_shadow_lab._fetch_limit); market_ws.py belongs to the main bot and is NOT used. brain_edge.observe now also writes one compact row per closed candle (kind O), an entry row E (computed at the FIRST observation, only for trades that had no B3a edge yet) and, via new BE.exit_obs called from dual_lab's close branch (not in boot replay), an exit-candle row X (the observer never saw that candle). Row = 22 numbers in the order of brain_edge.OBS_KEYS (TSI, histogram, slopes, Z, Z-SMA, Z minus Z-SMA, price distance from SD mean, SD width + change, EMA50 distance / slope, sideways % main / Z, events on that candle as bits, price move, reasons still with trade, ROI / MFE / giveback / candles since MFE); signs are 'with trade' (+ = with). Each row also has lag = how many closed candles old the candle was when written (0 = live; B4b should use only small lag). Rows wait in a bounded buffer (brain_edge._BUF) and trade_archive.save_dual copies them into the NEW TABLE obs of the EXISTING dual_archive.db (INSERT OR IGNORE, primary key id+candle time+kind, never deleted; the key list is saved in meta as obs_keys_o1; a failed save keeps the rows for the next cycle). No JSON growth. Z-SMA needs about 400 candles of history, so with a 470-candle window it is empty on older candles (stored as null, never guessed). Proof in test_brain_obs.py: a row of candle k reads only indexes <= k (guard test + poisoned-future test), same golden sha256 of trading output as before B3a, 17 new checks. Not done on purpose: B4b (journey + outcome statistics), B4c (look-alikes, walk-forward, mistakes), B4d (shadow recommendations + UI), old closed trades, skipped / shadow trades, Brain own trades. Brain must say NOT ENOUGH DATA until enough rows exist. CI fix in the same zip: .github/workflows/flutter-build.yml build job now retries the 'Set up Flutter' step once (27 Oct build failed only because the 1.5 GB Flutter SDK download broke with curl 92 / HTTP2 INTERNAL_ERROR; code was fine, the web job in the same run passed). The APK build step and its own retry rule are unchanged.
+- 28 Oct 2026 (v52): B3b = Flutter display of the B3a edge data, observation only. Only frontend/lib/widgets/smart_brain_view.dart changed: new _edgeCard() (TRADE EDGE, OPEN TRADES) first inside the REPORTS fold, reads _st['edge'] from the existing 15 s Brain poll (no new timer, polling unchanged). Per open trade: state chip, 'x of 6 reasons still with this trade (was a -> now b)', the 3 plain lines from brain_edge._lines, progress word, ROI / MFE / giveback, tap for raw numbers. Scorecard = 'WEAKENING trades ended' (weak_or_reversed group) vs 'Other trades ended' (never_weak group), shown only when backend status is ready (30 finished trades), always with 'observation only, not a proven predictive signal'. Events and extra raw numbers (ev, zv, th, wd, ed...) are shown only if the backend report items carry them; B3a report() items do not include them yet. Backend, Vision tab and simple_tab.dart untouched. Flutter was NOT compiled (no SDK in the build sandbox): run flutter analyze.
+- 28 Oct 2026 (v51): B3a = Batch 3a backend only (owner: 'ok Batch 3', B3a first; observe only taken trades, not shadow / skipped; no LLM / Vision; raw data first; labels provisional). Zip owl_B3a = the 5 files of this round (brain_edge.py, test_brain_edge.py, dual_lab.py, smart_brain.py, README.md); Batch 2 (owl_M2) was already applied by the owner, so nothing older is repeated. B3b (Flutter) will repeat these files in its own zip. dual_lab.py: guarded import BE; in process() step 2, right after the live replay of a still-open trade: `BE.observe(...)` inside try/except, only when not boot and status is open; close marker BE.close(tr) inside try/except; slim() gets `edge` (no history lists) through _edge_slim(). smart_brain.py: _edge_view(trades) + `edge` key in build_view. Sim results unchanged: a fake-market run (3 coins/timeframes, 240 process calls each) gives the SAME sha256 for trades / rows / seen with the hook on, with the hook off and with the dual_lab.py from before B3a. Not done on purpose: shadow trades, Brain own trades, Flutter (B3b), EMA30 of price (only exists in ai_vision), setup comparison (v2, needs the live archive). Support count uses its own small function on the entry candle AND now (same 6 conditions as the entry tags), so both numbers are on one basis. REVERSED / WEAKENING events count only when they happened in the last 3 closed candles (an old event that price already recovered from does not label a trade for ever); the raw event counts since entry are stored too.
+- 28 Oct 2026 (v50): M2 = Batch 2 (owner: 'ok Batch 2'; ROI points, gross before fee, giveback >= 0, no backfill). Zip owl_M2 is CUMULATIVE: it also contains IS1 (india_shot.py, india_telegram.py, api_server.py, settings_store.py, test_india_shot.py) because the owner had not confirmed applying owl_IS1 yet. M2: tag_lab.py (mfe_px tracker + `mfe`, `giveback` in the sim_rule result), dual_lab.py (guarded import _BM, mfe/giveback copied when a trade closes, brain_version on new trades), brain_own.py (same for own trades), trade_archive.py (guarded ALTER TABLE for mfe, giveback, brain_version on trades and own; insert + COALESCE update so a later save never wipes them), brain_meta.py new, test_brain_memory.py new (10 checks). Same sim_rule results as before: 2700 old replays give the identical hash. Known, NOT mine: test_own_free_money.py 1 check fails ('free OFF: capital manager on again') in the owner's zip before any change of ours.
+- 28 Oct 2026 (v49): IS1 (owner: 'ok India screenshot', answers: TP4 line, 300 candles, Vision OFF). New: india_shot.py, test_india_shot.py (7 checks). Edited: india_telegram.py (import, state["shots"] in __init__ and _save_state, 4-line hook after the card send), api_server.py (Vision start only if vision_enabled; 6 lines re-indented, no logic change), settings_store.py (vision_enabled default False). Token / chat id / card text / strategy / paper engine untouched. A phone that already saved vision_enabled=True keeps it ON (no app switch yet). Not live-tested (needs the Fyers feed + Telegram); the owner checks the next real India signal: one card + one photo.
+- 28 Oct 2026 (v48): H2 (owner: 'jo pehle 6 file 120 line wala kar de'). Zip owl_H2 is CUMULATIVE: SR2a + SR2b + SR3 + H2 (the owner had not confirmed applying owl_SR3 yet). dual_tp_ext.py new (extend, N_EXTRA 3), test_dual_tp_ext.py new (11 checks), dual_lab.py (guarded import DX, `ext` key + extended tps on new trades, cap = len(tps) for cap-4 rules in the finish step), tag_lab.py (sim_rule: hit < len(tps)), dual_trade_card.dart (ladder shows TP1-4, reveals TP5+ as the price passes them), dual_trade_chart.dart (no 4-level limit). test_dual_lab 68, test_dual_hooks 6, test_brain_own 28, test_smart_brain 92 pass. Owner note: the Brain must keep trading its own paper trades (BE1 Force Explore already does); nothing in the Brain was changed. Flutter NOT compiled here: if the build fails send the error.
+- 27 Oct 2026 (v47): SR3 (owner: 'sirf SR3 kar'). Zip owl_SR3 is CUMULATIVE: SR2a + SR2b + SR3, 12 files. SR3: market_screen.dart (title w800, LIVE chip rim, table header on canvas + hairline), more_screen.dart (title w800, rows radius 16 + soft shadow, icon tile radius 12), ai_tab_screen.dart (title 22 w800, hero P&L 36), owl_empty_state.dart (white icon circle + soft shadow, title 16 w800). No logic, API or backend change. Flutter NOT compiled here: if the build fails send the error. Master prompt design phases (SR1-SR3) all built. Owner raised: last TP (TP4) may be treated as the final target while price can go past the HD band; plan comes next, no code before his ok.
+- 27 Oct 2026 (v46): SR2b (owner said 'Ok'). Zip owl_SR2b is CUMULATIVE: SR2a (v45) + SR2b, 8 files. SR2b: owl_card.dart (OwlFilterChip on = 10 % fill + 35 % rim; OwlSegmented track = p.bg, selected 10 % fill + 35 % rim), position_card.dart (_GlassmorphicSurface light shadow = neutral 0xFF101828 @ 5 %, blur 16), positions_screen.dart (_TopSummary hero 28, floating bar neutral shadow in light + % on margin 16 w800, pill button rim 35 % width 1), signals_screen.dart (Divider before OwlStatRow, footnote muted). No logic, API or backend change. Flutter NOT compiled here: if the build fails send the error. Next: SR3 (Market, AI, More, empty states).
+- 27 Oct 2026 (v45): SR2a (owner: 'Tera plan readme me add kr, pehle sr2a kar'). Zip owl_SR2a, 4 files. dual_bot_screen.dart: _segRow = pill tabs (selected accent 10 % fill + 35 % rim, others white + hairline, radius 100), hint colour muted, app bar title left + w800. simple_tab.dart: LOCKED / FLOATING tiles bg = canvas, radius 12, padding 10 x 12. performance_tab.dart: drawdown box neutral (bg + hairline, icon red only when drawdown > 0), daily rows get a hairline under each. No logic, API or backend change. Flutter NOT compiled here: if the build fails send the error. Remaining plan in section 4b (SR2b, SR3). Next: SR2b (Positions + Signals).
+- 27 Oct 2026 (v44): SR1b (owner said "Sr1b karo"). Zip owl_SR1b is CUMULATIVE: BE2 + BE2b + SR1a (v42 / v43) + SR1b, 18 files, in case the owner has not applied the earlier zips. SR1b: dashboard_cockpit.dart (GlassCard -> OWLCard with edge glow by sign, padding 16, Divider before the tiles, tiles on p.bg with p.border, import glass_card removed), glass_card.dart (neutral soft shadow in light, was accent tinted), bottom_nav_bar.dart (neutral shadow, flat active pill, radius 20, label weights). dashboard_screen.dart untouched. Backend untouched. Dark theme only gets the nav radius / active pill change. Flutter NOT compiled here: if the build fails send the error. Next: SR2a (Dual Bot tabs).
+- 27 Oct 2026 (v43): ONE zip owl_BE2_SR1a = BE2 (v42, cumulative) + BE2b + SR1a (owner: 'BE2 ke saath next wala, SR1a bhi ek hi part'). BE2b: new dual_live.py (prices() = one /fapi/v1/ticker/price call via binance_client.get_active_usdt_symbols, 4 s cache, never raises) + test_dual_live.py (7 checks); dual_lab.py: guarded import _DL and 6 lines at the top of _live_prices (bulk first, old one-by-one loop stays as fallback); test_dual_lab 56 + 67, test_dual_hooks 6, test_dual_live 7 pass. Dual entry / exit / tag rules untouched. SR1a (Flutter, not compiled): app_theme.dart light palette bg F4F5F8 / border E6E8EE (cards stay white), app_spacing.dart radiusMedium 16 / radiusLarge 18, app_typography.dart heroXL 36, owl_card.dart neutral soft shadow + muted section title colour, owl_status_pill.dart calmer pill (10 % fill, 22 % rim, 5 px dot) + OWLStatusPill.calm(), dual_trade_card.dart radius = radiusMedium. Dark theme unchanged. If the build fails send the error. Next: SR1b (Dashboard + bottom nav).
+- 27 Oct 2026 (v42): BE2 (owner said "ok BE2"). dual_trade_card.dart: new `from` chip (TODAY / 7D), new line 'Next TP2 price . N% of the way . stop N% away' (progress from entry or the last TP to the next TP; stop distance is price %), time text now uses fmtSpan (rule 11d), the duplicate 'open 42m' header chip removed (the bottom line already says it). simple_tab.dart: open list = DualTradeCard (was a thin row), 8 at a time with Show more / Show less, filters All / Today / 7d / Long / Short and sort unchanged. Duplicates: position_glance.dart (up / down chips removed, the top line of Positions keeps them), positions_screen.dart (floating bar shows N OPEN and % on margin, no second USDT P&L), dual_bot_screen.dart (_nowLine removed, open card line keeps only 'entry from'), dual_summary_strip.dart (no 'open trades now ... in total' text, no '$n open' chip; the OPEN NOW tile stays). No backend, API or trading change. Flutter NOT compiled here: if the build fails send the error. Open: Live '--' cause found (see section 4b BE2), fix BE2b waits for the owner's ok.
+- 27 Oct 2026 (v41): BE1 Force Explore (owner said "B1 kar de"). brain_own.py: EXPLORE_* limits, exploring(), stage_for(n<30) = ("exploring", 0, 0, 100), open_from caps + cleanest first + explore/mg tags, _usdt uses the trade's own mg, summary has exploring / explore_n and an "Exploring - taking limited paper trades to learn" line. smart_brain.py: one line (explore stage may explore without look-alikes). brain_ready.py: own-book line says Exploring n of 30. smart_brain_view.dart: EXPLORING chip. Tests updated (test_brain_own 28 checks, test_smart_brain 92) and pass. Dual Bot, main bot, APIs untouched. Flutter not compiled. New section 4b = master plan BE1 / BE2 / UI1-UI3.
+- 27 Oct 2026 (v40): UI5 (owner said "Ok"); owl_UI5_all.zip is CUMULATIVE: UI-D + UI3a + UI3b + UI4a + UI4b + UI5 (10 files, Indian-main/ top folder). New in UI5: OwlLoading widget; ai_tab_screen.dart, widgets/performance_tab.dart use it; market_screen.dart filter = OwlSegmented. Not done on purpose: card peek (ListView.builder already shows the next card edge), the 10+ other loading texts in AI cards. Premium UI plan UI1-UI5 is now finished once the owner checks the phone. Flutter NOT compiled here: if the build fails send the error.
+- 27 Oct 2026 (v39): ONE cumulative zip owl_UI_all.zip = UI-D + UI3a + UI3b + UI4a + UI4b (the owner had applied up to UI2b only). Reason: owl_UI-D.zip had its files at the zip root, so is_owl_zip ignored it (no auto push, no GitHub run) - this zip has the Indian-main/ top folder (rule 11b fixed). New in this zip: ai_tab_screen.dart (import owl_card + owl_status_pill; hero row with status pill; OwlFold for daily bars / exit reasons / facts). Files: README.md, backend/api_server.py, frontend/lib/screens/{more,positions,signals,market,ai_tab}_screen.dart, frontend/lib/widgets/report_download_card.dart. Flutter NOT compiled here: if the build fails send the error. Next: UI5 (empty / loading states, final pass).
+- 27 Oct 2026 (v38): UI4a (owner said "Ok"); only UI4a files (UI3b is the zip before). market_screen.dart: _counts() (up = change >= 0, down = change < 0, same rule as the filter) feeds the header chip and the three filter labels, both inside Selector on moversRev. more_screen.dart and settings_screen.dart NOT changed (already ordered). Backend, API, polling untouched. Flutter NOT compiled here: if the build fails send the error. Next: UI4b (AI tab).
+- 27 Oct 2026 (v37): UI3b (owner said "Ok"); only UI3b files (UI3a is the zip before). signals_screen.dart _summaryCard: OwlHero(net, note = win rate and closed count) replaces the small net text + header row; the Win rate line moved into the hero note; netColor removed. Backend, API, polling untouched. Flutter NOT compiled here: if the build fails send the error. Next: UI4a (Market, More, Settings).
+- 27 Oct 2026 (v36): UI3a (owner said "Ok" after the plan); only UI3a files (UI-D is the zip before). positions_screen.dart: new _TopSummary (Selector on positions, hash of count / total P&L / up count) placed between the header row and the sort bar; uses OWLStatusPill + fmtSigned. position_card.dart NOT changed: it already shows P&L and the open time, and the owner earlier asked to keep its size. Backend, API, polling untouched. Flutter NOT compiled here: if the build fails send the error. Next: UI3b (Signals).
+- 27 Oct 2026 (v35): UI-D (owner said "ok UI-D"); contains only UI-D files (UI1, UI2a, UI2b already in the repo). more_screen.dart: _download() opens a ReportDownloadCard in a bottom sheet; new DOWNLOADS group above LIVE DATA. report_download_card.dart: fileName + mimeType fields (defaults unchanged). api_server.py: GET /api/archive_export_save (CSV into the Download folder, uses ai_report._download_dirs, same 'ok/path/bytes/hint' answer as the other *_save routes). No trading, Dual Bot or data change. Flutter NOT compiled here: if the build fails send the error. Next: UI3a (Positions).
+- 27 Oct 2026 (v34): UI2b (owner said "ok UI2b"); this zip also contains UI1 + UI2a (cumulative). dual_bot_screen.dart: _card() got optional headline / headlineColor (with a headline the card is an OwlFold, without it nothing changes); headlines added to the ready branch of DAILY REVIEW (skip-the-losers result), SCENARIOS (n use / skip), SETUPS (good / bad / seen), RETEST CHECK (extra USDT after a retest), LESSONS (fake / real), WHAT IT HAS LEARNED (its choice vs take-all %); the not-ready states stay plain cards. performance_tab.dart: OwlHero total, drawdown callout (peak / low / how far below the best point now), OwlFold for win-rate trend and daily results. smart_brain_view.dart: Ready Check count line, build order ready, trust, what-if, now, REPORTS fold (bare, 3 cards), own book, more-toggle; _followCard shows the big number when status is ready. No backend, API or polling change. Flutter NOT compiled here: if the build fails send the error. UI-D done in v35.
+- 27 Oct 2026 (v33): UI2a (owner said "UI2a ok karo"); this zip also contains UI1 (cumulative). simple_tab.dart: _threeBoxes rebuilt as the hero card (OwlHero NET + OWLStatusPill from the new _verdict(), LOCKED / FLOATING small boxes, same Brain dislike lines); _health keeps only the sentence + counts (the verdict word is the chip); new order hero, IS THE BOT OK?, OPEN TRADES (filters unchanged), UniverseStrip, signal type, best / worst; signal type and best / worst are OwlFold (headline = best type with USDT / best and worst trade USDT). universe_strip.dart: the TODAY VS LAST 7 DAYS card is an OwlFold (headline = today coins USDT and 7-day coins USDT, DATA SAFE chip stays on the right; the empty / error states stay plain cards). owl_card.dart: OwlFold got an optional trailing widget. dual_bot_screen.dart: new _nowLine (first thing on the Now tab) and the Dual Bot card paragraph shortened to one sentence (all numbers kept). No backend, API or polling change. Flutter NOT compiled here: if the build fails send the error. Next: UI2b (Learned / Performance / Brain).
+- 27 Oct 2026 (v32): UI1 = first of the premium UI zips (owner said "ok UI1"). Order of the rest: UI2a Dual Bot Simple + Now, UI2b Learned / Performance / Brain, UI-D Downloads section in More (+10 lines api_server for a CSV save route), UI3a Positions, UI3b Signals, UI4a Market / More / Settings, UI4b AI tab, UI5 final pass (about 1,550 lines in all; wrap and reorder only, no big moves of code). UI1: app_typography.heroXL (34px); owl_card.dart + OwlHero (label, 34px animated value, note) and OwlFold (title + one headline line, tap to open, bare = body not wrapped in a card); dashboard_cockpit.dart rebuilt (ring gauge removed; hero Today P&L + thin daily-target bar, tiles Open P&L / Win rate / Open positions (tap = Positions tab), signals-today line (tap = Signals tab), 7D / 30D tiles with trade counts; LIVE mode still shows live open P&L + margin used); dashboard_screen.dart: _StatusLine (own Selector, feed age from provider.feedAgeSec, fmtSpan) replaces the 'Bot is running...' text, cockpit moved to the top, DiagnosticsCard and SystemLoadCard (inside an OwlFold) moved below the calendar. Backend, APIs, polling untouched. Flutter NOT compiled here: if the build fails send the error.
+- 27 Oct 2026 (v31): Z3b = Part U5 app + tools. New archive_tools.py (check(): does dual_archive.db hold every finished trade of dual_lab_data.json -> match / differ / none; export_csv(): finished trades as CSV with coin source tag and USDT; both read-only, no write statement). api_server.py: +2 routes /api/archive_check and /api/archive_export (CSV download, ?days=N, ?all_states=1). smart_brain.py: view["universe"] now also carries "check". smart_brain_view.dart: new _universeCard (EDGE BY UNIVERSE: text, today vs 7-day group rows, day-feel chips, archive check line) in the main Brain list after the exit / hold card. tools/db_check.py + tools/archive_export.py = thin command-line wrappers (the owner does not use Termux: he opens the two routes in the phone browser). test_archive_tools 12 checks, test_brain_universe 19, test_smart_brain 92 pass. Flutter NOT compiled: send any build error. Part U (U1-U5) is complete.
+- 27 Oct 2026 (v30): Z3a = Part U5 backend (owner said "do z3", done in parts). New brain_universe.py: report() = finished Dual trades of the last 10 days from dual_archive.db (read-only), split today / d7 / other by universe_7d.tag_of; per group n, win %, USDT, avg per trade; verdict (better / worse / about the same, 0.05 USDT) only when BOTH groups have 30+ finished trades, else "learning". Day feel (cycle phase) per UTC day of the last 7: pump = longs made money and shorts lost, drift = opposite, sideways = both lost, mixed = both won, early = under 20 trades. No new indicator, no rule change. smart_brain.py: +8 lines (_universe_view + "universe" key in the view, never raises). test_brain_universe 19 checks; test_smart_brain 92, test_dual_desk 15, test_universe_7d 25 still pass. Zip owl_Z3a: 4 files. Next: Z3b (Brain card + db_check + archive_export).
+- 27 Oct 2026 (v29): Z2c = Part U4 app part 2 (3 Dart files + README, ~75 new lines). simple_tab.dart: filter chips All / Today / 7d / Long / Short on the OPEN TRADES card (title shows N of M), small TODAY / 7D chip on every open row (from /api/dual_desk tags; BTC = TODAY), new archive param. universe_strip.dart: DATA SAFE chip in the card corner (safe / SAVE WAITING / NOT STARTED / ARCHIVE PROBLEM from /api/archive state). dual_bot_screen.dart: _pollDesk also reads /api/archive into _arch; a failed reply no longer skips the second call. Backend untouched. OWNER FLOW CONFIRMED (27 Oct): he only downloads the zip; owl_auto.sh (section 13) copies backend files and pushes to GitHub by itself, so NO Termux command is needed in replies any more (section 11 is only a fallback). Flutter NOT compiled: send any build error.
+- 27 Oct 2026 (v28): Z2b = Part U4 app part 1. New widgets/universe_strip.dart (UniverseStrip: TODAY'S TOP COINS and LAST 7 DAYS' COINS blocks, each with 5m and 15m rows = done, win %, USDT, open; one quiet line for trades on coins that left the list; states: waiting / archive not started / error). dual_bot_screen.dart: _desk + _pollDesk() (GET /api/dual_desk every 8 s with the normal poll, silent on failure) and desk: passed to SimpleTab; simple_tab.dart: new desk param, strip sits right under IS THE BOT OK?. Backend untouched. Zip owl_Z2b has only these 4 files (Z2a was already applied: repo zip 16 has dual_desk.py). Flutter NOT compiled: send any build error. Next: Z2c.
+- 27 Oct 2026 (v27): Z2a = Part U3 desk backend (owner said "do Z2 in parts"). New: dual_desk.py, test_dual_desk.py (15 checks), api_server.py route /api/dual_desk, universe_7d.py (+_log_day, tag_of, load_log; coins_for_dual now also logs the day's coins into universe_log.json). Zip owl_Z2a is CUMULATIVE: it also contains all of Z1c (Z1b-3 + time format), in case the owner has not applied it yet. Z2b / Z2c = app parts, plan in section 4 (U4).
+- 27 Oct 2026 (v26): Z1c = Z1b-3 + time format in ONE zip (owl_Z1c; Z1b was applied by the owner before). Z1b-3: smart_brain.py SCAN_COINS 20 -> 50 and today_coins() adds the 7-day names (universe_7d.with_extras: reads universe_days.json, starts no download, never raises). Time format: new fmtSpan / fmtMins (format.dart) replace 6 _ago copies + 12 other minute texts in 18 Dart files; new timefmt.py replaces minute texts in 8 Python files (dual_lab 2 display lines only - no rule change). tests: test_timefmt 18, test_universe_7d 25, test_smart_brain 92, test_dual_lab 67, test_trade_archive 30, test_brain_tp_hold 15, ping tests all pass. Flutter was NOT compiled (cannot here): if the build fails, send the error.
+- 27 Oct 2026 (v25): Z1b = Z1b-1 + Z1b-2 in ONE cumulative zip (owl_Z1b also contains Z1a: trade_archive.py, smart_brain.py hook, test_trade_archive.py, so it is safe if Z1a was not applied). dual_lab.py: +8 lines (guarded import _U7, coin-list lambda, live-only: a coin that is ONLY a 7-day name is read with the normal 470 live candles, no 7-day replay, boot marked). api_server.py: +10 lines (/api/dual_universe). universe_7d.py: is_extra(), status lists. New test_dual_hooks.py (6 checks); test_dual_lab 67, test_trade_archive 30, test_dual_memory 24, test_universe_7d 22 all pass. Entry / exit / tag rules unchanged. Brain own scan is NOT on the new list yet (next small step). Rule 11d (time format) = Z1c.
+- 27 Oct 2026 (v24): Z1b-1 built = universe_7d.py (184 lines) + test_universe_7d.py (22 checks pass). Day list = 1d candle close vs open, 5 gainers + 5 losers per completed UTC day, saved in universe_days.json for ever; extras = newest day first, no today coins, no BTC, cap 30 (universe_ctl.json). Does not touch the bot. Phone check on Z1a: /api/archive said state none (route live, dual_archive.db not yet created) - recheck after the Dual worker restarts. Added rule 11d (time format) and the 250-300 lines per step limit.
+- 27 Oct 2026 (v23): Z1a = Part U1 ARCHIVE built (owner said ok; Z1 split in two zips: Z1a archive, Z1b universe). New: trade_archive.py (append-only SQLite: dual_archive.db written by the Dual worker right before trim(), brain_archive.db written by the Brain worker), test_trade_archive.py (30 checks). Hooks: dual_lab.py (guarded import + 1 line before trim), smart_brain.py (guarded import + 1 line before build_view), api_server.py (/api/archive). The coin-list and live-only hooks come with Z1b. Not yet applied on the phone. test_fyers.py and test_own_free_money.py fail on the untouched repo too (old, unrelated).
+- 27 Oct 2026 (v22): README only (zip owl_U0e, no code, no build). Owner: NO backtesting of the last 7 days; he wants to trade the coins that were in a daily top list during the last 7 days LIVE, at today's price (is there an opportunity today in a coin that was hot earlier: volume lower, wicks shorter, EMA respected). So from Binance we need only the coin NAMES per past day (1d candles); the 7-day candle replay (dual_lab boot) is skipped for those coins (live-only, one more hook condition in dual_lab.py). PA layer (wicks, EMA50 retest) and Volume layer already measure these things on every Dual trade; U5 only splits their verdicts by Today / 7d / phase.
+- 27 Oct 2026 (v21): README only (zip owl_U0d, no code, no build). Owner corrected the coin rule: TODAY stays top 10 gainers + 10 losers (as the bot does now); each of the LAST 7 DAYS = top 5 gainers + 5 losers; the 7 days must be available at once from Binance (daily candles, not by waiting 7 days). Claude found: Dual Bot loads 7 days of candles for every new coin (BOOT_DAYS = 7) and its trim (MAX_ROWS 5000) would delete part of that load before the Brain sees it, so the archive must be written by the Dual worker right BEFORE trim() = a 2nd hook line in dual_lab.py. Plan U1-U6 rewritten, about 1,550 lines, 3 zips.
+- 27 Oct 2026 (v20): README only (zip owl_U0c, no code, no build). Owner's 2nd Grok prompt (Owl_NO_DELETE_Universe_Desk_Prompt.txt) + his own words: NO TRADE DATA MAY BE DELETED until the Brain is ready for real money; no volume floor; per day 5 gainers + 5 losers (Today too). Part U renumbered U1-U6 (v19 numbers U6/S1/S2 are gone): U1 archive FIRST, U2 universe, U3 desk backend, U4 desk app, U5 reports, 3 zips. Section 12 got more memory limits (own book 300, exit shadow 300, PA 20000).
+- 27 Oct 2026 (v19): README only (zip owl_U0b, no code, .md files do not start a GitHub build). Section 12 got QUICK INDEX + WHO PICKS WHICH COINS + MEMORY LIMITS + TRADE FIELDS (so nobody re-reads code). New finding: Dual Bot keeps only 600 trades / 5000 rows, so Brain reports see about 1 day, a 7-day report needs a history archive = Part S. Added U6 (Brain own scan on Today + 7d) and S1-S2 (SQLite history mirror, not a migration). Zip plan = 3 zips, 3 builds.
+- 27 Oct 2026 (v18): README only (zip owl_U0, no code). Section 3 and 4 shortened: every finished part is one line. Added Part U1-U5 (Dual Bot 7-day universe + desk) and section 4a from the owner's Grok prompt, with what Claude found in the code (coin list at dual_lab.py ~L966, FL.default_coins shared with the Brain scan, field "src" already used), 4 open owner decisions, CHECKS DUE (28 Oct own book, ~30 Oct Ready Check) and rule 12 (new chat = no code, owner sends the zip). No behaviour change.
+- 27 Oct 2026 (v17): owl_v5e = owl_auto.sh v5e, BUILD=40. Phone log after v5d showed "BUILD 25 -> 35": the v5c/v5d compare read every digit of the BUILD line including its comment (v5c in the comment). It worked by luck. v5e reads only the whole number after BUILD= . BUILD jumped to 40 so the installed (old) parser still sees a bigger number. Self-update worked by itself on the phone (v5c -> v5d, no manual step, zip pushed to GitHub). Owner works with CHANGED-FILES-ONLY zips (not the whole repo): that is the normal case and is fully supported (see section 13).
+- 27 Oct 2026 (v16): owl_v5d = owl_auto.sh v5d (BUILD 3). The owner downloads zips of OTHER repos into the same Download folder; v5c would have used any zip with backend/ or README.md (overlay on the live code, push to this GitHub repo). v5d uses a zip ONLY if every file sits in the top folder Indian-main/ (Claude zips and the GitHub zip of this repo); all others are ignored and logged once as "zip ignored". Found in the log: owl_v5c.zip was seen at 04:49:34 but the push never ran because the owner stopped the old watcher at that moment (he pushed README v15 + BUILD 2 by hand, DONE). v5d reaches the phone by itself through the v5c self-update: the owner only downloads the zip.
+- 27 Oct 2026 (v15): owl_v5c = owl_auto.sh v5c (BUILD 2). Bug found by the owner: v5 pushed release-apk (6).zip, so a 66 MB app-release.apk landed in the repo (commit 0a9aca3). v5c pushes ONLY code zips (backend/, frontend/, tools/, test/, scanner/, android/, .github/, README.md, pubspec*), never apk/aab/zip/keystore, and skips any file over 20 MB. v5c also updates itself: a zip or repo zip holding tools/owl_auto.sh with a higher BUILD= number replaces ~/owl_auto.sh and the watcher restarts itself. Owner copies owl_auto.sh by hand ONE last time (v5 has no self-update). Cumulative: README.md + tools/owl_auto.sh.
+- 27 Oct 2026 (v14): owl_v5b = v13 content + section 14 (owner flow for backend + app build) + rule 6b (how to talk to the owner). Owner installed owl_auto.sh v5 on his phone (status showed v5, watcher RUNNING). Zip is cumulative: README.md + tools/owl_auto.sh.
+- 27 Oct 2026 (v13): owl_v5 = deploy fix. tools/owl_auto.sh v5 + this README (section 13). Cause found: the Brain, Dual Bot, PA and Vol workers are separate python processes started by the backend; owl_auto.sh restarts did not stop them, so an old Brain kept running after a new zip (Ready Check / Timing / Week keys were missing). v5 stops every python process in the OWL code folders on each deploy/restart and checks every ~5 min for workers older than the code. One-time owner step: copy owl_auto.sh to ~ (see section 13). No app or backend code changed.
+- 27 Oct 2026 (v12): F3 done. zip owl_F3 has only the F3 files (README, brain_week.py, test_brain_week.py, brain_own.py, smart_brain_view.dart) because the owner applied owl_EFG. Backend changed: restart the backend after the push. Flutter not built here. Next: G1 / G2 only when READY CHECK allows and the owner says.
+- 27 Oct 2026 (v11): F2 done. zip owl_EFG is cumulative: it also holds E1-E5 and F1 (owner had applied none yet). 14 files. Backend changed (brain_retest.py new, brain_own.py): restart the backend after the push. Flutter not built here. Next: F3 only when data is ready and the owner says.
+- 27 Oct 2026 (v10): E5 + F1 done. zip owl_EF is cumulative: it also holds E1-E4 (owner had applied none of E). 12 files. Backend changed (brain_side.py, brain_own.py): restart the backend after the push. Flutter not built here. Next: F2 only when data is ready and the owner says.
+- 27 Oct 2026 (v9): E3 + E4 done. zip owl_E is cumulative: it also holds E1 + E2 (owner had not applied owl_E12). 7 files. Opportunities tab itself was not edited: OwlDensity already tightens it. Flutter not built here. Next: E5 when the owner says.
+- 27 Oct 2026 (v8): E1 + E2 done (compact header, underline tab pills, fade switch). zip owl_E12 has 3 files (README, live_ticker_bar.dart, dual_bot_screen.dart); owner had already applied owl_D. Flutter not built here. Next: E3 when the owner says.
+- 27 Oct 2026 (v7): Part D done: D1 brain_tp_hold.py (best exit + hold time per mix) + D2 Brain card. zip owl_D is cumulative (contains N2, B, C too) because the owner had applied none of them yet. Next: E when the owner says.
+- 27 Oct 2026 (v6): Part C done: C1 READY CHECK card (brain_ready.py) + C2 retest headline. zip owl_C is cumulative: it also contains N2 (README map) and Part B, because the owner had not applied owl_B yet. Next: D when the owner says.
+- 27 Oct 2026 (v5): Part B done: B1 brain_lessons.py (Timing Sync + lessons) + B2 Brain tab card. Owner had not applied the N2 zip, so owl_B also carries the README. Next: Part C only when the owner says.
+- 27 Oct 2026 (v4): N2 code map (section 12) + rules 8-10. Next: Part B (Timing Sync + lessons), then C only when owner says.
+- 27 Oct 2026 (v3): Part A done (A1 honest numbers + header label, A2 BTC out of the alt curve, A3 signal-type card + open age). Next: Part B (Timing Sync + lessons).
+- 27 Oct 2026 (v2): lettered Parts A-G plan from the 3 prompts + screenshots, data truth section, Termux paste command, naming rule. Round 1 (old Parts 1-3: Brain learning, retest report, Simple tab boxes) confirmed applied by owner.
+- 27 Oct 2026 (v1): N1 single notes file.
+- 26 Oct 2026: Brain own trades, exit learning, observation layers, Simple tab, performance tab, trust 100 trades.
+- 25 Oct 2026: Brain exit advice, what-if report, fixes (Connecting, labels), docs, ideas from links (FreqAI rolling memory used, Jesse luck test used, vectorbt/TradeMaster/TensorTrade not used: licence or heavy).
+- Before: Smart Brain parts 1-3, Dual Bot screen, Signals/Alerts look, old labs locked.
+
+## 11. HOW THE OWNER APPLIES A ZIP (Termux, copy-paste, one shot)
+Owner facts: updates from Termux, repo is ~/Indian-main (GitHub mehreenhusn-cmyk/Indian, branch main), already logged in, downloads zips to ~/storage/downloads/. Every zip has the top folder Indian-main/ and contains ONLY changed files (README.md included when it changed).
+Command template (Claude fills in NAME and MESSAGE every time; this discards any uncommitted local edits, the repo is a mirror):
+```
+cd ~/Indian-main && git fetch origin && git reset --hard origin/main && rm -rf ~/up && mkdir -p ~/up && unzip -oq ~/storage/downloads/NAME.zip -d ~/up && cp -r ~/up/Indian-main/. . && git add -A && git commit -m "MESSAGE" && git push origin main
+```
+Only the FIRST time (old notes cleanup), add `bash tools/clean_old_notes.sh &&` right before `git add -A`. The script deletes old notes files (docs/PROJECT_STATUS.md, BACKEND_AUDIT.md, PHASE4_DESIGN.md, CHANGES*.md) only if README.md is this file, and never touches code. After a push, GitHub builds the app (flutter-build.yml); backend files need the usual restart.
+
+## 12. CODE MAP (open ONLY what the feature needs; line numbers approximate - search the function name)
+Data dir: dual_lab._dir() (phone: ~/owl_data). Backend tests: `cd backend && python3 test_X.py` (no network). Flutter is not compiled by Claude.
+
+QUICK INDEX (task -> open ONLY these; do not scan the repo)
+| Task | Open |
+|---|---|
+| AI keys (vkeys), app prefs, Trade Book (/api/ai/book, /api/ai/path) | backend/api/ai_book.py (moved in 6g; the handler is also exposed as api_server.ai_book_endpoint for the warm-up) |
+| AI Trade Diary + AI Coach routes and pages (/api/ai/diary, /diary, /api/ai/coach, coach reset / config, plan/config, /coach) | backend/api/ai_pages.py (diary moved in 6h-1, coach in 6h-2; the coach handler is also exposed as api_server.ai_coach_endpoint for the warm-up) |
+| WebSocket: ConnectionManager (3 sockets, 10 s send timeout), shared status loop (0.25 s), /ws route | backend/api/ws.py (moved in 6j; api_server.py keeps thin links manager, _dumps, _snapshot_msg, _status_broadcaster) |
+| The last 49 AI routes (ask, insights, doctor, reports, lab, reading, desk, levels, observer, pick, advice, backup, AI Live, shadow, digest, history, chats, app_health) | backend/api/ai_core.py (ask + lab + observer), ai_reports.py, ai_live.py (tools + AI Live; money routes keep the API token), ai_chats.py (moved in 6i; handlers the warm-up calls are linked in api_server.py) |
+| Skipped-signal check (finished what-if trades vs taken trades, key learn.skip, read-only) | backend/brain_skip.py (summary, compare), hook in brain_learn.view_summary, test_brain_skip.py |
+| Settings, backup, Binance test, exchange routes (/api/settings, /api/backup/export, /api/binance/test-connection, /api/exchange*) | backend/api/settings.py (moved in 6e) |
+| Root, status, system, ops, load_report, positions, market, signals, BTC, daily-report, alerts, history, equity, calendar, candles routes | backend/api/status.py (moved in 6f) |
+| Close / flatten / TP / SL / reconcile routes (/api/close, /api/close_all, /api/flatten, /api/preview_close_all, /api/close_all_profit / _loss, /api/set_target_tp, /api/trail_sl, /api/move_sl_breakeven, /api/reconcile) | backend/api/trade.py (moved in 6d) |
+| Lab / Dual Bot / archive / layers / Smart Brain routes (/api/filter_lab ... /api/dual_lab/report_save) | backend/api/dual.py (moved in 6c) |
+| Vision routes (/api/vision/*) | backend/api/vision.py (moved from api_server.py in 6b) |
+| SWR cache (_swr, pools, locks) | backend/api/swr.py (moved in 6a; api_server.py imports the names back) |
+| Change which coins Dual Bot watches | dual_lab.py worker ~L966 (coins function), new universe_7d.py (Part U); cap = universe_ctl.json in the data folder |
+| Change which coins the Brain own scan uses | smart_brain.py today_coins ~L410 |
+| Read or add a setup tag | tag_lab.py DIMS ~L47. NEVER add or remove a DIM (read_v1 drops rows with a different tag count = all history gone) |
+| New Brain report | recipe under "HOW BRAIN DATA REACHES THE APP" below |
+| Brain own trade rules, stages, limits | brain_own.py (stage_for, open_from, settle); caps in brain_side.py, brain_week.py |
+| Exit rules (the 9) | tag_lab.EXITS |
+| New card on the Dual Bot screen | dual_bot_screen.dart _segBody(); tab files simple_tab.dart, opportunities_tab.dart, performance_tab.dart; Brain cards smart_brain_view.dart |
+| New API route | api_server.py (routes only): Dual ~L1708, Brain ~L1746 |
+| Zip pickup, restart, self-update on the phone | tools/owl_auto.sh, section 13 |
+| Look and spacing | owl_card.dart, app_theme.dart, app_spacing.dart |
+| MFE / giveback / brain_version of a trade (Batch 2) | tag_lab.sim_rule (mfe_px), dual_lab.process step 2, brain_own.settle, brain_meta.py, trade_archive.py (3 columns) |
+| Per-candle data rows (Batch 4a) | brain_edge.py (snapshot, exit_obs, pending / confirm, OBS_KEYS), trade_archive.save_dual (table obs in dual_archive.db), dual_lab close branch (2 lines), test_brain_obs.py |
+| Journey / call outcomes of finished trades (B4b-1) | brain_learn.py (journey_of, step, view_summary), trade_archive.py (journey, call_out; open_dual_ro / open_brain_ro read-only), test_brain_learn.py |
+| Outcome statistics, slices, mistakes ledger (B4b-2) | brain_stats.py (load, judged, compute, analyze, ledger, refresh, summary, features), trade_archive.py (mistake, learn_stats), test_brain_stats.py |
+| Look-alike learning (B4c-1, hand-run, not connected) | brain_look.py (load, evaluate, analyze, run; FEATS / K_NEAR / CONFIG are the frozen l1 set), reuses brain_stats judged / _judge / _groups, test_brain_look.py |
+| Mistake risk from look-alikes (B4c-2 part 1) | brain_pattern.py (flag, analyze, run) -> brain_look.analyze(calls, flag=), reuses brain_stats.KINDS, test_brain_pattern.py |
+| Frozen look_call rows + number gaps + view key learn.look (B4c-2 part 2) | brain_pattern.py (gaps, rows_of, refresh, summary), trade_archive.py (look_call, save_look_calls), brain_learn.view_summary (key look), test_brain_pattern2.py |
+| Shadow rule r1 for one call (B4d-1, hand-run, not connected) | brain_shadow.py (load_gates, gate_at, decide, recommend, run), trade_archive.learn_snapshots, test_brain_shadow.py |
+| Live shadow writer + shadow_rec rows (B4d-2) | brain_shadow.py (step, _rows), trade_archive.py (shadow_rec, save_shadow_recs, learn_snapshots since), brain_learn.step (hook), test_brain_shadow2.py |
+| Shadow check in the Brain view, key learn.shadow (B4d-4: counts + paper score, cached, read-only, no raw rows) | brain_shadow.py (summary), trade_archive.py (shadow_counts), brain_learn.view_summary (hook), test_brain_shadow3.py |
+| Open trade edge decay (Batch 3a) | brain_edge.py (observe, report, scorecard), dual_lab.process step 2 (hook), dual_lab.slim, smart_brain._edge_view / build_view, test_brain_edge.py |
+| Long trade history (after U1) | trade_archive.py (dual_archive.db + brain_archive.db in the data folder, append-only, never DELETE) |
+
+WHO PICKS WHICH COINS
+| Who | Where | List |
+|---|---|---|
+| Main (crypto) bot | recovered_bot/settings_store.py (btc_fixed = BTC always in) | its own watchlist. NEVER touch |
+| Dual Bot | dual_lab.worker ~L966 -> filter_lab.default_coins (~L557) | today's top-10 gainers + top-10 losers by 24h change, no volume floor, + BTC + every coin with an open / skipped trade (cycle ~L869) |
+| Brain own scan | smart_brain.today_coins ~L410 -> same default_coins, refreshed every 30 min | same 20 coins (no BTC) |
+| Ping radar | recovered_bot/ping_tracker.py | top 10 by radar |
+| Old labs by hand | filter_lab, tag_lab, z_scenarios, scan_lab, variant_lab | default_coins. Do NOT edit default_coins: Dual Bot, the Brain and these all share it |
+
+MEMORY LIMITS (why reports only see about 1 day)
+dual_lab.py ~L47: MAX_ROWS 5000, MAX_TRADES 600, MAX_SEEN 6000, MAX_RT 4000; trim() ~L482 deletes older ones. At 500-600 trades a day the Brain sees roughly the last day of trades. Brain book: BOOK_MAX 400 (smart_brain.py ~L512). Brain OWN book: KEEP_CLOSED 300 (brain_own.py L11; judged() counts that list, so own-trade counts and stages can never go above 300). Exit shadow: KEEP_SHADOW 300 (brain_exit.py). PA layer KEEP_ROWS 20000. MIN_TRAIN = 150 rows. All of this is covered by the archive (U1) once built. A 7-day report needs the history mirror (Part S).
+
+TRADE FIELDS (one Dual Bot trade, dict in dual_lab_data.json "trades")
+id, s (symbol), f (5m / 15m), t (time ms), d (side), src (MAIN / Z / BOTH = signal type, NOT the universe source), entry, sl, tps, tg (tags, one per DIM), status (open / closed / skipped / skipped_done), net (ROI %), exit (exit rule name), mode (EXPLORE / LEARNED), why. Margin: dual_lab._mg(t) = BTC 1000, others 100; USDT = margin x net / 100. "rows" = [sym, tf, t, d, tags, nets per exit rule, bars per exit rule].
+
+HOW BRAIN DATA REACHES THE APP (the one road every Brain feature uses)
+1. smart_brain.worker() (~L1023) loops, reads Dual Bot data (read_v1 ~L89 reads dual_lab_data.json, read-only), calls build_view() (~L967) and saves smart_brain_view.json.
+2. api_server.py route GET /api/smart_brain (~L1746) returns smart_brain.status() (~L1175), which includes that view.
+3. dual_bot_screen.dart _pollBrain() (~L89) stores it in `_brain` (a Map). Tabs get slices: SimpleTab, OpportunitiesTab(brain), PerformanceTab(brain), SmartBrainView.
+NEW BRAIN REPORT = (a) new small backend file with one function returning a plain dict, (b) one hook line in build_view() under a new key, (c) one card in smart_brain_view.dart reading brain['key'], (d) one small test, (e) tick section 4 + update this map.
+
+BACKEND (backend/)
+| File | Job | Notes |
+|---|---|---|
+| dual_lab.py (1234) | Dual Bot v1: paper bot, takes every signal, saves dual_lab_data.json | DO NOT TOUCH (exception: Part U hooks - archive hook before trim() in worker, DONE in Z1a; coin list + live-only come with Z1b). make_view ~L816, status ~L1191, day_review ~L733, retest_summary ~L447 |
+| tag_lab.py (675) | Builds the setup TAGS for each entry (DIMS ~L47). "order" tag = who came first: _order ~L111 (values: both on the same candle / main chart came first (1-2 or 3-5 candles before) / Z candle came first ... / gave the OPPOSITE signal / gave nothing) | DO NOT TOUCH. make_tags ~L124 |
+| smart_brain.py (1184) | The Brain core: clean_score ~L152, divergence ~L110, probability ~L202, trust ~L352, scan ~L464, luck_test ~L640, risk_stats ~L666, sideways_report ~L758, retest_report ~L803, performance ~L871, build_view ~L967, worker ~L1023, gate ~L1120-1154, status ~L1175 | Big file: add only thin hooks here. Constants at top (MIN_N, TRUST_MIN=100, ROLL_HALF=400, KEY_DIMS) |
+| archive_tools.py (~85) | Z3b check(base) -> state match / differ / none / error, json_closed, db_closed, missing, text; export_csv(base, days, closed_only, now_s). Read-only. Routes /api/archive_check, /api/archive_export; also view["universe"]["check"] | test_archive_tools.py, tools/db_check.py, tools/archive_export.py |
+| brain_universe.py (100) | Z3a Edge by universe: report(base, now_s) -> status, groups today / d7 / other (n, win_pct, net, avg), days (7, phase pump / drift / sideways / mixed / early), lines, phase_now; build(trades, log, now_s) is the pure part. Read-only from dual_archive.db, cached 60 s. Hooked as view["universe"] in smart_brain.py (_universe_view) | test_brain_universe.py |
+| brain_week.py (~100) | F3 weekly report card + time-of-day cap for own trades: block_of(ms), report(own, now_ms), blocked(own, now_ms, opened). Hooks: brain_own.open_from, summary key 'week' | own book only. test_brain_week.py |
+| dual_desk.py (~75) | U3 desk numbers: desk(base, now_s) -> {state, day, groups{today|d7|other}{5m|15m}{n, wins, net USDT, open}, tags{symbol: today|d7}}; reads dual_archive.db read-only, trades opened since 00:00 UTC. Source of a trade = universe_7d.tag_of(sym, t, log) from universe_log.json (written by universe_7d._log_day every time the Dual coin list refreshes; append-only, no trade row changed; trades before the log started = other). Route GET /api/dual_desk | test_dual_desk.py (15 checks) |
+| dual_live.py (~30) | BE2b live price of every open Dual coin in ONE request (prices(syms), 4 s cache, never raises); dual_lab._live_prices calls it first, old one-by-one loop is the fallback | test_dual_live.py |
+| dual_tp_ext.py (~25) | H2 extend(tps, d, mean, sd): 4 bot levels + 3 further SD levels (N_EXTRA), never raises; dual_lab hooks: new-trade step (e["tps"], trade key `ext`) and finish step (cap = len(tps) when the rule cap is 4) | test_dual_tp_ext.py |
+| timefmt.py (~30) | span(secs) / mins(minutes) -> "45 s" / "12 min" / "2 h 10 min" / "1 d 4 h"; same rules as Dart fmtSpan | test_timefmt.py |
+| universe_7d.py (~210) | U2 coin NAMES: refresh() reads 1d candles once (background), coins_for_dual(today_coins) = today + 7-day extras (cap from universe_ctl.json), is_extra(sym), status() (route /api/dual_universe). Hooks in dual_lab.py: import _U7 (~L38), coin list lambda in worker() (~L975), live-only 2 lines in cycle() after boot = ... (~L896). The coin list is cached 30 min in cycle(), so the extras appear within 30 min of the first name-read (1-2 min) | test_universe_7d.py, test_dual_hooks.py |
+| trade_archive.py (~215) | U1 ARCHIVE: save_dual(data, st) (Dual worker, before trim), save_brain(own, ex, book) (Brain worker), status() for /api/archive. Files dual_archive.db (trades, rows, rt, meta) and brain_archive.db (own, picks, exit_shadow, meta) in the data folder; never deletes. Guarded imports _TA in dual_lab.py and smart_brain.py | test_trade_archive.py |
+| brain_retest.py (~85) | F2 retest own book: twin(S,Z,i,d,sl,tps,rule,TL,lev,fee) -> (net, bars) / (None,None) / None; report(own) -> status collecting/early/unsteady/better/worse. Hooks: brain_own.settle (stores t['rt']), brain_own.summary key 'retest_book' | measure only. test_brain_retest.py |
+| brain_side.py (~75) | F1 sideways self-rule for own trades: state(own) -> dict, blocked(own, tg, now_ms, opened_side), is_side(tg). Hook: brain_own.open_from; summary key 'side_rule' | own book only. test_brain_side.py |
+| brain_own.py (~205) | Brain OWN paper trades: exploring ~L24 + stage_for (exploring 0-29 / learning 30-99 / medium 100+ / quality 300+), open_from ~L60, settle ~L102, summary ~L155 | file smart_brain_own.json |
+| brain_lessons.py (153) | B1 Timing Sync: classify() reads the 'order' tag, timing_report(trades) -> groups, deep clean candidate, lessons(). Hook: smart_brain._timing_view -> view key "timing" | report only, BTC left out. test_brain_lessons.py |
+| brain_ready.py (53) | C1 READY CHECK: ready_check(view) -> 7 rows (4 gates + retest, timing, own book) + headline. Hook: smart_brain._ready_view, runs last in build_view -> view key "ready" | report only. test_brain_ready.py |
+| brain_tp_hold.py (83) | D1 exit style + hold time: report(rows) -> all + per-mix best exit vs bot exit, hold minutes, steady check, lines. Hook: smart_brain._tphold_view -> view key "tp_hold" | report only, BTC left out. test_brain_tp_hold.py |
+| brain_exit.py (126) / brain_exit_pick.py (79) | Exit learning (FULL TP / HALF TP / HOLD), advice only | smart_brain_exit.json |
+| brain_follow.py (64) | "What if the bot had listened?" report | |
+| pa_layer.py (332) / vol_layer.py (248) / layers_join.py (77) | Price Action + Volume observation layers and their join report (report only) | own *_log.json, *_view.json; routes /api/layers/pa, /api/layers/vol |
+| api_server.py (787 after 6i) | All routes. Brain: ~L1746. Dual Bot: ~L1708. Startup timers that launch dual_lab/smart_brain/pa/vol: ~L277-303 | Never add logic here, only routes |
+| recovered_bot/ | Main (crypto) bot, strategy, India terminal, old AI tabs | Not needed for Brain work. Section 9 for cleanup |
+| filter_lab / variant_lab / scan_lab / doctor_extra | Old labs (locked off) | ignore |
+Data files (all in the data dir): dual_lab_data.json (Dual Bot, READ ONLY for Brain), smart_brain_view.json, smart_brain_book.json, smart_brain_own.json, smart_brain_exit.json, smart_brain_ctl.json, pa_layer_*.json, vol_layer_*.json.
+Tests that matter: test_brain_tp_hold.py, test_brain_ready.py, test_brain_lessons.py, test_smart_brain.py, test_brain_own.py, test_brain_exit*.py, test_brain_follow.py, test_brain_gate.py, test_brain_perf.py, test_sideways_report.py, test_pa_layer.py, test_vol_layer.py, test_layers_join.py, test_dual_lab.py, test_btc.py.
+
+FLUTTER (frontend/lib/)
+| File | Job | Notes |
+|---|---|---|
+| screens/dual_bot_screen.dart (~920) | Dual Bot screen. 6 underline pills (E2): 0 Simple, 1 Now, 2 Opportunities, 3 Learned, 4 Performance, 5 Brain (_segRow ~L776, tab bodies in _segBody(), shown through AnimatedSwitcher). _poll ~L61 (/api/dual_lab), _pollBrain ~L89 (/api/smart_brain) | Tab 3 "Learned" cards (_reviewCard, _setupCard, _retestCard, _scenCard, _lessonsCard, _modelCard) are inside this file |
+| screens/brain_screen.dart (NEXT-4, 29 lines) | Brain as its own bottom tab (screen index 7 in main.dart _screens): title + SmartBrainView | |
+| widgets/brain_learn_blocks.dart (NEXT-2b) | LOOK-ALIKE, MISTAKE PATTERNS, SHADOW CHECK folds; reads _st['learn'] (look, stats.ledger, shadow) only; hooked in smart_brain_view.dart build() under BrainEvidenceCard | |
+| widgets/brain_evidence_card.dart (NEXT-2a, 217 lines) | BRAIN EVIDENCE + OPEN TRADES - BRAIN VIEW cards; reads _st['learn'].stats.overall and _st['edge'].items only; hooked in smart_brain_view.dart build() right after _readyCard; part 2 adds brain_learn_blocks.dart | |
+| widgets/smart_brain_view.dart (~900) | Brain tab (chip 5; build() shows 6 cards, 'More reports' toggle _moreToggle folds the other 18, _weekCard is the first of them): one card method per report: _nowCard ~L124, _trustCard ~L219, _luckCard ~L247, _exitCard ~L269, _followCard ~L311, _riskCard ~L352, _readyCard ~L610 (Ready Check, key 'ready', top of tab), _tpHoldCard ~L641 (Exit style + hold, key 'tp_hold'), _timingCard ~L683 (Timing Sync, key 'timing'), _sidewaysCard ~L746, _retestCard ~L796 (has the C2 headline), _layersCard ~L921, _ownCard ~L942 | New Brain cards go here (use _card(), _chip(), _bar() helpers at the top) |
+| widgets/smart_brain_view.dart _universeCard (Z3b, ~55 lines before _timingCard) | EDGE BY UNIVERSE card from view["universe"] | |
+| widgets/simple_tab.dart (~345) | Simple tab: LOCKED / FLOATING / NET, IS THE BOT OK, UniverseStrip, signal-type card, recent trades | |
+| widgets/universe_strip.dart (100) | Z2b: TODAY / LAST 7 DAYS blocks with 5m / 15m from /api/dual_desk (state none / error handled) | polled by dual_bot_screen._pollDesk, passed through SimpleTab(desk:) |
+| widgets/performance_tab.dart (128) / opportunities_tab.dart (113) / dual_summary_strip.dart (166) | Performance, Opportunities, summary strip | |
+| widgets/dual_trade_card.dart / dual_trade_chart.dart | One Dual Bot trade row / its chart | |
+| widgets/live_ticker_bar.dart (547) | Top header row (MAIN bot P&L etc.) | |
+| widgets/owl_card.dart (OwlSectionCard, OwlChip, OwlDensity, UI1: OwlHero, OwlFold), theme/app_theme.dart, app_colors/typography/spacing | Shared look (cards, chips, colors) | Part E works here. DualTradeCard.badgeRow (dual_trade_card.dart) = the one-line trade badges |
+| providers/app_provider.dart (1256; Vision calls in app_provider_vision.dart, AI chat calls in app_provider_aichat.dart, position actions in app_provider_positions.dart, settings calls in app_provider_settings.dart, sound alerts in app_provider_sound.dart: all part files, search the method name there), screens/*, other widgets | Main app, positions, signals, alerts, India, AI tabs | Not needed for Brain work |
+Other: tools/owl_auto.sh (phone watcher v5, section 13), tools/clean_old_notes.sh (one-time notes cleanup), tools/old_check.sh (dead-file report), .github/workflows/flutter-build.yml (builds the app after push).
+
+## 13. PHONE DEPLOY (how the owner's phone picks up a new zip - owl_auto.sh v5)
+Owner facts: browser/GitHub downloads land in ~/storage/downloads. The watcher ~/owl_auto.sh (started by Termux:Boot too) looks there every 10 s. Data lives OUTSIDE the code (~/storage/shared/owl_data), so a deploy never touches trades or settings. The owner does not want to kill or restart anything by hand.
+- LIVE CODE = ~/owl_code (backend + frontend). NOT ~/Indian-main (that folder is only for git push). Check: `ls ~/owl_code/backend/brain_ready.py`.
+- Zip named Indian-main*.zip (full repo from GitHub) = FULL deploy: swapped in as ~/owl_code (old one kept as ~/owl_code_prev), everything restarted.
+- Any other zip (owl_X.zip) = OVERLAY: only its backend/ files are copied on top, and only if the zip is NEWER than the full zip in use; python files are compile-checked and rolled back if bad. A zip without backend/ files (README, tools, Flutter only) is skipped for the backend and just pushed to GitHub.
+- v5 fix: workers (smart_brain.py, dual_lab.py, pa_layer.py, vol_layer.py, ping_worker.py) are separate python processes started by api_server.py timers (8/15/25/35 s after boot) and by the API calls. On every deploy/restart the script now stops every python process whose folder is inside ~/owl_code, ~/Indian-main or ~/Indian-cleanup (by folder, not by name), then starts the backend. Every ~5 min stale_check stops any worker that started before the newest backend .py file; the backend starts it again by itself (a worker only restarts when its heartbeat is older than 3 min, so allow up to ~3 min).
+- Git sync (owl_auto.sh -> GitHub) now uses ~/Indian-main when it has .git, else ~/Indian-cleanup. If the owner also pushes by hand with the section 11 command, the second push finds nothing new and simply stops; that is fine.
+- CHANGED-FILES ZIPS (the owner NEVER downloads the whole repo): a zip with only the changed files, all inside Indian-main/, is the normal input. Backend files are copied on top of ~/owl_code, everything is pushed to GitHub. A full Indian-main*.zip is needed only if the live folder ~/owl_code is lost. Send the same file again in a later zip if you are unsure: copying a file twice does no harm. Parts work as before (README rule: ONE latest cumulative zip per round).
+- v5d: ONE REPO RULE. Every zip you give the owner MUST have all its files inside the single top folder Indian-main/ (never loose files, never another folder name), otherwise the phone ignores it. The owner keeps other repos' zips in the same Download folder; they are never touched.
+- v5c: ONLY code zips are pushed to GitHub (APK / release-apk zips are skipped, log "github sync skipped"). SELF-UPDATE: when you change tools/owl_auto.sh you MUST raise the BUILD= number at the top of it (v5c = 2, v5d = 3, v5e = 40; always use the next whole number, nothing but the number and a comment after it); the phone then replaces itself from any zip that contains it, no manual copy. A lower or equal BUILD is ignored; a file with a syntax error is refused.
+- Quick truth check after any deploy (wait ~4 min): `curl -s localhost:8000/api/smart_brain | python3 -c "import sys,json;v=json.load(sys.stdin);print(sorted(v.keys()))"` must list the keys of the newest Brain features (ready, timing, retest, tp_hold, week). Missing = an old worker is alive: `bash ~/owl_auto.sh restart`, wait 4 min, check again.
+- Logs: `bash ~/owl_auto.sh status` (also saved to Download/owl_status.txt), `bash ~/owl_auto.sh logs`. Look for "DEPLOYED", "OVERLAY applied", "stopped N old python process(es)", "stale check".
+- Not tested by Claude: the script ran only in a sandbox with fake processes (kill by folder and stale check both worked), never on the phone.
+
+## 14. OWNER FLOW IN SIMPLE STEPS (what the owner really does - keep this true)
+BACKEND (runs by itself on the phone):
+1. Claude gives a zip (owl_X.zip) or the owner downloads the repo zip from GitHub (Indian-main*.zip). It lands in ~/storage/downloads.
+2. The watcher (owl_auto.sh v5, started by Termux:Boot) sees it within about 10 s, puts the backend files in ~/owl_code, stops every old python process, starts the backend + workers. Nothing to type.
+3. About 4 min later all Brain workers run the new code. The owner can check with the truth-check command in section 13.
+APP (Flutter, built by GitHub, never on the phone):
+1. The same zip is pushed to GitHub, either by the watcher itself (log line "github sync: pushed", see `bash ~/owl_auto.sh logs`) or by the section 11 command.
+2. A push to main makes GitHub Actions (.github/workflows/flutter-build.yml) build the app; the browser version is downloaded by the watcher about 10 min later into ~/owl_web (just refresh). Claude cannot compile Flutter: a build error from the owner is the only test.
+3. A Flutter-only change needs no backend restart. A backend change needs nothing by hand: the watcher restarts it.
+WHEN SOMETHING LOOKS OLD: (1) `bash ~/owl_auto.sh status` (2) `bash ~/owl_auto.sh restart`, wait 4 min (3) send Claude the output. Normal noise, ignore: "Terminated ... nohup python ping_worker.py" and "/proc/NNN/cmdline: No such file" printed during stop = old processes ending.
+APP ON THE PHONE (decided 27 Oct): Android never installs an APK from outside by itself, so the owner taps "Install" once per build; installs over the old app (no uninstall) as long as it is the same package and signing key. If Android says "App not installed", ask the owner (key changed). The browser app updates itself (refresh). An in-app "Update" button (app downloads the newest APK from GitHub, owner taps Install) is possible, about 150 lines Flutter + one GitHub setting: NOT built, only when the owner asks. Backend never needs the app update: it updates from the zip alone.
+
+## 15. VERSION 2 - THE FULL PLAN (what / why / when / how)
+Added v81, 29 Oct 2026, README only. Owner order (29 Oct): "readme me poora systematic daal - kya, kab, kaise, kyun banana hai - taaki har insaan aur Claude samajh sake". STATUS: the SHORT plan S0-S13 is APPROVED (29 Oct). The file-level rows below are a PROPOSAL from Claude's repo audit; the owner has NOT verified them. Every part is shown with exact files + lines first and starts only after his "ok". NOTHING in this section is built yet. Live progress is the VERSION 2 STATUS BOARD at the top of this file; if the two ever differ, the board wins.
+
+### 15.1 Read this first (any new Claude or human)
+1. Read the V2 STATUS BOARD (top of file), then this section, then section 0.
+2. No code before the owner says "ok <part>". Show files + estimated lines first, then wait.
+3. Never edit the protected files (15.4). Never mix data domains (15.5). Use only the owner's 2 indicators (15.6).
+4. Every zip: ONE zip, top folder Indian-main/, README.md always inside, only the files changed in this round plus files changed in earlier rounds of the same plan. After each part update: the V2 board (status words, tests really run + result), the change log (section 10), and this section if the plan changed.
+5. Say honestly what ran. Flutter cannot be compiled in Claude's sandbox. A test that did not run is not a pass. Never mark DONE without evidence.
+6. Size: about 300 lines per part, 400 at most, 4-5 small files (rule 14). Part names below (1a, 1b ...) are the proposed split; split further when a phase starts.
+7. If a fact contradicts this section, fix the section in the same zip and say so in the reply.
+8. Talk to the owner in simple WhatsApp-style Roman English / Hinglish (rule 18).
+
+### 15.2 Why Version 2 (the goal in plain words)
+The app already trades and learns (live bot, Dual Bot, Smart Brain). What is missing is TRUST and EVIDENCE: (1) nobody can prove from saved data which coins really were the top 5 gainers / losers at that time, the 7-day list is rebuilt later from 1d candles; (2) the live-money code has too few safety tests and CI runs no tests; (3) data from different sources can be confused (paper vs live, real vs reconstructed); (4) the app has many big screens of uneven quality. Version 2 fixes this in order: PROTECT live money first, COLLECT honest data next, then build screens and research on top of that data.
+Principles: P1 live money first. P2 authentic data only; reconstructed data is always labelled. P3 data domains never mix. P4 only the owner's 2 indicators. P5 small parts, plan first, owner's ok. P6 every claim carries a label (VF / OR / INF / NV). P7 nothing is deleted. P8 "premium" = clear hierarchy, fast, stable scrolling, trustworthy numbers - not decoration.
+
+### 15.3 Words used
+| Word | Meaning |
+|---|---|
+| Cohort | Top 5 gainers + top 5 losers of one UTC day, ranked by % change from the day open |
+| Snapshot run | One 5-minute public read of all tickers; the top 20 gainers + top 20 losers are saved whole |
+| Official cohort | The one cohort per UTC day that counts as "that day's ranking" (default: the last snapshot of the UTC day, see D2 in 15.12) |
+| Retrospective proxy | A ranking rebuilt later from completed 1d candles (universe_7d.py). ALWAYS labelled PROXY, never called authentic |
+| Gap | A time slot with no data (backend off, network down). Logged, never filled with invented data |
+| Protected file | A live-trading file that V2 must leave byte-identical (15.4) |
+| Live path A / B | A = execution_router.py -> binance_trader.py / protection_manager.py; B = ai_live_client.py -> ai_live_executor.py |
+| Domain | One of the 10 data kinds in 15.5; domains never mix |
+| Characterization test | A test that RECORDS what the code does today without fixing it |
+| Round / part | One delivery = one zip. A round can hold several parts |
+
+### 15.4 Verified facts (repo audit, 29 Oct) and protected files
+| # | Fact | Evidence | Label |
+|---|---|---|---|
+| F1 | Scanner day boundary = UTC calendar day; day open = open of the 1d kline (00:00 UTC = 05:30 IST); rank = (price - day open) / day open, USDT perpetuals only; the field named pct24h is NOT a rolling 24h change | scanner/5mins_scanner_binance_top10_bothside.py L64-130; backend/recovered_bot/binance_client.py L91, L154-230 | VF |
+| F2 | The 7-day coin list is rebuilt from completed 1d candles, not from saved scan-time ranks | backend/universe_7d.py | VF (= PROXY) |
+| F3 | Two live Binance paths (A and B above). A: place_market_order L362, set_leverage L373, open_market_order L481, close_position_market L719 (binance_trader.py); algoOrder L293, order L305 (protection_manager.py). B: marginType L116, leverage L122, order L162 / L179, algoOrder L169 (ai_live_client.py). No third order route found by grep on /fapi order endpoints in backend/ and scanner/ | files named | VF; NV for URLs built dynamically |
+| F4 | /api/preview_close_all (api/trade.py L123) uses the PAPER snapshot (paper_trader.preview_close_all) even when live is on; live close_all_profit / close_all_loss read exchange positions (execution_router.py L243-260). Flutter calls the preview only for profit / loss close (positions_screen.dart L63-67); plain close-all and panic flatten have no preview | files named | VF |
+| F5 | Only two indicator families in the app maths: EMA50 + SD bands (strategy.py) and Special Master TSI + Z-score (special_master.dart L1-25; india_indicators.py tsi L75, zscore L84; ai_ind_features.py L76). Pine sources are NOT in the repo | files named | VF; exact Pine match = NV |
+| F6 | ADX / ATR / regime tags exist as metadata (strategy.py Signal fields, entry_context.py L23, variant_lab.py, scoreboard.py, strategy_doctor_screen.dart) | files named | VF; left alone, never used by V2 |
+| F7 | Brain: per-candle observation (B4a), trade journey with MFE and giveback (brain_learn.py), look-alike (brain_look.py, not wired), edge decay (brain_edge.py). Observation only; no LLM per candle | files + sections 3, 4c | VF; anything beyond observation = NV |
+| F8 | SQLite stores (dual_archive.db, brain_archive.db, owl.db, trades.db) are created at run time and are NOT in the repo; trade_archive.py, protection_manager.py and db.py use WAL | grep | VF names; contents / live-paper mixing = NV |
+| F9 | Tests: test/ 86 files, backend/ 66 test_*.py, Flutter 1 test. CI (flutter-build.yml) has NO test step | file listing | VF (not run) |
+| F10 | Ping tab = volume-ping research lab (5 REST polls every 3 s), not connectivity. Dashboard DiagnosticsCard (452 lines) sits at the end of the dashboard list | ping_tab_screen.dart; widgets/diagnostics_card.dart | VF |
+| F11 | Flutter 158 files about 49.4k lines; Android toolchain already new (AGP 9.1.0, Kotlin 2.4.0, Gradle 9.3.1): no upgrade planned | repo | VF |
+
+PROTECTED FILES (byte-identical; a SHA-256 list is written into this README at every stage): strategy.py, paper_trader.py, execution_router.py, binance_trader.py, protection_manager.py, ai_live_client.py, ai_live_executor.py, exchange.py, reconciliation.py, settings_store.py, idempotency.py, market_ws.py, api/ai_live.py, universe_7d.py, filter_lab.py, variant_lab.py (under backend/ or backend/recovered_bot/). Two exceptions, each needs its OWN approval at that stage: api_server.py (S1: only mount a router and start the collector behind a default-OFF flag) and api/trade.py (S5: an additive read-only preview route).
+
+### 15.5 Data separation map (10 domains)
+| # | Domain | Store | Status |
+|---|---|---|---|
+| 1 | Live Binance orders, fills, positions, protective orders, realized P&L | existing trades.db / protection tables | EXISTING; V2 reads only |
+| 2 | Paper trading and simulated P&L | existing paper tables | EXISTING; NV whether paper and live share a table (inventory answers it) |
+| 3 | Indicator raw observations and derived features | existing obs table (dual_archive.db) | EXISTING |
+| 4 | Public candles and snapshots | NEW data/v2_market.db (snapshot_run, snapshot_row, candle_3m, candle_5m) | NEW |
+| 5 | Authentic scan-time cohorts | NEW v2_market.db cohort_official (append-only, unique day + kind + rank) | NEW |
+| 6 | Retrospective proxy cohorts | NEW v2_market.db proxy_cohort (is_proxy = 1, source universe_days.json) | NEW |
+| 7 | Scalp Lab and replay | NEW data/v2_scalp.db | NEW |
+| 8 | AI Vision / Brain scores and evidence | existing brain_archive.db and AI tables | EXISTING; read only |
+| 9 | Diagnostics, collector errors, gaps | NEW v2_market.db gap_log, collector_health | NEW |
+| 10 | Knowledge Ledger, versioned conclusions | NEW data/v2_ledger.db | NEW |
+Rules: no cross-store writes; existing DBs opened read-only; nothing deleted or destructively migrated; schemas additive; every derived row carries calc_version; same symbol + timestamp never means merge; paper is never shown as live; a proxy is never shown as authentic. Automated tests: paper / live contamination, cohort overwrite, proxy mislabelling, research modules reaching live code (S0, S1, S2).
+
+### 15.6 The two indicators (only these may feed V2 research, scoring, replay)
+| Indicator | Source | Calculation | Features | Consumers | Test |
+|---|---|---|---|---|---|
+| 1. EMA50 + SD bands | Pine NOT in repo (NV); backend/recovered_bot/strategy.py | EMA50, SD bands, signal candle | entry zone, sd mean / std, ema slope | signal engine (paper + live), ai_sd_tracker, chart | S0 protected-rules tests |
+| 2. Special Master TSI + Z | Pine NOT in repo (NV); special_master.dart L1-25; ai_ind_features.py L76; india_indicators.py L75 / L84 | TSI 25/13/13 (Slow), Z-score 200, Z-SMA | B4a numbers tsi, hist, z, zg, sm, bw, ed, sc | Brain observation, look-alike, Z / TSI pane | S6 backend-vs-Dart parity test; existing test_vision_indicator_use.py |
+ADX, ATR, regime tags already in code (F6) stay untouched and unused by V2. No Hurst, RSI, MACD, VWAP or third indicator. If the owner shares the two Pine scripts, exact equivalence can be marked; until then it stays NV.
+
+### 15.7 Collector and cohort design (S1)
+- Public GET only. No link to orders, leverage, SL, TP, trading settings. A guard test fails if a collector module imports live or signing code.
+- Every 5 minutes: one public read of all tickers; save the top 20 gainers + top 20 losers (about 30 MB / month). Each row: original rank, symbol, snapshot price, day-open reference, % change vs day open, 24h rolling quote volume, source timestamp, collection timestamp, calc_version. Rolling 24h volume and daily-candle volume are DIFFERENT columns, never mixed.
+- Official daily cohort: top 5 gainers + top 5 losers, day boundary 00:00 UTC = 05:30 IST (VF, F1). Which snapshot stands for the day = D2.
+- Candles: 3m for at most 40 symbols (symbols seen in the top 10 over the last 7 days), kept 14 days; 5m kept 30 days; closed candles only.
+- Definitions (versioned in backend/v2_defs.py): time-to-peak, peak-to-trough drawdown, volume decay, post-peak decline, average dump, and volume baseline = median of the previous 7 days at the same hour, shown as "unavailable" when there are too few samples (minimum sample count fixed at S1 time, NV).
+- Storage: hard cap 300 MB for v2_market.db. Before any purge: table-level size accounting and a transaction-safe delete. At 90% delete the oldest 3m candles first, then 5m. cohort_official and gap_log are NEVER auto-deleted (tests prove it). At 100% the collector pauses and Diagnostics shows the reason.
+- Safety: kill-switch (flag v2_collector_enabled, default OFF), retries + timeouts, CPU / IO budget, restart-safe checkpoint (no duplicate rows after restart).
+- Gaps: missing intervals are recorded in gap_log; history is never invented. "Authentic seven-day analysis" is claimed only when real coverage for those days exists; older days stay PROXY.
+- First limits are an initial bounded config, tuned later from real storage and completeness.
+
+### 15.8 Phases: what / why / when / how / files / tests / acceptance / risk
+Estimates are rough (confidence Low-Med). Conf = High / Med / Low. Lines = changed lines.
+
+#### V2-S0 Safety baseline + data inventory (about 2,100 lines, 5 rounds; includes old NEXT-1: the inventory JSON replaces the owner pasting archive counts by hand)
+- WHY: protect live money before anything new; learn what data really exists before designing storage.
+- WHEN: first. Starts when the owner says "ok S0 round 1a". Rounds 1a -> 1b -> 1c -> (owner runs the tool once, sends JSON) -> 2a -> 2b.
+- HOW (inventory tool): read the file header (offset 18 / 19) to learn if a DB is WAL; plain rollback-journal DB with no hot journal -> open "file:...?mode=ro" with uri=True, PRAGMA query_only=ON and a SQLite authorizer that denies every write, ATTACH and extension load; WAL DB or hot journal -> never touch the source: copy db + -wal + -shm to a temp folder (free space checked first), open the COPY read-only, mark "copied snapshot" in the report; every path goes through realpath and must stay under the allowed roots (symlink escape rejected and reported); no trading module import, no network, no settings. Output = structure only: table / column names, row counts, size, min / max timestamps, aggregates. NEVER raw cell values. Config JSON: key names only. Every output string goes through a redaction scrubber (API keys, Bearer tokens, Telegram-style tokens, URLs with credentials or tokens); if any pattern survives, the report is NOT written (fail-closed; only the field path is printed). Quality labels are evidence-based: "paper / live mix" is flagged only when a mode / live / paper / source column exists with 2 or more distinct values (label MIXED_BY_COLUMN, informational, with counts); otherwise NEEDS VALIDATION.
+| Round | ID | File | Action | Purpose | Lines | Conf |
+|---|---|---|---|---|---|---|
+| 1a | S0-1 | backend/v2_inv_safe.py | ADD | safe read-only opener | 200 | Med |
+| 1a | S0-2 | test/test_v2_inv_safe.py | ADD TEST | db + -wal + -shm hash and mtime unchanged, no new side files, writes denied, WAL fixture with a live writer, symlink escape rejected | 180 | Med |
+| 1b | S0-3 | backend/v2_inv_redact.py | ADD | fail-closed scrubber | 150 | Med |
+| 1b | S0-4 | test/test_v2_inv_redact.py | ADD TEST | synthetic secrets in values, column names, config, URLs never in output; report refused when a pattern survives | 120 | Med |
+| 1c | S0-5 | backend/v2_inventory.py | ADD | finds stores, schema, counts, time ranges, quality labels, CLI | 230 | Med |
+| 1c | S0-6 | test/test_v2_inventory.py | ADD TEST | temp DBs, missing DB, labels | 120 | Med |
+| 2a | S0-7 | test/test_v2_protected_rules.py | ADD TEST | pin EMA50 cross entry (strategy.py L223+), stop = signal candle low / high, TP1-TP4 (L78-124), TP1 -> break-even (paper_trader._evaluate_candles L1018+) | 230 | Med |
+| 2a | S0-8 | test/test_v2_exec_routing.py | ADD TEST | paper XOR live for close_one / close_all / close_all_profit / close_all_loss; profit / loss selection; characterization of the preview gap F4 (records it, does not fix it) | 220 | Med |
+| 2b | S0-9 | test/test_v2_live_clients_mock.py | ADD TEST | binance_trader, protection_manager, ai_live_client with fake HTTP; socket blocked; reduceOnly on closes | 230 | Low |
+| 2b | S0-10 | test/test_v2_isolation_guard.py | ADD TEST | only an allow-list may import live modules; /fapi order strings only in 3 files | 150 | High |
+| 2b | S0-11 | .github/workflows/flutter-build.yml | MODIFY | new informational "tests" job; the APK build does NOT depend on it | 45 | Low |
+| each | S0-R | README.md | DOCS | board + change log with real results | 40-120 | High |
+- TESTS: all offline, network blocked, no real Binance call ever. TEST SCRIPT STYLE: plain unittest, run as python3 test/<file>.py (like test_ai_isolation.py).
+- ACCEPTANCE: tests pass and the result is written in the board; protected-file hashes unchanged; owner has the inventory JSON; the CI job reports real pass / fail and is NOT called a safety gate until the owner says so.
+- RISK: low (tests and a read-only tool). ROLLBACK: delete the new files, revert the workflow.
+
+#### V2-S1 Persistent collectors (about 1,820 lines, 3 deliveries) - BLOCKED until the inventory report is reviewed
+- WHY: authentic scan-time data cannot be recreated later, so collection must start early. WHEN: after S0 rounds 1-2 and the inventory review. HOW: 15.7.
+| ID | File | Action | Purpose | Lines | Conf |
+|---|---|---|---|---|---|
+| S1-1 | backend/v2_store.py | ADD | v2_market.db schema (provisional until the inventory is reviewed), size accounting, safe purge | 260 | Med |
+| S1-2 | backend/v2_defs.py | ADD | versioned definitions (15.7) | 160 | Med |
+| S1-3 | backend/v2_collector.py | ADD | 5-min loop, official cohort, kill-switch, retries, budget, checkpoint, gaps | 380 | Med |
+| S1-4 | backend/api/v2_data.py | ADD | read-only routes: status, coverage, cohorts | 90 | Med |
+| S1-5 | backend/api_server.py | MODIFY | mount router + start collector behind a default-OFF flag (needs separate approval) | 40 | Med |
+| S1-6 | test/test_v2_collector.py, test/test_v2_store_isolation.py | ADD TEST | GET-only, no signing import, kill-switch, restart idempotency, gap recorded not filled, no cohort overwrite, proxy flag, separate DB files, purge never touches cohort_official / gap_log | 350 | Med |
+| S1-7 | backend/v2_candles.py | ADD | 3m / 5m closed candles, rate budget, gap refill | 220 | Low |
+| S1-8 | test/test_v2_candles.py | ADD TEST | gaps, retention, cap | 200 | Low |
+| S1-9 | README.md | DOCS | collection start time, coverage, limits | 120 | High |
+- ACCEPTANCE: guard test proves the collector cannot reach order code; restart creates no duplicates; gaps appear in gap_log; first collection date is shown. RISK: medium (phone I/O and battery). ROLLBACK: flag OFF; v2_market.db is separate.
+
+#### V2-S2 P&L reconciliation (about 990 lines)
+- WHY: one trusted number per concept; live never shown as paper. WHEN: after the inventory shows which fee / funding fields exist. HOW: v2_pnl.py reads the trade tables read-only and returns realized / floating / gross / net / fees / funding with live and paper apart; the Dashboard uses a breakdown card with a LIVE / PAPER badge.
+| ID | File | Action | Lines | Conf |
+|---|---|---|---|---|
+| S2-1 | backend/v2_pnl.py | ADD | 260 | Low |
+| S2-2 | test/test_v2_pnl_contamination.py | ADD TEST | 180 | Med |
+| S2-3 | test/test_net_pnl.py, test/test_period_pnl.py | MODIFY TEST | 120 | Med |
+| S2-4 | frontend/lib/widgets/pnl_breakdown_card.dart | ADD | 220 | Med |
+| S2-5 | screens/dashboard_screen.dart, providers/app_provider.dart | MODIFY | 150 | Med |
+- ACCEPTANCE: totals match the existing net / period P&L tests on fixtures; paper never labelled live. RISK low-medium. ROLLBACK: revert UI files; v2_pnl.py is unused by trading.
+
+#### V2-S3 Diagnostics (about 1,260 lines, 2 deliveries)
+- WHY: the diagnostic strip sits at the end of a long Dashboard list and uses a different source than the Ping tab. WHEN: after S1 gives collector status. HOW: one shared status model (backend, WebSocket, exchange feed, scanner freshness, collector, storage); compact strip anchored at the top of the Dashboard; new detail screen (filters, history, latency, reconnects) with the header anchored and only the history scrolling. The Ping tab stays the volume lab.
+| ID | File | Action | Lines | Conf |
+|---|---|---|---|---|
+| S3-1 | lib/models/diag_status.dart | ADD | 180 | Med |
+| S3-2 | lib/widgets/diagnostics_card.dart | MODIFY | 160 | Med |
+| S3-3 | lib/screens/diagnostics_screen.dart | ADD | 420 | Low |
+| S3-4 | main.dart or more_screen.dart (route) | MODIFY | 40 | High |
+| S3-5 | providers/app_provider*.dart, backend/api/v2_data.py | MODIFY | 220 | Med |
+| S3-6 | widget tests | ADD TEST | 180 | Low |
+- ACCEPTANCE: no contradictory statuses; header stays visible while history scrolls. RISK low. ROLLBACK: revert files.
+
+#### V2-S4 Design system + navigation (about 1,200 lines, 2 deliveries)
+- WHY: consistent look and states. WHEN: any time after S0. HOW: lib/theme/v2_tokens.dart (type, spacing, colors, number formats, 260); lib/widgets/v2/v2_card.dart, v2_state_views.dart (loading / error / empty / stale / offline), v2_table.dart (520); main.dart route registry that keeps scroll position and filters (160); widget tests (200); README (60). New screens use it first; old screens move over only when touched. Conf Med. ROLLBACK: revert main.dart.
+
+#### V2-S5 Positions + safe close preview (about 670 lines)
+- WHY: F4, the live-mode preview can differ from what live close really does. WHEN: after S0 and S4. HOW: positions_screen.dart shows a preview / count before plain close-all and panic flatten and a LIVE / PAPER badge (300); app_provider_positions.dart (80); OPTIONAL additive read-only /api/preview_flatten and a live-positions preview in api/trade.py (80, ONLY with separate approval); tests (150); README (60). The existing close calls and order parameters are NOT changed. Conf Low-Med. RISK medium (money screen). ROLLBACK: revert files.
+
+#### V2-S6 Charts (about 520 lines)
+- WHY: charts are the owner's main reading tool. HOW: inventory (candle_chart.dart 2,235, special_master.dart 873, india_chart_screen.dart 1,083, backend ai_vision.render_chart); candle_chart.dart gap markers, provisional-candle label, legend / tooltip, number format (200); special_master.dart (60); tests incl. backend-vs-Dart indicator parity on a fixed fixture (200); README (60). Conf Low (painter not yet read in depth).
+
+#### V2-S7 Radar and cohort view (about 1,610 lines, 2 deliveries)
+- WHY: the owner wants to see yesterday's / 2 / 3 / 7 days ago top coins and how they moved since. WHEN: after S1 has at least 1 day of data. HOW: screens/radar_screen.dart (520), widgets/cohort_table.dart (300), models (120), backend/v2_proxy_import.py (120, loads universe_days.json into proxy_cohort), v2_data.py (200), universe_strip.dart PROXY label (40), tests (250), README (60). Tabs Today / Yesterday / 2 / 3 / 7 days where coverage exists. Per row: original rank, snapshot price, latest price with its OWN timestamp, change, volume state, hours elapsed, freshness; a row opens chart and timeline. Past cohorts are never replaced by today's ranks. Days before collection started stay PROXY.
+
+#### V2-S8 Data summaries, Data Explorer, AI Vision evidence (about 1,530 lines; includes old NEXT-9, 2 deliveries)
+- WHY: the owner should see what data exists, what was tested and learned. WHEN: after the S0 inventory report. HOW: backend/v2_summaries.py (300: what happened / tested / learned / unknown with counts and coverage), screens/data_explorer_screen.dart (600), route in v2_data.py (80), vision_tab_screen.dart evidence link (120), tests (250). Existing data used as it is. NEXT-9 requirements carried over (owner, 28 Oct): evidence grades A+ / A / B / NO TRADE; the LLM only EXPLAINS; numbers and sample counts stay local; the UI keeps four layers apart: indicator, Brain evidence, AI view, decision (about +180 lines for an evidence helper).
+
+#### V2-S9 Knowledge Ledger (about 1,230 lines, 2 deliveries)
+- WHY: research conclusions must be traceable. HOW: backend/v2_ledger.py (300: insight -> experiment / model version -> record IDs -> candle / indicator snapshots -> fees -> outcome), api (100), screens/ledger_screen.dart (450), tests (220), README (60). Brain / AI data read-only. No LLM per candle. No execution authority.
+
+#### V2-S10 Scalp Lab (about 2,560 lines, 4 deliveries)
+- WHY: structured scalp research on authentic candles with only the two indicators. WHEN: after S1 candles have 3-4 weeks of data. HOW: S10a (about 1,500): v2_scalp_store.py + v2_replay.py (700; uses only the two indicators; can never import live code), scalp_lab_screen.dart (400), tests incl. an indicator whitelist (300), more_screen.dart route (40). S10b (about 1,060): the first 2 categories (EMA retest, Pump/Dump), about 500 each with UI and tests. Categories 3-8 (about 3,000 lines) are OPTIONAL and wait for real data. Each category keeps its own ledger.
+
+#### V2-S11 Stop-wick -> continuation -> re-entry study (about 960 lines)
+- HOW: backend/v2_wickstudy.py (400), UI card (300), tests (200), README (60). Replay only, separate namespace, needs S1 3m / 5m data.
+
+#### V2-S12 Settings taxonomy + fees / tax report (about 1,060 lines, 2 deliveries)
+- HOW: settings_screen.dart (1,739 lines) regrouped, about 300 changed lines, NO behaviour change; backend/v2_reports.py (300), screens/reports_screen.dart (250), tests (150), README (60).
+
+#### V2-S13 Performance, accessibility, final README (about 500 lines; includes old NEXT-10)
+- HOW: scroll / jank checks, accessibility, empty / error state sweep, README traceability close-out. Old NEXT-10 scope also covered: consistent components, loading / error / empty states, mobile spacing, performance, settings, paper-mode clarity.
+
+#### V2-S14 Brain-assisted PAPER A/B (was NEXT-8) (about 350 lines)
+- WHY: measure Current Bot vs Brain-filtered vs Brain-protect, net of fees and slippage, with daily target / loss, drawdown and expectancy. WHEN: after S2 (net P&L), S9 (ledger) and enough Brain data; own plan + ok. HOW (old estimate): new brain_paper_ab.py, a thin hook in smart_brain.py (1,258 lines), 1 Flutter card. Paper only, never live money; no change to strategy, entry, exit; uses only the 2 indicators and real outcomes.
+
+#### V2-S15 Brain Skip card (was NEXT-7 Flutter card) (about 130 lines)
+- WHY: the backend (brain_skip.py, key learn.skip) is DONE but the app shows nothing yet. WHEN: own small plan + ok. HOW: one small card in the Brain tab, read-only.
+
+#### V2-S16 Brain-to-trading rules (were B3, G1, G2) (about 270 lines)
+- WHY: let Brain lessons reach the bot slowly (section 8 steps C and D). WHEN: only when the Ready Check data conditions are true (section 6) AND the owner gives a SEPARATE explicit approval for each, because they change trading behaviour. HOW (old plans): B3 about 50 lines (brain_own.py, smart_brain.py, test): Brain OWN trades softly prefer deep clean setups, start when Timing Sync numbers are stable 3+ days. G1 about 100 lines (2-3 files): Brain skips clearly bad signals, paper, switch default OFF, start when Ready Check 1+2+3 are true. G2 about 120 lines (2 files): exit advice trails the stop, default OFF, start when Ready Check 4 is true. The section 8 safety rule stays: if trust falls back to "learning" or luck says "Could be luck", any filter turns itself off.
+
+#### V2-S17 Dual Bot options (were H1 and 'TP ladder last target')
+- H1: auto-start when data is ready (B3 auto, G1 / G2 only a READY chip, Brain behaviour untouched). TP-LAST: TP4 may sit inside or near the HD band while price can run past it, so the ladder may treat TP4 as the final target; it touches Dual exits (rule 1), so plan first. Line estimates are made when each is planned.
+
+#### V2-S18 Backlog, NOT PLANNED (were E4, E5, E6, Brain v2)
+- E4 failure replay card (about 80 lines), E5 own book on 7d names when today is pure chop, E6 SQLite for dual_lab_data.json when it is big or slow (the section 7 hold stays: V2 collectors use their OWN new DB and never change how Dual Bot saves), Brain v2 (regime, session, price action, careful small live size with a daily loss cap) only after the Ready Check and the section 5 path to real money.
+
+#### V2-S19 Backend cleanup (was section 9)
+- Old main.py, config.py and the _old/ move are owner-run (tools/old_check.sh); Claude deletes nothing. Legacy names change only with a separate approval.
+
+### 15.9 Totals (rough, Low-Med confidence, range 12,000 - 22,000 lines)
+| Phase | New code files | New test files | Existing code files modified | Existing tests extended | Est. lines |
+|---|---|---|---|---|---|
+| S0 | 3 | 7 | 1 (CI) | 0 | 2,100 |
+| S1 | 5 | 3 | 1 | 0 | 1,820 |
+| S2 | 2 | 1 | 2 | 2 | 990 |
+| S3 | 2 | 2 | 4 | 0 | 1,260 |
+| S4 | 4 | 2 | 1 | 0 | 1,200 |
+| S5 | 0 | 2 | 3 (1 optional) | 0 | 670 |
+| S6 | 0 | 2 | 2 | 0 | 520 |
+| S7 | 4 | 2 | 3 | 0 | 1,610 |
+| S8 | 2 | 2 | 2 | 0 | 1,530 |
+| S9 | 3 | 1 | 1 | 0 | 1,230 |
+| S10 | 8 | 4 | 1 | 0 | 2,560 |
+| S11 | 2 | 1 | 0 | 0 | 960 |
+| S12 | 2 | 1 | 1 | 0 | 1,060 |
+| S13 | 0 | 1 | 3 | 0 | 500 |
+| S14 | 1 | 1 | 1 | 0 | 350 |
+| S15 | 1 | 1 | 1 | 0 | 130 |
+| S16 | 0 | 3 | 6 | 0 | 270 |
+With the renamed old items (S14-S16): about 39 new code files, 36 new test files, about 24 distinct existing code files modified (2 need separate approval, S16 files need one each), 2 existing tests extended, README every delivery: about 100 distinct files, about 18,700 lines (S0-S16; S17-S19 are not estimated), about 30 deliveries. S0 grew from 1,465 to 2,100 lines after the extra safeguards (WAL handling, fail-closed redaction, symlink checks); S8 grew by about 180 lines because it now carries old NEXT-9. Optional Scalp categories 3-8 would add about 3,000 lines.
+
+### 15.10 Frontend audit (what exists today, verified by file)
+| Screen / area | Path (lines) | Status | Phase |
+|---|---|---|---|
+| Dashboard and P&L | screens/dashboard_screen.dart (966) | EXISTING; live / paper split NV | S2, S3, S4 |
+| Shell, tabs, swipe | main.dart | EXISTING (IndexedStack, 5 tabs) | S4 |
+| Positions and close | screens/positions_screen.dart (847), widgets/position_card.dart (1,029) | EXISTING; preview PARTIAL (F4) | S5 |
+| Orders / history | signals_screen.dart (600), alerts_screen.dart (1,119) | EXISTING; exact order-history screen NV | S4 |
+| Chart, TSI, Z, SD | widgets/candle_chart.dart (2,235), special_master.dart (873), india_chart_screen.dart (1,083) | EXISTING | S6 |
+| Brain evidence | screens/brain_screen.dart (29) -> widgets/smart_brain_view.dart (1,318) | EXISTING (thin wrapper) | S9 reads |
+| AI Vision | screens/vision_tab_screen.dart (2,026) | EXISTING | S8 |
+| Scanner / market | screens/market_screen.dart (232), widgets/universe_strip.dart, scan_lab_card.dart | EXISTING; 7-day = PROXY | S7 |
+| Dual Desk / wallets | screens/dual_bot_screen.dart (957) | EXISTING | S4, S5 |
+| Strategy Doctor | screens/strategy_doctor_screen.dart (645) | EXISTING; uses ADX tags | KEEP |
+| Tag Lab | screens/tag_lab_screen.dart (38) | EXISTING (thin wrapper) | KEEP |
+| Scalp Lab | none | MISSING | S10 |
+| Ping Lab | screens/ping_tab_screen.dart (333) | EXISTING (volume pings) | KEEP |
+| Diagnostics | widgets/diagnostics_card.dart (452); no detail page | PARTIAL | S3 |
+| Radar / cohorts | none | MISSING | S7 |
+| Data Explorer | none | MISSING | S8 |
+| Settings | screens/settings_screen.dart (1,739) | EXISTING | S12 |
+| Reports | screens/ai_report_screen.dart (290), india_pnl_report_screen.dart (199) | PARTIAL | S12 |
+| AI tab / insights / live / assistant, India screens | ai_tab, ai_insights, ai_live, ai_assistant, india_* | EXISTING | KEEP (out of V2 scope unless the owner says so) |
+Every screen that changes gets loading, error, empty, stale and offline states (S4 components), tests and acceptance criteria in its delivery note. Flutter is kept; the evidence does not justify a migration. Existing feature flows are not deleted or rewritten without a reason and approval.
+
+### 15.11 Traceability (owner requirement -> phase -> files -> tests -> README ID)
+| Requirement (owner addendum) | Phase | Main files | Tests | README ID |
+|---|---|---|---|---|
+| 1 Crypto timing, 5-min snapshots, boundary | S1 | v2_collector, v2_store, v2_defs | test_v2_collector | V2-S1-COLLECT, V2-S1-BOUNDARY |
+| 2 Two indicators only | S0, S6, S10 | indicator map 15.6 | S10a whitelist, S6 parity | V2-IND |
+| 3 Strict data separation | S0, S1, S2 | v2_store, guard | isolation + contamination tests | V2-ISO |
+| 4 Live Binance safety | S0, S5 | protected-file list 15.4 | S0-7 .. S0-10 | V2-S0-LIVE |
+| 5 Authentic cohorts | S1, S7 | cohort_official, radar | no-overwrite, proxy label | V2-S1-COH, V2-S7-RADAR |
+| 6 Premium Flutter frontend | S3-S7, S12 | 15.10 | widget tests | V2-UI |
+| 7 Brain / AI boundary | S9 | v2_ledger (read-only) | ledger traceability | V2-S9-LEDGER |
+| 8 File-level estimates | 15.8 | this section | n/a | V2-PLAN |
+| 9 README + requirement IDs | every delivery | README.md | n/a | V2-README |
+| 10 Approval gate | done (short plan) | no code before ok | n/a | V2-GATE |
+| Old pending items (owner, 29 Oct) | S0, S8, S13 (merged); S14-S19 (renamed) | section 15.14 | n/a | V2-MAP |
+
+### 15.12 Open decisions (owner)
+- D1 OLD vs NEW ITEMS: same job = do once; distinct job = keep as a separate row in the canonical Part 19–24 range. Old labels remain for traceability and do not change the master order.
+- D2 COHORT TIME: which snapshot stands for "the day's official cohort". Default (INF): the last snapshot before the 00:00 UTC boundary closes the day. Every 5-min snapshot is saved anyway, so the choice can change later without data loss.
+- D3 api_server.py router mount (S1): separate approval at that stage.
+- D4 api/trade.py live-mode preview fix (S5): separate approval at that stage.
+- D5 Scalp categories 3-8: optional, decided after real data exists.
+- D6 The 2 Pine scripts: optional; sharing them lets exact equivalence be marked.
+- D7 The CI test job becomes a gate only after the baseline is green AND the owner says so.
+- D8 India screens: out of V2 scope unless the owner says otherwise.
+
+### 15.13 What the system looks like after V2 (end state)
+- Same 5 tabs. Dashboard: P&L split live / paper, a diagnostics strip at the top. Diagnostics page: six health statuses with history. Positions: preview before every close. Radar: cohorts for today / yesterday / 2 / 3 / 7 days, real vs PROXY clearly marked. Data Explorer: what data exists, what was tested, learned, unknown. Knowledge Ledger: every conclusion traceable to its records. Scalp Lab: separate replay per category. Reports: fees and tax view.
+```
+Binance public API --GET only--> v2_collector --> v2_market.db  (snapshots, cohorts, candles, gaps)
+                                                    |--> Radar / Data Explorer / Diagnostics (read-only screens)
+                                                    |--> Scalp Lab replay --> v2_scalp.db
+Live bot paths A and B --> Binance orders        (UNCHANGED, separate, protected)
+Existing paper / Dual / Brain DBs --(read-only)--> inventory, Ledger (v2_ledger.db), Explorer
+```
+- The owner can open this README and know: what was planned, why, what is done (board), what is next, and which decisions are still his.
+
+
+### 15.14 Legacy-ID → canonical Part mapping (historical IDs; the Part numbers at the top control order)
+Proposed by Claude from reading sections 3, 4, 4a, 4b, 4c, 5, 7, 8, 9. Old history (change log, section 3 DONE) is NOT renamed; only pending items get a V2 name, and the old name stays in brackets so searches still work.
+| Old item (where) | Same job as a V2 item? | Decision | V2 name | Note |
+|---|---|---|---|---|
+| NEXT-1 real archive counts (4c) | YES: V2 inventory tool | merged, do once | V2-S0-INV (round 1c) | the inventory JSON replaces counts pasted by hand |
+| NEXT-9 AI Vision + Brain evidence (4c) | YES: V2-S8 AI Vision evidence | merged, do once | V2-S8 | S8 now carries A+ / A / B / NO TRADE, "LLM only explains", 4 separate layers |
+| NEXT-10 final polish (4c) | YES: V2-S13 (+ S4 components) | merged, do once | V2-S13 | scope kept: states, spacing, performance, settings, paper-mode clarity |
+| NEXT-7 Flutter card (4c) | no | renamed | V2-S15 | backend brain_skip.py is DONE |
+| NEXT-8 Brain paper A/B (4c) | no (needs S2 fees and S9 ledger first) | renamed | V2-S14 | paper only, never live money |
+| B3, G1, G2 (4, 8) | no | renamed, WAIT FOR DATA | V2-S16 | each needs a separate explicit approval (they change trading behaviour) |
+| H1 auto-start, 'TP ladder last target' (4b) | no | renamed | V2-S17 | TP-LAST touches Dual exits, plan first |
+| E4, E5, E6, Brain v2 (4a backlog) | no | renamed, NOT PLANNED | V2-S18 | the section 7 SQLite hold is not affected |
+| Backend cleanup (9) | no | renamed, owner decides | V2-S19 | owner-run tools, nothing deleted by Claude |
+| U1-U5 archive, universe, desk, reports (DONE) | related but different | stay DONE | n/a | the 7-day universe stays and is shown as RETROSPECTIVE PROXY (V2-S7) |
+| Section 7 decisions on hold (Dual explore mode, no Dual SQLite, gold / multi-asset / live last) | not phases | stay as decisions | n/a | V2 collectors use their own new DB |
+Status: documentation mapping for navigation. The 24-Part master roadmap at the top controls order and progress; historical rows remain references and do not create extra work. This mapping does not authorize changes to live-trading behaviour.
