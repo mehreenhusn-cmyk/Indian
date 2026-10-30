@@ -302,6 +302,11 @@ async def on_startup():
             _t4.start()
         except Exception as e:
             print(f"[startup] vol_layer skipped: {e}")
+        try:                               # V2 collectors (Part 72): public GET only, write only v2_market.db, own process; owner switch files stay in charge
+            import v2_runner
+            v2_runner.start_watchdog(DATA_DIR, 45.0)
+        except Exception as e:
+            print(f"[startup] v2 collector runner skipped: {e}")
         # The older AI modules (trackers, shadow lab, desk, coach, pick, ...) only start when legacy_ai_enabled is on.
         if settings_store.get("legacy_ai_enabled", False):
             try:
