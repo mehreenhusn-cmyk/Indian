@@ -24,7 +24,8 @@ SM = open(os.path.join(WID, "special_master.dart"), encoding="utf-8").read()
 BOT = open(os.path.join(ROOT, "backend", "recovered_bot", "strategy.py"), encoding="utf-8").read()
 IND = open(os.path.join(ROOT, "backend", "recovered_bot", "india_indicators.py"), encoding="utf-8").read()
 # fingerprints (first 16 hex of sha256): the rest of each Dart file as it was BEFORE Part 21 (the changed function cut out), and the two backend references
-CHART_REST, SM_REST = "34754276a0278d3c", "5dd8a48af6c7e5d1"
+# CHART_REST was 34754276a0278d3c until Part 22 (gap markers / forming label added elsewhere in candle_chart.dart; the EMA function itself is unchanged)
+CHART_REST, SM_REST = "8453b3e3982eed8c", "5dd8a48af6c7e5d1"
 # the two NEW Dart functions (with their comments): the Python mirrors above copy exactly this text, so any later edit must update the mirrors and these two
 CHART_NEW, SM_NEW = "b7ec8919454800f2", "05ac6350749c9a82"
 BOT_REF, IND_REF = "500128d7e040b930", "b69294c3147c2eb6"

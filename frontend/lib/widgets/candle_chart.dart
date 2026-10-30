@@ -116,6 +116,18 @@ List<SdLevels?> computeSdSeries(List<double> closes, {int lookback = 200}) {
   return out;
 }
 
+/// Indexes of candles that come AFTER a hole in the data: the time since the candle before is more than 1.5 steps
+/// (a candle the exchange / backend did not deliver). The chart is drawn by candle number, so a hole is invisible
+/// unless it is marked; lines are never drawn across it (Part 22). [stepMs] <= 0 means unknown = no gaps.
+List<int> chartGapIndexes(List<int> ts, int stepMs) {
+  final out = <int>[];
+  if (stepMs <= 0) return out;
+  for (int i = 1; i < ts.length; i++) {
+    if (ts[i] - ts[i - 1] > stepMs * 1.5) out.add(i);
+  }
+  return out;
+}
+
 String _fmtPrice(double p) {
   final a = p.abs();
   if (a >= 1000) return p.toStringAsFixed(2);
@@ -664,12 +676,25 @@ class _ChartPainter extends CustomPainter {
       canvas.drawRect(Rect.fromLTRB(cx - bodyW / 2, bTop, cx + bodyW / 2, bBot), Paint()..color = color);
     }
 
+    // Data holes (Part 22): a faint dashed line between the two candles around a missing candle, and the EMA
+    // lines are cut there instead of being drawn straight across it.
+    final gapStepMs = (timeframeMs != null && timeframeMs! > 0) ? timeframeMs! : (n >= 2 ? s.ts[n - 1] - s.ts[n - 2] : 0);
+    final gaps = chartGapIndexes(s.ts, gapStepMs).toSet();
+    if (!compact) {
+      for (final g in gaps) {
+        if (g < first || g > last) continue;
+        final gx = (xOf(g - 1) + xOf(g)) / 2;
+        _dashed(canvas, Offset(gx, 0), Offset(gx, plotH), Paint()..color = _ink.withOpacity(0.28)..strokeWidth = 1);
+      }
+    }
+
     // EMA lines (display only).
     void drawEma(List<double> v, Color color) {
       final path = Path();
       var started = false;
       for (int i = first; i <= last; i++) {
         if (i < 0 || i >= n) continue;
+        if (gaps.contains(i)) started = false;
         final x = xOf(i);
         final y = yOf(v[i]);
         if (!started) {
@@ -1086,14 +1111,22 @@ class _ChartPainter extends CustomPainter {
       final spans = <TextSpan>[];
       if (ema30) {
         spans.add(TextSpan(
-          text: 'EMA30 ${_fmtPrice(s.e30[idx])}   ',
+          text: 'EMA30 ${idx >= 29 ? _fmtPrice(s.e30[idx]) : '--'}   ',
           style: TextStyle(color: _e30, fontSize: 10, fontWeight: FontWeight.w600),
         ));
       }
       if (ema50) {
         spans.add(TextSpan(
-          text: 'EMA50 ${_fmtPrice(s.e50[idx])}',
+          text: 'EMA50 ${idx >= 49 ? _fmtPrice(s.e50[idx]) : '--'}',
           style: TextStyle(color: _e50, fontSize: 10, fontWeight: FontWeight.w600),
+        ));
+      }
+      // Closed or forming (Part 22): only when the wall clock and the timeframe are known.
+      if (nowMs != null && timeframeMs != null && timeframeMs! > 0) {
+        final forming = idx == n - 1 && s.ts[n - 1] + timeframeMs! > nowMs!;
+        spans.add(TextSpan(
+          text: forming ? '   forming' : '   closed',
+          style: TextStyle(color: _ink.withOpacity(0.55), fontSize: 9, fontWeight: FontWeight.w500),
         ));
       }
       final tpn = TextPainter(text: TextSpan(children: spans), textDirection: TextDirection.ltr)..layout(maxWidth: plotW - 12);
