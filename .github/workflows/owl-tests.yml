@@ -1,0 +1,46 @@
+# Part 71: INFORMATIONAL tests job. Runs ONLY when the owner taps "Run workflow" (workflow_dispatch). It has NO push / pull_request trigger,
+# so it never uses GitHub minutes on its own, and it lives in its own file: the APK build (flutter-build.yml) is not touched and cannot depend on it.
+# What it runs: every test/test_v2_*.py (the V2 tests, offline, no real network, no real order), one file at a time, with the real result of each.
+# continue-on-error: the run is not marked as a broken build when a test fails; the failed job + the summary table show the real pass / fail.
+name: Owl tests (manual, informational)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    continue-on-error: true
+    steps:
+    - uses: actions/checkout@v4
+
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        cache: pip
+        cache-dependency-path: backend/requirements_api.txt
+
+    - name: Install backend requirements
+      run: pip install -q -r backend/requirements_api.txt
+
+    - name: Run the V2 tests (one file at a time, real result of each)
+      run: |
+        fail=0
+        {
+          echo "### Owl V2 tests"
+          echo ""
+          echo "| Test file | Result |"
+          echo "|---|---|"
+        } >> "$GITHUB_STEP_SUMMARY"
+        for f in test/test_v2_*.py; do
+          if timeout 300 python3 "$f" > "/tmp/$(basename "$f").log" 2>&1; then
+            r="PASSED"
+          else
+            r="FAILED"; fail=1
+            echo "=== $f FAILED (last 40 lines) ==="; tail -n 40 "/tmp/$(basename "$f").log"
+          fi
+          echo "$f: $r"
+          echo "| $f | $r |" >> "$GITHUB_STEP_SUMMARY"
+        done
+        exit $fail
