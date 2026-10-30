@@ -10,6 +10,7 @@ import '../widgets/top_movers_card.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/dashboard_cockpit.dart';
 import '../widgets/diagnostics_card.dart';
+import '../widgets/diag_pinned_strip.dart';
 import '../widgets/system_load_card.dart';
 import '../widgets/tag_lab_tile.dart';
 import '../widgets/btc_live_tile.dart';
@@ -108,7 +109,12 @@ class DashboardScreen extends StatelessWidget {
             final targetHit = !isLiveStats && dailyTarget > 0 && todayPnl >= dailyTarget;
             final lossLimitHit = !isLiveStats && dailyLossLimit > 0 && todayPnl <= -dailyLossLimit;
 
-            return OWLRefresh(
+            // Part 26: health strip pinned OUTSIDE the scroll view, so it never scrolls away.
+            return Column(
+              children: [
+                const DiagPinnedStrip(),
+                Expanded(
+                  child: OWLRefresh(
               onRefresh: () => provider.fetchStatus().timeout(const Duration(seconds: 6), onTimeout: () {}),
               child: SingleChildScrollView(
               physics: owlPullPhysics,
@@ -275,6 +281,9 @@ class DashboardScreen extends StatelessWidget {
                 ],
               ),
               ),
+                  ),
+                ),
+              ],
             );
           },
         ),
