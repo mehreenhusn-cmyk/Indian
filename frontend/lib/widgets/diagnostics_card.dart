@@ -1,9 +1,12 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../models/diag_history.dart';
 import '../models/diag_status.dart';
 import '../providers/app_provider.dart';
+import '../screens/diagnostics_screen.dart';
 import '../theme/app_theme.dart';
+import 'owl_route.dart';
 
 /// Part 24: fills the shared 6-check model (models/diag_status.dart) from the REAL status keys.
 /// null = not known = grey UNKNOWN, never a made-up green.
@@ -143,6 +146,7 @@ class _DiagnosticsCardState extends State<DiagnosticsCard> {
         final unprotected = provider.unprotectedPositions;
         final errors = provider.recentApiErrors;
         final diag = buildDiagStatus(provider);
+        DiagHistory.instance.record(diag); // Part 25: keeps the change history (adds only on a level change)
 
         // Feed Age color: green <3s, amber >5s, orange in between - matches
         // the exact thresholds asked for ("green agar <3s, yellow agar >5s").
@@ -244,7 +248,15 @@ class _DiagnosticsCardState extends State<DiagnosticsCard> {
               ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(AppSpacing.m, 0, AppSpacing.m, AppSpacing.m - 2),
-                child: _HealthStrip(diag: diag),
+                child: InkWell(
+                  // Part 25: tap the strip = open the detail + history page.
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusSmall),
+                  onTap: () {
+                    AppHaptics.light();
+                    Navigator.of(context).push(OwlRoute<void>(builder: (_) => const DiagnosticsScreen()));
+                  },
+                  child: _HealthStrip(diag: diag),
+                ),
               ),
               AnimatedSize(
                 duration: AppMotion.base,
