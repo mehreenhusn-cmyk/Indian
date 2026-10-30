@@ -246,4 +246,20 @@ extension AppProviderPositions on AppProvider {
       return false;
     }
   }
+
+  /// NEW (Part 62): the read-only fees + tax report (/api/v2/fees_tax, made by backend/v2_reports.py). Changes nothing.
+  /// Returns the backend's report map, or {"state": "off"} (404: the V2 API switch file is not there), {"state": "old"} (any other
+  /// non-200, e.g. older backend) or {"state": "error"} when the request itself failed. Never throws.
+  Future<Map<String, dynamic>> fetchFeesTax() async {
+    try {
+      final res = await _getResilient(_u('/api/v2/fees_tax'));
+      if (res.statusCode == 404) return {'state': 'off'};
+      if (res.statusCode != 200) return {'state': 'old', 'code': res.statusCode};
+      final data = jsonDecode(res.body);
+      if (data is Map<String, dynamic>) return data;
+      return {'state': 'old'};
+    } catch (_) {
+      return {'state': 'error'};
+    }
+  }
 }

@@ -710,6 +710,12 @@ try:
     app.include_router(_v2_preview_router(require_api_token, _bot_arg))
 except Exception as _e:
     print(f"[startup] v2 preview route skipped: {_e}")
+# Fees + tax report route (Part 62, read-only, same v2_api_enabled switch).
+try:
+    from api.v2_reports_route import make_router as _v2_reports_router
+    app.include_router(_v2_reports_router(require_api_token, DATA_DIR))
+except Exception as _e:
+    print(f"[startup] v2 fees+tax route skipped: {_e}")
 
 
 app.include_router(_st_exchange_router(require_api_token))

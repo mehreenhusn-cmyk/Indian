@@ -811,14 +811,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ),
                         _glassHeader(p, t),
                         const SettingsHeading('Trading'),
-                        // ---- Section B: Trade Risk Settings ----
+                        // ---- Part 63: the old Trade Risk card is now 5 small groups (same fields, same order, same code) ----
                         SettingsGroup(
-                          icon: Icons.tune_rounded,
-                          title: 'Trade Risk',
+                          icon: Icons.schedule,
+                          title: 'Timeframe',
                           tint: p.accent,
                           initiallyExpanded: false,
-                          summary: '$_timeframe · ${_fmtVal(cur['invest_amount'])} USDT · ${_fmtVal(cur['leverage'])}x · '
-                              '${_tpMode == 'universal' ? 'TP ${_fmtVal(cur['scalp_close_roi_pct'])}%' : 'Strategy TP'}',
+                          summary: _timeframe,
                           children: [
                             Text('Strategy Timeframe',
                                 style: t.primary.copyWith(fontSize: 13, fontWeight: FontWeight.w600)),
@@ -830,9 +829,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             ),
                             const SizedBox(height: 10),
                             _timeframeSelector(p, t),
-                            Divider(color: p.border, height: 24),
+                          ],
+                        ),
+                        SettingsGroup(
+                          icon: Icons.account_balance_wallet_outlined,
+                          title: 'Size and leverage',
+                          tint: p.accent,
+                          initiallyExpanded: false,
+                          summary: '${_fmtVal(cur['invest_amount'])} USDT · ${_fmtVal(cur['leverage'])}x',
+                          children: [
                             _field('Invest Amount (USDT)', 'invest_amount', errors: errors),
                             _field('Leverage', 'leverage', errors: errors),
+                          ],
+                        ),
+                        SettingsGroup(
+                          icon: Icons.flag_outlined,
+                          title: 'Take profit',
+                          tint: p.accent,
+                          initiallyExpanded: false,
+                          summary: _tpMode == 'universal' ? 'Universal TP ${_fmtVal(cur['scalp_close_roi_pct'])}%' : 'Strategy TP',
+                          children: [
                             Text('TP Execution Mode',
                                 style: t.primary.copyWith(fontSize: 13, fontWeight: FontWeight.w600)),
                             const SizedBox(height: 6),
@@ -860,26 +876,47 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   : 'Switch to "Universal ROI %" above to set a target - this field is inactive '
                                       'while Strategy TP mode is selected.',
                             ),
-                            if (_tpMode == 'strategy') ...[
-                              Divider(color: p.border, height: 24),
-                              Text('Trailing stop',
-                                  style: t.primary.copyWith(fontSize: 13, fontWeight: FontWeight.w600)),
-                              const SizedBox(height: 6),
+                          ],
+                        ),
+                        SettingsGroup(
+                          icon: Icons.trending_down_rounded,
+                          title: 'Stop and trail',
+                          tint: p.accent,
+                          initiallyExpanded: false,
+                          summary: _tpMode != 'strategy' ? 'Not used (Universal TP)' : (_trailMode == 'step1' ? '1-step trail' : (_trailMode == 'step2' ? '2-step trail' : 'Trail off')),
+                          children: [
+                            if (_tpMode != 'strategy')
                               Text(
-                                _trailMode == 'step1'
-                                    ? '1-step (default): the stop follows one TP behind. TP1 hit: SL to entry. TP2 hit: SL to TP1. '
-                                        'TP3 hit: SL to TP2. TP4 still closes the trade.'
-                                    : _trailMode == 'step2'
-                                        ? '2-step (slower): after TP1 the stop stays where it was. TP2 hit: SL to entry. '
-                                            'TP3 hit: SL to TP1. TP4 still closes the trade. More room, but a trade '
-                                            'that only touched TP1 can still end at the original SL.'
-                                        : 'Off: once TP1 is hit the SL moves to entry, nothing more.',
+                                'The trailing stop is used only in Strategy TP mode. Switch the TP mode in the Take profit group to use it.',
                                 style: t.metadata,
-                              ),
-                              const SizedBox(height: 10),
-                              _trailSelector(p, t),
+                              )
+                            else ...[
+                            Text('Trailing stop',
+                                style: t.primary.copyWith(fontSize: 13, fontWeight: FontWeight.w600)),
+                            const SizedBox(height: 6),
+                            Text(
+                              _trailMode == 'step1'
+                                  ? '1-step (default): the stop follows one TP behind. TP1 hit: SL to entry. TP2 hit: SL to TP1. '
+                                      'TP3 hit: SL to TP2. TP4 still closes the trade.'
+                                  : _trailMode == 'step2'
+                                      ? '2-step (slower): after TP1 the stop stays where it was. TP2 hit: SL to entry. '
+                                          'TP3 hit: SL to TP1. TP4 still closes the trade. More room, but a trade '
+                                          'that only touched TP1 can still end at the original SL.'
+                                      : 'Off: once TP1 is hit the SL moves to entry, nothing more.',
+                              style: t.metadata,
+                            ),
+                            const SizedBox(height: 10),
+                            _trailSelector(p, t),
                             ],
-                            Divider(color: p.border, height: 24),
+                          ],
+                        ),
+                        SettingsGroup(
+                          icon: Icons.shield_outlined,
+                          title: 'Daily limits',
+                          tint: p.accent,
+                          initiallyExpanded: false,
+                          summary: 'Target ${_fmtVal(cur['daily_target_usdt'])} · Loss limit ${_fmtVal(cur['daily_loss_limit_usdt'])} USDT',
+                          children: [
                             _field('Daily Target (USDT)', 'daily_target_usdt', errors: errors),
                             _field('Daily Loss Limit (USDT)', 'daily_loss_limit_usdt', errors: errors),
                           ],
@@ -947,13 +984,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ],
                         ),
                         const SettingsHeading('Account'),
-                        // ---- Section C: Binance Futures API Configuration ----
                         SettingsGroup(
                           icon: Icons.vpn_key_outlined,
-                          title: 'Binance Futures API',
+                          title: 'Binance keys',
                           tint: p.warning,
                           initiallyExpanded: false,
-                          summary: 'Binance · Live ${_liveTradingEnabled ? 'ON' : 'OFF'}',
+                          summary: 'Binance Futures · locked',
                           children: [
                             // Static locked indicator - OWL Terminal is hard-wired to Binance
                             // Futures only (the old KuCoin/Binance exchange switcher and its
@@ -993,7 +1029,43 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               'TODAY = trades already closed today; OPEN is live and can still change.',
                               style: t.metadata,
                             ),
-                            Divider(color: p.border, height: 24),
+                            const SizedBox(height: 4),
+                            Text('BINANCE CREDENTIALS',
+                                style: t.metadata.copyWith(letterSpacing: 1)),
+                            const SizedBox(height: 4),
+                            _field('Binance API Key', 'binance_api_key', isText: true, errors: errors),
+                            _field('Binance API Secret', 'binance_api_secret', isText: true, errors: errors),
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: AppSpacing.m),
+                              child: OutlinedButton(
+                                onPressed: _isTestingBinanceConnection ? null : _testBinanceConnection,
+                                style: OutlinedButton.styleFrom(
+                                  minimumSize: const Size(double.infinity, 40),
+                                  side: BorderSide(color: p.accent),
+                                ),
+                                child: Text(
+                                  _isTestingBinanceConnection ? 'Testing...' : 'Test Binance Connection',
+                                  style: TextStyle(color: p.accent),
+                                ),
+                              ),
+                            ),
+                            if (_binanceTestConnectionResult != null)
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: AppSpacing.m),
+                                child: Text(
+                                  _binanceTestConnectionResult!,
+                                  style: AppTypography.secondaryData.copyWith(color: _binanceTestConnectionResult!.startsWith('✅') ? p.positive : p.negative, fontSize: 13),
+                                ),
+                              ),
+                          ],
+                        ),
+                        SettingsGroup(
+                          icon: Icons.bolt_rounded,
+                          title: 'Live trading',
+                          tint: p.warning,
+                          initiallyExpanded: false,
+                          summary: 'Live ${_liveTradingEnabled ? 'ON' : 'OFF'}',
+                          children: [
                             Container(
                               padding: const EdgeInsets.all(10),
                               margin: const EdgeInsets.only(bottom: AppSpacing.m),
@@ -1024,35 +1096,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               value: _liveTradingEnabled,
                               onChanged: (v) => _onLiveTradingToggled(v),
                             ),
-                            const SizedBox(height: 4),
-                            Text('BINANCE CREDENTIALS',
-                                style: t.metadata.copyWith(letterSpacing: 1)),
-                            const SizedBox(height: 4),
-                            _field('Binance API Key', 'binance_api_key', isText: true, errors: errors),
-                            _field('Binance API Secret', 'binance_api_secret', isText: true, errors: errors),
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: AppSpacing.m),
-                              child: OutlinedButton(
-                                onPressed: _isTestingBinanceConnection ? null : _testBinanceConnection,
-                                style: OutlinedButton.styleFrom(
-                                  minimumSize: const Size(double.infinity, 40),
-                                  side: BorderSide(color: p.accent),
-                                ),
-                                child: Text(
-                                  _isTestingBinanceConnection ? 'Testing...' : 'Test Binance Connection',
-                                  style: TextStyle(color: p.accent),
-                                ),
-                              ),
-                            ),
-                            if (_binanceTestConnectionResult != null)
-                              Padding(
-                                padding: const EdgeInsets.only(bottom: AppSpacing.m),
-                                child: Text(
-                                  _binanceTestConnectionResult!,
-                                  style: AppTypography.secondaryData.copyWith(color: _binanceTestConnectionResult!.startsWith('✅') ? p.positive : p.negative, fontSize: 13),
-                                ),
-                              ),
-                            Divider(color: p.border, height: 24),
                             Text('Position Size Mode', style: t.secondary.copyWith(color: p.textSecondary)),
                             const SizedBox(height: 4),
                             Row(
@@ -1073,21 +1116,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                         const SizedBox(height: AppSpacing.s),
                         const SettingsHeading('Alerts & AI'),
-                        _voiceCard(context),
-                        // ---- Section D: System Preferences (Telegram + AI Assistant) ----
                         SettingsGroup(
                           icon: Icons.smart_toy_outlined,
-                          title: 'AI & Telegram',
+                          title: 'AI assistant',
                           tint: p.purple,
                           initiallyExpanded: false,
-                          summary: 'AI ${_aiEnabled ? 'ON' : 'OFF'} · Telegram '
-                              '${(cur['telegram_bot_token'] as String? ?? '').isEmpty ? 'not linked' : 'linked'}',
+                          summary: 'AI ${_aiEnabled ? 'ON' : 'OFF'}',
                           children: [
-                            Text('TELEGRAM', style: t.metadata.copyWith(letterSpacing: 1)),
-                            const SizedBox(height: 4),
-                            _field('Bot Token', 'telegram_bot_token', isText: true, errors: errors),
-                            _field('Chat ID', 'telegram_chat_id', isText: true, errors: errors),
-                            Divider(color: p.border, height: 24),
                             Text('AI ASSISTANT', style: t.metadata.copyWith(letterSpacing: 1)),
                             const SizedBox(height: 4),
                             SwitchListTile(
@@ -1126,6 +1161,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             ),
                           ],
                         ),
+                        SettingsGroup(
+                          icon: Icons.send_outlined,
+                          title: 'Telegram',
+                          tint: p.purple,
+                          initiallyExpanded: false,
+                          summary: (cur['telegram_bot_token'] as String? ?? '').isEmpty ? 'Not linked' : 'Linked',
+                          children: [
+                            Text('TELEGRAM', style: t.metadata.copyWith(letterSpacing: 1)),
+                            const SizedBox(height: 4),
+                            _field('Bot Token', 'telegram_bot_token', isText: true, errors: errors),
+                            _field('Chat ID', 'telegram_chat_id', isText: true, errors: errors),
+                          ],
+                        ),
+                        _voiceCard(context),
                         const SizedBox(height: AppSpacing.s),
                         const SettingsHeading('App'),
                         _appearanceCard(context),
