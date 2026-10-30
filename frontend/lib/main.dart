@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 
+import 'navigation/app_routes.dart';
 import 'providers/app_provider.dart';
 import 'screens/brain_screen.dart';
 import 'screens/dashboard_screen.dart';
@@ -398,7 +399,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   double _swipeDx = 0;
 
   // NEXT-4: swipe follows the bar (Dash, Market, Pos, Brain), then the tabs that now live under More (Signals, Dual Bot, AI), then More.
-  static const List<int> _order = [0, 1, 2, 7, 3, 4, 5, 6];
+  static final List<int> _order = AppRoutes.swipeScreens;   // Part 27: from the route map
 
   void _swipeTab(int dir) {
     final at = _order.indexOf(_currentIndex);

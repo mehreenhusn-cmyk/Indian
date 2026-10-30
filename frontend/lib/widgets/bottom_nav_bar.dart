@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../navigation/app_routes.dart';
 import '../theme/app_theme.dart';
 import 'owl_pressable.dart';
 
@@ -18,7 +19,7 @@ class BottomNavBar extends StatelessWidget {
 
   // Outlined icon when idle, filled when selected. AI = CPU chip (no more sparkle).
   // The visible tab -> the screen index it opens (7 = Brain screen, 6 = More).
-  static const List<int> _screens = [0, 1, 2, 7, 6];
+  static final List<int> _screens = AppRoutes.barScreens;   // Part 27: from the route map
 
   static const List<IconData> _icons = [
     Icons.space_dashboard_outlined,

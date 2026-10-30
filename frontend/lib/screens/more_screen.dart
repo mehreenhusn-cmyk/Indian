@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../navigation/app_routes.dart';
 import '../providers/app_provider.dart';
 import '../theme/app_theme.dart';
 import '../config_flags.dart';
@@ -46,9 +47,9 @@ class MoreScreen extends StatelessWidget {
             Text('More', style: t.section.copyWith(fontSize: 22, fontWeight: FontWeight.w800)),
             const SizedBox(height: AppSpacing.l),
             _label(context, 'MORE TABS'),
-            _row(context, Icons.sensors_rounded, 'Signals', 'Signals and alerts', () => context.read<AppProvider>().goToTab(3)),
-            _row(context, Icons.smart_toy_rounded, 'Dual Bot', 'Dual Bot trades, desk and reports', () => context.read<AppProvider>().goToTab(4)),
-            _row(context, Icons.memory_rounded, 'AI', 'AI Vision and the AI tab', () => context.read<AppProvider>().goToTab(5)),
+            _row(context, Icons.sensors_rounded, 'Signals', 'Signals and alerts', () => context.read<AppProvider>().goToRoute(AppRoute.signals)),
+            _row(context, Icons.smart_toy_rounded, 'Dual Bot', 'Dual Bot trades, desk and reports', () => context.read<AppProvider>().goToRoute(AppRoute.dualBot)),
+            _row(context, Icons.memory_rounded, 'AI', 'AI Vision and the AI tab', () => context.read<AppProvider>().goToRoute(AppRoute.ai)),
             const SizedBox(height: AppSpacing.l),
             _label(context, 'TRADING TOOLS'),
             _row(context, Icons.hub_outlined, 'Tag Lab', 'Test ideas on old candles',

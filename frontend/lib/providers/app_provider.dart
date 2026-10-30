@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import '../navigation/app_routes.dart';
 import '../services/sound_service.dart';
 
 part 'app_provider_vision.dart';
@@ -159,6 +160,9 @@ class AppProvider extends ChangeNotifier with SoundAlerts {
     navigateToTabRequest = index;
     notifyListeners();
   }
+
+  /// Part 27: open a page by NAME (AppRoute), not by a number. goToTab(int) stays for old callers.
+  void goToRoute(AppRoute route) => goToTab(AppRoutes.screenIndex(route));
 
   int? consumeTabRequest() {
     if (navigateToTabRequest < 0) return null;
@@ -555,7 +559,7 @@ class AppProvider extends ChangeNotifier with SoundAlerts {
   int btcReq = 0;
   void openBtcSignals() {
     btcReq++;
-    goToTab(3);
+    goToRoute(AppRoute.signals);
     notifyListeners();
   }
 

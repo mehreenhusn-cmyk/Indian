@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../navigation/app_routes.dart';
 import '../providers/app_provider.dart';
 import '../theme/app_theme.dart';
 import 'owl_card.dart';
@@ -109,13 +110,12 @@ class DashboardCockpit extends StatelessWidget {
                 Row(children: [
                   if (isLive) tile('MARGIN USED', marginUsed.toStringAsFixed(2), p.accent) else tile('OPEN P&L', sg(openPnl), pc(openPnl)),
                   if (!isLive) tile('WIN RATE', '${winRate.toStringAsFixed(1)}%', p.accent),
-                  // Tabs: 0=Dash, 1=Market, 2=Positions, 3=Signals
-                  tile('OPEN POSITIONS', '$openCount', p.textPrimary, onTap: () => goToTab(2)),
+                  tile('OPEN POSITIONS', '$openCount', p.textPrimary, onTap: () => goToTab(AppRoutes.screenIndex(AppRoute.positions))),
                 ]),
                 const SizedBox(height: AppSpacing.s),
                 OWLPressable(
                   pressedScale: 0.99,
-                  onTap: () => goToTab(3),
+                  onTap: () => goToTab(AppRoutes.screenIndex(AppRoute.signals)),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(vertical: 4),
                     child: Row(children: [
