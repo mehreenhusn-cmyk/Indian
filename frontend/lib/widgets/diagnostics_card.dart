@@ -1,8 +1,54 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../models/diag_status.dart';
 import '../providers/app_provider.dart';
 import '../theme/app_theme.dart';
+
+/// Part 24: fills the shared 6-check model (models/diag_status.dart) from the REAL status keys.
+/// null = not known = grey UNKNOWN, never a made-up green.
+///  backend   : provider.error (null + first status received = answering)
+///  ws        : provider.wsConnected + provider.liveAgeSec
+///  market    : status['market_data_state']
+///  scanner   : status['server_ts'] - status['last_poll_cycle_ts'] <= 60 s (poll cycle is 8 s)
+///  strategy  : status['last_error'] starts with BOT CRASHED = bad, status['symbols_tracked'] > 0 = ready
+///  execution : provider.unprotectedPositions not empty = bad, else status['last_guard_tick']['ok']
+///              (no guard tick yet, e.g. paper mode = unknown)
+DiagStatus buildDiagStatus(AppProvider p) {
+  final st = p.status;
+  final serverTs = p.serverTs;
+  final bool? backend = p.error != null ? false : (serverTs != null ? true : null);
+
+  final cycle = (st['last_poll_cycle_ts'] as num?)?.toDouble();
+  final bool? scanner = (serverTs != null && cycle != null) ? (serverTs - cycle) <= 60 : null;
+
+  final err = st['last_error'];
+  final tracked = (st['symbols_tracked'] as num?)?.toInt();
+  bool? strategy;
+  if (err is String && err.startsWith('BOT CRASHED')) {
+    strategy = false;
+  } else if (tracked != null && tracked > 0) {
+    strategy = true;
+  }
+
+  final guard = st['last_guard_tick'];
+  bool? execution;
+  if (p.unprotectedPositions.isNotEmpty) {
+    execution = false;
+  } else if (guard is Map && guard['ok'] is bool) {
+    execution = guard['ok'] as bool;
+  }
+
+  return DiagStatus.fromInputs(
+    backendReachable: backend,
+    wsConnected: p.wsConnected,
+    liveAgeSec: p.liveAgeSec?.toDouble(),
+    marketDataState: st['market_data_state'] as String?,
+    scannerActive: scanner,
+    strategyReady: strategy,
+    executionHealthy: execution,
+  );
+}
 
 /// Collapsible engineering/ops diagnostics panel for the Dashboard.
 ///
@@ -96,6 +142,7 @@ class _DiagnosticsCardState extends State<DiagnosticsCard> {
         final engineMs = provider.feedLatencyEngineMs;
         final unprotected = provider.unprotectedPositions;
         final errors = provider.recentApiErrors;
+        final diag = buildDiagStatus(provider);
 
         // Feed Age color: green <3s, amber >5s, orange in between - matches
         // the exact thresholds asked for ("green agar <3s, yellow agar >5s").
@@ -195,6 +242,10 @@ class _DiagnosticsCardState extends State<DiagnosticsCard> {
                   ),
                 ),
               ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(AppSpacing.m, 0, AppSpacing.m, AppSpacing.m - 2),
+                child: _HealthStrip(diag: diag),
+              ),
               AnimatedSize(
                 duration: AppMotion.base,
                 curve: AppMotion.standard,
@@ -218,6 +269,8 @@ class _DiagnosticsCardState extends State<DiagnosticsCard> {
                               ),
                               const SizedBox(height: 10),
                             ],
+                            _HealthDetail(diag: diag),
+                            const SizedBox(height: 10),
                             _DiagRow(
                               label: 'Socket',
                               value: connected ? 'LIVE' : 'DOWN',
@@ -447,6 +500,103 @@ class _ApiErrorBanner extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+Color _diagColor(BuildContext context, DiagLevel l) {
+  switch (l) {
+    case DiagLevel.ok:
+      return context.palette.profit;
+    case DiagLevel.warn:
+      return context.palette.warning;
+    case DiagLevel.bad:
+      return context.palette.loss;
+    case DiagLevel.unknown:
+      return context.palette.textMuted;
+  }
+}
+
+/// Part 24: 6 dots in one row (backend, socket, data, scan, strategy, orders). Visible even when the card is collapsed.
+class _HealthStrip extends StatelessWidget {
+  final DiagStatus diag;
+  const _HealthStrip({required this.diag});
+
+  static const Map<String, String> _short = {
+    'backend': 'Backend',
+    'ws': 'Socket',
+    'market_data': 'Data',
+    'scanner': 'Scan',
+    'strategy': 'Strategy',
+    'execution': 'Orders',
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        for (final i in diag.items)
+          Expanded(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 10,
+                  height: 10,
+                  decoration: BoxDecoration(color: _diagColor(context, i.level), shape: BoxShape.circle),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  _short[i.key] ?? i.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTypography.metadata.copyWith(color: context.palette.textSecondary, fontSize: 10),
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+/// Part 24: one plain line per check (shown when the card is opened).
+class _HealthDetail extends StatelessWidget {
+  final DiagStatus diag;
+  const _HealthDetail({required this.diag});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        for (final i in diag.items)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: Row(
+              children: [
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(color: _diagColor(context, i.level), shape: BoxShape.circle),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  i.title,
+                  style: AppTypography.metadata.copyWith(color: context.palette.textPrimary, fontSize: 12, fontWeight: FontWeight.w600),
+                ),
+                const Spacer(),
+                Flexible(
+                  child: Text(
+                    i.detail,
+                    textAlign: TextAlign.right,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTypography.metadata.copyWith(color: _diagColor(context, i.level), fontSize: 12),
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
     );
   }
 }
