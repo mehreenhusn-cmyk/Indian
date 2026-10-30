@@ -126,6 +126,24 @@ extension AppProviderPositions on AppProvider {
     }
   }
 
+  /// NEW (Part 20): the SAFE close preview. /api/v2/preview_close picks exactly what the real button would close, in the SAME
+  /// mode (LIVE = the exchange positions, PAPER = the paper snapshot). mode: profit | loss | all | flatten. Closes nothing.
+  /// Returns null when the backend does not have it (older backend / not mounted / any non-200): the caller then uses the old
+  /// previewCloseAll() exactly as before. Otherwise the backend's own answer map ({"ok": true, "mode": "live"|"paper", "count",
+  /// "total_pnl_usdt", "positions", "parts", ...} or {"ok": false, "error": "..."}), or {"ok": false, "unreachable": true} when
+  /// the request itself failed (so the caller does not wait for a second timeout).
+  Future<Map<String, dynamic>?> previewClose(String mode) async {
+    try {
+      final res = await _getResilient(_u('/api/v2/preview_close?mode=$mode&$botQuery'));
+      if (res.statusCode != 200) return null;
+      final data = jsonDecode(res.body);
+      if (data is Map<String, dynamic> && data.containsKey('ok')) return data;
+      return null;
+    } catch (_) {
+      return {'ok': false, 'unreachable': true};
+    }
+  }
+
   /// Closes every open position currently in profit at a fresh live price.
   /// Returns the number closed on success, or null if the request itself
   /// failed (backend unreachable etc.) - so the caller can show a

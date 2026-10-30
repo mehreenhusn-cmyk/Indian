@@ -16,6 +16,65 @@ import '../utils/format.dart';
 const _green = AppColors.profit;
 const _red = AppColors.loss;
 
+/// LIVE / PAPER badge for the close dialogs (Part 20). Shows what the backend preview says (`mode`); if there is no answer yet it
+/// falls back to the Live Trading switch in Settings. Display only - it changes nothing.
+Widget _modeBadge(String? mode, bool liveFallback) {
+  final live = mode != null ? mode == 'live' : liveFallback;
+  final color = live ? _red : _green;
+  return Container(
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+    decoration: BoxDecoration(
+      border: Border.all(color: color),
+      borderRadius: BorderRadius.circular(6),
+    ),
+    child: Text(live ? 'LIVE' : 'PAPER',
+        style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w800)),
+  );
+}
+
+/// The "what will close right now" line inside the PANIC dialog (Part 20). The dialog and its buttons show at once - the line fills
+/// in when the backend answers and the panic close NEVER waits for it.
+class _PanicPreviewLine extends StatelessWidget {
+  const _PanicPreviewLine({required this.future, required this.liveFallback});
+  final Future<Map<String, dynamic>?> future;
+  final bool liveFallback;
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<Map<String, dynamic>?>(
+      future: future,
+      builder: (ctx, snap) {
+        final safe = snap.data;
+        final String line;
+        if (snap.connectionState != ConnectionState.done) {
+          line = 'Checking what will close...';
+        } else if (safe == null || safe['unreachable'] == true) {
+          line = 'Preview not available - the panic close does not need it.';
+        } else if (safe['ok'] != true) {
+          line = 'Preview not available (${safe['error']}).';
+        } else {
+          final total = (safe['count'] as num?)?.toInt() ?? 0;
+          final pnl = (safe['total_pnl_usdt'] as num?)?.toDouble() ?? 0.0;
+          final parts = safe['parts'];
+          int n(String k) => (parts is Map && parts[k] is Map) ? ((parts[k]['count'] as num?)?.toInt() ?? 0) : 0;
+          line = 'Right now: ${n('live')} live + ${n('paper')} paper = $total position${total == 1 ? '' : 's'}, '
+              '${pnl >= 0 ? '+' : ''}${pnl.toStringAsFixed(2)} USDT.';
+        }
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 10),
+            _modeBadge(safe == null ? null : safe['mode']?.toString(), liveFallback),
+            const SizedBox(height: 6),
+            Text(line, style: ctx.type.primary.copyWith(fontWeight: FontWeight.w700)),
+          ],
+        );
+      },
+    );
+  }
+}
+
 /// Awaits a closeAllProfit()/closeAllLoss() call and always shows a
 /// SnackBar - "N positions closed", "No positions in <profit/loss> to
 /// close" (count 0 - not a bug, just nothing matched), or an error if the
@@ -63,20 +122,34 @@ Future<void> _confirmAndCloseAll(
   final label = mode == 'profit' ? 'profit' : 'loss';
   setBusy(true);
   final Map<String, dynamic>? preview;
+  String? previewError;
   try {
-    preview = await provider.previewCloseAll(mode);
+    // Part 20: the SAFE preview first - same selection and same mode (LIVE / PAPER) as the real close. If the backend does not
+    // have it (older backend / not mounted) null comes back and the old preview is used exactly as before.
+    final safe = await provider.previewClose(mode);
+    if (safe == null) {
+      preview = await provider.previewCloseAll(mode);
+    } else if (safe['ok'] == true) {
+      preview = safe;
+    } else {
+      preview = null;
+      previewError = safe['unreachable'] == true ? null : safe['error']?.toString();
+    }
   } finally {
     setBusy(false);
   }
   if (!context.mounted) return;
   if (preview == null) {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-          content: Text('Could not reach backend - nothing closed'),
-          duration: Duration(seconds: 2)),
+      SnackBar(
+          content: Text(previewError != null
+              ? 'Preview not available ($previewError) - nothing closed'
+              : 'Could not reach backend - nothing closed'),
+          duration: const Duration(seconds: 2)),
     );
     return;
   }
+  final String? previewMode = preview['mode']?.toString();
   final count = preview['count'] as int? ?? 0;
   final totalPnl = (preview['total_pnl_usdt'] as num?)?.toDouble() ?? 0.0;
   if (count == 0) {
@@ -93,7 +166,12 @@ Future<void> _confirmAndCloseAll(
     context: context,
     builder: (ctx) => AlertDialog(
       backgroundColor: ctx.palette.surfaceElevated,
-      title: Text('Close $count position${count == 1 ? '' : 's'}?'),
+      title: Row(
+        children: [
+          Expanded(child: Text('Close $count position${count == 1 ? '' : 's'}?')),
+          _modeBadge(previewMode, provider.settings['live_trading_enabled'] == true),
+        ],
+      ),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -170,19 +248,28 @@ Future<void> _confirmPanicClose(
 }) async {
   final count = provider.positions.length;
   final isLive = provider.settings['live_trading_enabled'] == true;
+  // Part 20: asked while the dialog is already on screen - NO await here, the panic close never waits for the preview.
+  final Future<Map<String, dynamic>?> previewFuture = provider.previewClose('flatten');
   final confirmed = await showDialog<bool>(
     context: context,
     builder: (ctx) => AlertDialog(
       backgroundColor: ctx.palette.surfaceElevated,
       title: Text('PANIC - Flatten everything?', style: ctx.type.section),
-      content: Text(
-        (isLive
-                ? 'This market-closes every open position - LIVE and paper - right now, '
-                    'regardless of profit or loss, '
-                : 'This closes all $count open position${count == 1 ? '' : 's'} at market price right now, '
-                    'regardless of profit or loss, ') +
-            'and turns Live Trading OFF so no new trades can open until you switch it back on.',
-        style: ctx.type.secondary,
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            (isLive
+                    ? 'This market-closes every open position - LIVE and paper - right now, '
+                        'regardless of profit or loss, '
+                    : 'This closes all $count open position${count == 1 ? '' : 's'} at market price right now, '
+                        'regardless of profit or loss, ') +
+                'and turns Live Trading OFF so no new trades can open until you switch it back on.',
+            style: ctx.type.secondary,
+          ),
+          _PanicPreviewLine(future: previewFuture, liveFallback: isLive),
+        ],
       ),
       actions: [
         TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
