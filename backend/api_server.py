@@ -692,6 +692,20 @@ app.include_router(_st_settings_router(require_api_token, DATA_DIR))
 from api.trade import make_router as _trade_make_router
 app.include_router(_trade_make_router(require_api_token, _bot_arg))
 
+# V2 read-only routes (owner OK "mount ok", 30 Oct). Each block is wrapped so a bad file never stops the backend.
+# /api/v2/* data routes stay OFF (404 "off") until the file v2_api_enabled exists in the data folder.
+try:
+    from api.v2_data import make_router as _v2_data_router
+    app.include_router(_v2_data_router(require_api_token, DATA_DIR))
+except Exception as _e:
+    print(f"[startup] v2 data routes skipped: {_e}")
+# Safe close preview (read-only, closes nothing).
+try:
+    from api.preview_close import make_router as _v2_preview_router
+    app.include_router(_v2_preview_router(require_api_token, _bot_arg))
+except Exception as _e:
+    print(f"[startup] v2 preview route skipped: {_e}")
+
 
 app.include_router(_st_exchange_router(require_api_token))
 
