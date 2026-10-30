@@ -120,9 +120,18 @@ def worker(data_dir):
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
     except ImportError:
         pass
-    except OSError:
+    except BlockingIOError:
         print("another runner is already working: exit")
         return 0
+    except OSError as e:
+        # 31 Oct fix: the shared-storage folder on the phone may not support file locks at all (any other OSError than "busy").
+        # That used to be reported as "another runner" and EVERY worker quit before its first heartbeat. Now: no lock there, and the
+        # fresh heartbeat decides (the watchdog only starts a worker when the beat is stale, plus a 60 s gap).
+        age = read_beat(d)
+        if age is not None and age < BEAT_STALE_S:
+            print("another runner has a fresh heartbeat: exit")
+            return 0
+        print("file lock not supported here (%s): working without it" % type(e).__name__, flush=True)
     try:
         print("runner start:", VERSION, "first_on:", first_on(d), flush=True)
     except (S.StoreRefused, OSError) as e:
