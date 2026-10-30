@@ -201,5 +201,35 @@ class ReadOnly(Base):
         self.assertNotIn("open(", src)
 
 
+class SideFix(Base):
+    """Part 11 fix: a closed trade row keeps BUY / SELL under "action", not "side" (paper_trader.py)."""
+
+    def rows_action(self, n, act, pnl, start):
+        out = many(start, n, pnl, action=act)
+        for r in out:
+            del r["side"]
+        return out
+
+    def test_action_is_used_when_side_is_missing(self):
+        rows = self.rows_action(30, "BUY", 1.0, 1) + self.rows_action(30, "SELL", -1.0, 100)
+        b = self.box(rows)["splits"]
+        self.assertEqual(b["side"]["slots"]["BUY"]["net_usdt"], 30.0)
+        self.assertEqual(b["side"]["slots"]["SELL"]["net_usdt"], -30.0)
+        self.assertEqual(sorted(b["timeframe+side"]["slots"]), ["5M+BUY", "5M+SELL"])
+        self.assertEqual(b["side"]["unknown_trades"], 0)
+
+    def test_side_wins_over_action_and_empty_side_falls_back(self):
+        self.assertEqual(S.text_value({"side": "sell", "action": "BUY"}, "side"), "SELL")
+        self.assertEqual(S.text_value({"side": "  ", "action": "buy"}, "side"), "BUY")
+        self.assertEqual(S.text_value({"action": "BUY"}, "timeframe"), S.UNKNOWN)       # the fallback is for side only
+
+    def test_no_side_and_no_action_stays_unknown_never_ranked(self):
+        rows = many(1, 40, 5.0)
+        for r in rows:
+            del r["side"]
+        s = self.box(rows)["splits"]["side"]
+        self.assertEqual((s["unknown_trades"], s["candidates"], s["candidate_slots"]), (40, 0, []))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=1)

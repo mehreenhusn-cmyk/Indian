@@ -5,6 +5,7 @@ same FAKE-WINNER GUARD (a slot under 30 trades = NOT ENOUGH DATA and never ranke
 still > 0 without its best trade). Never writes to the data files, never touches a setting, position or order. No network.
 What the closed trade rows really carry (read from paper_trader.py, not guessed):
   coin = symbol          timeframe = timeframe          setup = side (BUY / SELL), entry_zone, trigger, sl_type
+  SIDE FIX (Part 11): a closed trade row stores BUY / SELL under "action" (paper_trader.py), "side" only in alert rows. side = "side", else "action".
   market state = htf_trend (as stored) + THIRDS (LOW / MID / HIGH of THIS box) of atr_pct, sd_width_pct, regime_cross_n, adx, ema_slope_pct
   one pair: timeframe + side.   A trade without a value goes to UNKNOWN, which is shown but NEVER ranked.
 Many slots are compared at once (hundreds of coins), so some look good by luck: each split reports slots_tested, candidates and a luck_note.
@@ -23,7 +24,7 @@ import v2_inventory as I
 import v2_money_hour as M
 import v2_pnl as P
 
-VERSION = "v2_money_split 1 (Part 9)"
+VERSION = "v2_money_split 2 (Part 9 + side fix in Part 11)"
 UNKNOWN = "UNKNOWN"
 TEXT_DIMS = (("timeframe", "timeframe"), ("side", "side"), ("coin", "symbol"), ("htf_trend", "htf_trend"), ("entry_zone", "entry_zone"),
              ("trigger", "trigger"), ("sl_type", "sl_type"))
@@ -31,8 +32,13 @@ THIRD_DIMS = ("atr_pct", "sd_width_pct", "regime_cross_n", "adx", "ema_slope_pct
 LIST_MAX = 5
 
 
+SIDE_KEYS = ("side", "action")
+
+
 def text_value(t, key):
     v = t.get(key)
+    if key == "side" and (v is None or str(v).strip() == ""):
+        v = next((t.get(k) for k in SIDE_KEYS[1:] if str(t.get(k) or "").strip()), None)
     if v is None or isinstance(v, (dict, list)) or str(v).strip() == "":
         return UNKNOWN
     return str(v).strip().upper()[:40]
