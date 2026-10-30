@@ -11,6 +11,8 @@ import '../widgets/owl_card.dart';
 import '../utils/signal_status.dart';
 import '../utils/format.dart';
 import '../widgets/owl_empty_state.dart';
+import '../models/view_state.dart';
+import '../widgets/owl_state_gate.dart';
 import '../widgets/owl_skeleton.dart';
 import '../widgets/owl_refresh.dart';
 import '../theme/app_theme.dart';
@@ -187,6 +189,7 @@ class _SignalsScreenState extends State<SignalsScreen> {
                       p.signalsRev,
                       p.alertsRev,
                       p.status.isEmpty,
+                      p.liveState == 'offline',
                       p.error,
                       Object.hashAll(p.positions.map((x) => x is Map ? '${x['symbol']}${x['action']}' : '')),
                     ),
@@ -224,8 +227,12 @@ class _SignalsScreenState extends State<SignalsScreen> {
       return ListView(physics: owlPullPhysics, children: [_btcDaysCard(context), _btcEmptyNote(context)]);
     }
     if (signals.isEmpty) {
-      return OWLPullEmpty(
-        child: OWLEmptyState(
+      // Part 28: dead backend = "Backend offline", never a fake empty list.
+      return OwlStateGate(
+        state: decideViewState(hasData: false, offline: !_btcOnly && provider.liveState == 'offline'),
+        what: 'signals',
+        onRetry: () => provider.fetchSignals(),
+        empty: OWLEmptyState(
           icon: Icons.sensors_off_rounded,
           title: _btcOnly ? 'No BTC signal yet' : 'No signals yet',
           subtitle: _btcOnly

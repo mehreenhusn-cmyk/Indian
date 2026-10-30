@@ -10,6 +10,8 @@ import '../widgets/trade_chart.dart';
 import '../widgets/coin_history_sheet.dart';
 import '../widgets/daily_report_card.dart';
 import '../widgets/owl_empty_state.dart';
+import '../models/view_state.dart';
+import '../widgets/owl_state_gate.dart';
 import '../widgets/owl_entrance.dart';
 import '../widgets/owl_refresh.dart';
 import '../theme/app_theme.dart';
@@ -85,7 +87,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
         child: Padding(
           padding: const EdgeInsets.fromLTRB(AppSpacing.l, AppSpacing.s, AppSpacing.l, 0),
           child: Selector<AppProvider, int>(
-            selector: (_, p) => p.alertsRev,
+            selector: (_, p) => Object.hash(p.alertsRev, p.liveState == 'offline'),
             builder: (context, _rev, child) {
               final provider = context.read<AppProvider>();
               final all = provider.alerts.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
@@ -156,8 +158,12 @@ class _AlertsScreenState extends State<AlertsScreen> {
                     child: OWLRefresh(
                       onRefresh: () => context.read<AppProvider>().fetchStatus(),
                       child: shown.isEmpty
-                        ? OWLPullEmpty(
-                            child: OWLEmptyState(
+                        ? OwlStateGate(
+                            // Part 28: dead backend = "Backend offline", never a fake empty list.
+                            state: decideViewState(hasData: false, offline: provider.liveState == 'offline'),
+                            what: 'alerts',
+                            onRetry: () => provider.fetchStatus(),
+                            empty: OWLEmptyState(
                               icon: Icons.notifications_none_rounded,
                               title: _filter == 'system' ? 'No system notices' : 'No alerts yet',
                               subtitle: 'Trade events, skipped signals and system notices show up here.',

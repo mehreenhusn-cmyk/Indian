@@ -7,6 +7,8 @@ import '../widgets/position_card.dart';
 import '../widgets/ai_advice_badge.dart';
 import '../widgets/position_glance.dart';
 import '../widgets/owl_empty_state.dart';
+import '../models/view_state.dart';
+import '../widgets/owl_state_gate.dart';
 import '../widgets/owl_skeleton.dart';
 import '../widgets/owl_status_pill.dart';
 import '../widgets/owl_refresh.dart';
@@ -388,6 +390,7 @@ class PositionsScreen extends StatelessWidget {
                         p.positions.isEmpty,
                         p.status.isEmpty,
                         p.error == null,
+                        p.liveState == 'offline',
                         sortMode,
                         query,
                         Object.hashAll(filterPositions(sortedPositions(p.positions, sortMode), query).map((x) => x is Map ? x['id'] : null)),
@@ -422,8 +425,12 @@ class PositionsScreen extends StatelessWidget {
                           );
                         }
                         if (positions.isEmpty) {
-                          return const OWLPullEmpty(
-                            child: OWLEmptyState(
+                          // Part 28: dead backend = "Backend offline", never a fake empty list.
+                          return OwlStateGate(
+                            state: decideViewState(hasData: false, offline: provider.liveState == 'offline'),
+                            what: 'open positions',
+                            onRetry: () => provider.fetchStatus(),
+                            empty: const OWLEmptyState(
                               icon: Icons.account_balance_wallet_outlined,
                               title: 'No open positions',
                               subtitle: 'New trades appear here the moment they open.',
