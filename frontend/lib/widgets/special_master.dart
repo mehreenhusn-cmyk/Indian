@@ -142,21 +142,29 @@ class SpecialMasterData {
 
   int get n => z.length;
 
+  /// Pine ta.ema: SMA-seeded (the first value is the average of the first `n` valid values, then alpha = 2/(n+1)),
+  /// the same as india_indicators.ema in the backend (Part 21: it used to start from the first value). A null value
+  /// after the seed is skipped and keeps the last value, as before; before the seed the result is null (Pine: na).
   static List<double?> _ema(List<double?> v, int n) {
     final out = List<double?>.filled(v.length, null);
-    var start = 0;
-    while (start < v.length && v[start] == null) {
-      start++;
-    }
-    if (start >= v.length) return out;
     final k = 2.0 / (n + 1);
-    var prev = v[start]!;
-    out[start] = prev;
-    for (var i = start + 1; i < v.length; i++) {
+    double? prev;
+    var cnt = 0;
+    var sum = 0.0;
+    for (var i = 0; i < v.length; i++) {
       final x = v[i];
       if (x == null) continue;
-      prev = x * k + prev * (1.0 - k);
-      out[i] = prev;
+      if (prev == null) {
+        sum += x;
+        cnt++;
+        if (cnt >= n) {
+          prev = sum / n;
+          out[i] = prev;
+        }
+      } else {
+        prev = x * k + prev * (1.0 - k);
+        out[i] = prev;
+      }
     }
     return out;
   }

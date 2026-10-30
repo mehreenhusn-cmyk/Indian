@@ -32,14 +32,22 @@ const _chartInk = Color(0xFF10141C);
 const _ema30Light = Color(0xFF16A34A); // green, readable on white
 const _ema50Light = Color(0xFFDC2626); // red, readable on white
 
-/// Standard EMA, seeded with the first close and alpha = 2/(len+1) - exactly
-/// the same formula strategy.py uses, so the EMA 50 drawn here matches the
-/// bot's own EMA when its length is 50.
+/// Pine-style EMA, SMA-seeded: the first value is the plain average of the first `length` closes, then
+/// alpha = 2/(length+1) - the SAME formula as strategy.py _compute_ema, so the EMA 50 drawn here matches the
+/// bot's own EMA 50 on every candle from index length-1 on (Part 21: it used to start from the first close,
+/// which only converged after a few hundred candles). Candles BEFORE the seed have no real EMA in the bot
+/// (Pine: na); so this plain List<double> keeps the average of the closes so far there (warm-up, not the bot's value).
 List<double> computeEma(List<double> closes, int length) {
   if (closes.isEmpty) return <double>[];
-  final alpha = 2 / (length + 1);
-  final out = <double>[closes[0]];
-  for (int i = 1; i < closes.length; i++) {
+  final len = length < 1 ? 1 : length;
+  final alpha = 2 / (len + 1);
+  final out = <double>[];
+  var sum = 0.0;
+  for (int i = 0; i < closes.length && i < len; i++) {
+    sum += closes[i];
+    out.add(sum / (i + 1));
+  }
+  for (int i = len; i < closes.length; i++) {
     out.add(alpha * closes[i] + (1 - alpha) * out[i - 1]);
   }
   return out;
