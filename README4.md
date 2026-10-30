@@ -1,14 +1,15 @@
-# OWL TERMINAL - README4 IS THE ONE FILE TO FOLLOW (v92, 30 Oct 2026, PART 4 BUILT)
+# OWL TERMINAL - README4 IS THE ONE FILE TO FOLLOW (v94, 30 Oct 2026, PART 6 BUILT)
 
 ## RESUME BOX (updated in every delivery)
-- **PROGRESS: 4 of 71 Parts DONE | building now: none | NEXT: Part 5** (status board = FLAT PART SEQUENCE below, with ESTIMATED and ACTUAL lines per Part)
-- Last zip: owl_Part4 (Part 4 tests + this README).
-- Last Part built: **Part 4** (test/test_v2_protected_rules.py 237 lines, 23 tests + test/test_v2_exec_routing.py 201 lines, 13 tests = 438 lines; estimate was 400). Tests: 36 passed in sandbox, network blocked. Checked by breaking the rules on a COPY (stop = close, no break-even, router ignoring live mode): the tests failed every time, so they really guard the rules. Not run on the phone yet. No trading file changed (tests only).
-- Parts 1-3 LIVE (logs 04:21, 04:27, 04:41 on 30 Oct). Watcher v5f live (log 04:40:39 self-update BUILD 40 -> 41): README4 now goes to GitHub with every code zip.
+- **PROGRESS: 6 of 71 Parts DONE | building now: none | NEXT: Part 7** (status board = FLAT PART SEQUENCE below, with ESTIMATED and ACTUAL lines per Part)
+- Last zip: owl_Part6 = Part 6 + the files of Parts 4 and 5 (owner asked for 5 and 6 together; one zip) + this README.
+- Last Part built: **Part 6** = P&L reconciliation zip 2 of 3: backend/v2_pnl_open.py (187 lines) + test/test_v2_pnl_open.py (216 lines, 18 tests) = 403 lines; estimate was 330. Reads open positions from owl.db (WAL-safe copy via Part 1) and recomputes gross / fee / net with the app's own formula; boxes paper_b1, paper_b2, live_local_copy (never added, never real money offline); checks stale snapshot (> 120 s), card pnl vs recomputed, missing price / entry / margin, same symbol + side open twice. Also reports live closed-trade facts. Tests: 18 passed in sandbox, network blocked; Parts 1-5 tests (95) still pass. Checked by breaking rules on a COPY (fee not subtracted, stale check off, Bot 2 merged, funding added to live_recorder): tests failed every time. Not run on the phone. No trading file changed.
+- **FOUND IN THE CODE (live_recorder.py, guarded by tests):** (1) live P&L = Binance realizedPnl minus commission; FUNDING fees are NOT included. (2) Commission is subtracted only when paid in USDT / USDC / BUSD; a fee paid in BNB is NOT subtracted, so with the BNB fee discount ON live P&L is overstated. (3) If Binance history cannot be read the trade is ESTIMATED from the last price (estimated=True). (4) A paper open position already shows the full round-trip fee as if paid. Owner check: Binance fee settings ("Pay fees with BNB") and Transaction History for the same dates.
+- Parts 1-3 LIVE (logs 04:21, 04:27, 04:41 on 30 Oct); Parts 4, 5, 6 built (phone log waiting). Watcher v5f live: README4 goes to GitHub with every code zip.
 - KNOWN GAP recorded by Part 4 (fixes nothing): /api/preview_close_all always prices PAPER positions, even when live trading is ON. Planned fix: Parts 19-20.
-- Parts 5-71: NOT DONE. V2 code = 4 modules/test pairs (3 backend files + 5 test files). No protected (trading) file touched.
-- **OWNER TODO (not blocking):** run once in Termux `python3 ~/owl_code/backend/v2_inventory.py` and send Download/owl_inventory.json. Collectors (Parts 14-18) are built from it.
-- Next Part: Part 5 (about 400 lines). Owner just says "Part 5".
+- Parts 7-71: NOT DONE. V2 code = 5 backend modules + 8 test files. No protected (trading) file touched.
+- **OWNER TODO (not blocking), run in Termux and send the 3 JSON files from Download:** `python3 ~/owl_code/backend/v2_inventory.py`, `python3 ~/owl_code/backend/v2_pnl.py`, `python3 ~/owl_code/backend/v2_pnl_open.py`. Part 7 will merge them into ONE command. Collectors (Parts 14-18) are built from the inventory.
+- Next Part: Part 7 (about 330 lines). Owner just says "Part 7".
 - App today: 5 bottom tabs (Dashboard, Market, Positions, Brain, More); under More: Signals, Dual Bot, AI (AI has 7 inner tabs); India mode is a separate screen set
 
 ## RECOMMENDED BUILD ORDER (owner question 30 Oct: backend data first, screens later - is the order right?)
@@ -23,10 +24,10 @@ If the owner agrees: say "Part 14" as soon as the inventory JSON is sent; otherw
 ## NEXT UP (update in every delivery)
 | Part | Name | Files to build | Lines (EST) |
 |---:|---|---|---:|
-| 5 | P&L reconciliation, zip 1 of 3 | backend/v2_pnl.py (realized / floating / gross / net / fees / funding, live and paper apart, read-only), test/test_v2_pnl_contamination.py, README4 | about 400 |
-| 6 | P&L reconciliation, zip 2 of 3 | fees + funding + net-vs-gross checks and their tests (exact file names fixed when Part 5 is built) | about 330 |
-| 7 | P&L reconciliation, zip 3 of 3 | data separation checks + report (exact file names fixed when Part 6 is built) | about 330 |
-Do Part 5 alone, or 5 + 6 + 7 together? Owner says "Part 5" or "5, 6 and 7 together". Collectors (14-18) wait for the inventory JSON; see RECOMMENDED BUILD ORDER above.
+| 7 | P&L reconciliation, zip 3 of 3 | ONE command that runs Parts 3, 5, 6 and writes ONE owner summary JSON (data separation real / paper / Dual Bot / Brain, trusted vs not); exact file names fixed when built | about 330 |
+| 8 | Money Map, zip 1 of 3 | first Money Map module: net result after fees by hour / session (read-only; "NOT ENOUGH DATA" instead of a fake winner) + test | about 300 |
+| 9 | Money Map, zip 2 of 3 | setup / market state / timeframe / coin split + test | about 300 |
+Do Part 7 alone, or 7 + 8 + 9 together? Owner says "Part 7" or "7, 8 and 9 together". Collectors (14-18) wait for the inventory JSON; see RECOMMENDED BUILD ORDER.
 
 ## OWNER COMMAND RULE (read first, any Claude)
 - The owner says only **"Part N"** (example: "Part 7"). Build THAT Part right away: no plan, no extra "ok", no long talk. Old labels (S0, NEXT-x, 6j, "ok S0 round 1a") are NOT needed any more.
@@ -49,10 +50,12 @@ Do Part 5 alone, or 5 + 6 + 7 together? Owner says "Part 5" or "5, 6 and 7 toget
 | 2 | 🟢 BUILT + deployed (log 30 Oct 04:27) | backend/v2_inv_redact.py, test/test_v2_inv_redact.py | 14 tests passed in sandbox, network blocked; not run on phone; Flutter not touched |
 | 3 | 🟢 BUILT + deployed (log 30 Oct 04:41:51, pushed with README4) | backend/v2_inventory.py, test/test_v2_inventory.py (+ tools/owl_auto.sh v5f in owl_fix_watcher.zip) | 14 tests passed in sandbox, network blocked; WAL db read by copy, source files and folder listing unchanged; secret in a key name scrubbed; not run on phone |
 | 4 | 🟡 BUILT (phone log waiting) | test/test_v2_protected_rules.py (237 lines, 23 tests), test/test_v2_exec_routing.py (201 lines, 13 tests) | 36 tests passed in sandbox, network blocked; mutation check on a copy: breaking the stop rule, the break-even rule and the live/paper routing each made tests fail; records the preview gap, fixes nothing; not run on phone |
+| 5 | 🟡 BUILT (phone log waiting) | backend/v2_pnl.py (236 lines), test/test_v2_pnl_contamination.py (216 lines, 20 tests) | 20 tests passed in sandbox, network blocked; mutation check on a copy (3 rule breaks) made tests fail; smoke run on 321 fake trades; archives never written (fingerprints + folder listing unchanged); not run on phone |
+| 6 | 🟡 BUILT (phone log waiting) | backend/v2_pnl_open.py (187 lines), test/test_v2_pnl_open.py (216 lines, 18 tests) | 18 tests passed in sandbox, network blocked; mutation check on a copy (4 rule breaks incl. funding added to live_recorder) made tests fail; WAL owl.db read by copy, fingerprints and folder listing unchanged; not run on phone |
 
 ## FLAT PART SEQUENCE (THE ORDER TO FOLLOW - replaces the 24-Part list in 8.2 and in Part III)
-Total: **71 Parts (71 zips), about 23,555 lines (EST)**. Parked ideas below add about 1,300 more. V2 built so far: Parts 1-4 (see BUILT PARTS above). **Estimate vs actual so far: Parts 1-4 estimated 1,400 lines, actually 1,653 (tests are the biggest part; the estimates were low by about 18%).** Actual = code + test files of that Part, README not counted.
-Status: Parts 1-4 are DONE (4 waits for its phone log line); Part 5 is NEXT; Parts 6-71 are PENDING. Part 8 and later may need data from earlier Parts (see "Starts after" in 8.2 for the old label). Blocked ones: Collectors (14-18) need the Part 3 inventory report; Radar (29-34) needs 1 day of collector data; Scalp Lab (50-57) and Stop-wick (58-60) need 3-4 weeks of candles.
+Total: **71 Parts (71 zips), about 23,555 lines (EST)**. Parked ideas below add about 1,300 more. V2 built so far: Parts 1-6 (see BUILT PARTS above). **Estimate vs actual so far: Parts 1-6 estimated 2,130 lines, actually 2,508 (tests are the biggest part; the estimates were low by about 18%).** Actual = code + test files of that Part, README not counted.
+Status: Parts 1-6 are DONE (4, 5 and 6 wait for their phone log lines); Part 7 is NEXT; Parts 8-71 are PENDING. Part 8 and later may need data from earlier Parts (see "Starts after" in 8.2 for the old label). Blocked ones: Collectors (14-18) need the Part 3 inventory report; Radar (29-34) needs 1 day of collector data; Scalp Lab (50-57) and Stop-wick (58-60) need 3-4 weeks of candles.
 
 | Part | Status | Name | Work | Lines (EST) | Lines (ACTUAL) | Zips | Old name |
 |---:|:---:|---|---|---:|---:|---:|---|
@@ -60,7 +63,7 @@ Status: Parts 1-4 are DONE (4 waits for its phone log line); Part 5 is NEXT; Par
 | 2 | 🟢 DONE | Safety base B | Fail-closed secret redaction + tests | 270 | 325 | 1 | old Part 2 / S0 1b |
 | 3 | 🟢 DONE (live, log 04:41) | Safety base C | Inventory CLI + evidence labels + report (owner runs once, sends JSON) | 350 | 509 | 1 | old Part 3 / NEXT-1 |
 | 4 | 🟢 DONE (built, phone log waiting) | Safety base D | Protected strategy-rule tests + paper/live routing record (changes nothing) | 400 | 438 | 1 | old Part 4 (CI job + import guard moved to Part 70-71) |
-| 5-7 | 🔵 NEXT | P&L | Live/paper P&L reconciliation, fees, data separation (moved UP) | 990 | - | 3 | old Part 7 / S2 |
+| 5-7 | 🟡 IN PROGRESS (Parts 5-6 done, 7 next) | P&L | Live/paper P&L reconciliation, fees, data separation (moved UP) | 990 | 855 so far (Parts 5-6) | 3 | old Part 7 / S2 |
 | 8-10 | ⚪ PENDING | Money Map | NEW: where money is made + where it leaks, by hour / setup / market state / coin / timeframe / event | 900 | - | 3 | NEW |
 | 11-13 | ⚪ PENDING | Indicator Playbook | NEW: post-mortem of your 2 indicators: what each state does next, when to use, when NOT to use | 1,100 | - | 3 | NEW |
 | 14-18 | ⚪ PENDING (needs data) | Collectors | Public collectors, snapshots, official cohorts, 3m/5m candles, v2_market.db, gaps, 300 MB cap | 1,820 | - | 5 | old Part 6 / S1 |
@@ -1332,6 +1335,10 @@ A: Brain only watches (now). B: shadow "would take / would skip" - DONE as the "
 - Not seen: Claude never ran the app; a file started by a Termux script outside the repo would look dead.
 
 ## 10. CHANGE LOG (newest first)
+
+- 30 Oct 2026 (v94): PART 6 BUILT. Owner: "Part 6 karo aur Part 5 ke sath de dena" (one zip: Part 6 + files of Parts 4 and 5). New backend/v2_pnl_open.py (floating P&L from owl.db positions, recomputed with the app's formula, boxes never added, stale / mismatch / missing-field / duplicate checks, live closed-trade facts, code facts and owner verification list) + test/test_v2_pnl_open.py (18 tests, includes tests that re-read live_recorder.py so the facts cannot go stale silently). Findings recorded in the RESUME BOX: live P&L excludes funding and ignores a BNB-paid fee. No trading file changed.
+
+- 30 Oct 2026 (v93): PART 5 BUILT. Owner: "Part 5 only". New backend/v2_pnl.py (realized P&L check: reads closed_trades_archive.jsonl, closed_trades_archive_b2.jsonl, trades.json read-only; 4 boxes never added together; fee basis per trade; old no-fee paper trades get the fee estimated and are marked; 8 contamination checks with up to 5 example ids; CLI writes owl_pnl_check.json through the Part 2 scrubber) + test/test_v2_pnl_contamination.py (20 tests). Facts found in the code: pnl_usdt of new paper trades is already NET of the frozen fee (fee_applied); older paper trades have NO fee; live trades carry source=live and estimated=True when Binance history was unreadable. README4: Part 5 row, estimate vs actual, owner TODO for the P&L JSON. No trading file changed.
 
 - 30 Oct 2026 (v92): PART 4 BUILT. Owner: "Part 4, 400 lines; add estimated vs actual lines; are we in the right sequence (backend data first, frontend later)?". Log 04:40-04:42 confirmed watcher v5f self-update (BUILD 40 -> 41) and Part 3 live + pushed (3 files incl. README4). New test/test_v2_protected_rules.py (pins EMA50 cross entry on the last closed candle, entry = candle close, stop = signal candle low/high, the TP1-TP4 ladder per SD zone, paper exits TP4 / chosen target, SL-wins-when-both-touch, TP1 -> break-even from the next candle, trail step1/step2, tighten-only, percent positions) and test/test_v2_exec_routing.py (close_one / close_all / close_all_profit / close_all_loss go paper XOR live, master pause never blocks a close, preview selection = close selection in paper, KNOWN GAP: preview endpoint is paper-only). README4: ESTIMATED vs ACTUAL line columns, RECOMMENDED BUILD ORDER, estimate-vs-actual rule. No trading file changed.
 
