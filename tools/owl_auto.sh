@@ -1,8 +1,14 @@
 #!/data/data/com.termux/files/usr/bin/bash
-# OWL auto-deploy v5f (2026-10-30) for Termux.
+# OWL auto-deploy v5g (2026-10-31) for Termux.
+# v5g (31 Oct): PUSH FIX. (1) zips in Download are now applied OLDEST FIRST (by file time, not by name), so an old owl_Part73 can no longer overwrite a newer owl_Part32.
+#   (2) a failed GitHub push is remembered (~/.owl_push_pending) and retried about every 3 minutes (before: one failure = never pushed, the zip was marked done).
+#   (3) the repo folder is found by itself (~/Indian-main, ~/Indian-cleanup, ~/Indian or any folder under ~ whose git remote has "Indian" in it).
+#   (4) a zip skipped because it is OLDER than the deployed full zip is now logged once (before it was silent). (5) NEW commands: pushcheck, pushnow (below).
 # v5f (30 Oct): GitHub push now also takes README4.md and README2.md (before, only README.md was allowed, so README4 never reached GitHub).
 #
 #   bash ~/owl_auto.sh            start the watcher (only ONE can run; a 2nd copy refuses)
+#   bash ~/owl_auto.sh pushcheck  why is nothing pushed? (watcher, repo folder, login test, pending zips) -> screen + ~/owl_pushcheck.txt
+#   bash ~/owl_auto.sh pushnow    push right now: pending zips + anything already committed in the repo folder
 #   bash ~/owl_auto.sh status     full report -> screen + ~/owl_status.txt + Download/owl_status.txt
 #   bash ~/owl_auto.sh restart    kill every old backend, start the live code again
 #   bash ~/owl_auto.sh stop       stop watcher + backend
@@ -63,8 +69,8 @@
 # Settings / trades live outside the code folder, so a new zip never touches them.
 # Needs once:  termux-setup-storage
 
-BUILD=41    # self-update number: a zip replaces this script only if its BUILD is a bigger whole number (v5c=2, v5d=3, v5e=40, v5f=41)
-VERSION="v5f 2026-10-30"
+BUILD=42    # self-update number: a zip replaces this script only if its BUILD is a bigger whole number (v5c=2, v5d=3, v5e=40, v5f=41, v5g=42)
+VERSION="v5g 2026-10-31"
 DL_LIST() {   # every Download folder that exists (no duplicates)
   for d in "$OWL_DL" "$HOME/storage/downloads" "$HOME/storage/shared/Download" "/sdcard/Download" "/storage/emulated/0/Download"; do
     [ -n "$d" ] && [ -d "$d" ] && echo "$(cd "$d" 2>/dev/null && pwd -P)"
@@ -420,13 +426,16 @@ check_overlays() {
   [ -d "$LIVE/backend" ] || return 0
   local full_m; full_m="$(awk '{print $NF}' "$MARK")"
   local applied=0
-  DL_LIST | while read -r d; do
-    for f in "$d"/*.zip; do
-      [ -f "$f" ] || continue
+  # v5g: oldest file first (by file time), so a newer zip is always applied last whatever its name says
+  { DL_LIST | while read -r d; do for f in "$d"/*.zip; do [ -f "$f" ] && stat -c '%Y|%n' "$f"; done; done; } | sort -t'|' -k1,1n | cut -d'|' -f2- | while IFS= read -r f; do
+    {
       case "$(basename "$f")" in Indian-main*) continue ;; esac
       local m s1 s2 key
       m="$(stat -c '%Y' "$f")"
-      [ "$m" -gt "$full_m" ] || continue
+      if [ "$m" -le "$full_m" ]; then       # v5g: say it once (before: silent)
+        grep -qxF "$(stamp "$f")" "$HOME/.owl_older_seen" 2>/dev/null || { stamp "$f" >> "$HOME/.owl_older_seen"; is_owl_zip "$f" && log "zip skipped: $(basename "$f") is OLDER than the full zip deployed (zip time $(date -d @"$m" '+%F %T' 2>/dev/null) <= full zip time $(date -d @"$full_m" '+%F %T' 2>/dev/null)); save it again or deploy a newer one"; }
+        continue
+      fi
       s1="$(stamp "$f")"; key="$s1"
       grep -qxF "$key" "$OVDONE" 2>/dev/null && continue
       sleep 3; s2="$(stamp "$f")"
@@ -436,8 +445,8 @@ check_overlays() {
       self_update_zip "$f"
       overlay_zip "$f"; orc=$?
       [ "$orc" -eq 0 ] && echo applied > "$HOME/.owl_overlay_flag"
-      case "$orc" in 0|5) sync_repo "$f" ;; esac       # good backend overlay, or a frontend-only zip -> GitHub
-    done
+      case "$orc" in 0|5) sync_repo "$f" || pending_add "$f" ;; esac       # good backend overlay, or a frontend-only zip -> GitHub (v5g: a failed push is remembered)
+    }
   done
   if [ -f "$HOME/.owl_overlay_flag" ]; then
     rm -f "$HOME/.owl_overlay_flag"
@@ -451,7 +460,34 @@ REPO="$HOME/Indian-cleanup"          # old git clone
 WEBDIR="$HOME/owl_web"               # browser app, served by the backend at /app/
 WEBHASH="$HOME/.owl_web_hash"        # which web-build commit is already in ~/owl_web
 
-git_ok() { [ -d "$REPO/.git" ] && command -v git >/dev/null 2>&1; }
+find_repo() {   # v5g: the git clone of this project, wherever it is
+  local g
+  for g in "$HOME/Indian-main" "$HOME/Indian-cleanup" "$HOME/Indian"; do [ -d "$g/.git" ] && { echo "$g"; return; }; done
+  for g in "$HOME"/*/.git "$HOME"/storage/shared/*/.git; do
+    [ -d "$g" ] || continue
+    case "$g" in "$LIVE"/*|"$PREV"/*) continue ;; esac
+    git -C "${g%/.git}" remote get-url origin 2>/dev/null | grep -qi "indian" && { echo "${g%/.git}"; return; }
+  done
+  echo "$REPO"
+}
+git_ok() { REPO="$(find_repo)"; [ -d "$REPO/.git" ] && command -v git >/dev/null 2>&1; }
+
+# v5g: zips whose push failed are written to ~/.owl_push_pending as "filetime|path" and tried again by the watcher (about every 3 min)
+export GIT_TERMINAL_PROMPT=0   # v5g: git must never wait for a typed password (a hidden prompt froze the push); a missing login now fails fast and is logged
+PENDF="$HOME/.owl_push_pending"
+pending_add() { [ -f "$1" ] || return 0; echo "$(stat -c '%Y' "$1")|$1" >> "$PENDF"; log "github sync: $(basename "$1") will be pushed again by itself (every ~3 min); see: bash ~/owl_auto.sh pushcheck"; }
+pending_done() {   # a push of a zip with file time $1 worked: it also covers every older pending zip (zips are cumulative)
+  [ -f "$PENDF" ] || return 0
+  awk -F'|' -v m="$1" '$1+0 > m+0' "$PENDF" > "$PENDF.tmp" 2>/dev/null; mv -f "$PENDF.tmp" "$PENDF" 2>/dev/null
+  [ -s "$PENDF" ] || rm -f "$PENDF"
+}
+pending_retry() {
+  [ -s "$PENDF" ] || return 0
+  sort -t'|' -k1,1n "$PENDF" | while IFS='|' read -r m f; do
+    [ -f "$f" ] || { pending_done "$m"; continue; }
+    sync_repo "$f" && pending_done "$m"
+  done
+}
 
 # sync_repo <zip>: put the zip's files into the repo folder, commit, push. GitHub then builds the app + the browser version.
 sync_repo() {
@@ -495,16 +531,17 @@ PY
   )"
   case "$out" in
     OK*) ;;
-    NONE*) log "github sync skipped: $(basename "$zip") has no code files for the repo (APK / other zips are never pushed)"; return 0 ;;
+    NONE*) log "github sync skipped: $(basename "$zip") has no code files for the repo (APK / other zips are never pushed)"; pending_done "$(stat -c '%Y' "$zip" 2>/dev/null || echo 0)"; return 0 ;;
     *) log "github sync: could not unpack $(basename "$zip"): $out"; return 1 ;;
   esac
   git -C "$REPO" add -A >>"$LOG" 2>&1
-  if git -C "$REPO" diff --cached --quiet; then log "github sync: nothing new in $(basename "$zip") (repo already has it)"; return 0; fi
+  if git -C "$REPO" diff --cached --quiet; then log "github sync: nothing new in $(basename "$zip") (repo already has it)"; pending_done "$(stat -c '%Y' "$zip" 2>/dev/null || echo 0)"; return 0; fi
   local ident=()
   git -C "$REPO" config user.email >/dev/null 2>&1 || ident=(-c user.name=owl-auto -c user.email=owl-auto@users.noreply.github.com)
   git -C "$REPO" "${ident[@]}" commit -q -m "auto: $(basename "$zip")" >>"$LOG" 2>&1 || { log "github sync: commit failed"; return 1; }
   if git -C "$REPO" push -q origin main >>"$LOG" 2>&1 || { git -C "$REPO" pull -q --rebase --autostash origin main >>"$LOG" 2>&1 && git -C "$REPO" push -q origin main >>"$LOG" 2>&1; }; then
     log "github sync: pushed $(basename "$zip") ${out#OK } files - GitHub is building now, the browser app follows in ~10 min (automatic)"
+    pending_done "$(stat -c '%Y' "$zip" 2>/dev/null || echo 0)"
     return 0
   fi
   log "github sync: PUSH FAILED for $(basename "$zip") (login/network?). Files are committed in $REPO; run: cd $REPO && git push origin main"
@@ -624,6 +661,41 @@ status_report() {
 # ---------------------------------------------------------------- commands
 case "$1" in
   status)  status_report; exit 0 ;;
+  pushcheck)
+    {
+      echo "===== OWL PUSHCHECK $(date '+%F %T') (owl_auto.sh $VERSION) ====="
+      if [ -f "$LOCKD/pid" ] && pid_is "$(cat "$LOCKD/pid")" owl_auto; then echo "1 watcher      : RUNNING"; else echo "1 watcher      : NOT RUNNING  <- THIS is why nothing is pushed.  Start it: bash ~/owl_auto.sh"; fi
+      echo "  boot start   : $( [ -f "$BOOTF" ] && echo installed || echo 'NOT installed (bash ~/owl_auto.sh install-boot)')"
+      if git_ok; then
+        echo "2 repo folder  : $REPO  (ok)"
+        echo "  remote       : $(git -C "$REPO" remote get-url origin 2>/dev/null | sed 's#//[^@/]*@#//***@#')"
+        if timeout 25 git -C "$REPO" ls-remote origin HEAD >/dev/null 2>&1; then echo "3 GitHub login : OK (network + login work)"; else echo "3 GitHub login : FAILED  <- wrong/expired token or no internet. Test: cd $REPO && git push origin main  (login needs a Personal Access Token)"; fi
+        echo "  uncommitted  : $(git -C "$REPO" status --short 2>/dev/null | wc -l) file(s)"
+        echo "  not pushed   : $(git -C "$REPO" rev-list --count origin/main..HEAD 2>/dev/null) commit(s) waiting  (0 = nothing waiting)"
+        echo "  last commits :"; git -C "$REPO" log -n 3 --format='     %h %ad %s' --date=format:'%m-%d %H:%M' 2>/dev/null
+      else
+        echo "2 repo folder  : NO GIT REPO FOUND (looked at ~/Indian-main, ~/Indian-cleanup, ~/Indian). Unzipping in the file manager makes a folder WITHOUT .git: use  git clone  once."
+      fi
+      echo "4 pending push : $( [ -s "$PENDF" ] && wc -l < "$PENDF" || echo 0 ) zip(s) waiting for a retry"
+      full_m="$( [ -f "$MARK" ] && awk '{print $NF}' "$MARK" || echo 0)"
+      echo "5 zips in Download (oldest is applied first; a zip older than the full zip is skipped):"
+      DL_LIST | while read -r d; do for f in "$d"/*.zip; do [ -f "$f" ] && stat -c '%Y|%n' "$f"; done; done | sort -t'|' -k1,1n | tail -n 8 | while IFS='|' read -r m f; do
+        case "$(basename "$f")" in Indian-main*) continue ;; esac
+        st="NEW"; [ "$m" -le "$full_m" ] && st="OLDER than full zip (skipped)"; grep -qxF "$(stamp "$f")" "$OVDONE" 2>/dev/null && st="already applied"
+        echo "     $(date -d @"$m" '+%m-%d %H:%M')  $(basename "$f")  -> $st"
+      done
+      echo "6 last github lines in ~/owl_auto.log:"; grep -E 'github sync|OVERLAY|zip skipped|zip ignored' "$LOG" 2>/dev/null | tail -n 8 | sed 's/^/     /'
+    } 2>&1 | tee "$HOME/owl_pushcheck.txt"
+    exit 0 ;;
+  pushnow)
+    git_ok || { echo "no git repo found (looked at ~/Indian-main, ~/Indian-cleanup, ~/Indian)"; exit 1; }
+    echo "repo: $REPO"
+    pending_retry
+    out="$(git -C "$REPO" pull --rebase --autostash origin main 2>&1)" || { echo "pull FAILED:"; echo "$out" | tail -n 6; exit 1; }
+    git -C "$REPO" add -A >/dev/null 2>&1
+    git -C "$REPO" diff --cached --quiet || git -C "$REPO" -c user.name=owl-auto -c user.email=owl-auto@users.noreply.github.com commit -q -m "auto: pushnow" >/dev/null 2>&1
+    if out="$(git -C "$REPO" push origin main 2>&1)"; then echo "PUSHED ok. GitHub builds now (about 10 min)."; else echo "push FAILED:"; echo "$out" | tail -n 8; exit 1; fi
+    exit 0 ;;
   logs)    echo "--- backend ---"; tail -n 40 "$BLOG" 2>/dev/null; echo "--- ping ---"; tail -n 20 "$PLOG" 2>/dev/null; echo "--- script ---"; tail -n 30 "$LOG" 2>/dev/null; exit 0 ;;
   ping)    rm -f "$PINGT"; kill_ping; start_ping; exit 0 ;;
   ping-reset)
@@ -720,6 +792,7 @@ while true; do
     log "watcher restarts itself with the new owl_auto.sh"
     exec bash "$HOME/owl_auto.sh"
   fi
+  [ $((n % 18)) -eq 5 ] && [ -s "$PENDF" ] && pending_retry >/dev/null 2>&1   # v5g: a push that failed earlier is tried again (about every 3 min)
   [ $((n % 18)) -eq 0 ] && web_check_bg                 # about every 3 min: new browser build on GitHub? -> ~/owl_web
   # backend not running (first start, phone killed it)? start it
   if [ -d "$LIVE/backend" ] && ! pgrep -f "start_forever.sh" >/dev/null 2>&1; then

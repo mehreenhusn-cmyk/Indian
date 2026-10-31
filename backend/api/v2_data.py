@@ -15,13 +15,14 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import v2_candles as K
 import v2_collector as C
 import v2_radar as RD
+import v2_radar_moves as RM
 import v2_radar_outcomes as RO
 import v2_store as S
 
 VERSION = "v2_data 1 (Part 18)"
 FLAG_NAME = "v2_api_enabled"
 CAPS = {"snapshot": 100, "candles": 500, "gaps": 200}
-ROUTES = ("status", "snapshot", "cohort", "candles", "gaps", "summary", "radar", "radar_outcomes")
+ROUTES = ("status", "snapshot", "cohort", "candles", "gaps", "summary", "radar", "radar_outcomes", "radar_moves")
 DAY_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
@@ -98,6 +99,11 @@ def v_radar_outcomes(con, p, now, d):
     return RO.build(con, now, p.get("day") or None, p.get("days") or None)
 
 
+def v_radar_moves(con, p, now, d):
+    """Part 33: max favourable / adverse move, time to peak, drawdown and volume state of the saved cohort coins (read-only, see v2_radar_moves.py). ?day= or ?days=N."""
+    return RM.build(con, now, p.get("day") or None, p.get("days") or None)
+
+
 def v_candles(con, p, now, d):
     sym, iv = p.get("symbol") or "", p.get("interval") or "5m"
     if not K._symbol_ok(sym) or iv not in K.INTERVALS:
@@ -121,7 +127,7 @@ def v_summary(con, p, now, d):
     return {}
 
 
-VIEWS = {"radar": v_radar, "radar_outcomes": v_radar_outcomes, "summary": v_summary, "status": v_status, "snapshot": v_snapshot, "cohort": v_cohort, "candles": v_candles, "gaps": v_gaps}
+VIEWS = {"radar": v_radar, "radar_outcomes": v_radar_outcomes, "radar_moves": v_radar_moves, "summary": v_summary, "status": v_status, "snapshot": v_snapshot, "cohort": v_cohort, "candles": v_candles, "gaps": v_gaps}
 
 
 def summary_answer(data_dir):
