@@ -16,6 +16,7 @@ import 'radar_screen.dart';
 import 'prepump_screen.dart';
 import 'setup_screen.dart';
 import 'wickstudy_screen.dart';
+import 'scalp_lab_screen.dart';
 import 'reports_screen.dart';
 import 'settings_screen.dart';
 import 'strategy_doctor_screen.dart';
@@ -80,6 +81,8 @@ class MoreScreen extends StatelessWidget {
                 () => _open(context, 'Pump / Dump Watch', const PrepumpScreen())),
             _row(context, Icons.vertical_align_center, 'Stop-wick Study', 'Wicks that swept a swing and closed back, what came after (read-only replay)',
                 () => _open(context, 'Stop-wick Study', const WickStudyScreen())),
+            _row(context, Icons.science_outlined, 'Scalp Lab', 'Replay ledger and big real trades split in pieces (read-only replay)',
+                () => _open(context, 'Scalp Lab', const ScalpLabScreen())),
             const SizedBox(height: AppSpacing.l),
             _label(context, 'DOWNLOADS'),
             _row(context, Icons.article_outlined, 'App report', 'One text file about the whole app',

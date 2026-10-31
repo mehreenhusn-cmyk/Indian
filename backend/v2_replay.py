@@ -23,7 +23,7 @@ MIN_N = 30                       # below this a summary carries "too few to say 
 ALLOWED_INDICATORS = ("ema50", "sd_band", "tsi", "z", "z_sma")
 SIDES = ("LONG", "SHORT")
 FINISHED_STATUSES = ("TARGET", "STOP", "TIME")
-FILES = ("v2_replay.py", "v2_scalp_store.py", "v2_scalp_ind.py", "v2_scalp_ema.py", "v2_scalp_pump.py", "v2_scalp_run.py", "v2_scalp_report.py", "v2_scalp_large3.py")
+FILES = ("v2_replay.py", "v2_scalp_store.py", "v2_scalp_ind.py", "v2_scalp_ema.py", "v2_scalp_pump.py", "v2_scalp_run.py", "v2_scalp_report.py", "v2_scalp_large3.py", "v2_scalp_large5.py")
 FORBIDDEN = ("binance" + "_trader", "execution" + "_router", "place_market" + "_order", "import " + "requests", "urllib." + "request", "import " + "socket", "api" + "_key", "api" + "_secret", "live_trading" + "_enabled")
 
 

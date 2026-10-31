@@ -1,6 +1,6 @@
 """v2_scalp_large3.py - Part 55: SCALP LAB 6 of 8 (backend, read-only, HYPOTHETICAL replay). Large-trade replay on 3m candles: "my BIG real trades - what if the entry had been split into smaller pieces?"
 It reads the owner's closed real / paper trades through Part 5 (v2_pnl) and the saved 3m candles; it NEVER writes (no ledger, no trade file, no setting) and never rewrites a real trade. The real trade stays exactly as recorded; every number here is a hypothetical beside it.
-Part 56 uses the same engine for 5m (build(..., interval="5m")) and puts real and hypothetical side by side.
+Part 56 (v2_scalp_large5.py) uses the same engine for 5m and puts real and hypothetical side by side (the "paired" block of every summary: same trades in every column).
 WHICH TRADES: every box is its own world and is NEVER added to another (real_live, live_estimated, paper_b1, paper_b2). LARGE = notional (invest_usdt x leverage) in the top quarter of that box (the cut-off is shown); a box with fewer than 4 trades with a notional has no cut-off and nothing is replayed.
 THE REPLAY (candle-close execution, nothing looks ahead; the owner's REAL entry and REAL exit moments are used as given, no new exit rule, no hindsight rule):
   E = the 3m candle that holds the real entry time, X = the candle that holds the real exit time; prices are candle CLOSES (the first price anybody could use after the moment). Needs E..X in ONE gap-free run of saved candles and X after E.
@@ -87,6 +87,10 @@ def _summary(rows):
     d = [r["delta_pct"] for r in rows]
     s = {"n": len(rows), "ONE_net_pct": _stat([r["ONE_net_pct"] for r in rows]), "IN3_net_pct": _stat([r["IN3_net_pct"] for r in rows]), "delta_IN3_minus_ONE": _stat(d),
          "IN3_better": sum(1 for x in d if x > 0), "IN3_worse": sum(1 for x in d if x < 0), "same": sum(1 for x in d if x == 0)}
+    pr = [r for r in rows if r.get("real_raw_move_pct") is not None]
+    c = R.cost_pct()
+    s["paired"] = {"n": len(pr), "REAL_net_pct": _stat([r["real_raw_move_pct"] - c for r in pr]), "ONE_net_pct": _stat([r["ONE_net_pct"] for r in pr]),
+                   "IN3_net_pct": _stat([r["IN3_net_pct"] for r in pr]), "ONE_minus_REAL": _stat([r["ONE_net_pct"] - (r["real_raw_move_pct"] - c) for r in pr])}
     return s
 
 

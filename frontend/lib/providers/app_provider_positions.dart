@@ -306,6 +306,14 @@ extension AppProviderPositions on AppProvider {
     return {'marks': r[0], 'forward': r[1], 'reentry': r[2]};
   }
 
+  /// Part 57 (Scalp Lab screen): the two read-only Scalp Lab answers in one map {report, large}: the ledger (Part 54) and the big-trade replay with real vs hypothetical side by side (Part 56).
+  /// [days] 0 = all trades, else 1 to 365. Each answer keeps its own state (off / old / error) so one failing answer never hides the other. Never throws.
+  Future<Map<String, dynamic>> fetchScalpLab(int days) async {
+    final big = days > 0 ? '/api/v2/scalp_large5?days=$days' : '/api/v2/scalp_large5';
+    final r = await Future.wait([_ledgerGet('/api/v2/scalp_report'), _ledgerGet(big)]);
+    return {'report': r[0], 'large': r[1]};
+  }
+
   Future<Map<String, dynamic>> _ledgerGet(String path) async {
     try {
       final res = await _getResilient(_u(path));
