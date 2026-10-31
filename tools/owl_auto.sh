@@ -1,6 +1,6 @@
 #!/data/data/com.termux/files/usr/bin/bash
 # OWL auto-deploy v5g (2026-10-31) for Termux.
-# v5g (31 Oct): PUSH FIX. (1) zips in Download are now applied OLDEST FIRST (by file time, not by name), so an old owl_Part73 can no longer overwrite a newer owl_Part32.
+# v5g (31 Oct, with Part 34): PUSH FIX. (1) zips in Download are now applied OLDEST FIRST (by file time, not by name), so an old owl_Part73 can no longer overwrite a newer owl_Part32.
 #   (2) a failed GitHub push is remembered (~/.owl_push_pending) and retried about every 3 minutes (before: one failure = never pushed, the zip was marked done).
 #   (3) the repo folder is found by itself (~/Indian-main, ~/Indian-cleanup, ~/Indian or any folder under ~ whose git remote has "Indian" in it).
 #   (4) a zip skipped because it is OLDER than the deployed full zip is now logged once (before it was silent). (5) NEW commands: pushcheck, pushnow (below).
@@ -8,7 +8,8 @@
 #
 #   bash ~/owl_auto.sh            start the watcher (only ONE can run; a 2nd copy refuses)
 #   bash ~/owl_auto.sh pushcheck  why is nothing pushed? (watcher, repo folder, login test, pending zips) -> screen + ~/owl_pushcheck.txt
-#   bash ~/owl_auto.sh pushnow    push right now: pending zips + anything already committed in the repo folder
+#   bash ~/owl_auto.sh pushnow    push RIGHT NOW without the watcher: the newest owl zip in Download is copied into the repo folder, committed and pushed
+#   bash ~/owl_auto.sh install-bashrc   one-time: every new Termux window starts this watcher by itself if it is not running (no Termux:Boot app needed)
 #   bash ~/owl_auto.sh status     full report -> screen + ~/owl_status.txt + Download/owl_status.txt
 #   bash ~/owl_auto.sh restart    kill every old backend, start the live code again
 #   bash ~/owl_auto.sh stop       stop watcher + backend
@@ -688,13 +689,32 @@ case "$1" in
     } 2>&1 | tee "$HOME/owl_pushcheck.txt"
     exit 0 ;;
   pushnow)
-    git_ok || { echo "no git repo found (looked at ~/Indian-main, ~/Indian-cleanup, ~/Indian)"; exit 1; }
+    git_ok || { echo "no git repo found (looked at ~/Indian-main, ~/Indian-cleanup, ~/Indian, or any folder under ~ whose remote has Indian in it)"; exit 1; }
     echo "repo: $REPO"
-    pending_retry
-    out="$(git -C "$REPO" pull --rebase --autostash origin main 2>&1)" || { echo "pull FAILED:"; echo "$out" | tail -n 6; exit 1; }
-    git -C "$REPO" add -A >/dev/null 2>&1
-    git -C "$REPO" diff --cached --quiet || git -C "$REPO" -c user.name=owl-auto -c user.email=owl-auto@users.noreply.github.com commit -q -m "auto: pushnow" >/dev/null 2>&1
-    if out="$(git -C "$REPO" push origin main 2>&1)"; then echo "PUSHED ok. GitHub builds now (about 10 min)."; else echo "push FAILED:"; echo "$out" | tail -n 8; exit 1; fi
+    z="$2"
+    if [ -z "$z" ]; then   # newest owl zip (a zip whose files all sit in Indian-main/, not a full Indian-main*.zip) from every Download folder
+      z="$(DL_LIST | while read -r d; do for f in "$d"/*.zip; do [ -f "$f" ] && case "$(basename "$f")" in Indian-main*) ;; *) is_owl_zip "$f" && stat -c '%Y|%n' "$f" ;; esac; done; done | sort -t'|' -k1,1n | tail -n 1 | cut -d'|' -f2-)"
+    fi
+    if [ -n "$z" ] && [ -f "$z" ]; then
+      echo "zip : $z"
+      if sync_repo "$z"; then echo "zip copied into the repo and pushed (or the repo already had it)."; else echo "sync FAILED for this zip: see the last lines of ~/owl_auto.log (bash ~/owl_auto.sh pushcheck)"; exit 1; fi
+    else
+      echo "no owl zip found in Download: pushing only what is already committed"
+      pending_retry
+      out="$(git -C "$REPO" pull --rebase --autostash origin main 2>&1)" || { echo "pull FAILED:"; echo "$out" | tail -n 6; exit 1; }
+      if out="$(git -C "$REPO" push origin main 2>&1)"; then echo "PUSH ok."; else echo "push FAILED:"; echo "$out" | tail -n 8; exit 1; fi
+    fi
+    exit 0 ;;
+  install-bashrc)
+    touch "$HOME/.bashrc"
+    if grep -q "owl_auto.sh watcher autostart" "$HOME/.bashrc" 2>/dev/null; then echo "already installed in ~/.bashrc"; else
+      cat >> "$HOME/.bashrc" <<'RC'
+
+# owl_auto.sh watcher autostart (written by: bash ~/owl_auto.sh install-bashrc). Starts the OWL watcher when a Termux window opens and none is running.
+if [ -f "$HOME/owl_auto.sh" ] && ! pgrep -f "owl_auto.sh" >/dev/null 2>&1; then (nohup bash "$HOME/owl_auto.sh" >/dev/null 2>&1 &); fi
+RC
+      echo "installed: from now on every new Termux window starts the watcher by itself (if it is not already running)."
+    fi
     exit 0 ;;
   logs)    echo "--- backend ---"; tail -n 40 "$BLOG" 2>/dev/null; echo "--- ping ---"; tail -n 20 "$PLOG" 2>/dev/null; echo "--- script ---"; tail -n 30 "$LOG" 2>/dev/null; exit 0 ;;
   ping)    rm -f "$PINGT"; kill_ping; start_ping; exit 0 ;;

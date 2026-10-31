@@ -274,6 +274,14 @@ extension AppProviderPositions on AppProvider {
   /// Part 37 (Data Explorer screen): the read-only summary (what happened / tested / learned / unknown). Same answer rules as fetchLedger.
   Future<Map<String, dynamic>> fetchSummary() => _ledgerGet('/api/v2/summary');
 
+  /// Part 34 (Radar screen): the three read-only Radar answers for the newest 7 cohort days, in one map {radar, outcomes, moves}. If the
+  /// first one cannot be read, that answer (with its state off / old / error) is returned as it is. Never throws.
+  Future<Map<String, dynamic>> fetchRadar() async {
+    final r = await Future.wait([_ledgerGet('/api/v2/radar?days=7'), _ledgerGet('/api/v2/radar_outcomes?days=7'), _ledgerGet('/api/v2/radar_moves?days=7')]);
+    if (r[0]['days'] is! List) return r[0];
+    return {'radar': r[0], 'outcomes': r[1], 'moves': r[2]};
+  }
+
   Future<Map<String, dynamic>> _ledgerGet(String path) async {
     try {
       final res = await _getResilient(_u(path));
