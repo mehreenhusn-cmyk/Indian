@@ -709,21 +709,23 @@ class _FloatingSummaryBarState extends State<_FloatingSummaryBar> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('${positions.length} OPEN  ·  RESULT ON MARGIN', style: context.type.metadata.copyWith(fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 0.6)),
+                              Text('${positions.length} OPEN  ·  OPEN P&L', style: context.type.metadata.copyWith(fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 0.6)),
                               const SizedBox(height: 3),
                               FittedBox(
                                 fit: BoxFit.scaleDown,
                                 alignment: Alignment.centerLeft,
                                 child: Text(
-                                  '${isProfit ? '+' : ''}${pct.toStringAsFixed(2)}%',
+                                  '${isProfit ? '+' : ''}${totalPnl.toStringAsFixed(2)} USDT',
                                   maxLines: 1,
                                   style: AppTypography.primaryData.copyWith(
                                     color: glow,
                                     fontWeight: FontWeight.w800,
-                                    fontSize: 16,
+                                    fontSize: 20,
                                   ),
                                 ),
                               ),
+                              Text('${isProfit ? '+' : ''}${pct.toStringAsFixed(2)}% on margin',
+                                  style: context.type.metadata.copyWith(fontSize: 11, fontWeight: FontWeight.w600, color: glow.withOpacity(0.85))),
                             ],
                           ),
                         ),

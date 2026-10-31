@@ -20,6 +20,7 @@ import v2_prepump_watch as PW
 import v2_radar as RD
 import v2_radar_moves as RM
 import v2_radar_outcomes as RO
+import v2_results as RS
 import v2_scalp_ema as SE
 import v2_scalp_large3 as SL3
 import v2_scalp_large5 as SL5
@@ -36,7 +37,7 @@ import v2_wickstudy_reentry as WR
 VERSION = "v2_data 1 (Part 18)"
 FLAG_NAME = "v2_api_enabled"
 CAPS = {"snapshot": 100, "candles": 500, "gaps": 200}
-ROUTES = ("status", "snapshot", "cohort", "candles", "gaps", "summary", "radar", "radar_outcomes", "radar_moves", "setups", "setups_forward", "prepump", "prepump_watch", "wickstudy", "wickstudy_forward", "wickstudy_reentry", "scalp_lab", "scalp_ema", "scalp_pump", "scalp_report", "scalp_large3", "scalp_large5", "screen_check", "brain_chat")
+ROUTES = ("status", "snapshot", "cohort", "candles", "gaps", "summary", "radar", "radar_outcomes", "radar_moves", "setups", "setups_forward", "prepump", "prepump_watch", "wickstudy", "wickstudy_forward", "wickstudy_reentry", "scalp_lab", "scalp_ema", "scalp_pump", "scalp_report", "scalp_large3", "scalp_large5", "screen_check", "brain_chat", "results")
 DAY_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
@@ -188,6 +189,11 @@ def v_screen_check(con, p, now, d):
     return SC.build(con, p.get("symbol") or "", p.get("interval") or "5m", p.get("at") or "", now)
 
 
+def v_results(con, p, now, d):
+    """Part 80: which group of closed trades makes / loses money (see v2_results.py). Read-only; dispatch answers it before the market store is opened."""
+    return RS.build(d)
+
+
 def v_brain_chat(con, p, now, d):
     """Part 76: Conversational Brain. ?q=bhai BTC me kya hua. Claude answers ONLY from backend facts (see v2_brain_chat.py); one question out to api.anthropic.com, nothing written, never an order."""
     return BC.ask(p.get("q") or "", d, con, now)
@@ -216,7 +222,7 @@ def v_summary(con, p, now, d):
     return {}
 
 
-VIEWS = {"brain_chat": v_brain_chat, "screen_check": v_screen_check, "scalp_large5": v_scalp_large5, "scalp_large3": v_scalp_large3, "scalp_report": v_scalp_report, "scalp_pump": v_scalp_pump, "scalp_ema": v_scalp_ema, "scalp_lab": v_scalp_lab, "wickstudy_reentry": v_wickstudy_reentry, "wickstudy_forward": v_wickstudy_forward, "wickstudy": v_wickstudy, "prepump_watch": v_prepump_watch, "prepump": v_prepump, "setups_forward": v_setups_forward, "setups": v_setups, "radar": v_radar, "radar_outcomes": v_radar_outcomes, "radar_moves": v_radar_moves, "summary": v_summary, "status": v_status, "snapshot": v_snapshot, "cohort": v_cohort, "candles": v_candles, "gaps": v_gaps}
+VIEWS = {"results": v_results, "brain_chat": v_brain_chat, "screen_check": v_screen_check, "scalp_large5": v_scalp_large5, "scalp_large3": v_scalp_large3, "scalp_report": v_scalp_report, "scalp_pump": v_scalp_pump, "scalp_ema": v_scalp_ema, "scalp_lab": v_scalp_lab, "wickstudy_reentry": v_wickstudy_reentry, "wickstudy_forward": v_wickstudy_forward, "wickstudy": v_wickstudy, "prepump_watch": v_prepump_watch, "prepump": v_prepump, "setups_forward": v_setups_forward, "setups": v_setups, "radar": v_radar, "radar_outcomes": v_radar_outcomes, "radar_moves": v_radar_moves, "summary": v_summary, "status": v_status, "snapshot": v_snapshot, "cohort": v_cohort, "candles": v_candles, "gaps": v_gaps}
 
 
 def summary_answer(data_dir):
@@ -242,6 +248,11 @@ def dispatch(name, params, data_dir, now=None):
     now = int(time.time() if now is None else now)
     if name == "summary":
         return summary_answer(data_dir)
+    if name == "results":                              # own files (closed trade archives), does not need the market store
+        try:
+            return 200, RS.build(data_dir)
+        except Exception:
+            return 503, {"error": "the results could not be made right now"}
     if name in ("scalp_lab", "scalp_report"):          # its own file, does not need the market store
         try:
             return 200, (SS.status(data_dir) if name == "scalp_lab" else SR.build(data_dir))

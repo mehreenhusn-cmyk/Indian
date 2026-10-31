@@ -18,6 +18,7 @@ import 'setup_screen.dart';
 import 'wickstudy_screen.dart';
 import 'scalp_lab_screen.dart';
 import 'brain_chat_screen.dart';
+import 'results_screen.dart';
 import 'screen_check_screen.dart';
 import 'reports_screen.dart';
 import 'settings_screen.dart';
@@ -89,6 +90,8 @@ class MoreScreen extends StatelessWidget {
                 () => _open(context, 'Screenshot Check', const ScreenCheckScreen())),
             _row(context, Icons.chat_bubble_outline, 'Ask the Brain', 'Ask in your words (Claude answers only from your saved data, never an order)',
                 () => _open(context, 'Ask the Brain', const BrainChatScreen())),
+            _row(context, Icons.query_stats, 'Results', 'Which groups of your closed trades make money and which lose (net of fee, read-only)',
+                () => _open(context, 'Results', const ResultsScreen())),
             const SizedBox(height: AppSpacing.l),
             _label(context, 'DOWNLOADS'),
             _row(context, Icons.article_outlined, 'App report', 'One text file about the whole app',

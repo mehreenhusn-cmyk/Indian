@@ -323,6 +323,9 @@ extension AppProviderPositions on AppProvider {
   /// One send only (the helper never repeats a slow GET), so one question = one Claude call; the answer can take up to about 40 s.
   Future<Map<String, dynamic>> fetchBrainChat(String q) => _ledgerGet('/api/v2/brain_chat?q=${Uri.encodeQueryComponent(q)}');
 
+  /// Part 81 (Results screen): the read-only Part 80 route. Which groups of closed trades make or lose money, net of fee; no setting, no order.
+  Future<Map<String, dynamic>> fetchResults() => _ledgerGet('/api/v2/results');
+
   Future<Map<String, dynamic>> _ledgerGet(String path) async {
     try {
       final res = await _getResilient(_u(path));

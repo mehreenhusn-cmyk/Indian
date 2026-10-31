@@ -427,7 +427,7 @@ class _PositionCardState extends State<PositionCard> {
                     ),
                   ),
                   const SizedBox(width: 6),
-                  _RoiPill(roi: roi, isProfit: isProfit),
+                  _ProfitBlock(pnl: pnl, roi: roi, isProfit: isProfit),
                   const SizedBox(width: 2),
                   InkWell(
                     borderRadius: BorderRadius.circular(16),
@@ -495,13 +495,8 @@ class _PositionCardState extends State<PositionCard> {
                         behavior: HitTestBehavior.opaque,
                         onTap: () => _toggleExpanded(true),
                         child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        mainAxisAlignment: MainAxisAlignment.end,
                         children: [
-                          Text('P&L ${isProfit ? '+' : ''}${pnl.toStringAsFixed(2)} USDT',
-                              style: AppTypography.secondaryData.copyWith(
-                                  color: isProfit ? _green : _red,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w700)),
                           if (tradeId != null)
                             TextButton(
                               style: TextButton.styleFrom(
@@ -547,10 +542,6 @@ class _PositionCardState extends State<PositionCard> {
                         children: [
                           Text('LTP: ${_fmt(ltp)}',
                               style: context.type.secondary.copyWith(fontSize: 12)),
-                          Text('P&L ${isProfit ? '+' : ''}${pnl.toStringAsFixed(2)} USDT',
-                              style: AppTypography.secondaryData.copyWith(
-                                  color: isProfit ? _green : _red,
-                                  fontWeight: FontWeight.w700)),
                           if (invest != null)
                             Text('Invest ${invest.toStringAsFixed(0)}',
                                 style: context.type.metadata.copyWith(fontSize: 12)),
@@ -810,30 +801,30 @@ class _GlassmorphicSurface extends StatelessWidget {
   }
 }
 
-/// Flat ROI pill (no glow), e.g. "+13.09%".
-class _RoiPill extends StatelessWidget {
+/// Profit block (top right of the card): USDT profit BIG on top, the percent small below it. Owner 31 Oct 2026: "upar profit, niche percentage".
+class _ProfitBlock extends StatelessWidget {
+  final double pnl;
   final double roi;
   final bool isProfit;
-  const _RoiPill({required this.roi, required this.isProfit});
+  const _ProfitBlock({required this.pnl, required this.roi, required this.isProfit});
 
   @override
   Widget build(BuildContext context) {
     final color = isProfit ? _green : _red;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.16),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withOpacity(0.55), width: 0.75),
-      ),
-      child: Text(
-        '${isProfit ? '+' : ''}${roi.toStringAsFixed(2)}%',
-        style: AppTypography.primaryData.copyWith(
-          color: color,
-          fontWeight: FontWeight.w700,
-          fontSize: 13,
+    final sign = isProfit ? '+' : '';
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text.rich(
+          TextSpan(children: [
+            TextSpan(text: '$sign${pnl.toStringAsFixed(2)}', style: AppTypography.primaryData.copyWith(color: color, fontWeight: FontWeight.w800, fontSize: 20)),
+            TextSpan(text: ' USDT', style: TextStyle(color: context.palette.textMuted, fontWeight: FontWeight.w600, fontSize: 10)),
+          ]),
+          maxLines: 1,
         ),
-      ),
+        Text('$sign${roi.toStringAsFixed(2)}%', style: AppTypography.secondaryData.copyWith(color: color.withOpacity(0.85), fontWeight: FontWeight.w600, fontSize: 12)),
+      ],
     );
   }
 }
