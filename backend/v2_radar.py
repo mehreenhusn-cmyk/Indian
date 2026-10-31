@@ -67,6 +67,16 @@ def _days_arg(days):
     return n
 
 
+def pick_days(now, day, days):
+    """-> (the 7 expected days, the days to show). Part 30; shared with v2_radar_outcomes. ValueError on a bad day text, a bad days number, or both given."""
+    if day is not None and not DAY_RE.match(day):
+        raise ValueError("day must look like 2026-10-30")
+    if day and days not in (None, ""):
+        raise ValueError("use day or days, not both")
+    exp = expected_days(now)
+    return exp, ([day] if day else exp[:_days_arg(days)])
+
+
 def _side_summary(rows):
     """Part 30: per side, counts and the spread of the change since the snapshot. Descriptive only (no win rate, no forecast); a coin with no price is UNKNOWN, not 0."""
     out = {}
@@ -172,12 +182,7 @@ def build(con, now=None, day=None, days=None):
     """-> the report dict (read-only). day=None and days=None: the newest 2 expected days; days=N (1 to 7): the newest N; MISSING days are listed as MISSING.
     Raises ValueError on a bad day text, a bad days number, or both given."""
     now = int(time.time() if now is None else now)
-    if day is not None and not DAY_RE.match(day):
-        raise ValueError("day must look like 2026-10-30")
-    if day and days not in (None, ""):
-        raise ValueError("use day or days, not both")
-    exp = expected_days(now)
-    shown = [day] if day else exp[:_days_arg(days)]
+    exp, shown = pick_days(now, day, days)
     cache = {}
     res = [_day(con, d, now, cache) for d in shown]
     for r in res:

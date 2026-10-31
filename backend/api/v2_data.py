@@ -15,12 +15,13 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import v2_candles as K
 import v2_collector as C
 import v2_radar as RD
+import v2_radar_outcomes as RO
 import v2_store as S
 
 VERSION = "v2_data 1 (Part 18)"
 FLAG_NAME = "v2_api_enabled"
 CAPS = {"snapshot": 100, "candles": 500, "gaps": 200}
-ROUTES = ("status", "snapshot", "cohort", "candles", "gaps", "summary", "radar")
+ROUTES = ("status", "snapshot", "cohort", "candles", "gaps", "summary", "radar", "radar_outcomes")
 DAY_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
@@ -92,6 +93,11 @@ def v_radar(con, p, now, d):
     return RD.build(con, now, p.get("day") or None, p.get("days") or None)
 
 
+def v_radar_outcomes(con, p, now, d):
+    """Part 31 + 32: what the saved cohort coins did 1 / 2 / 3 / 7 days after the snapshot, classes + episode rule (read-only, see v2_radar_outcomes.py). ?day= or ?days=N."""
+    return RO.build(con, now, p.get("day") or None, p.get("days") or None)
+
+
 def v_candles(con, p, now, d):
     sym, iv = p.get("symbol") or "", p.get("interval") or "5m"
     if not K._symbol_ok(sym) or iv not in K.INTERVALS:
@@ -115,7 +121,7 @@ def v_summary(con, p, now, d):
     return {}
 
 
-VIEWS = {"radar": v_radar, "summary": v_summary, "status": v_status, "snapshot": v_snapshot, "cohort": v_cohort, "candles": v_candles, "gaps": v_gaps}
+VIEWS = {"radar": v_radar, "radar_outcomes": v_radar_outcomes, "summary": v_summary, "status": v_status, "snapshot": v_snapshot, "cohort": v_cohort, "candles": v_candles, "gaps": v_gaps}
 
 
 def summary_answer(data_dir):
