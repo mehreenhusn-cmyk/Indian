@@ -20,6 +20,9 @@ import v2_radar as RD
 import v2_radar_moves as RM
 import v2_radar_outcomes as RO
 import v2_scalp_ema as SE
+import v2_scalp_large3 as SL3
+import v2_scalp_pump as SP
+import v2_scalp_report as SR
 import v2_scalp_store as SS
 import v2_setup_finder as SF
 import v2_setup_forward as SW
@@ -30,7 +33,7 @@ import v2_wickstudy_reentry as WR
 VERSION = "v2_data 1 (Part 18)"
 FLAG_NAME = "v2_api_enabled"
 CAPS = {"snapshot": 100, "candles": 500, "gaps": 200}
-ROUTES = ("status", "snapshot", "cohort", "candles", "gaps", "summary", "radar", "radar_outcomes", "radar_moves", "setups", "setups_forward", "prepump", "prepump_watch", "wickstudy", "wickstudy_forward", "wickstudy_reentry", "scalp_lab", "scalp_ema")
+ROUTES = ("status", "snapshot", "cohort", "candles", "gaps", "summary", "radar", "radar_outcomes", "radar_moves", "setups", "setups_forward", "prepump", "prepump_watch", "wickstudy", "wickstudy_forward", "wickstudy_reentry", "scalp_lab", "scalp_ema", "scalp_pump", "scalp_report", "scalp_large3")
 DAY_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
@@ -157,6 +160,21 @@ def v_scalp_ema(con, p, now, d):
     return SE.build(con, now, p.get("days") or None)
 
 
+def v_scalp_pump(con, p, now, d):
+    """Part 53: Scalp Lab category Pump / Dump, FOLLOW and FADE as two hypotheses, replay of the saved candles with a baseline (read-only, see v2_scalp_pump.py). ?days=N (1 to 7)."""
+    return SP.build(con, now, p.get("days") or None)
+
+
+def v_scalp_report(con, p, now, d):
+    """Part 54: Scalp Lab ledger report (placeholder so the name is known; the work is in SR.build, no market store needed)."""
+    return {}
+
+
+def v_scalp_large3(con, p, now, d):
+    """Part 55: Scalp Lab large-trade replay on 3m candles, HYPOTHETICAL split entry beside the real trade (read-only, see v2_scalp_large3.py). ?days=N (1 to 365)."""
+    return SL3.build(con, d, now, p.get("days") or None)
+
+
 def v_candles(con, p, now, d):
     sym, iv = p.get("symbol") or "", p.get("interval") or "5m"
     if not K._symbol_ok(sym) or iv not in K.INTERVALS:
@@ -180,7 +198,7 @@ def v_summary(con, p, now, d):
     return {}
 
 
-VIEWS = {"scalp_ema": v_scalp_ema, "scalp_lab": v_scalp_lab, "wickstudy_reentry": v_wickstudy_reentry, "wickstudy_forward": v_wickstudy_forward, "wickstudy": v_wickstudy, "prepump_watch": v_prepump_watch, "prepump": v_prepump, "setups_forward": v_setups_forward, "setups": v_setups, "radar": v_radar, "radar_outcomes": v_radar_outcomes, "radar_moves": v_radar_moves, "summary": v_summary, "status": v_status, "snapshot": v_snapshot, "cohort": v_cohort, "candles": v_candles, "gaps": v_gaps}
+VIEWS = {"scalp_large3": v_scalp_large3, "scalp_report": v_scalp_report, "scalp_pump": v_scalp_pump, "scalp_ema": v_scalp_ema, "scalp_lab": v_scalp_lab, "wickstudy_reentry": v_wickstudy_reentry, "wickstudy_forward": v_wickstudy_forward, "wickstudy": v_wickstudy, "prepump_watch": v_prepump_watch, "prepump": v_prepump, "setups_forward": v_setups_forward, "setups": v_setups, "radar": v_radar, "radar_outcomes": v_radar_outcomes, "radar_moves": v_radar_moves, "summary": v_summary, "status": v_status, "snapshot": v_snapshot, "cohort": v_cohort, "candles": v_candles, "gaps": v_gaps}
 
 
 def summary_answer(data_dir):
@@ -206,9 +224,9 @@ def dispatch(name, params, data_dir, now=None):
     now = int(time.time() if now is None else now)
     if name == "summary":
         return summary_answer(data_dir)
-    if name == "scalp_lab":          # its own file, does not need the market store
+    if name in ("scalp_lab", "scalp_report"):          # its own file, does not need the market store
         try:
-            return 200, SS.status(data_dir)
+            return 200, (SS.status(data_dir) if name == "scalp_lab" else SR.build(data_dir))
         except (S.StoreRefused, sqlite3.Error):
             return 503, {"error": "the Scalp Lab store is busy or unreadable"}
     try:
