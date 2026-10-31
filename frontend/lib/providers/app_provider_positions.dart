@@ -319,6 +319,10 @@ extension AppProviderPositions on AppProvider {
   Future<Map<String, dynamic>> fetchScreenCheck(String symbol, String interval, String at) =>
       _ledgerGet('/api/v2/screen_check?symbol=${Uri.encodeQueryComponent(symbol)}&interval=${Uri.encodeQueryComponent(interval)}&at=${Uri.encodeQueryComponent(at)}');
 
+  /// Part 77 (Brain chat screen): ONE question to the read-only Part 76 route. The answer is Claude's wording of backend facts (state ok / no_key / quota / bad_key / rate / offline ...) or state off / old / error. Never throws.
+  /// One send only (the helper never repeats a slow GET), so one question = one Claude call; the answer can take up to about 40 s.
+  Future<Map<String, dynamic>> fetchBrainChat(String q) => _ledgerGet('/api/v2/brain_chat?q=${Uri.encodeQueryComponent(q)}');
+
   Future<Map<String, dynamic>> _ledgerGet(String path) async {
     try {
       final res = await _getResilient(_u(path));

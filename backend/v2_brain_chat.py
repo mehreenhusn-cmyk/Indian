@@ -4,7 +4,7 @@ FACTS sent with every question (all read-only, scrubbed by v2_inv_redact first, 
 the Scalp Lab ledger (Part 54), and for every coin named in the question that has saved candles: the Part 74 Screenshot Check (2 indicators, same-state history with sample count, rule OPINION).
 Claude is told: answer only from the facts; if the facts do not hold the answer say so; EVIDENCE first (numbers + sample counts), then OPINION in its own labelled block; never an order, never "change SL / TP / size / strategy".
 It can NOT trade: this file imports no trading module, writes nothing (no file, no setting), the only network call is the one question to api.anthropic.com. No key, quota, bad key, offline = a plain-words state, never a made-up answer.
-Limits (starting values, NV): question max 500 chars, 20 questions per hour (in memory), 600 answer tokens, 45 s timeout. The answer is Claude's wording of OUR numbers, not a new measurement.
+Limits (starting values, NV): question max 500 chars, 20 questions per hour (in memory), 600 answer tokens, 35 s timeout. The answer is Claude's wording of OUR numbers, not a new measurement.
 Run (Termux, optional):  python3 backend/v2_brain_chat.py "bhai BTC me kya hua"      Route: GET /api/v2/brain_chat?q=... (api/v2_data.py)."""
 import json
 import os
@@ -28,7 +28,7 @@ MAX_CTX = 9000
 PER_PART = {"summary": 3500, "scalp_ledger": 2500, "coin": 2500}
 PER_HOUR = 20
 MAX_TOKENS = 600
-TIMEOUT = 45
+TIMEOUT = 35
 MAX_COINS = 2
 SYSTEM = ("You are the Brain of the Owl trading terminal, talking to its owner on a phone. Reply in simple Roman Hinglish (casual, short, max about 12 lines). "
           "Use ONLY the FACTS json you are given. If the facts do not contain the answer, say 'data me nahi hai' and say what data is missing; never guess a number. "
