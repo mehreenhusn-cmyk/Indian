@@ -12,6 +12,8 @@ import 'ai_report_screen.dart';
 import 'data_explorer_screen.dart';
 import 'ledger_screen.dart';
 import 'ping_tab_screen.dart';
+import 'radar_screen.dart';
+import 'setup_screen.dart';
 import 'reports_screen.dart';
 import 'settings_screen.dart';
 import 'strategy_doctor_screen.dart';
@@ -68,6 +70,10 @@ class MoreScreen extends StatelessWidget {
                 () => _open(context, 'Knowledge Ledger', const LedgerScreen())),
             _row(context, Icons.travel_explore_outlined, 'Data Explorer', 'What happened, what was tested, learned and unknown (read-only)',
                 () => _open(context, 'Data Explorer', const DataExplorerScreen())),
+            _row(context, Icons.radar_outlined, 'Radar', 'Top coins of the last 7 days: what they did next (read-only)',
+                () => _open(context, 'Radar', const RadarScreen())),
+            _row(context, Icons.insights_outlined, 'Setup Finder', 'Price formations without EMA and what came after (read-only)',
+                () => _open(context, 'Setup Finder', const SetupScreen())),
             const SizedBox(height: AppSpacing.l),
             _label(context, 'DOWNLOADS'),
             _row(context, Icons.article_outlined, 'App report', 'One text file about the whole app',

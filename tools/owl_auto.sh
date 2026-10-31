@@ -1,5 +1,8 @@
 #!/data/data/com.termux/files/usr/bin/bash
-# OWL auto-deploy v5g (2026-10-31) for Termux.
+# OWL auto-deploy v5h (2026-10-31) for Termux.
+# v5h (31 Oct, Part 43): STALE-ZIP GUARD. Proof from GitHub Actions: owl_Part73 was pushed AFTER owl_Part34 (file time is not a safe order, e.g. after a re-download) and made v2_radar.py,
+#   v2_data.py, more_screen.dart, app_provider_positions.dart and README4 old again. Now every zip carries its README4 version (v138 ...): a zip with a LOWER version than the newest one already
+#   applied / pushed is SKIPPED (logged), so an old cumulative zip can never overwrite newer files. Zips without a README4 are never skipped.
 # v5g (31 Oct, with Part 34): PUSH FIX. (1) zips in Download are now applied OLDEST FIRST (by file time, not by name), so an old owl_Part73 can no longer overwrite a newer owl_Part32.
 #   (2) a failed GitHub push is remembered (~/.owl_push_pending) and retried about every 3 minutes (before: one failure = never pushed, the zip was marked done).
 #   (3) the repo folder is found by itself (~/Indian-main, ~/Indian-cleanup, ~/Indian or any folder under ~ whose git remote has "Indian" in it).
@@ -70,7 +73,7 @@
 # Settings / trades live outside the code folder, so a new zip never touches them.
 # Needs once:  termux-setup-storage
 
-BUILD=42    # self-update number: a zip replaces this script only if its BUILD is a bigger whole number (v5c=2, v5d=3, v5e=40, v5f=41, v5g=42)
+BUILD=43    # self-update number: a zip replaces this script only if its BUILD is a bigger whole number (v5c=2, v5d=3, v5e=40, v5f=41, v5g=42, v5h=43)
 VERSION="v5g 2026-10-31"
 DL_LIST() {   # every Download folder that exists (no duplicates)
   for d in "$OWL_DL" "$HOME/storage/downloads" "$HOME/storage/shared/Download" "/sdcard/Download" "/storage/emulated/0/Download"; do
@@ -422,6 +425,35 @@ sys.exit(0 if ok else 1)
 PY
 }
 
+
+# v5h: the README4 version (the number in "(v138," on its first line) of a zip; empty when the zip has no README4
+zip_ver() {
+  python3 - "$1" <<'PY' 2>/dev/null
+import re, sys, zipfile
+try:
+    z = zipfile.ZipFile(sys.argv[1])
+    for n in z.namelist():
+        if n.endswith("README4.md"):
+            with z.open(n) as f:
+                m = re.search(r"\(v(\d+),", f.read(600).decode("utf-8", "ignore"))
+            print(m.group(1) if m else "")
+            break
+except Exception:
+    pass
+PY
+}
+# stale_zip <zip> <markerfile>: true (0) when the zip's README4 version is LOWER than the newest one recorded in the marker file
+stale_zip() {
+  local v cur; v="$(zip_ver "$1")"; cur="$(cat "$2" 2>/dev/null || echo 0)"
+  [ -n "$v" ] || return 1
+  [ "$v" -lt "${cur:-0}" ] 2>/dev/null
+}
+mark_ver() {   # remember the highest README4 version seen in this marker file
+  local v cur; v="$(zip_ver "$1")"; cur="$(cat "$2" 2>/dev/null || echo 0)"
+  [ -n "$v" ] && [ "$v" -gt "${cur:-0}" ] && echo "$v" > "$2"
+  return 0
+}
+
 check_overlays() {
   [ -f "$MARK" ] || return 0
   [ -d "$LIVE/backend" ] || return 0
@@ -443,8 +475,10 @@ check_overlays() {
       [ "$s1" = "$s2" ] || continue          # still downloading
       echo "$key" >> "$OVDONE"
       is_owl_zip "$f" || { log "zip ignored (not an Indian-main/ zip, so not this repo): $(basename "$f")"; continue; }
+      if stale_zip "$f" "$HOME/.owl_apply_ver"; then log "zip skipped: $(basename "$f") is README4 v$(zip_ver "$f"), OLDER than v$(cat "$HOME/.owl_apply_ver") already applied (it would put old files back)"; continue; fi
       self_update_zip "$f"
       overlay_zip "$f"; orc=$?
+      [ "$orc" -eq 0 ] || [ "$orc" -eq 5 ] && mark_ver "$f" "$HOME/.owl_apply_ver"
       [ "$orc" -eq 0 ] && echo applied > "$HOME/.owl_overlay_flag"
       case "$orc" in 0|5) sync_repo "$f" || pending_add "$f" ;; esac       # good backend overlay, or a frontend-only zip -> GitHub (v5g: a failed push is remembered)
     }
@@ -494,6 +528,7 @@ pending_retry() {
 sync_repo() {
   local zip="$1" out
   git_ok || { log "github sync skipped: no git repo at $REPO"; return 1; }
+  if stale_zip "$zip" "$HOME/.owl_push_ver"; then log "github sync skipped: $(basename "$zip") is README4 v$(zip_ver "$zip"), OLDER than v$(cat "$HOME/.owl_push_ver") already pushed (it would put old files back)"; pending_done "$(stat -c '%Y' "$zip" 2>/dev/null || echo 0)"; return 0; fi
   if ! git -C "$REPO" pull -q --rebase --autostash origin main >>"$LOG" 2>&1; then
     log "github sync: git pull failed (see ~/owl_auto.log) - $(basename "$zip") NOT pushed"; return 1
   fi
@@ -542,6 +577,7 @@ PY
   git -C "$REPO" "${ident[@]}" commit -q -m "auto: $(basename "$zip")" >>"$LOG" 2>&1 || { log "github sync: commit failed"; return 1; }
   if git -C "$REPO" push -q origin main >>"$LOG" 2>&1 || { git -C "$REPO" pull -q --rebase --autostash origin main >>"$LOG" 2>&1 && git -C "$REPO" push -q origin main >>"$LOG" 2>&1; }; then
     log "github sync: pushed $(basename "$zip") ${out#OK } files - GitHub is building now, the browser app follows in ~10 min (automatic)"
+    mark_ver "$zip" "$HOME/.owl_push_ver"
     pending_done "$(stat -c '%Y' "$zip" 2>/dev/null || echo 0)"
     return 0
   fi
