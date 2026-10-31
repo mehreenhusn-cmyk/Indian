@@ -37,6 +37,14 @@ def _items(ts):
     return [(t["ts"], t["net"]) for t in ts]
 
 
+def _hold(ts, verdict):
+    """Part 90a fix: FL._holdout only knows 'newest trades negative' (right for AVOID). A USE row is confirmed when the newest trades are POSITIVE (before, USE rows were judged the wrong way round)."""
+    h = FL._holdout(ts)
+    if verdict == "USE" and h["n"] >= h["need"]:
+        h["status"] = "CONFIRMS" if h["net_usdt"] > 0 else "AGAINST"
+    return h
+
+
 def playbook(trades):
     """One block per indicator. Rows only for groups with 30+ trades; thinner groups are counted, the nearest ones named."""
     blocks, checked = [], 0
@@ -50,7 +58,7 @@ def playbook(trades):
                 if g["n"] < RV.MIN_N:
                     thin.append({"dim_title": TITLES[dim], "label": lab, "n": g["n"], "needs": RV.MIN_N - g["n"]})
                     continue
-                g["holdout"] = FL._holdout(ts) if g["verdict"] in ("USE", "AVOID") else None
+                g["holdout"] = _hold(ts, g["verdict"]) if g["verdict"] in ("USE", "AVOID") else None
                 rows.append(g)
         rows.sort(key=lambda r: -r["net_usdt"])
         thin.sort(key=lambda r: r["needs"])

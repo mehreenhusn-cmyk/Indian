@@ -70,11 +70,14 @@
 # 14. NEW v5d: ONE repo only. The owner also downloads zips of other repos/projects into the same Download folder. Only a zip
 #     whose files ALL sit in the top folder Indian-main/ (Claude zips and the GitHub zip of this repo) is used for overlay,
 #     self-update or GitHub push; every other zip is ignored (logged once as "zip ignored").
+# 15. NEW v5i (1 Nov 2026): README5.md and docs/mockups/ (jpg / png / md only) are now pushed to GitHub. Before, the push filter
+#     did not know them and skipped them silently, so they vanished from the repo again and again. Still ONLY a zip whose files all sit
+#     in Indian-main/ is used (rule 14), so zips of other repos are never touched. Anything the filter skips is now written to the log by name.
 # Settings / trades live outside the code folder, so a new zip never touches them.
 # Needs once:  termux-setup-storage
 
-BUILD=43    # self-update number: a zip replaces this script only if its BUILD is a bigger whole number (v5c=2, v5d=3, v5e=40, v5f=41, v5g=42, v5h=43)
-VERSION="v5g 2026-10-31"
+BUILD=44    # self-update number: a zip replaces this script only if its BUILD is a bigger whole number (v5c=2, v5d=3, v5e=40, v5f=41, v5g=42, v5h=43, v5i=44)
+VERSION="v5i 2026-11-01"
 DL_LIST() {   # every Download folder that exists (no duplicates)
   for d in "$OWL_DL" "$HOME/storage/downloads" "$HOME/storage/shared/Download" "/sdcard/Download" "/storage/emulated/0/Download"; do
     [ -n "$d" ] && [ -d "$d" ] && echo "$(cd "$d" 2>/dev/null && pwd -P)"
@@ -527,6 +530,7 @@ pending_retry() {
 # sync_repo <zip>: put the zip's files into the repo folder, commit, push. GitHub then builds the app + the browser version.
 sync_repo() {
   local zip="$1" out
+  is_owl_zip "$zip" || { log "github sync skipped: $(basename "$zip") is not an Indian-main/ zip (other repo), never pushed"; return 0; }   # v5i: also for 'pushnow <zip>'
   git_ok || { log "github sync skipped: no git repo at $REPO"; return 1; }
   if stale_zip "$zip" "$HOME/.owl_push_ver"; then log "github sync skipped: $(basename "$zip") is README4 v$(zip_ver "$zip"), OLDER than v$(cat "$HOME/.owl_push_ver") already pushed (it would put old files back)"; pending_done "$(stat -c '%Y' "$zip" 2>/dev/null || echo 0)"; return 0; fi
   if ! git -C "$REPO" pull -q --rebase --autostash origin main >>"$LOG" 2>&1; then
@@ -545,7 +549,10 @@ pre = ""
 if len(tops) == 1 and list(tops)[0] not in ("backend", "frontend", ".github", "test", "scanner") and all("/" in n for n in names):
     pre = list(tops)[0] + "/"          # one wrapper folder (like Indian-main/) -> strip it
 ALLOWED = {"backend", "frontend", "tools", "test", "scanner", "android", ".github", "README.md", "README2.md", "README4.md", "pubspec.yaml",
-           "pubspec.lock", "analysis_options.yaml", "web_update.sh", ".gitignore", ".metadata"}
+           "pubspec.lock", "analysis_options.yaml", "web_update.sh", ".gitignore", ".metadata", "README5.md", "docs"}
+DOCS_OK = ("docs/mockups/",)
+DOCS_EXT = (".jpg", ".jpeg", ".png", ".md")
+skipped = []
 BLOCKED_EXT = (".apk", ".aab", ".ipa", ".zip", ".so", ".jks", ".keystore")
 n_ok = 0
 n_skip = 0
@@ -553,6 +560,11 @@ for n in names:
     rel = n[len(pre):] if n.startswith(pre) else n
     if rel and (rel.split("/")[0] not in ALLOWED or rel.lower().endswith(BLOCKED_EXT) or z.getinfo(n).file_size > 20 * 1024 * 1024):
         n_skip += 1
+        skipped.append(rel)
+        continue
+    if rel.startswith("docs/") and not (rel.startswith(DOCS_OK) and rel.lower().endswith(DOCS_EXT)):
+        n_skip += 1
+        skipped.append(rel)
         continue
     if (not rel or rel.startswith("/") or ".." in rel.split("/") or rel.startswith(".git/")
             or "__pycache__" in rel or rel.endswith(".pyc") or rel == "backend/.env"):
@@ -562,7 +574,7 @@ for n in names:
     with open(dst, "wb") as f:
         f.write(z.read(n))
     n_ok += 1
-print("OK", n_ok) if n_ok else print("NONE", n_skip)
+print("OK", n_ok, ("(skipped %d: %s)" % (n_skip, ", ".join(skipped[:8]))) if n_skip else "") if n_ok else print("NONE", n_skip)
 PY
   )"
   case "$out" in

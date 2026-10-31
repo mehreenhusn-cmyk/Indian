@@ -351,6 +351,9 @@ extension AppProviderPositions on AppProvider {
 
   Future<Map<String, dynamic>> fetchBrainLimits() => _ledgerGet('/api/v2/brain_limits?interval=5m');
 
+  /// Part 90b (Brain Health): read-only Part 90a route. Pipeline, sample coverage per market state, safety, graduation, what is missing. Live is always LOCKED.
+  Future<Map<String, dynamic>> fetchBrainHealth([String interval = '5m']) => _ledgerGet('/api/v2/brain_health?source=PAPER&interval=${Uri.encodeQueryComponent(interval)}');
+
   Future<Map<String, dynamic>> fetchBrainWhatif(String skip, String only) =>
       _ledgerGet('/api/v2/brain_whatif?source=PAPER&skip=${Uri.encodeQueryComponent(skip)}&only=${Uri.encodeQueryComponent(only)}');
 
