@@ -1,6 +1,6 @@
 """api/v2_data.py - Part 18: COLLECTORS 5 of 5 - READ-ONLY routes that show what the two collectors saved in v2_market.db. 5 routes, all GET, all behind the app's own token check:
 /api/v2/status (switches, store size, last run, last health lines) | /api/v2/snapshot (newest top gainers / losers) | /api/v2/cohort (official cohort, newest day or ?day=YYYY-MM-DD)
-| /api/v2/candles (?symbol=&interval=3m|5m&limit=) | /api/v2/gaps | /api/v2/summary (Part 36: what happened / tested / learned / unknown). The whole API is OFF until the file v2_api_enabled exists in the data folder (answer 404 "off"); then it still only READS.
+| /api/v2/candles (?symbol=&interval=3m|5m&limit=) | /api/v2/gaps | /api/v2/summary (Part 36: what happened / tested / learned / unknown) | /api/v2/radar (Part 29: saved cohorts and how those coins moved since). The whole API is OFF until the file v2_api_enabled exists in the data folder (answer 404 "off"); then it still only READS.
 Read-only for real: the store is opened with mode=ro + query_only, it is never created here, answers are capped (snapshot 100, candles 500, gaps 200 rows), bad input = 400,
 a database problem = 503 with a short fixed text (no path, no SQL). No network, no write, no order code (guard test). make_router(require_api_token, data_dir) is used by api_server.py
 ONLY after the owner's own ok (protected file) - until then this file is not mounted and changes nothing. Tests: python3 test/test_v2_api.py"""
@@ -14,12 +14,13 @@ import urllib.parse
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import v2_candles as K
 import v2_collector as C
+import v2_radar as RD
 import v2_store as S
 
 VERSION = "v2_data 1 (Part 18)"
 FLAG_NAME = "v2_api_enabled"
 CAPS = {"snapshot": 100, "candles": 500, "gaps": 200}
-ROUTES = ("status", "snapshot", "cohort", "candles", "gaps", "summary")
+ROUTES = ("status", "snapshot", "cohort", "candles", "gaps", "summary", "radar")
 DAY_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
@@ -86,6 +87,11 @@ def v_cohort(con, p, now, d):
     return {"ready": True, "day": day, "rows": rows}
 
 
+def v_radar(con, p, now, d):
+    """Part 29 + 30: saved cohorts and how those exact coins moved since (read-only, see v2_radar.py). ?day=YYYY-MM-DD for one day, ?days=N (1 to 7) for the newest N."""
+    return RD.build(con, now, p.get("day") or None, p.get("days") or None)
+
+
 def v_candles(con, p, now, d):
     sym, iv = p.get("symbol") or "", p.get("interval") or "5m"
     if not K._symbol_ok(sym) or iv not in K.INTERVALS:
@@ -109,7 +115,7 @@ def v_summary(con, p, now, d):
     return {}
 
 
-VIEWS = {"summary": v_summary, "status": v_status, "snapshot": v_snapshot, "cohort": v_cohort, "candles": v_candles, "gaps": v_gaps}
+VIEWS = {"radar": v_radar, "summary": v_summary, "status": v_status, "snapshot": v_snapshot, "cohort": v_cohort, "candles": v_candles, "gaps": v_gaps}
 
 
 def summary_answer(data_dir):
@@ -159,8 +165,8 @@ def make_router(require_api_token, data_dir):
     r = APIRouter()
 
     def add(name):
-        async def view(symbol: str = "", interval: str = "", limit: str = "", day: str = ""):
-            st, body = await asyncio.to_thread(dispatch, name, {"symbol": symbol, "interval": interval, "limit": limit, "day": day}, data_dir)
+        async def view(symbol: str = "", interval: str = "", limit: str = "", day: str = "", days: str = ""):
+            st, body = await asyncio.to_thread(dispatch, name, {"symbol": symbol, "interval": interval, "limit": limit, "day": day, "days": days}, data_dir)
             return JSONResponse(body, status_code=st)
         view.__name__ = "v2_" + name
         r.get("/api/v2/" + name, dependencies=[Depends(require_api_token)])(view)

@@ -4,6 +4,7 @@ import '../providers/app_provider.dart';
 import '../theme/app_theme.dart';
 import '../theme/app_spacing.dart';
 import 'owl_refresh.dart';
+import '../screens/data_explorer_screen.dart';
 
 /// Evidence page: does the AI help the bot, and which indicator combinations really win or lose.
 /// All numbers come from the backend (ai_evidence.py), after fees. The phone only draws them.
@@ -177,6 +178,14 @@ class _VisionEvidenceViewState extends State<VisionEvidenceView> {
             Text('A+ = 40+ older and 20+ newer trades, winning on both after fees. A = 20+ and 10+. B = fewer, only a hint. NO TRADE = losing on both. '
                 'No grade = not confirmed. The grade is counted from the numbers, the AI text never sets it, and it never opens, blocks or closes a trade.',
                 style: context.type.metadata.copyWith(height: 1.4, fontSize: 11.5)),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton(
+                onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
+                    builder: (_) => Scaffold(appBar: AppBar(title: const Text('Data Explorer')), body: const DataExplorerScreen()))),
+                child: const Text('Open Data Explorer (what happened, tested, learned, unknown)'),
+              ),
+            ),
           ]),
           _card(p, 'BOT SIGNALS: WHICH COMBINATIONS WORK', _patterns(p, _m(d['bot_patterns']), 'bot signals')),
           _card(p, 'AI OWN: WHICH COMBINATIONS WORK', _patterns(p, _m(d['own_patterns']), 'AI Own')),

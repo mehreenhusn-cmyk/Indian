@@ -271,6 +271,9 @@ extension AppProviderPositions on AppProvider {
   Future<Map<String, dynamic>> fetchLedgerOne(String findingId, {int? version}) =>
       _ledgerGet('/api/v2/ledger/${Uri.encodeComponent(findingId)}${version == null ? '' : '?version=$version'}');
 
+  /// Part 37 (Data Explorer screen): the read-only summary (what happened / tested / learned / unknown). Same answer rules as fetchLedger.
+  Future<Map<String, dynamic>> fetchSummary() => _ledgerGet('/api/v2/summary');
+
   Future<Map<String, dynamic>> _ledgerGet(String path) async {
     try {
       final res = await _getResilient(_u(path));
