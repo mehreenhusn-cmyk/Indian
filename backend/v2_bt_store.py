@@ -24,6 +24,7 @@ SOURCES = ("REPLAY", "PAPER", "SHADOW")                 # LIVE is not here on pu
 SAMPLES = ("TRAIN", "HOLDOUT", "NEW")                   # NEW = data after the rule was frozen
 DECISIONS = ("OPEN_LONG", "OPEN_SHORT", "WAIT", "SKIP", "NO_OPINION")      # WAIT = not now: the snapshot holds wait_for (the condition) and max_wait_candles
 SIDES = ("LONG", "SHORT")
+WAIT_RESULTS = ("CAME", "DROPPED")                     # a WAIT that is still open has NO row here (Part 85b)
 EXIT_REASONS = ("TARGET", "STOP", "TIME", "CLOSE_RULE", "KILL_SWITCH")
 REQUIRED_DEF = ("indicators", "entry", "stop", "target", "max_hold", "fee_pct", "slippage_pct", "size_usdt")
 _AO = "CREATE TRIGGER IF NOT EXISTS %s_no_%s BEFORE %s ON %s BEGIN SELECT RAISE(ABORT, 'append-only ledger'); END"
@@ -37,10 +38,12 @@ TABLES = (
     "open_ts INTEGER NOT NULL, entry REAL NOT NULL, sl REAL NOT NULL, tp REAL NOT NULL, size_usdt REAL NOT NULL, sample TEXT NOT NULL, created_ts INTEGER NOT NULL)",
     "CREATE TABLE IF NOT EXISTS bt_trade_close (trade_id TEXT PRIMARY KEY, close_ts INTEGER NOT NULL, exit_price REAL NOT NULL, exit_reason TEXT NOT NULL, gross_pct REAL NOT NULL, "
     "fee_pct REAL NOT NULL, slip_pct REAL NOT NULL, net_pct REAL NOT NULL, net_usdt REAL NOT NULL, mfe_pct REAL, mae_pct REAL, hold_candles INTEGER NOT NULL, created_ts INTEGER NOT NULL)",
+    "CREATE TABLE IF NOT EXISTS bt_wait_result (version TEXT NOT NULL, source TEXT NOT NULL, symbol TEXT NOT NULL, interval TEXT NOT NULL, close_ts INTEGER NOT NULL, side TEXT NOT NULL, "
+    "result TEXT NOT NULL, came_ts INTEGER, waited_candles INTEGER NOT NULL, created_ts INTEGER NOT NULL, PRIMARY KEY (version, source, symbol, interval, close_ts, side))",
     "CREATE TABLE IF NOT EXISTS guard_state (key TEXT PRIMARY KEY, value TEXT NOT NULL, ts INTEGER NOT NULL)",          # the ONLY mutable table: switches and limits
     "CREATE TABLE IF NOT EXISTS guard_log (ts INTEGER NOT NULL, event TEXT NOT NULL, detail TEXT)",
 )
-TRIGGERS = tuple(_AO % (t, op.lower(), op, t) for t in ("bt_version", "bt_decision", "bt_trade_open", "bt_trade_close", "guard_log") for op in ("UPDATE", "DELETE"))
+TRIGGERS = tuple(_AO % (t, op.lower(), op, t) for t in ("bt_version", "bt_decision", "bt_trade_open", "bt_trade_close", "bt_wait_result", "guard_log") for op in ("UPDATE", "DELETE"))
 
 
 def db_path(data_dir):

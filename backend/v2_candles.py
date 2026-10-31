@@ -179,7 +179,7 @@ def run_once(con, data_dir, now_ts=None, get=http_get, sleep=time.sleep, budget=
     if not syms:
         S.add_health(con, now_ts, "CANDLES_NO_SYMBOLS", "no cohort or ticker rows yet")
         return {"state": "NO_SYMBOLS"}
-    counter, saved, gaps, failed, stopped = [0], 0, 0, 0, False
+    counter, saved, gaps, failed, stopped, fails = [0], 0, 0, 0, False, []
     for sym in syms:
         for iv in INTERVALS:
             if counter[0] >= budget:
@@ -189,12 +189,15 @@ def run_once(con, data_dir, now_ts=None, get=http_get, sleep=time.sleep, budget=
             try:
                 s, g = refill_one(con, sym, iv, now_ts, get, sleep, counter)
                 saved, gaps = saved + s, gaps + g
-            except FetchFailed:
+            except FetchFailed as e:
                 failed += 1
+                fails.append("%s %s: %s" % (sym, iv, e))
             if counter[0] > before:
                 sleep(0.1)                                      # gentle: one request at a time
         if stopped:
             break
+    if fails:                                                   # Part 85b: WHICH coins failed and why (the Brain says it when a coin has no data)
+        S.add_health(con, now_ts, "CANDLES_FETCH_FAILED", "; ".join(fails[:6]))
     state = "BUDGET_STOPPED" if stopped else ("PARTIAL" if failed else "OK")
     S.add_health(con, now_ts, "CANDLES_" + state, "coins %d, requests %d, saved %d, gaps %d, failed %d" % (len(syms), counter[0], saved, gaps, failed))
     return {"state": state, "coins": len(syms), "requests": counter[0], "saved": saved, "gaps": gaps, "failed": failed}
