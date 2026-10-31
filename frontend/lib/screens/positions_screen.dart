@@ -348,16 +348,7 @@ class PositionsScreen extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       const LiveStatusChip(),
-                      const SizedBox(width: 8),
-                      // Small "N open" counter next to PANIC.
-                      Selector<AppProvider, int>(
-                        selector: (_, p) => p.positions.length,
-                        builder: (context, count, _) => Text(
-                          '$count open',
-                          style: context.type.metadata.copyWith(fontSize: 12, fontWeight: FontWeight.w600),
-                        ),
-                      ),
-                      const SizedBox(width: 6),
+                      const SizedBox(width: 10),
                       const _PanicButton(),
                     ],
                   ),
@@ -667,16 +658,18 @@ class _FloatingSummaryBarState extends State<_FloatingSummaryBar> {
         final positions = provider.positions;
         if (positions.isEmpty) return const SizedBox.shrink();
 
-        double totalPnl = 0.0;
-        double totalMargin = 0.0;
+        // Owner 31 Oct 2026: the profit goes INSIDE "Close All Profit" and the loss INSIDE "Close All Loss"; no percent, no repeated count.
+        double profitSum = 0.0, lossSum = 0.0;
         for (final p in positions) {
           if (p is! Map) continue;
-          totalPnl += (p['pnl_usdt'] as num?)?.toDouble() ?? 0.0;
-          totalMargin += (p['invest_usdt'] as num?)?.toDouble() ?? 0.0;
+          final v = (p['pnl_usdt'] as num?)?.toDouble() ?? 0.0;
+          if (v >= 0) {
+            profitSum += v;
+          } else {
+            lossSum += v;
+          }
         }
-        final isProfit = totalPnl >= 0;
-        final pct = totalMargin > 0 ? (totalPnl / totalMargin * 100.0) : 0.0;
-        final glow = isProfit ? _green : _red;
+        String amt(double v) => v == 0 ? '0.00 USDT' : '${fmtSigned(v)} USDT';
 
         return Padding(
           padding: const EdgeInsets.only(bottom: 4),
@@ -703,55 +696,11 @@ class _FloatingSummaryBarState extends State<_FloatingSummaryBar> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('${positions.length} OPEN  ·  OPEN P&L', style: context.type.metadata.copyWith(fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 0.6)),
-                              const SizedBox(height: 3),
-                              FittedBox(
-                                fit: BoxFit.scaleDown,
-                                alignment: Alignment.centerLeft,
-                                child: Text(
-                                  '${isProfit ? '+' : ''}${totalPnl.toStringAsFixed(2)} USDT',
-                                  maxLines: 1,
-                                  style: AppTypography.primaryData.copyWith(
-                                    color: glow,
-                                    fontWeight: FontWeight.w800,
-                                    fontSize: 20,
-                                  ),
-                                ),
-                              ),
-                              Text('${isProfit ? '+' : ''}${pct.toStringAsFixed(2)}% on margin',
-                                  style: context.type.metadata.copyWith(fontSize: 11, fontWeight: FontWeight.w600, color: glow.withOpacity(0.85))),
-                            ],
-                          ),
-                        ),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Text('MARGIN USED', style: context.type.metadata.copyWith(fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 0.6)),
-                            const SizedBox(height: 3),
-                            Text(
-                              '${totalMargin.toStringAsFixed(2)} USDT',
-                              style: AppTypography.primaryData.copyWith(
-                                color: context.palette.textPrimary,
-                                fontWeight: FontWeight.w700,
-                                fontSize: 13,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 5),
-                    Row(
                       children: [
                         Expanded(
                           child: _NeonPillButton(
                             label: 'Close All Profit',
+                            amount: amt(profitSum),
                             color: _green,
                             busy: _busyMode == 'profit',
                             disabled: _busyMode != null && _busyMode != 'profit',
@@ -768,6 +717,7 @@ class _FloatingSummaryBarState extends State<_FloatingSummaryBar> {
                         Expanded(
                           child: _NeonPillButton(
                             label: 'Close All Loss',
+                            amount: amt(lossSum),
                             color: _red,
                             busy: _busyMode == 'loss',
                             disabled: _busyMode != null && _busyMode != 'loss',
@@ -806,6 +756,7 @@ class _FloatingSummaryBarState extends State<_FloatingSummaryBar> {
 ///   never fire concurrently.
 class _NeonPillButton extends StatefulWidget {
   final String label;
+  final String? amount;
   final Color color;
   final bool busy;
   final bool disabled;
@@ -813,6 +764,7 @@ class _NeonPillButton extends StatefulWidget {
 
   const _NeonPillButton({
     required this.label,
+    this.amount,
     required this.color,
     required this.busy,
     required this.disabled,
@@ -855,7 +807,7 @@ class _NeonPillButtonState extends State<_NeonPillButton> {
           child: Container(
             // Shrunk from 44 - Close All Profit/Loss pair was taking up
             // too much vertical space above the position list.
-            height: 34,
+            height: widget.amount == null ? 34 : 50,
             alignment: Alignment.center,
             decoration: BoxDecoration(
               color: widget.color.withOpacity(widget.busy ? 0.14 : 0.08),
@@ -871,15 +823,24 @@ class _NeonPillButtonState extends State<_NeonPillButton> {
               secondCurve: AppMotion.standard,
               sizeCurve: AppMotion.standard,
               crossFadeState: widget.busy ? CrossFadeState.showSecond : CrossFadeState.showFirst,
-              firstChild: Text(
-                widget.label,
-                style: AppTypography.primaryData.copyWith(
-                  color: widget.color,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 12,
-                  letterSpacing: 0.2,
-                ),
-              ),
+              firstChild: widget.amount == null
+                  ? Text(
+                      widget.label,
+                      style: AppTypography.primaryData.copyWith(
+                        color: widget.color,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 12,
+                        letterSpacing: 0.2,
+                      ),
+                    )
+                  : Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(widget.label, style: AppTypography.primaryData.copyWith(color: widget.color, fontWeight: FontWeight.w600, fontSize: 11)),
+                        const SizedBox(height: 1),
+                        Text(widget.amount!, style: AppTypography.primaryData.copyWith(color: widget.color, fontWeight: FontWeight.w800, fontSize: 16)),
+                      ],
+                    ),
               secondChild: SizedBox(
                 width: 16,
                 height: 16,

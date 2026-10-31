@@ -427,7 +427,7 @@ class _PositionCardState extends State<PositionCard> {
                     ),
                   ),
                   const SizedBox(width: 6),
-                  _ProfitBlock(pnl: pnl, roi: roi, isProfit: isProfit),
+                  _ProfitBlock(pnl: pnl, isProfit: isProfit),
                   const SizedBox(width: 2),
                   InkWell(
                     borderRadius: BorderRadius.circular(16),
@@ -801,12 +801,11 @@ class _GlassmorphicSurface extends StatelessWidget {
   }
 }
 
-/// Profit block (top right of the card): USDT profit BIG on top, the percent small below it. Owner 31 Oct 2026: "upar profit, niche percentage".
+/// Profit block (top right of the card): only the USDT profit, big. Owner 31 Oct 2026: no percentage here.
 class _ProfitBlock extends StatelessWidget {
   final double pnl;
-  final double roi;
   final bool isProfit;
-  const _ProfitBlock({required this.pnl, required this.roi, required this.isProfit});
+  const _ProfitBlock({required this.pnl, required this.isProfit});
 
   @override
   Widget build(BuildContext context) {
@@ -823,7 +822,6 @@ class _ProfitBlock extends StatelessWidget {
           ]),
           maxLines: 1,
         ),
-        Text('$sign${roi.toStringAsFixed(2)}%', style: AppTypography.secondaryData.copyWith(color: color.withOpacity(0.85), fontWeight: FontWeight.w600, fontSize: 12)),
       ],
     );
   }
