@@ -33,6 +33,11 @@ VERSION = "v2_bt_sim 1 (Part 85a)"
 FINISHED = ("TARGET", "STOP", "TIME")
 
 
+def _chart_extra(ctx, i):
+    import v2_bt_chart as CH                                        # late import: v2_bt_chart imports this file
+    return CH.extra(ctx, i)
+
+
 def load_run(data_dir, symbol, interval):
     """The NEWEST gap-free run of clean closed candles of one coin (read-only). [] when the market store or the coin is missing."""
     path = S.store_path(data_dir)
@@ -79,6 +84,7 @@ def replay_coin(con, data_dir, symbol, interval="5m"):
     i = need - 1
     while i < len(run):
         t = ST.tags(ctx, i)
+        t.update(_chart_extra(ctx, i))
         d = R.decide(ctx, t, i)
         sample = V.sample_of(run[i][0], cut)
         hold = 0
@@ -121,6 +127,7 @@ def paper_scan(con, data_dir, symbol, interval="5m", now=None, source="PAPER"):
     i = len(run) - 1
     ctx = ST.prepare(run)
     t = ST.tags(ctx, i)
+    t.update(_chart_extra(ctx, i))                                 # Part 86a: chart tags saved with the decision (the rules ignore them)
     d = R.decide(ctx, t, i)
     guard = None
     if d["decision"] in ("OPEN_LONG", "OPEN_SHORT"):

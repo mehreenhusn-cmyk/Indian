@@ -326,6 +326,19 @@ extension AppProviderPositions on AppProvider {
   /// Part 81 (Results screen): the read-only Part 80 route. Which groups of closed trades make or lose money, net of fee; no setting, no order.
   Future<Map<String, dynamic>> fetchResults() => _ledgerGet('/api/v2/results');
 
+  /// Part 86b (Brain Today screen): read-only Part 86a routes. Today = report lines + newest answer per coin; chart = the CURRENT chart of one coin in plain sentences.
+  Future<Map<String, dynamic>> fetchBrainToday() => _ledgerGet('/api/v2/brain_today?source=PAPER');
+
+  Future<Map<String, dynamic>> fetchBrainChart(String symbol, String interval) =>
+      _ledgerGet('/api/v2/brain_chart?symbol=${Uri.encodeQueryComponent(symbol)}&interval=${Uri.encodeQueryComponent(interval)}');
+
+  /// Part 87 (Signal Detail + Active Paper Trade): read-only Part 87 routes.
+  Future<Map<String, dynamic>> fetchBrainSignal(String symbol, String interval) =>
+      _ledgerGet('/api/v2/brain_signal?symbol=${Uri.encodeQueryComponent(symbol)}&interval=${Uri.encodeQueryComponent(interval)}');
+
+  Future<Map<String, dynamic>> fetchBrainTrade(String symbol, String interval) =>
+      _ledgerGet('/api/v2/brain_trade?symbol=${Uri.encodeQueryComponent(symbol)}&interval=${Uri.encodeQueryComponent(interval)}');
+
   Future<Map<String, dynamic>> _ledgerGet(String path) async {
     try {
       final res = await _getResilient(_u(path));

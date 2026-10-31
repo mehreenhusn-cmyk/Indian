@@ -12,7 +12,10 @@ import time
 import urllib.parse
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import v2_bt_chart as CH
+import v2_bt_detail as DT
 import v2_bt_report as BR
+import v2_bt_review as RV
 import v2_brain_chat as BC
 import v2_candles as K
 import v2_collector as C
@@ -38,7 +41,7 @@ import v2_wickstudy_reentry as WR
 VERSION = "v2_data 1 (Part 18)"
 FLAG_NAME = "v2_api_enabled"
 CAPS = {"snapshot": 100, "candles": 500, "gaps": 200}
-ROUTES = ("status", "snapshot", "cohort", "candles", "gaps", "summary", "radar", "radar_outcomes", "radar_moves", "setups", "setups_forward", "prepump", "prepump_watch", "wickstudy", "wickstudy_forward", "wickstudy_reentry", "scalp_lab", "scalp_ema", "scalp_pump", "scalp_report", "scalp_large3", "scalp_large5", "screen_check", "brain_chat", "results", "brain_report")
+ROUTES = ("status", "snapshot", "cohort", "candles", "gaps", "summary", "radar", "radar_outcomes", "radar_moves", "setups", "setups_forward", "prepump", "prepump_watch", "wickstudy", "wickstudy_forward", "wickstudy_reentry", "scalp_lab", "scalp_ema", "scalp_pump", "scalp_report", "scalp_large3", "scalp_large5", "screen_check", "brain_chat", "results", "brain_report", "brain_today", "brain_chart", "brain_signal", "brain_trade", "brain_review")
 DAY_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
@@ -200,6 +203,40 @@ def v_brain_chat(con, p, now, d):
     return BC.ask(p.get("q") or "", d, con, now)
 
 
+def v_brain_review(con, p, now, d):
+    """Part 88a: the night review of the closed paper trades. ?source=PAPER. Read-only."""
+    return RV.build(d, p.get("source") or "PAPER", now)
+
+
+def v_brain_signal(con, p, now, d):
+    """Part 87: Signal Detail of one coin now. ?symbol=BTCUSDT&interval=5m&source=PAPER. Read-only."""
+    sym, iv = p.get("symbol") or "", p.get("interval") or "5m"
+    if not K._symbol_ok(sym) or iv not in K.INTERVALS:
+        raise ValueError("symbol must be like BTCUSDT and interval 3m or 5m")
+    return DT.signal(d, sym, iv, p.get("source") or "PAPER", now)
+
+
+def v_brain_trade(con, p, now, d):
+    """Part 87: the open PAPER trade of one coin (or a note that there is none). ?symbol=&interval=. Read-only."""
+    sym, iv = p.get("symbol") or "", p.get("interval") or "5m"
+    if not K._symbol_ok(sym) or iv not in K.INTERVALS:
+        raise ValueError("symbol must be like BTCUSDT and interval 3m or 5m")
+    return DT.trade(d, sym, iv, p.get("source") or "PAPER", now)
+
+
+def v_brain_today(con, p, now, d):
+    """Part 86a: the Today page (report lines + newest answer per coin). ?source=PAPER. Own file, read-only."""
+    return CH.today(d, p.get("source") or "PAPER", now)
+
+
+def v_brain_chart(con, p, now, d):
+    """Part 86a: the CURRENT chart of one coin in plain sentences. ?symbol=BTCUSDT&interval=5m. Read-only, nothing is saved."""
+    sym, iv = p.get("symbol") or "", p.get("interval") or "5m"
+    if not K._symbol_ok(sym) or iv not in K.INTERVALS:
+        raise ValueError("symbol must be like BTCUSDT and interval 3m or 5m")
+    return CH.view(d, sym, iv, now)
+
+
 def v_brain_report(con, p, now, d):
     """Part 85b: the Brain Trader daily report in plain words. ?source=PAPER&day=YYYY-MM-DD (UTC day, both optional). Own file, read-only (see v2_bt_report.py)."""
     return BR.build(d, p.get("source") or "PAPER", p.get("day") or None, now)
@@ -228,7 +265,7 @@ def v_summary(con, p, now, d):
     return {}
 
 
-VIEWS = {"brain_report": v_brain_report, "results": v_results, "brain_chat": v_brain_chat, "screen_check": v_screen_check, "scalp_large5": v_scalp_large5, "scalp_large3": v_scalp_large3, "scalp_report": v_scalp_report, "scalp_pump": v_scalp_pump, "scalp_ema": v_scalp_ema, "scalp_lab": v_scalp_lab, "wickstudy_reentry": v_wickstudy_reentry, "wickstudy_forward": v_wickstudy_forward, "wickstudy": v_wickstudy, "prepump_watch": v_prepump_watch, "prepump": v_prepump, "setups_forward": v_setups_forward, "setups": v_setups, "radar": v_radar, "radar_outcomes": v_radar_outcomes, "radar_moves": v_radar_moves, "summary": v_summary, "status": v_status, "snapshot": v_snapshot, "cohort": v_cohort, "candles": v_candles, "gaps": v_gaps}
+VIEWS = {"brain_review": v_brain_review, "brain_signal": v_brain_signal, "brain_trade": v_brain_trade, "brain_today": v_brain_today, "brain_chart": v_brain_chart, "brain_report": v_brain_report, "results": v_results, "brain_chat": v_brain_chat, "screen_check": v_screen_check, "scalp_large5": v_scalp_large5, "scalp_large3": v_scalp_large3, "scalp_report": v_scalp_report, "scalp_pump": v_scalp_pump, "scalp_ema": v_scalp_ema, "scalp_lab": v_scalp_lab, "wickstudy_reentry": v_wickstudy_reentry, "wickstudy_forward": v_wickstudy_forward, "wickstudy": v_wickstudy, "prepump_watch": v_prepump_watch, "prepump": v_prepump, "setups_forward": v_setups_forward, "setups": v_setups, "radar": v_radar, "radar_outcomes": v_radar_outcomes, "radar_moves": v_radar_moves, "summary": v_summary, "status": v_status, "snapshot": v_snapshot, "cohort": v_cohort, "candles": v_candles, "gaps": v_gaps}
 
 
 def summary_answer(data_dir):
@@ -261,6 +298,13 @@ def dispatch(name, params, data_dir, now=None):
             return 400, {"error": "source must be REPLAY, PAPER or SHADOW and day like 2026-11-01"}
         except Exception:
             return 503, {"error": "the Brain report could not be made right now"}
+    if name in ("brain_today", "brain_chart", "brain_signal", "brain_trade", "brain_review"):         # own files + the market store read-only inside, no connection needed here
+        try:
+            return 200, VIEWS[name](None, params or {}, now, data_dir)
+        except ValueError as e:
+            return 400, {"error": str(e)}
+        except Exception:
+            return 503, {"error": "the Brain page could not be made right now"}
     if name == "results":                              # own files (closed trade archives), does not need the market store
         try:
             return 200, RS.build(data_dir)
