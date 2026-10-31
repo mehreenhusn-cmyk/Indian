@@ -290,6 +290,22 @@ extension AppProviderPositions on AppProvider {
     return {'setups': r[0], 'forward': r[1]};
   }
 
+  /// Part 49 (Pre-pump screen): the two read-only answers of the PUMP / DUMP watch in one map {watch, early}: today's watch lists (Part 48, old cases from the last 7
+  /// days) and the early-sign numbers of those old days (Part 47). If the watch answer cannot be read, that answer (with its state off / old / error) is returned as it is. Never throws.
+  Future<Map<String, dynamic>> fetchPrepump() async {
+    final r = await Future.wait([_ledgerGet('/api/v2/prepump_watch?days=7'), _ledgerGet('/api/v2/prepump?days=7')]);
+    if (r[0]['today'] is! Map) return r[0];
+    return {'watch': r[0], 'early': r[1]};
+  }
+
+  /// Part 61 (Stop-wick screen): the three read-only Stop-wick answers for the last [days] days (1 to 7), in one map {marks, forward, reentry}.
+  /// If the marks answer cannot be read, that answer (with its state off / old / error) is returned as it is. Never throws.
+  Future<Map<String, dynamic>> fetchWickStudy(int days) async {
+    final r = await Future.wait([_ledgerGet('/api/v2/wickstudy?days=$days'), _ledgerGet('/api/v2/wickstudy_forward?days=$days'), _ledgerGet('/api/v2/wickstudy_reentry?days=$days')]);
+    if (r[0]['types'] is! List) return r[0];
+    return {'marks': r[0], 'forward': r[1], 'reentry': r[2]};
+  }
+
   Future<Map<String, dynamic>> _ledgerGet(String path) async {
     try {
       final res = await _getResilient(_u(path));

@@ -13,7 +13,9 @@ import 'data_explorer_screen.dart';
 import 'ledger_screen.dart';
 import 'ping_tab_screen.dart';
 import 'radar_screen.dart';
+import 'prepump_screen.dart';
 import 'setup_screen.dart';
+import 'wickstudy_screen.dart';
 import 'reports_screen.dart';
 import 'settings_screen.dart';
 import 'strategy_doctor_screen.dart';
@@ -74,6 +76,10 @@ class MoreScreen extends StatelessWidget {
                 () => _open(context, 'Radar', const RadarScreen())),
             _row(context, Icons.insights_outlined, 'Setup Finder', 'Price formations without EMA and what came after (read-only)',
                 () => _open(context, 'Setup Finder', const SetupScreen())),
+            _row(context, Icons.trending_up_outlined, 'Pump / Dump Watch', 'Coins in today\'s top 20 vs old cases, price followed (read-only)',
+                () => _open(context, 'Pump / Dump Watch', const PrepumpScreen())),
+            _row(context, Icons.vertical_align_center, 'Stop-wick Study', 'Wicks that swept a swing and closed back, what came after (read-only replay)',
+                () => _open(context, 'Stop-wick Study', const WickStudyScreen())),
             const SizedBox(height: AppSpacing.l),
             _label(context, 'DOWNLOADS'),
             _row(context, Icons.article_outlined, 'App report', 'One text file about the whole app',

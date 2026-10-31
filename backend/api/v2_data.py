@@ -15,17 +15,20 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import v2_candles as K
 import v2_collector as C
 import v2_prepump as PP
+import v2_prepump_watch as PW
 import v2_radar as RD
 import v2_radar_moves as RM
 import v2_radar_outcomes as RO
 import v2_setup_finder as SF
 import v2_setup_forward as SW
 import v2_store as S
+import v2_wickstudy as WK
+import v2_wickstudy_reentry as WR
 
 VERSION = "v2_data 1 (Part 18)"
 FLAG_NAME = "v2_api_enabled"
 CAPS = {"snapshot": 100, "candles": 500, "gaps": 200}
-ROUTES = ("status", "snapshot", "cohort", "candles", "gaps", "summary", "radar", "radar_outcomes", "radar_moves", "setups", "setups_forward", "prepump")
+ROUTES = ("status", "snapshot", "cohort", "candles", "gaps", "summary", "radar", "radar_outcomes", "radar_moves", "setups", "setups_forward", "prepump", "prepump_watch", "wickstudy", "wickstudy_forward", "wickstudy_reentry")
 DAY_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
@@ -122,6 +125,26 @@ def v_prepump(con, p, now, d):
     return PP.build(con, now, p.get("day") or None, p.get("days") or None)
 
 
+def v_prepump_watch(con, p, now, d):
+    """Part 48: today's Pre-pump / Pre-dump watch lists: coins in today's top 20 compared with the old cases of Part 47, price followed from the first moment (read-only, see v2_prepump_watch.py). ?days=N (1 to 7) = old cohort days used."""
+    return PW.build(con, now, p.get("days") or None)
+
+
+def v_wickstudy(con, p, now, d):
+    """Part 58: stop-wick candles (a wick sweeps the swing of the 20 candles before and the close is back inside) marked on the saved candles (read-only, see v2_wickstudy.py). ?days=N (1 to 7)."""
+    return WK.build(con, now, p.get("days") or None)
+
+
+def v_wickstudy_forward(con, p, now, d):
+    """Part 59: what the price did 15 min / 30 min / 1 h / 4 h after each stop-wick, with a baseline and the count of wick-tip retakes (read-only, see v2_wickstudy.py). ?days=N (1 to 7)."""
+    return WK.build_forward(con, now, p.get("days") or None)
+
+
+def v_wickstudy_reentry(con, p, now, d):
+    """Part 60: HYPOTHETICAL quick re-entry after each stop-wick: delay, status, and the price 15 min / 30 min / 1 h after the entry close (read-only replay, see v2_wickstudy_reentry.py). ?days=N (1 to 7)."""
+    return WR.build(con, now, p.get("days") or None)
+
+
 def v_candles(con, p, now, d):
     sym, iv = p.get("symbol") or "", p.get("interval") or "5m"
     if not K._symbol_ok(sym) or iv not in K.INTERVALS:
@@ -145,7 +168,7 @@ def v_summary(con, p, now, d):
     return {}
 
 
-VIEWS = {"prepump": v_prepump, "setups_forward": v_setups_forward, "setups": v_setups, "radar": v_radar, "radar_outcomes": v_radar_outcomes, "radar_moves": v_radar_moves, "summary": v_summary, "status": v_status, "snapshot": v_snapshot, "cohort": v_cohort, "candles": v_candles, "gaps": v_gaps}
+VIEWS = {"wickstudy_reentry": v_wickstudy_reentry, "wickstudy_forward": v_wickstudy_forward, "wickstudy": v_wickstudy, "prepump_watch": v_prepump_watch, "prepump": v_prepump, "setups_forward": v_setups_forward, "setups": v_setups, "radar": v_radar, "radar_outcomes": v_radar_outcomes, "radar_moves": v_radar_moves, "summary": v_summary, "status": v_status, "snapshot": v_snapshot, "cohort": v_cohort, "candles": v_candles, "gaps": v_gaps}
 
 
 def summary_answer(data_dir):
