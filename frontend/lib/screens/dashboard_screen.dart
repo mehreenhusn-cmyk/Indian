@@ -292,7 +292,7 @@ class DashboardScreen extends StatelessWidget {
   }
 }
 
-/// UI1: one status line under the title: Bot ON / PAUSED / OFFLINE chip + how old the price feed is + coins watched.
+/// UI1: one status line under the title: how old the price feed is + coins watched (the BOT ON / PAUSED pill sits beside the title, not here).
 /// Own Selector, so only this line rebuilds when the feed age moves (bucketed to 3 s).
 class _StatusLine extends StatelessWidget {
   const _StatusLine();
@@ -300,20 +300,16 @@ class _StatusLine extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Selector<AppProvider, int>(
-      selector: (_, p) => Object.hash(p.settings['trading_enabled'], p.status['symbols_tracked']),
+      selector: (_, p) => ((p.status['symbols_tracked'] as num?) ?? 0).toInt(),
       builder: (context, _, __) {
         final pr = context.read<AppProvider>();
-        final p = context.palette;
-        final on = (pr.settings['trading_enabled'] as bool?) ?? true;
         final coins = pr.status['symbols_tracked'] ?? 0;
-        // UI-LIVE: BOT ON / PAUSED = what the bot is set to; the LiveStatusChip = whether the data is live.
-        final chip = on ? OWLStatusPill(text: 'BOT ON', color: p.profit) : OWLStatusPill(text: 'PAUSED', color: p.warning);
+        // Fix (31 Oct, owner screenshot): BOT ON / PAUSED was drawn twice (next to the title AND here). The title pill is the one that can be tapped, so only the live-data chip + coins stay here.
         return Wrap(
           crossAxisAlignment: WrapCrossAlignment.center,
           spacing: 10,
           runSpacing: 4,
           children: [
-            chip,
             const LiveStatusChip(),
             Text('$coins coins watched', style: context.type.metadata),
           ],

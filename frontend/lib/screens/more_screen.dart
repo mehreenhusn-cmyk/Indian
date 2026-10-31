@@ -17,6 +17,7 @@ import 'prepump_screen.dart';
 import 'setup_screen.dart';
 import 'wickstudy_screen.dart';
 import 'scalp_lab_screen.dart';
+import 'screen_check_screen.dart';
 import 'reports_screen.dart';
 import 'settings_screen.dart';
 import 'strategy_doctor_screen.dart';
@@ -83,6 +84,8 @@ class MoreScreen extends StatelessWidget {
                 () => _open(context, 'Stop-wick Study', const WickStudyScreen())),
             _row(context, Icons.science_outlined, 'Scalp Lab', 'Replay ledger and big real trades split in pieces (read-only replay)',
                 () => _open(context, 'Scalp Lab', const ScalpLabScreen())),
+            _row(context, Icons.image_search_outlined, 'Screenshot Check', 'Type a coin and time: the 2 indicators, its own history and a labelled OPINION (read-only)',
+                () => _open(context, 'Screenshot Check', const ScreenCheckScreen())),
             const SizedBox(height: AppSpacing.l),
             _label(context, 'DOWNLOADS'),
             _row(context, Icons.article_outlined, 'App report', 'One text file about the whole app',

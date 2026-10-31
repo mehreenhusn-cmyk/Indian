@@ -314,6 +314,11 @@ extension AppProviderPositions on AppProvider {
     return {'report': r[0], 'large': r[1]};
   }
 
+  /// Part 75 (Screenshot Check screen): the read-only Part 74 answer for ONE coin and ONE time ([at] = UTC text like 2026-10-31 14:30, empty = newest candle). Same answer rules as fetchLedger
+  /// (state off / old / error; a bad coin or time comes back as state old with code 400). Never throws.
+  Future<Map<String, dynamic>> fetchScreenCheck(String symbol, String interval, String at) =>
+      _ledgerGet('/api/v2/screen_check?symbol=${Uri.encodeQueryComponent(symbol)}&interval=${Uri.encodeQueryComponent(interval)}&at=${Uri.encodeQueryComponent(at)}');
+
   Future<Map<String, dynamic>> _ledgerGet(String path) async {
     try {
       final res = await _getResilient(_u(path));

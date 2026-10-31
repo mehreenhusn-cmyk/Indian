@@ -100,7 +100,16 @@ def box_report(con, items, interval, first_ts):
     if len(nots) < MIN_BOX:
         rep["note"] = "fewer than %d trades with a notional: no cut-off, nothing replayed" % MIN_BOX
         return rep
-    cut = nots[len(nots) - int(math.ceil(len(nots) * LARGE_FRAC))]
+    want = int(math.ceil(len(nots) * LARGE_FRAC))
+    cut = nots[len(nots) - want]
+    strict = sum(1 for x in nots if x >= cut) > 2 * want       # Fix 1: many trades share ONE size (paper boxes = 1000 USDT each) -> ">= cut" would take almost all of them
+    if strict:
+        above = [x for x in nots if x > cut]
+        if not above:
+            rep["note"] = "all trades have (almost) the same notional: no 'large' group exists, nothing replayed"
+            return rep
+        cut = min(above)
+        rep["ties_note"] = "many trades share the same size; only trades strictly bigger than that size count as large"
     rep["large_cutoff_notional"] = round(cut, 2)
     rows = []
     for t in items:

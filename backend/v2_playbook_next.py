@@ -129,7 +129,7 @@ def build_report(data_dir, fee_roi=1.0):
     root = os.path.realpath(data_dir)
     if not os.path.isdir(root):
         return {"tool": VERSION, "read_only": True, "error": "data folder not found"}
-    paths, pst = B.read_paths(os.path.join(root, B.PATHS_FILE), [root], reduce_bars)
+    paths, pst = B.read_paths(B.paths_path(root), [root], reduce_bars)
     rep = {"tool": VERSION, "made_utc": P.fmt_ts(time.time()), "read_only": True, "min_trades_per_state": M.MIN_SLOT, "fee_roi_pct_used_for_old_trades": fee_roi,
            "paths_file": pst, "boxes": {}, "sources": {}}
     items, seen = {b: [] for b in B.PAPER_BOXES}, {b: set() for b in B.PAPER_BOXES}

@@ -31,6 +31,16 @@ import v2_pnl as P
 
 VERSION = "v2_playbook 1 (Part 11)"
 PATHS_FILE = "ai_trade_paths.jsonl"
+PATHS_DIRS = ("ai", "")      # Fix 1 (31 Oct): the phone keeps this file in the ai/ folder; the old code looked only in the root (-> "missing", Parts 11-13 showed 0)
+
+
+def paths_path(root):
+    """First place the paths file really exists (ai/ first, then root); root/ai/... when neither exists so the report says \"missing\"."""
+    for d in PATHS_DIRS:
+        p = os.path.join(root, d, PATHS_FILE)
+        if os.path.isfile(p):
+            return p
+    return os.path.join(root, PATHS_DIRS[0], PATHS_FILE)
 PAPER_BOXES = ("paper_b1", "paper_b2")
 Z_STRONG, TSI_OB, Z_DROP = 1.0, 30.0, 0.5
 NO_DATA = S.UNKNOWN          # trade without indicator samples: split_report shows it but never ranks it
@@ -163,7 +173,7 @@ def build_report(data_dir, fee_roi=1.0):
     root = os.path.realpath(data_dir)
     if not os.path.isdir(root):
         return {"tool": VERSION, "read_only": True, "error": "data folder not found"}
-    paths, pst = read_paths(os.path.join(root, PATHS_FILE), [root])
+    paths, pst = read_paths(paths_path(root), [root])
     rep = {"tool": VERSION, "made_utc": P.fmt_ts(time.time()), "read_only": True, "min_trades_per_slot": M.MIN_SLOT, "fee_roi_pct_used_for_old_trades": fee_roi,
            "paths_file": pst, "boxes": {}, "sources": {}}
     items, seen = {b: [] for b in PAPER_BOXES}, {b: set() for b in PAPER_BOXES}
