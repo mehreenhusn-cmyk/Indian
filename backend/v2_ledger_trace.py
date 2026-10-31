@@ -44,7 +44,9 @@ CREATE TRIGGER IF NOT EXISTS no_delete_ti BEFORE DELETE ON trace_item BEGIN SELE
 """
 
 
-def connect(data_dir):
+def connect(data_dir, ro=False):
+    if ro:                                  # Part 41: read-only, creates nothing (a missing trace_item table = no items yet)
+        return L.connect(data_dir, True)
     con = L.connect(data_dir)
     con.executescript(SCHEMA)
     return con
@@ -121,17 +123,20 @@ def add_items(data_dir, finding_id, version, items):
         con.close()
 
 
-def trace(data_dir, finding_id, version=None):
+def trace(data_dir, finding_id, version=None, ro=False):
     """The chain of one finding version (default: the newest) + GAPS. Money is summed per source, never across sources."""
-    con = connect(data_dir)
+    con = connect(data_dir, ro)
     try:
         if version is None:
             version = con.execute("SELECT MAX(version) FROM finding_version WHERE finding_id=?", (finding_id,)).fetchone()[0]
         fv = con.execute("SELECT * FROM finding_version WHERE finding_id=? AND version=?", (finding_id, version)).fetchone()
         if fv is None:
             return {"tool": VERSION, "error": "no such finding version"}
-        items = [dict(r) for r in con.execute("SELECT * FROM trace_item WHERE finding_id=? AND version=? ORDER BY row_id",
-                                              (finding_id, version))]
+        try:
+            items = [dict(r) for r in con.execute("SELECT * FROM trace_item WHERE finding_id=? AND version=? ORDER BY row_id",
+                                                  (finding_id, version))]
+        except sqlite3.OperationalError:
+            items = []
     finally:
         con.close()
     recs = [i for i in items if i["kind"] == "record"]

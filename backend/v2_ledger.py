@@ -18,6 +18,7 @@ import os
 import sqlite3
 import sys
 import time
+from urllib.request import pathname2url
 
 VERSION = "v2_ledger 1 (Part 39)"
 DB_NAME = "v2_ledger.db"
@@ -57,7 +58,15 @@ def find_data_dir(arg=None):
         return os.environ.get("OWL_DATA_DIR") or os.path.expanduser("~/storage/shared/owl_data")
 
 
-def connect(data_dir):
+def connect(data_dir, ro=False):
+    """ro=True (Part 41, the read-only route): open the EXISTING file read-only, create nothing, no schema script."""
+    if ro:
+        path = os.path.join(data_dir, DB_NAME)
+        if not os.path.isfile(path):
+            raise FileNotFoundError(DB_NAME)
+        con = sqlite3.connect("file:%s?mode=ro" % pathname2url(os.path.abspath(path)), uri=True)
+        con.row_factory = sqlite3.Row
+        return con
     os.makedirs(data_dir, exist_ok=True)
     con = sqlite3.connect(os.path.join(data_dir, DB_NAME))
     con.row_factory = sqlite3.Row
@@ -121,18 +130,18 @@ def _rows(con, sql, args=()):
     return [dict(r) for r in con.execute(sql, args).fetchall()]
 
 
-def history(data_dir, finding_id):
+def history(data_dir, finding_id, ro=False):
     """All versions of one finding, oldest first. Failed / rejected versions are kept and shown."""
-    con = connect(data_dir)
+    con = connect(data_dir, ro)
     try:
         return _rows(con, "SELECT * FROM finding_version WHERE finding_id=? ORDER BY version", (finding_id,))
     finally:
         con.close()
 
 
-def latest(data_dir):
+def latest(data_dir, ro=False):
     """Newest version of every finding (list, by finding id). Each row shows sample_size AND denominator."""
-    con = connect(data_dir)
+    con = connect(data_dir, ro)
     try:
         return _rows(con, "SELECT f.* FROM finding_version f JOIN (SELECT finding_id, MAX(version) v FROM finding_version "
                           "GROUP BY finding_id) m ON f.finding_id=m.finding_id AND f.version=m.v ORDER BY f.finding_id")
@@ -156,9 +165,9 @@ def mark_review(data_dir):
         con.close()
 
 
-def changes_since_review(data_dir):
+def changes_since_review(data_dir, ro=False):
     """What changed since the last review mark (or since the start when there is none): every version added after it, with its diff."""
-    con = connect(data_dir)
+    con = connect(data_dir, ro)
     try:
         r = con.execute("SELECT MAX(reviewed_utc) FROM review_mark").fetchone()[0]
         since = r or 0.0
