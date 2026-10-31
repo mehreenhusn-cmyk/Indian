@@ -339,6 +339,12 @@ extension AppProviderPositions on AppProvider {
   Future<Map<String, dynamic>> fetchBrainTrade(String symbol, String interval) =>
       _ledgerGet('/api/v2/brain_trade?symbol=${Uri.encodeQueryComponent(symbol)}&interval=${Uri.encodeQueryComponent(interval)}');
 
+  /// Part 88d (What the Brain is learning): read-only Part 88c routes. Playbook = USE / AVOID / thin chart states per indicator; what-if = skip / only rules (dim:label joined by |) on the same closed paper trades.
+  Future<Map<String, dynamic>> fetchBrainPlaybook() => _ledgerGet('/api/v2/brain_playbook?source=PAPER');
+
+  Future<Map<String, dynamic>> fetchBrainWhatif(String skip, String only) =>
+      _ledgerGet('/api/v2/brain_whatif?source=PAPER&skip=${Uri.encodeQueryComponent(skip)}&only=${Uri.encodeQueryComponent(only)}');
+
   Future<Map<String, dynamic>> _ledgerGet(String path) async {
     try {
       final res = await _getResilient(_u(path));

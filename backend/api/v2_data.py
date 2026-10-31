@@ -15,8 +15,10 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import v2_bt_chart as CH
 import v2_bt_detail as DT
 import v2_bt_filter as FL
+import v2_bt_playbook as PB
 import v2_bt_report as BR
 import v2_bt_review as RV
+import v2_bt_zonestudy as ZS
 import v2_brain_chat as BC
 import v2_candles as K
 import v2_collector as C
@@ -42,7 +44,7 @@ import v2_wickstudy_reentry as WR
 VERSION = "v2_data 1 (Part 18)"
 FLAG_NAME = "v2_api_enabled"
 CAPS = {"snapshot": 100, "candles": 500, "gaps": 200}
-ROUTES = ("status", "snapshot", "cohort", "candles", "gaps", "summary", "radar", "radar_outcomes", "radar_moves", "setups", "setups_forward", "prepump", "prepump_watch", "wickstudy", "wickstudy_forward", "wickstudy_reentry", "scalp_lab", "scalp_ema", "scalp_pump", "scalp_report", "scalp_large3", "scalp_large5", "screen_check", "brain_chat", "results", "brain_report", "brain_today", "brain_chart", "brain_signal", "brain_trade", "brain_review", "brain_filter")
+ROUTES = ("status", "snapshot", "cohort", "candles", "gaps", "summary", "radar", "radar_outcomes", "radar_moves", "setups", "setups_forward", "prepump", "prepump_watch", "wickstudy", "wickstudy_forward", "wickstudy_reentry", "scalp_lab", "scalp_ema", "scalp_pump", "scalp_report", "scalp_large3", "scalp_large5", "screen_check", "brain_chat", "results", "brain_report", "brain_today", "brain_chart", "brain_signal", "brain_trade", "brain_review", "brain_filter", "brain_playbook", "brain_whatif", "brain_zones")
 DAY_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
@@ -204,6 +206,24 @@ def v_brain_chat(con, p, now, d):
     return BC.ask(p.get("q") or "", d, con, now)
 
 
+def v_brain_zones(con, p, now, d):
+    """Part 89a: the SD-zone study (what price did after arriving in a zone, hypothetical BT-01 trade, TRAIN / HOLDOUT, baseline). ?interval=5m. Reads only the saved study file (made by v2_bt_zonestudy.py run)."""
+    iv = p.get("interval") or "5m"
+    if iv not in K.INTERVALS:
+        raise ValueError("interval must be 3m or 5m")
+    return ZS.build(d, iv, now)
+
+
+def v_brain_playbook(con, p, now, d):
+    """Part 88c: Indicator Playbook = what the Brain is learning, per indicator (USE / AVOID / MIXED / thin states). ?source=PAPER. Read-only."""
+    return PB.build_playbook(d, p.get("source") or "PAPER", now)
+
+
+def v_brain_whatif(con, p, now, d):
+    """Part 88c: What-if explorer on the same closed paper trades (counterfactual, nothing runs). ?source=PAPER&skip=zone:LABEL|tsi:LABEL&only=... Read-only."""
+    return PB.build_whatif(d, p.get("source") or "PAPER", p.get("skip"), p.get("only"), now)
+
+
 def v_brain_filter(con, p, now, d):
     """Part 88b: TAKE / SKIP filter candidates + A/B on the same closed paper trades (counterfactual, nothing runs). ?source=PAPER. Read-only."""
     return FL.build(d, p.get("source") or "PAPER", now)
@@ -271,7 +291,7 @@ def v_summary(con, p, now, d):
     return {}
 
 
-VIEWS = {"brain_filter": v_brain_filter, "brain_review": v_brain_review, "brain_signal": v_brain_signal, "brain_trade": v_brain_trade, "brain_today": v_brain_today, "brain_chart": v_brain_chart, "brain_report": v_brain_report, "results": v_results, "brain_chat": v_brain_chat, "screen_check": v_screen_check, "scalp_large5": v_scalp_large5, "scalp_large3": v_scalp_large3, "scalp_report": v_scalp_report, "scalp_pump": v_scalp_pump, "scalp_ema": v_scalp_ema, "scalp_lab": v_scalp_lab, "wickstudy_reentry": v_wickstudy_reentry, "wickstudy_forward": v_wickstudy_forward, "wickstudy": v_wickstudy, "prepump_watch": v_prepump_watch, "prepump": v_prepump, "setups_forward": v_setups_forward, "setups": v_setups, "radar": v_radar, "radar_outcomes": v_radar_outcomes, "radar_moves": v_radar_moves, "summary": v_summary, "status": v_status, "snapshot": v_snapshot, "cohort": v_cohort, "candles": v_candles, "gaps": v_gaps}
+VIEWS = {"brain_zones": v_brain_zones, "brain_playbook": v_brain_playbook, "brain_whatif": v_brain_whatif, "brain_filter": v_brain_filter, "brain_review": v_brain_review, "brain_signal": v_brain_signal, "brain_trade": v_brain_trade, "brain_today": v_brain_today, "brain_chart": v_brain_chart, "brain_report": v_brain_report, "results": v_results, "brain_chat": v_brain_chat, "screen_check": v_screen_check, "scalp_large5": v_scalp_large5, "scalp_large3": v_scalp_large3, "scalp_report": v_scalp_report, "scalp_pump": v_scalp_pump, "scalp_ema": v_scalp_ema, "scalp_lab": v_scalp_lab, "wickstudy_reentry": v_wickstudy_reentry, "wickstudy_forward": v_wickstudy_forward, "wickstudy": v_wickstudy, "prepump_watch": v_prepump_watch, "prepump": v_prepump, "setups_forward": v_setups_forward, "setups": v_setups, "radar": v_radar, "radar_outcomes": v_radar_outcomes, "radar_moves": v_radar_moves, "summary": v_summary, "status": v_status, "snapshot": v_snapshot, "cohort": v_cohort, "candles": v_candles, "gaps": v_gaps}
 
 
 def summary_answer(data_dir):
@@ -304,7 +324,7 @@ def dispatch(name, params, data_dir, now=None):
             return 400, {"error": "source must be REPLAY, PAPER or SHADOW and day like 2026-11-01"}
         except Exception:
             return 503, {"error": "the Brain report could not be made right now"}
-    if name in ("brain_today", "brain_chart", "brain_signal", "brain_trade", "brain_review", "brain_filter"):         # own files + the market store read-only inside, no connection needed here
+    if name in ("brain_today", "brain_chart", "brain_signal", "brain_trade", "brain_review", "brain_filter", "brain_playbook", "brain_whatif", "brain_zones"):         # own files + the market store read-only inside, no connection needed here
         try:
             return 200, VIEWS[name](None, params or {}, now, data_dir)
         except ValueError as e:

@@ -21,6 +21,7 @@ import 'brain_chat_screen.dart';
 import 'results_screen.dart';
 import 'brain_today_screen.dart';
 import 'screen_check_screen.dart';
+import 'brain_learning_screen.dart';
 import 'reports_screen.dart';
 import 'settings_screen.dart';
 import 'strategy_doctor_screen.dart';
@@ -93,6 +94,8 @@ class MoreScreen extends StatelessWidget {
                 () => _open(context, 'Ask the Brain', const BrainChatScreen())),
             _row(context, Icons.today_outlined, 'Brain Today', 'What the Brain did today, each coin in plain words, why some coins have no data (pretend money, read-only)',
                 () => _open(context, 'Brain Today', const BrainTodayScreen())),
+            _row(context, Icons.psychology_outlined, 'What the Brain is learning', 'Which chart states make or lose pretend money, and a what-if on the same closed trades (read-only)',
+                () => _open(context, 'What the Brain is learning', const BrainLearningScreen())),
             _row(context, Icons.query_stats, 'Results', 'Which groups of your closed trades make money and which lose (net of fee, read-only)',
                 () => _open(context, 'Results', const ResultsScreen())),
             const SizedBox(height: AppSpacing.l),
