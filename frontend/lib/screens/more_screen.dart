@@ -22,6 +22,7 @@ import 'results_screen.dart';
 import 'brain_today_screen.dart';
 import 'screen_check_screen.dart';
 import 'brain_learning_screen.dart';
+import 'brain_studies_screen.dart';
 import 'reports_screen.dart';
 import 'settings_screen.dart';
 import 'strategy_doctor_screen.dart';
@@ -96,6 +97,8 @@ class MoreScreen extends StatelessWidget {
                 () => _open(context, 'Brain Today', const BrainTodayScreen())),
             _row(context, Icons.psychology_outlined, 'What the Brain is learning', 'Which chart states make or lose pretend money, and a what-if on the same closed trades (read-only)',
                 () => _open(context, 'What the Brain is learning', const BrainLearningScreen())),
+            _row(context, Icons.science_outlined, 'Zone, squeeze and limits studies', 'What price did after reaching an SD zone, what a squeeze break did, and whether other stop / target limits beat BT-01 (read-only, nothing is applied)',
+                () => _open(context, 'Zone, squeeze and limits studies', const BrainStudiesScreen())),
             _row(context, Icons.query_stats, 'Results', 'Which groups of your closed trades make money and which lose (net of fee, read-only)',
                 () => _open(context, 'Results', const ResultsScreen())),
             const SizedBox(height: AppSpacing.l),

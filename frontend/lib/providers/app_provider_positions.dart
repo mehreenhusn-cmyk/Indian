@@ -340,7 +340,16 @@ extension AppProviderPositions on AppProvider {
       _ledgerGet('/api/v2/brain_trade?symbol=${Uri.encodeQueryComponent(symbol)}&interval=${Uri.encodeQueryComponent(interval)}');
 
   /// Part 88d (What the Brain is learning): read-only Part 88c routes. Playbook = USE / AVOID / thin chart states per indicator; what-if = skip / only rules (dim:label joined by |) on the same closed paper trades.
-  Future<Map<String, dynamic>> fetchBrainPlaybook() => _ledgerGet('/api/v2/brain_playbook?source=PAPER');
+  /// Part 88e: [interval] 5m / 15m and [state] TREND / SIDEWAYS / CONSOLIDATION / BREAKOUT are optional (empty = no filter).
+  Future<Map<String, dynamic>> fetchBrainPlaybook([String interval = '', String state = '']) {
+    final q = '${interval.isEmpty ? '' : '&interval=${Uri.encodeQueryComponent(interval)}'}${state.isEmpty || state == 'ALL' ? '' : '&state=${Uri.encodeQueryComponent(state)}'}';
+    return _ledgerGet('/api/v2/brain_playbook?source=PAPER$q');
+  }
+
+  /// Part 89c (Zone, squeeze and limits studies): read-only Part 89a / 89b routes. They only read the study files the auto-runner makes every 6 hours.
+  Future<Map<String, dynamic>> fetchBrainZones() => _ledgerGet('/api/v2/brain_zones?interval=5m');
+
+  Future<Map<String, dynamic>> fetchBrainLimits() => _ledgerGet('/api/v2/brain_limits?interval=5m');
 
   Future<Map<String, dynamic>> fetchBrainWhatif(String skip, String only) =>
       _ledgerGet('/api/v2/brain_whatif?source=PAPER&skip=${Uri.encodeQueryComponent(skip)}&only=${Uri.encodeQueryComponent(only)}');

@@ -10,7 +10,8 @@ Both parts use the CLOSED paper trades of ONE source (PAPER by default, sources 
    The status is never more than 'LOOKS BETTER ON PAST TRADES (not proven)'. BT-02 is NOT running; changing a rule needs the owner's OK.
 Trades made before Part 86a have no storm / clash tag: they are left out of those groups, never guessed. No win rate, no forecast, no advice to open a trade.
 Reads v2_brain_trader.db read-only. No network, no write, no trading import.
-Run (Termux, optional):  python3 backend/v2_bt_playbook.py [--source PAPER] [--skip "SD zone:ZONE_X|TSI vs the trade:TSI against the trade"] [--only "..."]  -> the plain lines."""
+Part 88e: build_playbook(.., interval='5m'|'15m', state='TREND'|'SIDEWAYS'|'CONSOLIDATION'|'BREAKOUT') = the same blocks on ONE timeframe / market-state group, plus the trade counts for the screen's switch (interval_counts, state_counts). Old calls without them work as before.
+Run (Termux, optional):  python3 backend/v2_bt_playbook.py [--source PAPER] [--interval 5m] [--state TREND] [--skip "SD zone:ZONE_X|TSI vs the trade:TSI against the trade"] [--only "..."]  -> the plain lines."""
 import argparse
 import os
 import sys
@@ -21,8 +22,10 @@ import v2_bt_filter as FL
 import v2_bt_review as RV
 import v2_bt_store as B
 
-VERSION = "v2_bt_playbook 1 (Part 88c)"
+VERSION = "v2_bt_playbook 2 (Part 88c + 88e)"
 DAY, MAX_RULES, NEAR = 86400, 4, 3
+INTERVALS = ("5m", "15m")                                   # Part 88e: the screen's timeframe switch (the Brain trades 5m now; 15m shows 0 trades until it does)
+STATE_GROUPS = {"TREND": ("TRENDING_UP", "TRENDING_DOWN"), "SIDEWAYS": ("SIDEWAYS",), "CONSOLIDATION": ("CONSOLIDATION",), "BREAKOUT": ("BREAKOUT", "BREAKDOWN")}
 TITLES = dict(RV.DIMS)
 SECTIONS = (("EMA50 + SD bands", ("state", "zone", "width")), ("TSI", ("tsi",)), ("Z-score + Z-SMA", ("z",)), ("Histogram (red storm)", ("storm",)),
             ("TSI + Z together", ("agree", "clash")), ("Volume", ("volume",)))
@@ -135,19 +138,35 @@ def _src(source):
         raise ValueError("source must be REPLAY, PAPER or SHADOW")
 
 
-def build_playbook(data_dir, source="PAPER", now=None):
+def pick(trades, interval=None, group=None):
+    """Part 88e: closed trades of ONE timeframe and, optionally, ONE market-state group (TREND = up + down trend, BREAKOUT = breakout + breakdown). None / '' / ALL = no filter. PUMP, DUMP and TRANSITION trades only show under All."""
+    if interval and interval not in INTERVALS:
+        raise ValueError("interval must be 5m or 15m")
+    if group and group != "ALL" and group not in STATE_GROUPS:
+        raise ValueError("state must be ALL, TREND, SIDEWAYS, CONSOLIDATION or BREAKOUT")
+    xs = [t for t in trades if t["interval"] == interval] if interval else list(trades)
+    return [t for t in xs if t["state"] in STATE_GROUPS[group]] if group in STATE_GROUPS else xs
+
+
+def build_playbook(data_dir, source="PAPER", now=None, interval=None, state=None):
     _src(source)
-    trades = _closed(data_dir, source)
-    if trades is None:
+    all_trades = _closed(data_dir, source)
+    if all_trades is None:
         return {"ready": False, "source": source, "lines": ["No Brain Trader file yet. Run the Brain tick or a replay first."], "note": "no Brain Trader file yet"}
+    trades = pick(all_trades, interval, state)
+    ic = {iv: sum(1 for t in all_trades if t["interval"] == iv) for iv in INTERVALS}
+    sc = {"ALL": len(pick(all_trades, interval))}
+    sc.update({g: len(pick(all_trades, interval, g)) for g in STATE_GROUPS})
     blocks, checked = playbook(trades)
     n_ok = sum(len(b["use"]) + len(b["avoid"]) for b in blocks)
-    lines = ["%s: %d closed paper trades. %d chart states checked, %d have a USE or AVOID verdict (30+ trades, same sign in both halves)." % (source, len(trades), checked, n_ok)]
+    lines = ["%s: %d closed paper trades%s. %d chart states checked, %d have a USE or AVOID verdict (30+ trades, same sign in both halves)." % (source, len(trades), " (%s, %s)" % (interval or "all timeframes", state or "ALL") if interval or state else "", checked, n_ok)]
+    if interval and not ic.get(interval):
+        lines.append("The Brain has no closed %s paper trades yet%s." % (interval, "; it trades on 5m for now" if interval != "5m" else ""))
     if len(trades) < RV.MIN_N:
         lines.append("Too few closed trades to learn anything yet (a state needs %d). The Brain keeps exploring and says USE or AVOID only with evidence." % RV.MIN_N)
     if checked > 10 and n_ok:
         lines.append("Luck note: %d states were checked at once, so a few can look good by pure luck. Trust a row more when its holdout CONFIRMS." % checked)
-    return {"ready": True, "framework": VERSION, "source": source, "total_closed": len(trades), "checked": checked, "blocks": blocks, "lines": lines, "limit": LIMIT,
+    return {"ready": True, "framework": VERSION, "source": source, "total_closed": len(trades), "checked": checked, "blocks": blocks, "lines": lines, "limit": LIMIT, "interval": interval, "state": state, "interval_counts": ic, "state_counts": sc,
             "note": "Closed paper trades only, net of fee + slippage. Words and numbers, not an order; it never changes the live bot."}
 
 
@@ -178,8 +197,10 @@ def main(argv=None):
     ap.add_argument("--source", default="PAPER", choices=B.SOURCES)
     ap.add_argument("--skip", default="")
     ap.add_argument("--only", default="")
+    ap.add_argument("--interval", default="")
+    ap.add_argument("--state", default="")
     a = ap.parse_args(argv)
-    r = build_whatif(a.data, a.source, a.skip, a.only) if (a.skip or a.only) else build_playbook(a.data, a.source)
+    r = build_whatif(a.data, a.source, a.skip, a.only) if (a.skip or a.only) else build_playbook(a.data, a.source, None, a.interval or None, a.state or None)
     print("\n".join(r["lines"] + ([l for b in r.get("blocks", []) for l in ["[%s]" % b["title"]] + b["lines"]] if "blocks" in r else [])))
     return 0
 

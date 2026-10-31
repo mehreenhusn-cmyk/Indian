@@ -2,7 +2,7 @@
 It is ONE more thread inside the Part 72 runner worker (v2_runner.py), so no protected file (api_server.py) is touched: the backend already starts that worker by itself.
 Jobs (both already built, both PAPER only, pretend money, no order code, LIVE stays locked):
   TICK  every 5 minutes, about 100 s after each 5m candle closes (the candle collector needs that time): v2_bt_wait.tick = close finished paper trades, look at every followed coin, answer finished waits. Writes only v2_brain_trader.db.
-  STUDY every 6 hours (first one 5 minutes after the start, or at once when the saved study is older than 6 h): v2_bt_zonestudy.run_study. Writes only v2_bt_zonestudy_5m.json.
+  STUDY every 6 hours (first one 5 minutes after the start, or at once when the saved study is older than 6 h): v2_bt_zonestudy.run_study, then (Part 89b) v2_bt_limits.run_study. Writes only v2_bt_zonestudy_5m.json and v2_bt_limits_5m.json.
 Own status file v2_bt_auto_status.json (last tick, last study, error counts, last error NAME only). Every job is inside try / except: one bad coin or one bad round never stops the thread or the collectors.
 OWNER SWITCH STAYS IN CHARGE: the first start (marker file v2_bt_auto_first_on) switches it ON once because the owner asked for auto; after that the file v2_bt_auto_enabled decides.
 Switch it off for good:  python3 backend/v2_bt_auto.py off   (the thread keeps idling and never switches itself back on)   |  on  |  status  |  once (one tick + one study now, then print).
@@ -83,7 +83,14 @@ def do_tick(data_dir, now=None):
 def do_study(data_dir, now=None):
     import v2_bt_zonestudy as Z
     r = Z.run_study(data_dir, "5m", now)
-    return {"coins": len(r["coins"]), "cases": r["cases"]}
+    out = {"coins": len(r["coins"]), "cases": r["cases"]}
+    try:                                                           # Part 89b: the squeeze + limits study rides on the same 6-hour job; if it fails the zone study result still counts
+        import v2_bt_limits as L
+        q = L.run_study(data_dir, "5m", now)
+        out.update({"squeeze_ends": q["squeeze_ends"], "limit_entries": q["entries"]})
+    except Exception as e:
+        out["limits_error"] = type(e).__name__
+    return out
 
 
 def _study_age(data_dir):

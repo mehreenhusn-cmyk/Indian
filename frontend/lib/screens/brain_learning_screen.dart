@@ -4,6 +4,7 @@ import '../providers/app_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/owl_card.dart';
 
+/// Part 88e adds a 5m / 15m switch and market-state tabs (Trend, Sideways, Consolidation, Breakout) to the Playbook tab, with the closed-trade count on each; the What-if tab always uses all trades.
 /// Part 88d (What the Brain is learning): read-only. Two tabs on the Part 88c routes.
 /// PLAYBOOK = /api/v2/brain_playbook: one block per indicator (EMA50 + SD bands, TSI, Z, histogram, TSI + Z, volume), the chart states that are USE / AVOID (30+ closed paper trades, same sign in both halves),
 /// a holdout chip on each, the states still too thin and how many trades they need. WHAT-IF = /api/v2/brain_whatif: pick states by hand (Skip = drop trades that match, Only = keep trades that match),
@@ -38,6 +39,8 @@ class _BrainLearningScreenState extends State<BrainLearningScreen> {
   String? _lab;
   final List<_Rule> _rules = [];
   String _ranKey = '';
+  String _iv = '5m';
+  String _sg = 'ALL';
 
   @override
   void initState() {
@@ -48,7 +51,7 @@ class _BrainLearningScreenState extends State<BrainLearningScreen> {
   Future<void> _load() async {
     setState(() => _busy = true);
     final prov = context.read<AppProvider>();
-    final pb = await prov.fetchBrainPlaybook();
+    final pb = await prov.fetchBrainPlaybook(_iv, _sg);
     final wi = await prov.fetchBrainWhatif('', '');
     if (!mounted) return;
     setState(() {
@@ -56,6 +59,51 @@ class _BrainLearningScreenState extends State<BrainLearningScreen> {
       _wi = wi;
       _busy = false;
     });
+  }
+
+  Future<void> _loadPb() async {
+    final r = await context.read<AppProvider>().fetchBrainPlaybook(_iv, _sg);
+    if (!mounted) return;
+    setState(() => _pb = r);
+  }
+
+  Widget _filters(AppPalette p, Map<String, dynamic> r) {
+    final ic = _m(r['interval_counts']);
+    final sc = _m(r['state_counts']);
+    const states = [
+      ['ALL', 'All'],
+      ['TREND', 'Trend'],
+      ['SIDEWAYS', 'Sideways'],
+      ['CONSOLIDATION', 'Consolidation'],
+      ['BREAKOUT', 'Breakout'],
+    ];
+    return OWLCard(
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        _title(p, 'Timeframe and market state', 'Closed paper trades. Trend = up + down trend, Breakout = breakout + breakdown. The number is how many closed trades.'),
+        Wrap(spacing: 8, children: [
+          for (final t in ['5m', '15m'])
+            ChoiceChip(
+              label: Text('$t (${ic[t] ?? 0})'),
+              selected: _iv == t,
+              onSelected: (_) {
+                setState(() => _iv = t);
+                _loadPb();
+              },
+            ),
+        ]),
+        Wrap(spacing: 8, children: [
+          for (final s in states)
+            ChoiceChip(
+              label: Text('${s[1]} (${sc[s[0]] ?? 0})'),
+              selected: _sg == s[0],
+              onSelected: (_) {
+                setState(() => _sg = s[0]);
+                _loadPb();
+              },
+            ),
+        ]),
+      ]),
+    );
   }
 
   String _join(String mode) => _rules.where((r) => r.mode == mode).map((r) => '${r.dim}:${r.label}').join('|');
@@ -162,10 +210,11 @@ class _BrainLearningScreenState extends State<BrainLearningScreen> {
     final r = _pb;
     if (_bad(r)) return [_msg(p, r)];
     return [
+      _filters(p, r!),
       OWLCard(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           _title(p, 'What the Brain is learning', 'Closed PAPER trades only, net of fee + slippage (pretend money)'),
-          for (final s in _s(r!['lines'])) Padding(padding: const EdgeInsets.only(bottom: 4), child: Text(s, style: TextStyle(fontSize: 12.5, color: p.textPrimary))),
+          for (final s in _s(r['lines'])) Padding(padding: const EdgeInsets.only(bottom: 4), child: Text(s, style: TextStyle(fontSize: 12.5, color: p.textPrimary))),
         ]),
       ),
       for (final b in _l(r['blocks'])) _block(p, b),
