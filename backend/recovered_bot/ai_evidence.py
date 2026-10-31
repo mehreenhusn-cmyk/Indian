@@ -122,6 +122,24 @@ def _tokens(dec):
     return tk
 
 
+# Part 38: evidence GRADE of one confirmed pattern. Plain counting, computed here (never by the LLM), research label only:
+# it never blocks, opens or closes a trade and never overrides the Brain. Grade comes from sample size on BOTH halves + the sign after fees.
+GRADE_WORDS = {"A+": "strong evidence", "A": "good evidence", "B": "weak evidence, a hint", "NO TRADE": "confirmed losing"}
+
+
+def grade_pattern(n_old, n_new, avg_old, avg_new):
+    """-> "A+" | "A" | "B" | "NO TRADE" | None (not confirmed in the same direction on both halves = no grade, never a made-up one)."""
+    if avg_old < 0 and avg_new < 0:
+        return "NO TRADE"
+    if not (avg_old > 0 and avg_new > 0):
+        return None
+    if n_old >= 40 and n_new >= 20:
+        return "A+"
+    if n_old >= 20 and n_new >= 10:
+        return "A"
+    return "B"
+
+
 def _stats(vals):
     n = len(vals)
     if not n:
@@ -186,6 +204,7 @@ def _mine(rows):
         ao, an = sum(po) / len(po), sum(pn) / len(pn)
         item = {"pattern": " + ".join(c), "n_old": len(po), "n_new": len(pn), "avg_old": round(ao, 3), "avg_new": round(an, 3),
                 "win_rate": _stats(po + pn)["win_rate"], "key": c}
+        item["grade"] = grade_pattern(len(po), len(pn), ao, an)
         if ao > 0 and an > 0:
             good.append(item)
         elif ao < 0 and an < 0:
@@ -197,7 +216,8 @@ def _mine(rows):
     for x in good + bad:
         x.pop("key", None)
     return {"n": n, "good": good[:SHOW], "bad": bad, "blocked_new": _stats(blocked), "new_n": len(new),
-            "note": "Patterns are found on the older 60% and checked on the newer 40%. Still a hint until there are 100+ trades."}
+            "note": "Patterns are found on the older 60% and checked on the newer 40%. Still a hint until there are 100+ trades.",
+            "grades": GRADE_WORDS}
 
 
 # ------------------------------------------------------------------ public

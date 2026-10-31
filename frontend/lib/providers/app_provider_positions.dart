@@ -262,4 +262,25 @@ extension AppProviderPositions on AppProvider {
       return {'state': 'error'};
     }
   }
+
+  /// Part 42 (Ledger screen): the read-only Knowledge Ledger list. Returns the backend map, or {"state": "off"} (404), {"state": "old"}
+  /// (any other non-200, e.g. an older backend) or {"state": "error"} (request failed). Never throws.
+  Future<Map<String, dynamic>> fetchLedger() => _ledgerGet('/api/v2/ledger');
+
+  /// One finding: all versions, diffs and the trace chain of [version] (null = newest). Same answer shape rules as fetchLedger.
+  Future<Map<String, dynamic>> fetchLedgerOne(String findingId, {int? version}) =>
+      _ledgerGet('/api/v2/ledger/${Uri.encodeComponent(findingId)}${version == null ? '' : '?version=$version'}');
+
+  Future<Map<String, dynamic>> _ledgerGet(String path) async {
+    try {
+      final res = await _getResilient(_u(path));
+      if (res.statusCode == 404 && res.body.contains('"enabled"')) return {'state': 'off'};
+      if (res.statusCode != 200) return {'state': 'old', 'code': res.statusCode};
+      final data = jsonDecode(res.body);
+      if (data is Map<String, dynamic>) return data;
+      return {'state': 'old'};
+    } catch (_) {
+      return {'state': 'error'};
+    }
+  }
 }

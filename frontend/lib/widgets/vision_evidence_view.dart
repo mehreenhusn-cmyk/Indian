@@ -88,6 +88,15 @@ class _VisionEvidenceViewState extends State<VisionEvidenceView> {
     );
   }
 
+  /// Part 38: the evidence grade (A+ / A / B / NO TRADE) as a small label. Counted by the backend from the sample sizes and the sign after fees
+  /// on BOTH halves; the AI text never sets it. It is a research label: it does not open, block or close any trade.
+  Widget _gradeChip(AppPalette p, String g, Color c) => Container(
+        margin: const EdgeInsets.only(right: 8, top: 1),
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        decoration: BoxDecoration(color: c.withOpacity(0.12), borderRadius: BorderRadius.circular(6), border: Border.all(color: c.withOpacity(0.45))),
+        child: Text(g, style: TextStyle(color: c, fontSize: 10.5, fontWeight: FontWeight.w800)),
+      );
+
   List<Widget> _patterns(AppPalette p, Map<String, dynamic> pt, String who) {
     final good = _l(pt['good']).map(_m).toList();
     final bad = _l(pt['bad']).map(_m).toList();
@@ -101,7 +110,10 @@ class _VisionEvidenceViewState extends State<VisionEvidenceView> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('${x['pattern']}', style: TextStyle(color: p.textPrimary, fontSize: 12, fontWeight: FontWeight.w700, height: 1.3)),
+              Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                if (x['grade'] != null) _gradeChip(p, '${x['grade']}', c),
+                Expanded(child: Text('${x['pattern']}', style: TextStyle(color: p.textPrimary, fontSize: 12, fontWeight: FontWeight.w700, height: 1.3))),
+              ]),
               Text('older ${x['n_old']} trades avg ${_d(x['avg_old']).toStringAsFixed(2)}  ·  newer ${x['n_new']} trades avg ${_d(x['avg_new']).toStringAsFixed(2)}  ·  win ${x['win_rate']}%',
                   style: context.type.metadata.copyWith(fontSize: 10.5, color: c)),
             ],
@@ -161,6 +173,11 @@ class _VisionEvidenceViewState extends State<VisionEvidenceView> {
                 style: context.type.metadata.copyWith(height: 1.4)),
           ),
           _card(p, 'DOES THE AI HELP THE BOT?', [for (final r in _l(d['table'])) _tableRow(p, _m(r))], glow: p.accent),
+          _card(p, 'EVIDENCE GRADES (RESEARCH ONLY)', [
+            Text('A+ = 40+ older and 20+ newer trades, winning on both after fees. A = 20+ and 10+. B = fewer, only a hint. NO TRADE = losing on both. '
+                'No grade = not confirmed. The grade is counted from the numbers, the AI text never sets it, and it never opens, blocks or closes a trade.',
+                style: context.type.metadata.copyWith(height: 1.4, fontSize: 11.5)),
+          ]),
           _card(p, 'BOT SIGNALS: WHICH COMBINATIONS WORK', _patterns(p, _m(d['bot_patterns']), 'bot signals')),
           _card(p, 'AI OWN: WHICH COMBINATIONS WORK', _patterns(p, _m(d['own_patterns']), 'AI Own')),
         ],

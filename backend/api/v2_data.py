@@ -1,6 +1,6 @@
 """api/v2_data.py - Part 18: COLLECTORS 5 of 5 - READ-ONLY routes that show what the two collectors saved in v2_market.db. 5 routes, all GET, all behind the app's own token check:
 /api/v2/status (switches, store size, last run, last health lines) | /api/v2/snapshot (newest top gainers / losers) | /api/v2/cohort (official cohort, newest day or ?day=YYYY-MM-DD)
-| /api/v2/candles (?symbol=&interval=3m|5m&limit=) | /api/v2/gaps. The whole API is OFF until the file v2_api_enabled exists in the data folder (answer 404 "off"); then it still only READS.
+| /api/v2/candles (?symbol=&interval=3m|5m&limit=) | /api/v2/gaps | /api/v2/summary (Part 36: what happened / tested / learned / unknown). The whole API is OFF until the file v2_api_enabled exists in the data folder (answer 404 "off"); then it still only READS.
 Read-only for real: the store is opened with mode=ro + query_only, it is never created here, answers are capped (snapshot 100, candles 500, gaps 200 rows), bad input = 400,
 a database problem = 503 with a short fixed text (no path, no SQL). No network, no write, no order code (guard test). make_router(require_api_token, data_dir) is used by api_server.py
 ONLY after the owner's own ok (protected file) - until then this file is not mounted and changes nothing. Tests: python3 test/test_v2_api.py"""
@@ -19,7 +19,7 @@ import v2_store as S
 VERSION = "v2_data 1 (Part 18)"
 FLAG_NAME = "v2_api_enabled"
 CAPS = {"snapshot": 100, "candles": 500, "gaps": 200}
-ROUTES = ("status", "snapshot", "cohort", "candles", "gaps")
+ROUTES = ("status", "snapshot", "cohort", "candles", "gaps", "summary")
 DAY_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
@@ -104,7 +104,26 @@ def v_gaps(con, p, now, d):
                                          ("kind", "symbol", "interval", "from_ts", "to_ts", "reason"))}
 
 
-VIEWS = {"status": v_status, "snapshot": v_snapshot, "cohort": v_cohort, "candles": v_candles, "gaps": v_gaps}
+def v_summary(con, p, now, d):
+    """Part 36: placeholder entry so the name is known; the real work is in summary_answer (no market store needed)."""
+    return {}
+
+
+VIEWS = {"summary": v_summary, "status": v_status, "snapshot": v_snapshot, "cohort": v_cohort, "candles": v_candles, "gaps": v_gaps}
+
+
+def summary_answer(data_dir):
+    """Part 36: GET /api/v2/summary -> (status, body). Part 35 summaries (what happened / tested / learned / unknown), read-only, through the Part 5 redaction.
+    Does not need the market store. A problem = a short fixed text (no path, no traceback)."""
+    try:
+        import json
+        import v2_inv_redact as R
+        import v2_summaries as M
+        return 200, json.loads(R.safe_report(json.loads(json.dumps(M.build(data_dir), default=str))))
+    except Exception as e:
+        if e.__class__.__name__ == "RedactionFailed":
+            return 503, {"error": "the answer was refused: secret-looking text"}
+        return 503, {"error": "the summary could not be made right now"}
 
 
 def dispatch(name, params, data_dir, now=None):
@@ -114,6 +133,8 @@ def dispatch(name, params, data_dir, now=None):
     if not api_enabled(data_dir):
         return 404, {"enabled": False, "note": "the V2 data API is off"}
     now = int(time.time() if now is None else now)
+    if name == "summary":
+        return summary_answer(data_dir)
     try:
         con = open_ro(data_dir)
         if con is None:

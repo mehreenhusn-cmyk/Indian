@@ -716,6 +716,12 @@ try:
     app.include_router(_v2_reports_router(require_api_token, DATA_DIR))
 except Exception as _e:
     print(f"[startup] v2 fees+tax route skipped: {_e}")
+# Ledger routes (Part 41, read-only, same v2_api_enabled switch). Owner ok "mount ok" for Part 42.
+try:
+    from api.v2_ledger_route import make_router as _v2_ledger_router
+    app.include_router(_v2_ledger_router(require_api_token, DATA_DIR))
+except Exception as _e:
+    print(f"[startup] v2 ledger routes skipped: {_e}")
 
 
 app.include_router(_st_exchange_router(require_api_token))

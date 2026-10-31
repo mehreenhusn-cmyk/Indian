@@ -9,6 +9,7 @@ import '../widgets/owl_pressable.dart';
 import '../widgets/owl_route.dart';
 import '../widgets/report_download_card.dart';
 import 'ai_report_screen.dart';
+import 'ledger_screen.dart';
 import 'ping_tab_screen.dart';
 import 'reports_screen.dart';
 import 'settings_screen.dart';
@@ -62,6 +63,8 @@ class MoreScreen extends StatelessWidget {
                 () => _open(context, 'AI Report', const AiReportScreen(), bare: true)),
             _row(context, Icons.receipt_long_outlined, 'Fees and tax report', 'Gross, fees, net and a tax estimate (read-only)',
                 () => _open(context, 'Fees and tax report', const ReportsScreen())),
+            _row(context, Icons.menu_book_outlined, 'Knowledge Ledger', 'What the research found, with sample sizes (read-only)',
+                () => _open(context, 'Knowledge Ledger', const LedgerScreen())),
             const SizedBox(height: AppSpacing.l),
             _label(context, 'DOWNLOADS'),
             _row(context, Icons.article_outlined, 'App report', 'One text file about the whole app',
