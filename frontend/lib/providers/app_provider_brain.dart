@@ -73,4 +73,7 @@ extension AppProviderBrain on AppProvider {
 
   /// Part N2 (Brain Ready?): read-only route brain_ready. What the Brain does by itself + 8 plain checks. Live is always LOCKED.
   Future<Map<String, dynamic>> fetchBrainReady([String source = 'PAPER']) => _brainGet('/api/v2/brain_ready?source=${Uri.encodeQueryComponent(source)}');
+
+  /// Part S6 (OwlSniper): read-only route sniper (Part S5). Banner, order cards, equity of the unseen test days, floor proof, insight report. Watch only, never an order.
+  Future<Map<String, dynamic>> fetchSniper() => _brainGet('/api/v2/sniper');
 }
