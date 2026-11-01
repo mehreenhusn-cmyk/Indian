@@ -26,6 +26,7 @@ import 'brain_today_screen.dart';
 import 'screen_check_screen.dart';
 import 'brain_learning_screen.dart';
 import 'brain_studies_screen.dart';
+import 'brain_dashboard_screen.dart';
 import 'brain_health_screen.dart';
 import 'reports_screen.dart';
 import 'settings_screen.dart';
@@ -65,6 +66,8 @@ class MoreScreen extends StatelessWidget {
             Text('More', style: t.section.copyWith(fontSize: 22, fontWeight: FontWeight.w800)),
             const SizedBox(height: AppSpacing.l),
             _label(context, 'MORE TABS'),
+            _row(context, Icons.dashboard_outlined, 'Brain Dashboard', 'One home page: today net, Brain vs Current Bot 30 days, open trades, daily loss cap, recent days (read-only, live stays locked)',
+                () => _open(context, 'Brain Dashboard', const BrainDashboardScreen())),
             _row(context, Icons.sensors_rounded, 'Signals', 'Signals and alerts', () => context.read<AppProvider>().goToRoute(AppRoute.signals)),
             _row(context, Icons.smart_toy_rounded, 'Dual Bot', 'Dual Bot trades, desk and reports', () => context.read<AppProvider>().goToRoute(AppRoute.dualBot)),
             _row(context, Icons.memory_rounded, 'AI', 'AI Vision and the AI tab', () => context.read<AppProvider>().goToRoute(AppRoute.ai)),

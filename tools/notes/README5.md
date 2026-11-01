@@ -1,4 +1,4 @@
-# README5 - BRAIN TRADER PLAN + HOW WE WORK (v16, 1 Nov 2026, after Part L2)
+# README5 - BRAIN TRADER PLAN + HOW WE WORK (v17, 1 Nov 2026, after Part M3)
 When the owner says "read README5 and continue", read this file first, then README4 (build log, top note = newest).
 
 ## How we work (owner rules)
@@ -40,17 +40,18 @@ The Brain trades from the indicators by itself (paper), learns when the indicato
 | E5 | BT-01 vs BT-02 in the X1 comparison | v2_bt_compare.py edit | ~150 |
 | M1 | System Health screen (mock 10): only real facts, rest NOT AVAILABLE | v2_sys_health.py, system_health_screen.dart | ~200 + ~250 |
 | M2 | Month calendar like mock 16 on top of Day Compare | v2_bt_compare.py (+month), month_grid screen | ~40 + ~200 |
-| M3 | Dashboard in the mock 11 / 15 style (Brain vs Bot 30 days, risk limit, recent strip) | dashboard screen | ~300 |
+| M3 (DONE, Dart NOT compiled yet) | Brain Dashboard (mock 11 / 15 ideas, real numbers only): today net + gross / fees / slippage, Brain 30 days next to Current Bot 30 days (never added), open long / short, today signals, DAILY LOSS CAP bar (guard cap, used = today's net loss only), last 8 days strip, all-time Brain net, the Brain's own sentence. NO account balance (none is real). Route brain_dash. First row of More | v2_bt_dash.py (99), test_v2_bt_dash.py (9 tests), brain_dashboard_screen.dart (93), brain_dashboard_cards.dart (184), v2_data.py +8 (now 414), provider +3, More row +3 | ~390 |
 | M4 | Brain and Activity timeline (mock 13): bot trades next to Brain decisions | v2_bt_timeline.py, screen | ~120 + ~200 |
 | owner OK | TP2, PAPER ENTER / Confirm Paper Order (need a WRITE route) | - | ~150 |
 | later | split v2_data.py (402) and app_provider_positions.dart (379) | - | ~100 |
 Total about 3,000 lines in 11 parts (without the owner-OK parts).
 ## Open points
-- v191 = ONE zip (owl_PartL2) with the repo Indian-main (63) (README4 v186) + X1 + X2 + L1 + L2 merged: the newest file of each name wins. L2 Dart is new and has never been compiled: send the APK build error text if it fails.
+- v191 = owl_PartL2 pushed (Flutter CI #186 green). From v192 on a zip holds ONLY the files that are not in the repo yet (new or changed since the last pushed zip), owner wish 1 Nov.
+- Why X1 / X2 / L1 were not pushed on 1 Nov: Termux was killed by Android (watcher last alive 14:07, restarted 15:06), the owner's Indian-main (63).zip then counted as the newest full zip and the owl zips were 'OLDER'. Keep Termux battery on 'Unrestricted', run: bash ~/owl_auto.sh install-bashrc, and never leave a newer Indian-main*.zip in Download.
 - OWNER DECISION: 87c TP2 (real second target = new rule version BT-02, or a display-only price) and the PAPER ENTER button (needs a write route). Not built.
 - 9 old test failures (test_v2_api 2, brain_ab 1, brain_cards 1, graduation 3, positions_ui 1, reports_route 1) fail the same on the owner's uploaded repo 61.
 - v2_data.py (402) and app_provider_positions.dart (379) are over 350 lines: split later.
-- Dart of Parts 86 to 90c has never been compiled. First real test: APK build. Send the error text if it fails.
+- Dart: GitHub Flutter CI (release APK build) was GREEN for #184 (Part 90c), #185 (Part 91b) and #186 (Part L2, which also carried X1 / X2 / L1), so that Dart compiles. The Dart of M3 (brain_dashboard_*.dart) is new: check Flutter CI of the commit 'auto: owl_PartM3.zip' and send the error text if it is red.
 - Data quality chip on Brain Health says NOT CHECKED until the Part 85 data check exists.
 - Old failing tests (not ours): test_v2_api 2, test_v2_brain_cards 1, test_v2_positions_ui 1.
 - A COPY of README5 and of ALL 9 mock pictures lives in tools/notes/ (tools/notes/mockups/) (that folder passes every push filter). Keep both copies equal.
