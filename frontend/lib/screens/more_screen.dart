@@ -19,6 +19,7 @@ import 'wickstudy_screen.dart';
 import 'scalp_lab_screen.dart';
 import 'brain_chat_screen.dart';
 import 'results_screen.dart';
+import 'simple_results_screen.dart';
 import 'brain_today_screen.dart';
 import 'screen_check_screen.dart';
 import 'brain_learning_screen.dart';
@@ -102,6 +103,8 @@ class MoreScreen extends StatelessWidget {
                 () => _open(context, 'Zone, squeeze and limits studies', const BrainStudiesScreen())),
             _row(context, Icons.health_and_safety_outlined, 'Brain Health', 'Is the learning pipeline healthy, how many closed trades each market state has, and what is still missing (read-only, live stays locked)',
                 () => _open(context, 'Brain Health', const BrainHealthScreen())),
+            _row(context, Icons.emoji_events_outlined, 'Simple Results', 'One word: is the Brain making money? Net, worst dip, losing streak, equity line, what to USE and what to STOP (read-only)',
+                () => _open(context, 'Simple Results', const SimpleResultsScreen())),
             _row(context, Icons.query_stats, 'Results', 'Which groups of your closed trades make money and which lose (net of fee, read-only)',
                 () => _open(context, 'Results', const ResultsScreen())),
             const SizedBox(height: AppSpacing.l),

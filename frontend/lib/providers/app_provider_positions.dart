@@ -354,6 +354,9 @@ extension AppProviderPositions on AppProvider {
   /// Part 90b (Brain Health): read-only Part 90a route. Pipeline, sample coverage per market state, safety, graduation, what is missing. Live is always LOCKED.
   Future<Map<String, dynamic>> fetchBrainHealth([String interval = '5m']) => _ledgerGet('/api/v2/brain_health?source=PAPER&interval=${Uri.encodeQueryComponent(interval)}');
 
+  /// Part 91b (Simple Results): read-only Part 91a route. One verdict word, net, worst dip, losing streak, equity line, USE / STOP lines. Source = PAPER, SHADOW or REPLAY (never LIVE).
+  Future<Map<String, dynamic>> fetchBrainVerdict([String source = 'PAPER']) => _ledgerGet('/api/v2/brain_verdict?source=${Uri.encodeQueryComponent(source)}');
+
   Future<Map<String, dynamic>> fetchBrainWhatif(String skip, String only) =>
       _ledgerGet('/api/v2/brain_whatif?source=PAPER&skip=${Uri.encodeQueryComponent(skip)}&only=${Uri.encodeQueryComponent(only)}');
 
