@@ -12,6 +12,7 @@ import v2_bt_progress as PG
 import v2_bt_detail as DT
 import v2_bt_filter as FL
 import v2_bt_health as HE
+import v2_bt_ready as RD
 import v2_bt_playbook as PB
 import v2_bt_report as BR
 import v2_bt_review as RV
@@ -62,6 +63,11 @@ def v_brain_compare(con, p, now, d):
 def v_brain_verdict(con, p, now, d):
     """Part 91a: Simple Results = ONE verdict word (PROFIT / LOSS / MIXED / NOT ENOUGH DATA), net, drawdown, losing streak, equity line, USE / STOP sentences. ?source=PAPER. Read-only."""
     return VD.build(d, p.get("source") or "PAPER", now)
+
+
+def v_brain_ready(con, p, now, d):
+    """Part N2: Brain Ready? What the Brain does by itself + 8 plain checks. ?source=PAPER (or SHADOW). Read-only; live is always LOCKED."""
+    return RD.build(d, p.get("source") or "PAPER", now)
 
 
 def v_brain_health(con, p, now, d):
@@ -144,5 +150,5 @@ def v_brain_timeline(con, p, now, d):
     return TL.build(d, p.get("source") or "PAPER", p.get("day") or None, now)
 
 
-VIEWS = {"brain_chat": v_brain_chat, "brain_dash": v_brain_dash, "brain_month": v_brain_month, "sys_health": v_sys_health, "brain_exits": v_brain_exits, "brain_progress": v_brain_progress, "brain_compare": v_brain_compare, "brain_verdict": v_brain_verdict, "brain_health": v_brain_health, "brain_limits": v_brain_limits, "brain_zones": v_brain_zones, "brain_playbook": v_brain_playbook, "brain_whatif": v_brain_whatif, "brain_filter": v_brain_filter, "brain_review": v_brain_review, "brain_signal": v_brain_signal, "brain_trade": v_brain_trade, "brain_today": v_brain_today, "brain_chart": v_brain_chart, "brain_report": v_brain_report, "brain_timeline": v_brain_timeline}
+VIEWS = {"brain_ready": v_brain_ready, "brain_chat": v_brain_chat, "brain_dash": v_brain_dash, "brain_month": v_brain_month, "sys_health": v_sys_health, "brain_exits": v_brain_exits, "brain_progress": v_brain_progress, "brain_compare": v_brain_compare, "brain_verdict": v_brain_verdict, "brain_health": v_brain_health, "brain_limits": v_brain_limits, "brain_zones": v_brain_zones, "brain_playbook": v_brain_playbook, "brain_whatif": v_brain_whatif, "brain_filter": v_brain_filter, "brain_review": v_brain_review, "brain_signal": v_brain_signal, "brain_trade": v_brain_trade, "brain_today": v_brain_today, "brain_chart": v_brain_chart, "brain_report": v_brain_report, "brain_timeline": v_brain_timeline}
 NAMES = tuple(n for n in VIEWS if n not in ("brain_chat", "brain_report"))      # these two are answered another way inside dispatch

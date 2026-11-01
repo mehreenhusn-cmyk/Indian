@@ -126,6 +126,15 @@ def reconcile(con, now=None):
     return {"orphan_closes": orphan, "stuck_open": stuck, "state": "FAIL" if orphan else ("WARN" if stuck else "PASS")}
 
 
+def _dq(data_dir, now):
+    """Part N1: the real data-quality check (v2_bt_dataq). Any failure of the check itself says NOT_CHECKED, never PASS."""
+    try:
+        import v2_bt_dataq as DQ
+        return DQ.chip(data_dir, now)
+    except Exception as e:
+        return ("NOT_CHECKED", "The data-quality check could not run (%s)" % type(e).__name__)
+
+
 def status(data_dir, now=None):
     """The safety chips of the Brain Health screen. Honest words: a check that is not built yet says NOT_CHECKED, never PASS."""
     now = int(time.time() if now is None else now)
@@ -137,7 +146,7 @@ def status(data_dir, now=None):
         rec = reconcile(con, now)
         ver = B.latest_version(con)
         chips = [("no_lookahead", "PASS", "Enforced in code: a decision cannot use data after its candle close"),
-                 ("data_quality", "NOT_CHECKED", "The data-quality check is built in Part 85"),
+                 ("data_quality",) + _dq(data_dir, now),
                  ("stale_data_pause", "ARMED", "Pauses when the newest candle is older than %d candles" % cfg["stale_candles"]),
                  ("kill_switch", "TRIPPED" if is_killed(con) else "ARMED", "Stops new trades at once"),
                  ("daily_loss_cap", "SET", "Limit: %s%% of %s USDT" % (cfg["daily_loss_cap_pct"], cfg["capital_usdt"])),

@@ -1,4 +1,4 @@
-# README5 - BRAIN TRADER PLAN + HOW WE WORK (v24, 1 Nov 2026, after Part M5 + build fix)
+# README5 - BRAIN TRADER PLAN + HOW WE WORK (v25, 1 Nov 2026, after Parts N1 + N2)
 When the owner says "read README5 and continue", read this file first, then README4 (build log, top note = newest).
 
 ## How we work (owner rules)
@@ -45,9 +45,13 @@ The Brain trades from the indicators by itself (paper), learns when the indicato
 | M4c (🟢 DONE, the split) | v2_data.py 431 -> 306 (Brain pages now in api/v2_brain_views.py 148, same code), app_provider_positions.dart 389 -> 341 (Brain fetches now in app_provider_brain.dart 73, same names). Also fixed: the router passes source / month / state / skip / only now | api/v2_brain_views.py, api/v2_data.py, providers/app_provider_brain.dart, providers/app_provider_positions.dart, providers/app_provider.dart (+1) | ~0 new |
 | 🟢 FIX (build) | Flutter CI #188 red: bt_trade_screen.dart line 129 apostrophe, escaped | bt_trade_screen.dart | 1 |
 | M5 (🟢 DONE, owner wish: the Brain manages the trade itself) | BT-03 = BT-02 exit + trailing stop after TP1 + early cut of a losing trade; runs in PAPER while v2_bt_manager_on = 1 (switched ON once at first start); Exit Study rule MANAGER judges it on the old trades; BT-02 stays in SHADOW | v2_bt_exit2.py, v2_bt_sim.py, v2_bt_detail.py, v2_bt_exitlab.py, v2_bt_wait.py, v2_bt_auto.py, v2_bt_compare.py, day_compare_cards.dart | ~110 |
+| N1 (🟢 DONE, Python run on fake candles only) | Data-quality chip on Brain Health is a REAL check: newest 200 candles of up to 40 followed coins, stale / bad rows / gaps -> PASS / WARN / FAIL, NOT_CHECKED when no store | v2_bt_dataq.py (87), v2_bt_guard.py (edit, +_dq) | ~100 |
+| N2 (🟢 DONE, Dart NOT compiled) | Brain Ready? screen on route brain_ready: what the Brain does by itself (find chances, paper trades, manage the trade) + 8 plain checks (runner, 30+ trades, 7+ days, PROFIT, holdout, 2+ states, data quality, kill switch). Live stays LOCKED even when all pass | v2_bt_ready.py (115), api/v2_brain_views.py, api/v2_data.py, brain_ready_screen.dart (166), app_provider_brain.dart, more_screen.dart | ~300 |
 | owner OK | TP2 is DONE inside BT-02 / BT-03 (the Brain decides it). PAPER ENTER / Confirm Paper Order (need a WRITE route) | - | ~150 |
 Total about 3,000 lines in 11 parts (without the owner-OK parts).
 ## Open points
+- v200 = Parts N1 + N2 (ONE zip, only changed / new files). Check Flutter CI of the commit 'auto: owl_PartN2.zip' (brain_ready_screen.dart is new Dart) and send the error text if it is red. After this the BUILD LIST IS EMPTY: only the owner-OK items below and the weeks of paper data are left.
+- OWNER OK LEFT: PAPER ENTER button (needs a write route; the Brain opens paper trades by itself, so it is only for hand-made paper trades) and moving BT-02 from SHADOW to PAPER (after weeks of data). LIVE needs the Graduation gate AND the owner's own OK.
 - v198 = Parts M4a + M4b + M4c (ONE zip, only files not in the repo yet). Check Flutter CI of the commit 'auto: owl_PartM4.zip' (Dart of M3, E, M1, M2 and M4 was never compiled together) and send the error text if it is red. The SHADOW / REPLAY tabs now really work (router fix), so numbers may look different from before on those tabs.
 - STILL LEFT (owner OK needed): TP2 (display-only second price, or a new rule version BT-03) and PAPER ENTER button (needs a WRITE route).
 - OWNER RULE 1 Nov (E1): NO tests are written or run any more; files are written directly and the owner checks when the app is built. Python is only syntax-checked.
@@ -58,7 +62,7 @@ Total about 3,000 lines in 11 parts (without the owner-OK parts).
 - 9 old test failures (test_v2_api 2, brain_ab 1, brain_cards 1, graduation 3, positions_ui 1, reports_route 1) fail the same on the owner's uploaded repo 61.
 - v2_data.py (306) and app_provider_positions.dart (341) are under 350 lines since M4c.
 - Dart: GitHub Flutter CI (release APK build) was GREEN for #184 (Part 90c), #185 (Part 91b) and #186 (Part L2, which also carried X1 / X2 / L1), so that Dart compiles. The Dart of M3 (brain_dashboard_*.dart) is new: check Flutter CI of the commit 'auto: owl_PartM3.zip' and send the error text if it is red.
-- Data quality chip on Brain Health says NOT CHECKED until the Part 85 data check exists.
+- Data quality chip is real since Part N1 (v2_bt_dataq.py). It says NOT_CHECKED only when there is no candle store or no followed coin.
 - Old failing tests (not ours): test_v2_api 2, test_v2_brain_cards 1, test_v2_positions_ui 1.
 - A COPY of README5 and of ALL 9 mock pictures lives in tools/notes/ (tools/notes/mockups/) (that folder passes every push filter). Keep both copies equal.
 - Mock screens: 9 pictures in docs/mockups/ (restored from owl_Part90c.zip + 09) belong in docs/mockups/. If this folder is empty, the pictures must be put back from an older zip.

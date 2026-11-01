@@ -70,4 +70,7 @@ extension AppProviderBrain on AppProvider {
       return {'state': 'error'};
     }
   }
+
+  /// Part N2 (Brain Ready?): read-only route brain_ready. What the Brain does by itself + 8 plain checks. Live is always LOCKED.
+  Future<Map<String, dynamic>> fetchBrainReady([String source = 'PAPER']) => _brainGet('/api/v2/brain_ready?source=${Uri.encodeQueryComponent(source)}');
 }

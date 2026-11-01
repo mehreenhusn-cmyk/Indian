@@ -32,6 +32,7 @@ import 'exit_study_screen.dart';
 import 'system_health_screen.dart';
 import 'month_grid_screen.dart';
 import 'reports_screen.dart';
+import 'brain_ready_screen.dart';
 import 'settings_screen.dart';
 import 'strategy_doctor_screen.dart';
 import 'tag_lab_screen.dart';
@@ -124,6 +125,8 @@ class MoreScreen extends StatelessWidget {
                 () => _open(context, 'System Health', const SystemHealthScreen())),
             _row(context, Icons.logout, 'Exit Study', 'Same old trades, other exits: TSI turns, half of the gain given back, break-even stop. Net, give-back, worst dip (read-only, nothing applied)',
                 () => _open(context, 'Exit Study', const ExitStudyScreen())),
+            _row(context, Icons.verified_outlined, 'Brain Ready?', 'What the Brain does by itself and 8 plain checks: is it ready for more than paper trading? (read-only, live stays locked)',
+                () => _open(context, 'Brain Ready?', const BrainReadyScreen())),
             _row(context, Icons.emoji_events_outlined, 'Simple Results', 'One word: is the Brain making money? Net, worst dip, losing streak, equity line, what to USE and what to STOP (read-only)',
                 () => _open(context, 'Simple Results', const SimpleResultsScreen())),
             _row(context, Icons.query_stats, 'Results', 'Which groups of your closed trades make money and which lose (net of fee, read-only)',

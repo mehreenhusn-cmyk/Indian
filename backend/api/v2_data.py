@@ -38,7 +38,7 @@ import v2_wickstudy_reentry as WR
 VERSION = "v2_data 1 (Part 18)"
 FLAG_NAME = "v2_api_enabled"
 CAPS = {"snapshot": 100, "candles": 500, "gaps": 200}
-ROUTES = ("status", "snapshot", "cohort", "candles", "gaps", "summary", "radar", "radar_outcomes", "radar_moves", "setups", "setups_forward", "prepump", "prepump_watch", "wickstudy", "wickstudy_forward", "wickstudy_reentry", "scalp_lab", "scalp_ema", "scalp_pump", "scalp_report", "scalp_large3", "scalp_large5", "screen_check", "brain_chat", "results", "brain_report", "brain_today", "brain_chart", "brain_signal", "brain_trade", "brain_review", "brain_filter", "brain_playbook", "brain_whatif", "brain_zones", "brain_limits", "brain_health", "brain_verdict", "brain_compare", "brain_progress", "brain_dash", "brain_exits", "sys_health", "brain_month", "brain_timeline")
+ROUTES = ("status", "snapshot", "cohort", "candles", "gaps", "summary", "radar", "radar_outcomes", "radar_moves", "setups", "setups_forward", "prepump", "prepump_watch", "wickstudy", "wickstudy_forward", "wickstudy_reentry", "scalp_lab", "scalp_ema", "scalp_pump", "scalp_report", "scalp_large3", "scalp_large5", "screen_check", "brain_chat", "results", "brain_report", "brain_today", "brain_chart", "brain_signal", "brain_trade", "brain_review", "brain_filter", "brain_playbook", "brain_whatif", "brain_zones", "brain_limits", "brain_health", "brain_verdict", "brain_compare", "brain_progress", "brain_dash", "brain_exits", "sys_health", "brain_month", "brain_timeline", "brain_ready")
 DAY_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
