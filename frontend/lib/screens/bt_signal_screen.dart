@@ -85,6 +85,7 @@ class _BtSignalScreenState extends State<BtSignalScreen> {
     final b = _m(r['brain']);
     final lv = r['levels'] == null ? null : _m(r['levels']);
     final ev = _m(r['evidence']);
+    final bot = _m(r['bot']);
     final dt = _m(r['data']);
     final dec = '${b['decision']}';
     final dc = dec.startsWith('OPEN') ? p.profit : (dec == 'WAIT' ? p.warning : p.textMuted);
@@ -144,6 +145,21 @@ class _BtSignalScreenState extends State<BtSignalScreen> {
               padding: const EdgeInsets.only(bottom: 6),
               child: Text('${o['time']}: ${'${o['decision']}'.replaceAll('_', ' ')} (${o['state']}) - ${o['reason']}', style: TextStyle(fontSize: 12.5, color: p.textPrimary)),
             ),
+        ]),
+      ),
+      OWLCard(
+        edge: bot['state'] == 'OPEN' ? p.warning : null,
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          _title(p, 'Current bot vs Brain', 'Part 87c: two ENTRY prices, not two results'),
+          Text('${bot['text'] ?? 'No answer about the Current Bot.'}', style: TextStyle(fontSize: 12.5, color: p.textPrimary)),
+          if (bot['state'] == 'OPEN' && bot['move_pct'] != null)
+            _kv(p, 'Bot price move since entry', '${(_n(bot['move_pct']) ?? 0) >= 0 ? '+' : ''}${bot['move_pct']}%', (_n(bot['move_pct']) ?? 0) >= 0 ? p.profit : p.loss),
+          if (bot['state'] == 'LAST_CLOSED' && bot['net_usdt'] != null)
+            _kv(p, 'Bot net (USDT)', '${(_n(bot['net_usdt']) ?? 0) >= 0 ? '+' : ''}${bot['net_usdt']}', (_n(bot['net_usdt']) ?? 0) >= 0 ? p.profit : p.loss),
+          if (bot['versus'] != null) ...[
+            const SizedBox(height: 6),
+            Text('${_m(bot['versus'])['text']}', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: _m(bot['versus'])['result'] == 'BETTER' ? p.profit : _m(bot['versus'])['result'] == 'WORSE' ? p.loss : p.textSecondary)),
+          ],
         ]),
       ),
       OWLCard(

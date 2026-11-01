@@ -11,6 +11,7 @@ import sys
 import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import v2_bt_botcmp as BC
 import v2_bt_chart as CH
 import v2_bt_rules as R
 import v2_bt_sim as M
@@ -74,7 +75,7 @@ def signal(data_dir, symbol, interval="5m", source="PAPER", now=None):
     lv = None if d["entry"] is None else {"entry": d["entry"], "sl": d["sl"], "tp": d["tp"], "risk_pct": _r(abs(d["entry"] - d["sl"]) / d["entry"] * 100.0, 3), "reward_to_risk": R.TARGET_R, "note": "BT-01 has ONE target (1.5 x the stop distance), no TP2."}
     return {"ready": True, "symbol": symbol, "interval": interval, "source": source, "candle_end": W.ist(run[i][0] + step), "state": t["market_state"], "tags": t, "chart_tags": x,
             "brain": {"decision": d["decision"], "side": d["side"], "reason": d["reason"], "wait_for": d["wait_for"], "max_wait_candles": d["max_wait_candles"]}, "levels": lv,
-            "saw": CH.lines_for(t, x), "why_not_earlier": older, "evidence": ev,
+            "saw": CH.lines_for(t, x), "why_not_earlier": older, "evidence": ev, "bot": BC.build(data_dir, symbol, d["entry"], d["side"] if d["entry"] else None, now),
             "data": {"candles": len(run), "need": need, "from": W.ist(run[0][0]), "to": W.ist(run[i][0]), "note": "ONE gap-free run of closed candles. A gap would start a new run and the Brain would say DATA_NOT_READY with the reason."},
             "chart": chart_payload(run, ctx, step), "paper_note": "Read-only. Paper trades open by themselves when the rule says OPEN; there is no ENTER button and LIVE is locked."}
 

@@ -354,8 +354,15 @@ extension AppProviderPositions on AppProvider {
   /// Part 90b (Brain Health): read-only Part 90a route. Pipeline, sample coverage per market state, safety, graduation, what is missing. Live is always LOCKED.
   Future<Map<String, dynamic>> fetchBrainHealth([String interval = '5m']) => _ledgerGet('/api/v2/brain_health?source=PAPER&interval=${Uri.encodeQueryComponent(interval)}');
 
+  /// Part X2 (Day calendar + comparison): read-only Part X1 route. Owl Brain vs Current Bot vs Take-All (simulated) for one UTC day + a 30-day calendar. day = YYYY-MM-DD or null (today).
+  Future<Map<String, dynamic>> fetchBrainCompare([String source = 'PAPER', String? day]) =>
+      _ledgerGet('/api/v2/brain_compare?source=${Uri.encodeQueryComponent(source)}${day == null ? '' : '&day=${Uri.encodeQueryComponent(day)}'}');
+
   /// Part 91b (Simple Results): read-only Part 91a route. One verdict word, net, worst dip, losing streak, equity line, USE / STOP lines. Source = PAPER, SHADOW or REPLAY (never LIVE).
   Future<Map<String, dynamic>> fetchBrainVerdict([String source = 'PAPER']) => _ledgerGet('/api/v2/brain_verdict?source=${Uri.encodeQueryComponent(source)}');
+
+  /// Part L2 (Learning Progress): read-only Part L1 route. Today (trades / profit / loss / net), 30 days, 5 weeks (losing trades per 10), trend, mistakes, fixed, learned. Source = PAPER, SHADOW or REPLAY (never LIVE).
+  Future<Map<String, dynamic>> fetchBrainProgress([String source = 'PAPER']) => _ledgerGet('/api/v2/brain_progress?source=${Uri.encodeQueryComponent(source)}');
 
   Future<Map<String, dynamic>> fetchBrainWhatif(String skip, String only) =>
       _ledgerGet('/api/v2/brain_whatif?source=PAPER&skip=${Uri.encodeQueryComponent(skip)}&only=${Uri.encodeQueryComponent(only)}');

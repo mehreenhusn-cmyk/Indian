@@ -20,6 +20,8 @@ import 'scalp_lab_screen.dart';
 import 'brain_chat_screen.dart';
 import 'results_screen.dart';
 import 'simple_results_screen.dart';
+import 'day_compare_screen.dart';
+import 'learning_progress_screen.dart';
 import 'brain_today_screen.dart';
 import 'screen_check_screen.dart';
 import 'brain_learning_screen.dart';
@@ -103,6 +105,10 @@ class MoreScreen extends StatelessWidget {
                 () => _open(context, 'Zone, squeeze and limits studies', const BrainStudiesScreen())),
             _row(context, Icons.health_and_safety_outlined, 'Brain Health', 'Is the learning pipeline healthy, how many closed trades each market state has, and what is still missing (read-only, live stays locked)',
                 () => _open(context, 'Brain Health', const BrainHealthScreen())),
+            _row(context, Icons.calendar_month_outlined, 'Day Compare', 'Pick a day: Owl Brain vs Current Bot vs Take-All (simulated), money split, decisions, worst dip (read-only)',
+                () => _open(context, 'Day Compare', const DayCompareScreen())),
+            _row(context, Icons.trending_up, 'Learning Progress', 'Trades today, profit and loss, week by week: is the Brain making fewer mistakes? Mistakes, fixed, learned (read-only)',
+                () => _open(context, 'Learning Progress', const LearningProgressScreen())),
             _row(context, Icons.emoji_events_outlined, 'Simple Results', 'One word: is the Brain making money? Net, worst dip, losing streak, equity line, what to USE and what to STOP (read-only)',
                 () => _open(context, 'Simple Results', const SimpleResultsScreen())),
             _row(context, Icons.query_stats, 'Results', 'Which groups of your closed trades make money and which lose (net of fee, read-only)',

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../theme/app_theme.dart';
+import '../widgets/equity_line.dart';
 import '../widgets/owl_card.dart';
 import '../widgets/owl_route.dart';
 import 'results_screen.dart';
@@ -140,7 +141,7 @@ class _SimpleResultsScreenState extends State<SimpleResultsScreen> {
         if (pts.length < 2)
           Text('No closed trades yet.', style: TextStyle(fontSize: 12.5, color: p.textMuted))
         else
-          SizedBox(height: 140, width: double.infinity, child: CustomPaint(painter: _EquityPainter(pts, p.accent, p.border, p.textMuted))),
+          EquityLine(values: pts, line: p.accent, grid: p.border),
       ]),
     );
   }
@@ -199,42 +200,4 @@ class _SimpleResultsScreenState extends State<SimpleResultsScreen> {
       ),
     );
   }
-}
-
-/// The equity line: the zero line (dashed), the line itself and a dot on the last point. No package, no animation.
-class _EquityPainter extends CustomPainter {
-  final List<double> v;
-  final Color line;
-  final Color grid;
-  final Color text;
-  _EquityPainter(this.v, this.line, this.grid, this.text);
-
-  @override
-  void paint(Canvas c, Size s) {
-    var lo = v.reduce((a, b) => a < b ? a : b);
-    var hi = v.reduce((a, b) => a > b ? a : b);
-    if (lo > 0) lo = 0;
-    if (hi < 0) hi = 0;
-    if (hi - lo < 0.01) hi = lo + 1;
-    double y(double x) => s.height - (x - lo) / (hi - lo) * s.height;
-    final z = y(0);
-    final gp = Paint()..color = grid..strokeWidth = 1;
-    for (double x = 0; x < s.width; x += 8) {
-      c.drawLine(Offset(x, z), Offset(x + 4, z), gp);
-    }
-    final path = Path();
-    for (var i = 0; i < v.length; i++) {
-      final o = Offset(i / (v.length - 1) * s.width, y(v[i]));
-      if (i == 0) {
-        path.moveTo(o.dx, o.dy);
-      } else {
-        path.lineTo(o.dx, o.dy);
-      }
-    }
-    c.drawPath(path, Paint()..color = line..style = PaintingStyle.stroke..strokeWidth = 2.2..strokeJoin = StrokeJoin.round);
-    c.drawCircle(Offset(s.width, y(v.last)), 4, Paint()..color = line);
-  }
-
-  @override
-  bool shouldRepaint(_EquityPainter o) => o.v != v || o.line != line;
 }
