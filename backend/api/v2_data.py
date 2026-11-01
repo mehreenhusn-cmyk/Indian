@@ -12,22 +12,8 @@ import time
 import urllib.parse
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-import v2_bt_chart as CH
-import v2_bt_compare as CP
-import v2_bt_dash as DH
-import v2_bt_exitlab as XL
-import v2_bt_progress as PG
-import v2_bt_detail as DT
-import v2_bt_filter as FL
-import v2_bt_health as HE
-import v2_bt_playbook as PB
 import v2_bt_report as BR
-import v2_bt_review as RV
-import v2_bt_verdict as VD
-import v2_sys_health as SH
-import v2_bt_zonestudy as ZS
-import v2_bt_limits as LM
-import v2_brain_chat as BC
+from api import v2_brain_views as BV
 import v2_candles as K
 import v2_collector as C
 import v2_prepump as PP
@@ -52,7 +38,7 @@ import v2_wickstudy_reentry as WR
 VERSION = "v2_data 1 (Part 18)"
 FLAG_NAME = "v2_api_enabled"
 CAPS = {"snapshot": 100, "candles": 500, "gaps": 200}
-ROUTES = ("status", "snapshot", "cohort", "candles", "gaps", "summary", "radar", "radar_outcomes", "radar_moves", "setups", "setups_forward", "prepump", "prepump_watch", "wickstudy", "wickstudy_forward", "wickstudy_reentry", "scalp_lab", "scalp_ema", "scalp_pump", "scalp_report", "scalp_large3", "scalp_large5", "screen_check", "brain_chat", "results", "brain_report", "brain_today", "brain_chart", "brain_signal", "brain_trade", "brain_review", "brain_filter", "brain_playbook", "brain_whatif", "brain_zones", "brain_limits", "brain_health", "brain_verdict", "brain_compare", "brain_progress", "brain_dash", "brain_exits", "sys_health", "brain_month")
+ROUTES = ("status", "snapshot", "cohort", "candles", "gaps", "summary", "radar", "radar_outcomes", "radar_moves", "setups", "setups_forward", "prepump", "prepump_watch", "wickstudy", "wickstudy_forward", "wickstudy_reentry", "scalp_lab", "scalp_ema", "scalp_pump", "scalp_report", "scalp_large3", "scalp_large5", "screen_check", "brain_chat", "results", "brain_report", "brain_today", "brain_chart", "brain_signal", "brain_trade", "brain_review", "brain_filter", "brain_playbook", "brain_whatif", "brain_zones", "brain_limits", "brain_health", "brain_verdict", "brain_compare", "brain_progress", "brain_dash", "brain_exits", "sys_health", "brain_month", "brain_timeline")
 DAY_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
@@ -209,121 +195,6 @@ def v_results(con, p, now, d):
     return RS.build(d)
 
 
-def v_brain_chat(con, p, now, d):
-    """Part 76: Conversational Brain. ?q=bhai BTC me kya hua. Claude answers ONLY from backend facts (see v2_brain_chat.py); one question out to api.anthropic.com, nothing written, never an order."""
-    return BC.ask(p.get("q") or "", d, con, now)
-
-
-def v_brain_dash(con, p, now, d):
-    """Part M3: Brain Dashboard = today net (Brain and Current Bot apart), signals, open trades, 30-day pace, daily loss cap, last 8 days, why. ?source=PAPER. Read-only."""
-    return DH.build(d, p.get("source") or "PAPER", now)
-
-
-def v_brain_month(con, p, now, d):
-    """Part M2: one UTC month as a calendar: Brain and Current Bot net per day, best / worst day, profit / loss days, worst dip, running line. ?source=PAPER&month=2026-11 (both optional). Read-only."""
-    return CP.month_view(d, p.get("source") or "PAPER", p.get("month") or None, now)
-
-
-def v_sys_health(con, p, now, d):
-    """Part M1a: System Health = real measured facts only (backend, candle feed, collector, Brain tick, safety, CPU, RAM, disk); what cannot be measured says NOT AVAILABLE. Read-only."""
-    return SH.build(d, now)
-
-
-def v_brain_exits(con, p, now, d):
-    """Part E1: Exit Study = the same closed trades replayed with other exits (current, TSI turns, half of the gain given back, break-even stop). ?source=REPLAY. Read-only, nothing is applied."""
-    return XL.build(d, p.get("source") or "REPLAY", now)
-
-
-def v_brain_progress(con, p, now, d):
-    """Part L1: Learning Progress = today (trades, profit / loss counts, net), 30 days, 5 weeks, trend (older vs newer half), mistakes / fixed / learned groups in plain words. ?source=PAPER. Read-only."""
-    return PG.build(d, p.get("source") or "PAPER", now)
-
-
-def v_brain_compare(con, p, now, d):
-    """Part X1: Owl Brain vs Current Bot vs Take-All baseline for one UTC day + a 30-day calendar. ?source=PAPER&day=2026-11-01 (both optional). Read-only; Take-All is a simulation on saved candles."""
-    return CP.build(d, p.get("source") or "PAPER", p.get("day") or None, now)
-
-
-def v_brain_verdict(con, p, now, d):
-    """Part 91a: Simple Results = ONE verdict word (PROFIT / LOSS / MIXED / NOT ENOUGH DATA), net, drawdown, losing streak, equity line, USE / STOP sentences. ?source=PAPER. Read-only."""
-    return VD.build(d, p.get("source") or "PAPER", now)
-
-
-def v_brain_health(con, p, now, d):
-    """Part 90a: Brain Health (pipeline, sample coverage per market state, safety chips, graduation checklist, what is missing). ?source=PAPER&interval=5m. Read-only; live is always LOCKED."""
-    return HE.build(d, p.get("source") or "PAPER", now, p.get("interval") or "5m")
-
-
-def v_brain_limits(con, p, now, d):
-    """Part 89b: squeeze study (what the break did after a squeeze) + starting-limits study (BT-01 limits replayed with other values). ?interval=5m. Reads only the saved study file (made by v2_bt_limits.py, also every 6 h by the auto-runner)."""
-    iv = p.get("interval") or "5m"
-    if iv not in K.INTERVALS:
-        raise ValueError("interval must be 3m or 5m")
-    return LM.build(d, iv, now)
-
-
-def v_brain_zones(con, p, now, d):
-    """Part 89a: the SD-zone study (what price did after arriving in a zone, hypothetical BT-01 trade, TRAIN / HOLDOUT, baseline). ?interval=5m. Reads only the saved study file (made by v2_bt_zonestudy.py run)."""
-    iv = p.get("interval") or "5m"
-    if iv not in K.INTERVALS:
-        raise ValueError("interval must be 3m or 5m")
-    return ZS.build(d, iv, now)
-
-
-def v_brain_playbook(con, p, now, d):
-    """Part 88c: Indicator Playbook = what the Brain is learning, per indicator (USE / AVOID / MIXED / thin states). ?source=PAPER&interval=5m|15m&state=TREND|SIDEWAYS|CONSOLIDATION|BREAKOUT (Part 88e, both optional). Read-only."""
-    return PB.build_playbook(d, p.get("source") or "PAPER", now, p.get("interval") or None, p.get("state") or None)
-
-
-def v_brain_whatif(con, p, now, d):
-    """Part 88c: What-if explorer on the same closed paper trades (counterfactual, nothing runs). ?source=PAPER&skip=zone:LABEL|tsi:LABEL&only=... Read-only."""
-    return PB.build_whatif(d, p.get("source") or "PAPER", p.get("skip"), p.get("only"), now)
-
-
-def v_brain_filter(con, p, now, d):
-    """Part 88b: TAKE / SKIP filter candidates + A/B on the same closed paper trades (counterfactual, nothing runs). ?source=PAPER. Read-only."""
-    return FL.build(d, p.get("source") or "PAPER", now)
-
-
-def v_brain_review(con, p, now, d):
-    """Part 88a: the night review of the closed paper trades. ?source=PAPER. Read-only."""
-    return RV.build(d, p.get("source") or "PAPER", now)
-
-
-def v_brain_signal(con, p, now, d):
-    """Part 87: Signal Detail of one coin now. ?symbol=BTCUSDT&interval=5m&source=PAPER. Read-only."""
-    sym, iv = p.get("symbol") or "", p.get("interval") or "5m"
-    if not K._symbol_ok(sym) or iv not in K.INTERVALS:
-        raise ValueError("symbol must be like BTCUSDT and interval 3m or 5m")
-    return DT.signal(d, sym, iv, p.get("source") or "PAPER", now)
-
-
-def v_brain_trade(con, p, now, d):
-    """Part 87: the open PAPER trade of one coin (or a note that there is none). ?symbol=&interval=. Read-only."""
-    sym, iv = p.get("symbol") or "", p.get("interval") or "5m"
-    if not K._symbol_ok(sym) or iv not in K.INTERVALS:
-        raise ValueError("symbol must be like BTCUSDT and interval 3m or 5m")
-    return DT.trade(d, sym, iv, p.get("source") or "PAPER", now)
-
-
-def v_brain_today(con, p, now, d):
-    """Part 86a: the Today page (report lines + newest answer per coin). ?source=PAPER. Own file, read-only."""
-    return CH.today(d, p.get("source") or "PAPER", now)
-
-
-def v_brain_chart(con, p, now, d):
-    """Part 86a: the CURRENT chart of one coin in plain sentences. ?symbol=BTCUSDT&interval=5m. Read-only, nothing is saved."""
-    sym, iv = p.get("symbol") or "", p.get("interval") or "5m"
-    if not K._symbol_ok(sym) or iv not in K.INTERVALS:
-        raise ValueError("symbol must be like BTCUSDT and interval 3m or 5m")
-    return CH.view(d, sym, iv, now)
-
-
-def v_brain_report(con, p, now, d):
-    """Part 85b: the Brain Trader daily report in plain words. ?source=PAPER&day=YYYY-MM-DD (UTC day, both optional). Own file, read-only (see v2_bt_report.py)."""
-    return BR.build(d, p.get("source") or "PAPER", p.get("day") or None, now)
-
-
 def v_candles(con, p, now, d):
     sym, iv = p.get("symbol") or "", p.get("interval") or "5m"
     if not K._symbol_ok(sym) or iv not in K.INTERVALS:
@@ -347,7 +218,8 @@ def v_summary(con, p, now, d):
     return {}
 
 
-VIEWS = {"brain_month": v_brain_month, "sys_health": v_sys_health, "brain_exits": v_brain_exits, "brain_dash": v_brain_dash, "brain_progress": v_brain_progress, "brain_compare": v_brain_compare, "brain_verdict": v_brain_verdict, "brain_health": v_brain_health, "brain_limits": v_brain_limits, "brain_zones": v_brain_zones, "brain_playbook": v_brain_playbook, "brain_whatif": v_brain_whatif, "brain_filter": v_brain_filter, "brain_review": v_brain_review, "brain_signal": v_brain_signal, "brain_trade": v_brain_trade, "brain_today": v_brain_today, "brain_chart": v_brain_chart, "brain_report": v_brain_report, "results": v_results, "brain_chat": v_brain_chat, "screen_check": v_screen_check, "scalp_large5": v_scalp_large5, "scalp_large3": v_scalp_large3, "scalp_report": v_scalp_report, "scalp_pump": v_scalp_pump, "scalp_ema": v_scalp_ema, "scalp_lab": v_scalp_lab, "wickstudy_reentry": v_wickstudy_reentry, "wickstudy_forward": v_wickstudy_forward, "wickstudy": v_wickstudy, "prepump_watch": v_prepump_watch, "prepump": v_prepump, "setups_forward": v_setups_forward, "setups": v_setups, "radar": v_radar, "radar_outcomes": v_radar_outcomes, "radar_moves": v_radar_moves, "summary": v_summary, "status": v_status, "snapshot": v_snapshot, "cohort": v_cohort, "candles": v_candles, "gaps": v_gaps}
+VIEWS = {"results": v_results, "screen_check": v_screen_check, "scalp_large5": v_scalp_large5, "scalp_large3": v_scalp_large3, "scalp_report": v_scalp_report, "scalp_pump": v_scalp_pump, "scalp_ema": v_scalp_ema, "scalp_lab": v_scalp_lab, "wickstudy_reentry": v_wickstudy_reentry, "wickstudy_forward": v_wickstudy_forward, "wickstudy": v_wickstudy, "prepump_watch": v_prepump_watch, "prepump": v_prepump, "setups_forward": v_setups_forward, "setups": v_setups, "radar": v_radar, "radar_outcomes": v_radar_outcomes, "radar_moves": v_radar_moves, "summary": v_summary, "status": v_status, "snapshot": v_snapshot, "cohort": v_cohort, "candles": v_candles, "gaps": v_gaps}
+VIEWS.update(BV.VIEWS)                             # Part M4c: the Brain pages live in api/v2_brain_views.py
 
 
 def summary_answer(data_dir):
@@ -380,7 +252,7 @@ def dispatch(name, params, data_dir, now=None):
             return 400, {"error": "source must be REPLAY, PAPER or SHADOW and day like 2026-11-01"}
         except Exception:
             return 503, {"error": "the Brain report could not be made right now"}
-    if name in ("brain_today", "brain_chart", "brain_signal", "brain_trade", "brain_review", "brain_filter", "brain_playbook", "brain_whatif", "brain_zones", "brain_limits", "brain_health", "brain_verdict", "brain_compare", "brain_progress", "brain_dash", "brain_exits", "sys_health", "brain_month"):         # own files + the market store read-only inside, no connection needed here
+    if name in BV.NAMES:         # own files + the market store read-only inside, no connection needed here
         try:
             return 200, VIEWS[name](None, params or {}, now, data_dir)
         except ValueError as e:
@@ -421,8 +293,11 @@ def make_router(require_api_token, data_dir):
     r = APIRouter()
 
     def add(name):
-        async def view(symbol: str = "", interval: str = "", limit: str = "", day: str = "", days: str = "", at: str = "", q: str = ""):
-            st, body = await asyncio.to_thread(dispatch, name, {"symbol": symbol, "interval": interval, "limit": limit, "day": day, "days": days, "at": at, "q": q}, data_dir)
+        async def view(symbol: str = "", interval: str = "", limit: str = "", day: str = "", days: str = "", at: str = "", q: str = "",
+                       source: str = "", month: str = "", state: str = "", skip: str = "", only: str = ""):
+            # Part M4c: source / month / state / skip / only were missing here before, so FastAPI dropped them and the SHADOW / REPLAY tabs (and the month arrows) always got the default answer
+            raw = {"symbol": symbol, "interval": interval, "limit": limit, "day": day, "days": days, "at": at, "q": q, "source": source, "month": month, "state": state, "skip": skip, "only": only}
+            st, body = await asyncio.to_thread(dispatch, name, {k: str(v)[:500] for k, v in raw.items() if v}, data_dir)
             return JSONResponse(body, status_code=st)
         view.__name__ = "v2_" + name
         r.get("/api/v2/" + name, dependencies=[Depends(require_api_token)])(view)

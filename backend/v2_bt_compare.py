@@ -162,7 +162,7 @@ def build(data_dir, source="PAPER", day=None, now=None):
         v["pct_of_capital"] = round(v["net_usdt"] / cap * 100.0, 2)
     r = dict(arms, ready=con is not None, framework=VERSION, source=source, day=label, live="LOCKED", capital_usdt=cap, calendar=cal)
     r["lines"] = lines_of(r)
-    r["lines"].append("BT-01 (PAPER) %+.2f USDT, %d closed. BT-02 (SHADOW, the Brain decides the exit) %+.2f USDT, %d closed. Different entries in time, so this is a look, not a proof; BT-02 needs weeks of trades first." % (brain["net_usdt"], brain["closed"], bt2["net_usdt"], bt2["closed"]))
+    r["lines"].append("PAPER %+.2f USDT, %d closed (BT-01 fixed exit before the manager switch, BT-03 Brain manager after). BT-02 (SHADOW, the Brain decides the exit) %+.2f USDT, %d closed. Different entries in time, so this is a look, not a proof; BT-02 needs weeks of trades first." % (brain["net_usdt"], brain["closed"], bt2["net_usdt"], bt2["closed"]))
     r["note"] = ("Net of fee, USDT. The Brain and the Current Bot are different trades. Take-All is a simulation on saved candles (%d coin(s) used, %d left out by the cap); "
                  "percent = of the %d USDT guard capital. Evidence, not an order." % (ta["coins_used"], ta["coins_left_out"], cap))
     return r

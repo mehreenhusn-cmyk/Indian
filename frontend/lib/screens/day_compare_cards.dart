@@ -61,7 +61,7 @@ List<Widget> dayCompareCards(AppPalette p, Map<String, dynamic> r) {
         Text('Same Brain, two exits (Part E5)', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: p.textSecondary)),
         const SizedBox(height: 6),
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          _col(p, 'BT-01 (PAPER) fixed exit', b, '${b['closed'] ?? 0} closed'),
+          _col(p, 'PAPER (BT-01, then BT-03 manager)', b, '${b['closed'] ?? 0} closed'),
           _col(p, 'BT-02 (SHADOW) Brain decides exit', b2, '${b2['closed'] ?? 0} closed'),
         ]),
         const SizedBox(height: 8),

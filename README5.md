@@ -1,4 +1,4 @@
-# README5 - BRAIN TRADER PLAN + HOW WE WORK (v22, 1 Nov 2026, after Part M2)
+# README5 - BRAIN TRADER PLAN + HOW WE WORK (v24, 1 Nov 2026, after Part M5 + build fix)
 When the owner says "read README5 and continue", read this file first, then README4 (build log, top note = newest).
 
 ## How we work (owner rules)
@@ -41,18 +41,22 @@ The Brain trades from the indicators by itself (paper), learns when the indicato
 | M1 (DONE: M1a v2_sys_health.py 189 + route sys_health, M1b system_health_screen.dart 132, Dart NOT compiled) | System Health screen (mock 10): only real facts, rest NOT AVAILABLE | v2_sys_health.py, system_health_screen.dart | ~200 + ~250 |
 | M2 (DONE: month_view in v2_bt_compare.py, route brain_month, month_grid_screen.dart 215, Dart NOT compiled) | Month calendar like mock 16 on top of Day Compare | v2_bt_compare.py (+month), month_grid screen | ~40 + ~200 |
 | M3 (DONE, Dart NOT compiled yet) | Brain Dashboard (mock 11 / 15 ideas, real numbers only): today net + gross / fees / slippage, Brain 30 days next to Current Bot 30 days (never added), open long / short, today signals, DAILY LOSS CAP bar (guard cap, used = today's net loss only), last 8 days strip, all-time Brain net, the Brain's own sentence. NO account balance (none is real). Route brain_dash. First row of More | v2_bt_dash.py (99), test_v2_bt_dash.py (9 tests), brain_dashboard_screen.dart (93), brain_dashboard_cards.dart (184), v2_data.py +8 (now 414), provider +3, More row +3 | ~390 |
-| M4 | Brain and Activity timeline (mock 13): bot trades next to Brain decisions | v2_bt_timeline.py, screen | ~120 + ~200 |
-| owner OK | TP2, PAPER ENTER / Confirm Paper Order (need a WRITE route) | - | ~150 |
-| later | split v2_data.py (402) and app_provider_positions.dart (379) | - | ~100 |
+| M4a + M4b (🟢 DONE, Dart NOT compiled) | Brain and Activity timeline (mock 13): one UTC day, Brain decisions / trades next to the Current Bot's closed trades, clock in IST, per-coin table with BOTH marked. Route brain_timeline | v2_bt_timeline.py (157), timeline_screen.dart (135), timeline_cards.dart (122), provider fetchBrainTimeline, More row "Brain and Activity" | ~320 |
+| M4c (🟢 DONE, the split) | v2_data.py 431 -> 306 (Brain pages now in api/v2_brain_views.py 148, same code), app_provider_positions.dart 389 -> 341 (Brain fetches now in app_provider_brain.dart 73, same names). Also fixed: the router passes source / month / state / skip / only now | api/v2_brain_views.py, api/v2_data.py, providers/app_provider_brain.dart, providers/app_provider_positions.dart, providers/app_provider.dart (+1) | ~0 new |
+| 🟢 FIX (build) | Flutter CI #188 red: bt_trade_screen.dart line 129 apostrophe, escaped | bt_trade_screen.dart | 1 |
+| M5 (🟢 DONE, owner wish: the Brain manages the trade itself) | BT-03 = BT-02 exit + trailing stop after TP1 + early cut of a losing trade; runs in PAPER while v2_bt_manager_on = 1 (switched ON once at first start); Exit Study rule MANAGER judges it on the old trades; BT-02 stays in SHADOW | v2_bt_exit2.py, v2_bt_sim.py, v2_bt_detail.py, v2_bt_exitlab.py, v2_bt_wait.py, v2_bt_auto.py, v2_bt_compare.py, day_compare_cards.dart | ~110 |
+| owner OK | TP2 is DONE inside BT-02 / BT-03 (the Brain decides it). PAPER ENTER / Confirm Paper Order (need a WRITE route) | - | ~150 |
 Total about 3,000 lines in 11 parts (without the owner-OK parts).
 ## Open points
+- v198 = Parts M4a + M4b + M4c (ONE zip, only files not in the repo yet). Check Flutter CI of the commit 'auto: owl_PartM4.zip' (Dart of M3, E, M1, M2 and M4 was never compiled together) and send the error text if it is red. The SHADOW / REPLAY tabs now really work (router fix), so numbers may look different from before on those tabs.
+- STILL LEFT (owner OK needed): TP2 (display-only second price, or a new rule version BT-03) and PAPER ENTER button (needs a WRITE route).
 - OWNER RULE 1 Nov (E1): NO tests are written or run any more; files are written directly and the owner checks when the app is built. Python is only syntax-checked.
 - v197 = owl_PartM2 (CUMULATIVE with E1 to E5 + M1). v196 = owl_PartM1b (CUMULATIVE with E1 to E5 + M1a). v195 = owl_PartM1a (CUMULATIVE with E1 to E5). v194 = owl_PartE5 (CUMULATIVE with E1 + E2; E3 BT-02 SHADOW tick, E4 labels, E5 compare). Moving BT-02 from SHADOW to PAPER needs the owner's OK after the Exit Study BRAIN row and weeks of SHADOW trades. v193 = owl_PartE2 (E1 backend + E2 screen). Check Flutter CI of the commit 'auto: owl_PartE2.zip' and send the error text if it is red.
 - v191 = owl_PartL2 pushed (Flutter CI #186 green). From v192 on a zip holds ONLY the files that are not in the repo yet (new or changed since the last pushed zip), owner wish 1 Nov.
 - Why X1 / X2 / L1 were not pushed on 1 Nov: Termux was killed by Android (watcher last alive 14:07, restarted 15:06), the owner's Indian-main (63).zip then counted as the newest full zip and the owl zips were 'OLDER'. Keep Termux battery on 'Unrestricted', run: bash ~/owl_auto.sh install-bashrc, and never leave a newer Indian-main*.zip in Download.
 - OWNER DECISION: 87c TP2 (real second target = new rule version BT-02, or a display-only price) and the PAPER ENTER button (needs a write route). Not built.
 - 9 old test failures (test_v2_api 2, brain_ab 1, brain_cards 1, graduation 3, positions_ui 1, reports_route 1) fail the same on the owner's uploaded repo 61.
-- v2_data.py (402) and app_provider_positions.dart (379) are over 350 lines: split later.
+- v2_data.py (306) and app_provider_positions.dart (341) are under 350 lines since M4c.
 - Dart: GitHub Flutter CI (release APK build) was GREEN for #184 (Part 90c), #185 (Part 91b) and #186 (Part L2, which also carried X1 / X2 / L1), so that Dart compiles. The Dart of M3 (brain_dashboard_*.dart) is new: check Flutter CI of the commit 'auto: owl_PartM3.zip' and send the error text if it is red.
 - Data quality chip on Brain Health says NOT CHECKED until the Part 85 data check exists.
 - Old failing tests (not ours): test_v2_api 2, test_v2_brain_cards 1, test_v2_positions_ui 1.

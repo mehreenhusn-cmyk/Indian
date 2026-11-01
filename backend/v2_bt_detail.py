@@ -117,8 +117,8 @@ def trade(data_dir, symbol, interval="5m", source="PAPER", now=None):
     left = max_hold - held
     watch = "CLOSE SOON" if left <= CLOSE_LEFT else "PROTECT" if gave or against else "HOLD"
     why = []
-    if o[0] == X2.BT2:                                                    # Part E4: a BT-02 trade gets the Brain's OWN word (HOLD / PROTECT / CLOSE) from the same exit rule that closes it
-        watch, own = X2.label(run, ctx, idx, side, ent, sl, tp, max_hold)
+    if o[0] in (X2.BT2, X2.BT3):                                          # Part E4 / M5: a BT-02 / BT-03 trade gets the Brain's OWN word (HOLD / PROTECT / CLOSE) from the same exit rule that closes it
+        watch, own = X2.label(run, ctx, idx, side, ent, sl, tp, max_hold, o[0] == X2.BT3)
         why.append(own)
     if gave:
         why.append("Trade went %+.2f%% at best and gave back %.2f%% of it." % (mfe, mfe - g))

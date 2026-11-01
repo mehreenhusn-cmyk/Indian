@@ -29,7 +29,8 @@ RULES = (("CURRENT", "Current exit", "Stop, target or time. This is what BT-01 d
          ("TSI_TURN", "TSI turns against", "If in profit and TSI crosses its signal line against the trade, close at that candle close."),
          ("GIVEBACK", "Half of the gain given back", "After half a stop distance of gain, close when half of the best gain is lost."),
          ("BREAKEVEN", "Break-even stop", "After one full stop distance of gain, move the stop to the entry price."),
-         ("BRAIN", "Brain decides (BT-02)", "The Brain reads TSI and Z each candle: protects, closes, and at TP1 decides alone whether to run to TP2."))
+         ("BRAIN", "Brain decides (BT-02)", "The Brain reads TSI and Z each candle: protects, closes, and at TP1 decides alone whether to run to TP2."),
+         ("MANAGER", "Brain manages (BT-03)", "BT-02 plus a trailing stop after TP1 and an early cut of a losing trade when TSI and Z both turn against it."))
 
 
 def _trades(con, source):
@@ -43,8 +44,8 @@ def one(run, ctx, i, side, entry, sl, tp, rule, hold):
     """Replay ONE trade from the signal candle i with ONE rule. -> (exit_price, held_candles, best_gain_pct) or None when the candles are too short."""
     if i + hold >= len(run):
         return None
-    if rule == "BRAIN":
-        r = X2.brain_exit(run, ctx, i, side, entry, sl, tp, hold)
+    if rule in ("BRAIN", "MANAGER"):
+        r = X2.brain_exit(run, ctx, i, side, entry, sl, tp, hold, rule == "MANAGER")
         return None if r["status"] == "PENDING" else (r["exit_price"], r["hold_candles"], r["best_pct"])
     long_ = side == "LONG"
     sgn = 1.0 if long_ else -1.0

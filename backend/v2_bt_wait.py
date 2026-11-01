@@ -103,7 +103,7 @@ def tick(con, data_dir, now=None, source="PAPER", interval="5m", version=None):
             out["no_data"].append({"symbol": sym, "code": r["why"]["code"], "text": r["why"]["text"]})
         else:
             out["coins"].append({"symbol": sym, "decision": r["decision"], "state": r["state"], "trade_opened": r["trade_opened"]})
-    out["waits"] = resolve_waits(con, data_dir, source, now) if version is None else {}   # WAIT answers belong to BT-01
+    out["waits"] = resolve_waits(con, data_dir, source, now) if version in (None, "BT-03") else {}   # WAIT answers belong to BT-01 and to the BT-03 manager (same entry rule)
     return out
 
 

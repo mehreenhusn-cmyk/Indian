@@ -117,9 +117,9 @@ def paper_scan(con, data_dir, symbol, interval="5m", now=None, source="PAPER", v
         raise ValueError("source must be PAPER or SHADOW")
     now = int(time.time() if now is None else now)
     version = version or R.BT_VERSION                              # Part E3: BT-02 (same entry, the Brain decides the exit) runs in SHADOW only
-    if version not in (R.BT_VERSION, X2.BT2) or (version == X2.BT2 and source != "SHADOW"):
-        raise ValueError("BT-02 runs in SHADOW only")
-    defn = X2.definition() if version == X2.BT2 else R.definition()
+    if version not in (R.BT_VERSION, X2.BT2, X2.BT3) or (version == X2.BT2 and source != "SHADOW"):
+        raise ValueError("BT-02 runs in SHADOW only; BT-03 (the Brain manages the trade) runs in PAPER or SHADOW")     # Part M5: BT-03 may run in PAPER, still pretend money
+    defn = X2.definition() if version == X2.BT2 else X2.definition3() if version == X2.BT3 else R.definition()
     run, need, step = load_run(data_dir, symbol, interval), IND.need_candles(), D.STEP[interval]
     if len(run) < need:                                            # the Brain says WHY (Part 85b) and the report shows it
         reason = W.why(data_dir, symbol, interval, now)
@@ -169,8 +169,8 @@ def manage_open(con, data_dir, now=None, source="PAPER"):
             g = (px - o[1]) / o[1] * 100.0 * (1 if side == "LONG" else -1)
             sim = {"status": "KILL_SWITCH", "exit_price": px, "gross_pct": g, "hold_candles": held}
         else:
-            if o[0] == X2.BT2:                                         # Part E3: the Brain's own exit (TSI / Z read at every candle)
-                r2 = X2.brain_exit(run, ST.prepare(run), idx, side, o[1], o[2], o[3], _max_hold(con, o[0]))
+            if o[0] in (X2.BT2, X2.BT3):                               # Part E3 / M5: the Brain's own exit (TSI / Z read at every candle); BT-03 also trails and cuts
+                r2 = X2.brain_exit(run, ST.prepare(run), idx, side, o[1], o[2], o[3], _max_hold(con, o[0]), o[0] == X2.BT3)
                 sim = dict(r2, gross_pct=0.0 if r2["exit_price"] is None else (r2["exit_price"] - o[1]) / o[1] * 100.0 * (1 if side == "LONG" else -1))
             else:
                 sim = V.simulate(run, idx, side, o[2], o[3], _max_hold(con, o[0]), step, now)

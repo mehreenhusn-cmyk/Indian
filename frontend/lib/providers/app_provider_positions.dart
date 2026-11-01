@@ -326,54 +326,6 @@ extension AppProviderPositions on AppProvider {
   /// Part 81 (Results screen): the read-only Part 80 route. Which groups of closed trades make or lose money, net of fee; no setting, no order.
   Future<Map<String, dynamic>> fetchResults() => _ledgerGet('/api/v2/results');
 
-  /// Part 86b (Brain Today screen): read-only Part 86a routes. Today = report lines + newest answer per coin; chart = the CURRENT chart of one coin in plain sentences.
-  Future<Map<String, dynamic>> fetchBrainToday() => _ledgerGet('/api/v2/brain_today?source=PAPER');
-
-  Future<Map<String, dynamic>> fetchBrainChart(String symbol, String interval) =>
-      _ledgerGet('/api/v2/brain_chart?symbol=${Uri.encodeQueryComponent(symbol)}&interval=${Uri.encodeQueryComponent(interval)}');
-
-  /// Part 87 (Signal Detail + Active Paper Trade): read-only Part 87 routes.
-  Future<Map<String, dynamic>> fetchBrainSignal(String symbol, String interval) =>
-      _ledgerGet('/api/v2/brain_signal?symbol=${Uri.encodeQueryComponent(symbol)}&interval=${Uri.encodeQueryComponent(interval)}');
-
-  Future<Map<String, dynamic>> fetchBrainTrade(String symbol, String interval) =>
-      _ledgerGet('/api/v2/brain_trade?symbol=${Uri.encodeQueryComponent(symbol)}&interval=${Uri.encodeQueryComponent(interval)}');
-
-  /// Part 88d (What the Brain is learning): read-only Part 88c routes. Playbook = USE / AVOID / thin chart states per indicator; what-if = skip / only rules (dim:label joined by |) on the same closed paper trades.
-  /// Part 88e: [interval] 5m / 15m and [state] TREND / SIDEWAYS / CONSOLIDATION / BREAKOUT are optional (empty = no filter).
-  Future<Map<String, dynamic>> fetchBrainPlaybook([String interval = '', String state = '']) {
-    final q = '${interval.isEmpty ? '' : '&interval=${Uri.encodeQueryComponent(interval)}'}${state.isEmpty || state == 'ALL' ? '' : '&state=${Uri.encodeQueryComponent(state)}'}';
-    return _ledgerGet('/api/v2/brain_playbook?source=PAPER$q');
-  }
-
-  /// Part 89c (Zone, squeeze and limits studies): read-only Part 89a / 89b routes. They only read the study files the auto-runner makes every 6 hours.
-  Future<Map<String, dynamic>> fetchBrainZones() => _ledgerGet('/api/v2/brain_zones?interval=5m');
-
-  Future<Map<String, dynamic>> fetchBrainLimits() => _ledgerGet('/api/v2/brain_limits?interval=5m');
-
-  /// Part 90b (Brain Health): read-only Part 90a route. Pipeline, sample coverage per market state, safety, graduation, what is missing. Live is always LOCKED.
-  Future<Map<String, dynamic>> fetchBrainHealth([String interval = '5m']) => _ledgerGet('/api/v2/brain_health?source=PAPER&interval=${Uri.encodeQueryComponent(interval)}');
-
-  /// Part X2 (Day calendar + comparison): read-only Part X1 route. Owl Brain vs Current Bot vs Take-All (simulated) for one UTC day + a 30-day calendar. day = YYYY-MM-DD or null (today).
-  Future<Map<String, dynamic>> fetchBrainCompare([String source = 'PAPER', String? day]) =>
-      _ledgerGet('/api/v2/brain_compare?source=${Uri.encodeQueryComponent(source)}${day == null ? '' : '&day=${Uri.encodeQueryComponent(day)}'}');
-
-  /// Part 91b (Simple Results): read-only Part 91a route. One verdict word, net, worst dip, losing streak, equity line, USE / STOP lines. Source = PAPER, SHADOW or REPLAY (never LIVE).
-  Future<Map<String, dynamic>> fetchBrainVerdict([String source = 'PAPER']) => _ledgerGet('/api/v2/brain_verdict?source=${Uri.encodeQueryComponent(source)}');
-
-  /// Part M3 (Brain Dashboard): read-only route brain_dash. Today net, Brain vs Current Bot 30 days, open trades, signals, daily loss cap, recent days. Source = PAPER, SHADOW or REPLAY (never LIVE).
-  Future<Map<String, dynamic>> fetchBrainDash([String source = 'PAPER']) => _ledgerGet('/api/v2/brain_dash?source=${Uri.encodeQueryComponent(source)}');
-
-  /// Part L2 (Learning Progress): read-only Part L1 route. Today (trades / profit / loss / net), 30 days, 5 weeks (losing trades per 10), trend, mistakes, fixed, learned. Source = PAPER, SHADOW or REPLAY (never LIVE).
-  Future<Map<String, dynamic>> fetchBrainProgress([String source = 'PAPER']) => _ledgerGet('/api/v2/brain_progress?source=${Uri.encodeQueryComponent(source)}');
-  Future<Map<String, dynamic>> fetchBrainExits([String source = 'REPLAY']) => _ledgerGet('/api/v2/brain_exits?source=${Uri.encodeQueryComponent(source)}');
-  Future<Map<String, dynamic>> fetchSysHealth() => _ledgerGet('/api/v2/sys_health');
-  Future<Map<String, dynamic>> fetchBrainMonth([String source = 'PAPER', String? month]) =>
-      _ledgerGet('/api/v2/brain_month?source=${Uri.encodeQueryComponent(source)}${month == null ? '' : '&month=${Uri.encodeQueryComponent(month)}'}');
-
-  Future<Map<String, dynamic>> fetchBrainWhatif(String skip, String only) =>
-      _ledgerGet('/api/v2/brain_whatif?source=PAPER&skip=${Uri.encodeQueryComponent(skip)}&only=${Uri.encodeQueryComponent(only)}');
-
   Future<Map<String, dynamic>> _ledgerGet(String path) async {
     try {
       final res = await _getResilient(_u(path));

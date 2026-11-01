@@ -126,7 +126,7 @@ class _BtTradeScreenState extends State<BtTradeScreen> {
           _title(p, 'Why I am still in this trade'),
           for (final s in _s(r['why'])) Padding(padding: const EdgeInsets.only(bottom: 4), child: Text(s, style: TextStyle(fontSize: 12.5, color: s.startsWith('Dhyan') ? p.warning : p.textPrimary))),
           const SizedBox(height: 4),
-          Text('HOLD = nothing special. PROTECT = gave back half of a real gain, or TSI and the histogram turned against the trade. CLOSE SOON = 2 or fewer candles of hold time left. For a BT-02 trade the word is the Brain's own exit decision (HOLD / PROTECT = stop moved to lock profit / CLOSE = it closes now). These are words, not orders: the paper trade closes by itself at stop, target or time.',
+          Text('HOLD = nothing special. PROTECT = gave back half of a real gain, or TSI and the histogram turned against the trade. CLOSE SOON = 2 or fewer candles of hold time left. For a BT-02 trade the word is the Brain\'s own exit decision (HOLD / PROTECT = stop moved to lock profit / CLOSE = it closes now). These are words, not orders: the paper trade closes by itself at stop, target or time.',
               style: TextStyle(fontSize: 11, color: p.textMuted)),
         ]),
       ),

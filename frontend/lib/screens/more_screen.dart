@@ -35,6 +35,7 @@ import 'reports_screen.dart';
 import 'settings_screen.dart';
 import 'strategy_doctor_screen.dart';
 import 'tag_lab_screen.dart';
+import 'timeline_screen.dart';
 
 /// "More" tab: everything that is not used all day, in three small groups.
 /// Each row opens a full screen with a back arrow. Nothing here is new logic, these are the
@@ -115,6 +116,8 @@ class MoreScreen extends StatelessWidget {
                 () => _open(context, 'Day Compare', const DayCompareScreen())),
             _row(context, Icons.grid_view_rounded, 'Month Calendar', 'A whole month as a grid: Brain net of every day (green / red), month net of Brain and Current Bot, best and worst day, running line (read-only)',
                 () => _open(context, 'Month Calendar', const MonthGridScreen())),
+            _row(context, Icons.timeline, 'Brain and Activity', 'One day as a timeline, newest first: what the Brain took, waited on or skipped, and what the Current Bot opened and closed, side by side in time. Coins where both acted (read-only)',
+                () => _open(context, 'Brain and Activity', const TimelineScreen())),
             _row(context, Icons.trending_up, 'Learning Progress', 'Trades today, profit and loss, week by week: is the Brain making fewer mistakes? Mistakes, fixed, learned (read-only)',
                 () => _open(context, 'Learning Progress', const LearningProgressScreen())),
             _row(context, Icons.monitor_heart_outlined, 'System Health', 'Real facts only: backend, candle feed, Brain tick, safety, CPU, RAM, disk. What cannot be measured says NOT AVAILABLE (read-only)',

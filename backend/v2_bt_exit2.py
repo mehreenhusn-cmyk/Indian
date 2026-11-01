@@ -18,7 +18,9 @@ import v2_bt_rules as R
 
 VERSION = "v2_bt_exit2 1 (Parts E3 / E4)"
 BT2 = "BT-02"
+BT3 = "BT-03"                                                          # Part M5: the Brain MANAGES the trade (BT-02 + a trailing stop after TP1 + an early cut of a losing trade)
 PROTECT_R, TP2_R = 1.0, 2.5                                           # in stop distances from the entry (NV)
+TRAIL_R, CUT_AFTER, CUT_R = 0.5, 3, 0.5                               # BT-03 only (NV): trail 0.5 stop distance behind the best price; cut after 3 candles when 0.5 stop distance under water and TSI + Z both turned against
 
 
 def definition():
@@ -29,6 +31,25 @@ def definition():
     d["target"] = "TP1 %.1f x stop distance, TP2 %.1f x stop distance (the Brain decides at TP1)" % (R.TARGET_R, TP2_R)
     d["entry_rule_of"] = R.BT_VERSION
     return d
+
+
+def definition3():
+    """Part M5: the full text of BT-03 = BT-02 + trailing + early cut. Same entry as BT-01 / BT-02, so the versions differ ONLY in how the trade is managed."""
+    d = dict(definition())
+    d["exit"] = (d["exit"] + " MANAGER EXTRAS (BT-03): after the Brain chose to RUN to TP2 the stop TRAILS %.1f stop distance behind the best price (it only moves in the trade's favour). "
+                 "A trade that is %.1f stop distance under water after at least %d candles, with TSI under its signal line AND Z against the trade, is CUT at the candle close so the loss does not grow." % (TRAIL_R, CUT_R, CUT_AFTER))
+    d["entry_rule_of"] = R.BT_VERSION
+    d["manager_of"] = BT2
+    return d
+
+
+def _against(ctx, j, long_):
+    """Both TSI (vs its signal line) and Z stand AGAINST the trade's side at candle j."""
+    ind = ctx["ind"]
+    t, s, z = ind["tsi"][j], ind["tsi_signal"][j], ind["z"][j]
+    if t is None or s is None or z is None:
+        return False
+    return (t < s and z < 0) if long_ else (t > s and z > 0)
 
 
 def _agree(ctx, j, long_):
@@ -47,9 +68,10 @@ def _turned(ctx, j, long_):
     return (h < 0 <= h0) if long_ else (h > 0 >= h0)
 
 
-def brain_exit(run, ctx, i, side, entry, sl, tp, hold):
+def brain_exit(run, ctx, i, side, entry, sl, tp, hold, mgr=False):
     """Replay ONE trade from the signal candle i, candle by candle. -> {status, exit_price, hold_candles, best_pct, mode, note}.
-    status = TARGET / STOP / CLOSE_RULE / TIME when finished, PENDING when the candles so far did not end it (the trade is still open). mode = NORMAL / PROTECTED / RUNNING (what the stop does now)."""
+    status = TARGET / STOP / CLOSE_RULE / TIME when finished, PENDING when the candles so far did not end it (the trade is still open). mode = NORMAL / PROTECTED / RUNNING (what the stop does now).
+    mgr=True is BT-03 (Part M5): the same, plus a TRAILING stop while RUNNING and the EARLY CUT of a losing trade."""
     long_ = side == "LONG"
     sg = 1.0 if long_ else -1.0
     risk = abs(entry - sl)
@@ -77,6 +99,13 @@ def brain_exit(run, ctx, i, side, entry, sl, tp, hold):
                 note = "TP1 touched and the Brain did not see strength: took TP1."
                 return done("TARGET", tp, j)
         best = max(best, hi) if long_ else min(best, lo)
+        if mgr and mode == "RUNNING":                                  # BT-03: the stop follows the best price (applies from the NEXT candle, never backwards)
+            trail = best - sg * TRAIL_R * risk
+            stop = max(stop, trail) if long_ else min(stop, trail)
+            note = "Running to TP2, the stop trails behind the best price."
+        if mgr and mode == "NORMAL" and j - i >= CUT_AFTER and sg * (cl - entry) <= -CUT_R * risk and _against(ctx, j, long_):
+            note = "Losing and TSI + Z both turned against the trade: cut at the candle close so the loss does not grow."
+            return done("CLOSE_RULE", cl, j)
         if mode == "NORMAL" and sg * (best - entry) >= PROTECT_R * risk:
             mode, stop, note = "PROTECTED", entry, "Gained one stop distance: stop moved to the entry price."
         if sg * (cl - entry) > 0 and _turned(ctx, j, long_):
@@ -88,9 +117,9 @@ def brain_exit(run, ctx, i, side, entry, sl, tp, hold):
     return {"status": "PENDING", "exit_price": None, "hold_candles": last - i, "best_pct": None, "mode": mode, "note": note}
 
 
-def label(run, ctx, i, side, entry, sl, tp, hold):
+def label(run, ctx, i, side, entry, sl, tp, hold, mgr=False):
     """The word for an OPEN trade, from the same replay: CLOSE (the Brain has just decided to close), PROTECT (the stop was moved to lock profit), else HOLD. -> (word, sentence)."""
-    r = brain_exit(run, ctx, i, side, entry, sl, tp, hold)
+    r = brain_exit(run, ctx, i, side, entry, sl, tp, hold, mgr)
     if r["status"] != "PENDING":
         return "CLOSE", "The Brain's own decision: %s It closes at the next check." % r["note"]
     if r["mode"] != "NORMAL":
