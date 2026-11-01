@@ -366,6 +366,10 @@ extension AppProviderPositions on AppProvider {
 
   /// Part L2 (Learning Progress): read-only Part L1 route. Today (trades / profit / loss / net), 30 days, 5 weeks (losing trades per 10), trend, mistakes, fixed, learned. Source = PAPER, SHADOW or REPLAY (never LIVE).
   Future<Map<String, dynamic>> fetchBrainProgress([String source = 'PAPER']) => _ledgerGet('/api/v2/brain_progress?source=${Uri.encodeQueryComponent(source)}');
+  Future<Map<String, dynamic>> fetchBrainExits([String source = 'REPLAY']) => _ledgerGet('/api/v2/brain_exits?source=${Uri.encodeQueryComponent(source)}');
+  Future<Map<String, dynamic>> fetchSysHealth() => _ledgerGet('/api/v2/sys_health');
+  Future<Map<String, dynamic>> fetchBrainMonth([String source = 'PAPER', String? month]) =>
+      _ledgerGet('/api/v2/brain_month?source=${Uri.encodeQueryComponent(source)}${month == null ? '' : '&month=${Uri.encodeQueryComponent(month)}'}');
 
   Future<Map<String, dynamic>> fetchBrainWhatif(String skip, String only) =>
       _ledgerGet('/api/v2/brain_whatif?source=PAPER&skip=${Uri.encodeQueryComponent(skip)}&only=${Uri.encodeQueryComponent(only)}');

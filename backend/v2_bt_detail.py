@@ -13,6 +13,7 @@ import time
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import v2_bt_botcmp as BC
 import v2_bt_chart as CH
+import v2_bt_exit2 as X2
 import v2_bt_rules as R
 import v2_bt_sim as M
 import v2_bt_state as ST
@@ -116,13 +117,16 @@ def trade(data_dir, symbol, interval="5m", source="PAPER", now=None):
     left = max_hold - held
     watch = "CLOSE SOON" if left <= CLOSE_LEFT else "PROTECT" if gave or against else "HOLD"
     why = []
+    if o[0] == X2.BT2:                                                    # Part E4: a BT-02 trade gets the Brain's OWN word (HOLD / PROTECT / CLOSE) from the same exit rule that closes it
+        watch, own = X2.label(run, ctx, idx, side, ent, sl, tp, max_hold)
+        why.append(own)
     if gave:
         why.append("Trade went %+.2f%% at best and gave back %.2f%% of it." % (mfe, mfe - g))
     why += CH.lines_for(t, x)
     why.append("Stop is %.2f%% away, target %.2f%% away, %d candles of hold time left." % (abs(px - sl) / px * 100.0, abs(tp - px) / px * 100.0, left))
     return {"ready": True, "open": True, "symbol": symbol, "interval": interval, "source": source, "trade_id": tid, "side": side, "opened": W.ist(open_ts), "entry": ent, "sl": sl, "tp": tp, "now": px, "size_usdt": sz,
             "unrealized_net_usdt": round(net_pct / 100.0 * sz, 2), "unrealized_net_pct": _r(net_pct, 3), "mfe_pct": _r(mfe, 3), "mae_pct": _r(mae, 3), "giveback_pct": _r(max(0.0, mfe - g), 3), "held": held, "left": left,
-            "watch": watch, "why": why, "tags": t, "chart_tags": x, "chart": chart_payload(run, ctx, step), "paper_note": "PAPER ONLY (pretend money). The WATCH label is a word, not an order."}
+            "watch": watch, "why": why, "tags": t, "chart_tags": x, "chart": chart_payload(run, ctx, step), "version": o[0], "paper_note": "PAPER / SHADOW ONLY (pretend money). The WATCH label is a word, not an order."}
 
 
 def main(argv=None):

@@ -28,6 +28,9 @@ import 'brain_learning_screen.dart';
 import 'brain_studies_screen.dart';
 import 'brain_dashboard_screen.dart';
 import 'brain_health_screen.dart';
+import 'exit_study_screen.dart';
+import 'system_health_screen.dart';
+import 'month_grid_screen.dart';
 import 'reports_screen.dart';
 import 'settings_screen.dart';
 import 'strategy_doctor_screen.dart';
@@ -110,8 +113,14 @@ class MoreScreen extends StatelessWidget {
                 () => _open(context, 'Brain Health', const BrainHealthScreen())),
             _row(context, Icons.calendar_month_outlined, 'Day Compare', 'Pick a day: Owl Brain vs Current Bot vs Take-All (simulated), money split, decisions, worst dip (read-only)',
                 () => _open(context, 'Day Compare', const DayCompareScreen())),
+            _row(context, Icons.grid_view_rounded, 'Month Calendar', 'A whole month as a grid: Brain net of every day (green / red), month net of Brain and Current Bot, best and worst day, running line (read-only)',
+                () => _open(context, 'Month Calendar', const MonthGridScreen())),
             _row(context, Icons.trending_up, 'Learning Progress', 'Trades today, profit and loss, week by week: is the Brain making fewer mistakes? Mistakes, fixed, learned (read-only)',
                 () => _open(context, 'Learning Progress', const LearningProgressScreen())),
+            _row(context, Icons.monitor_heart_outlined, 'System Health', 'Real facts only: backend, candle feed, Brain tick, safety, CPU, RAM, disk. What cannot be measured says NOT AVAILABLE (read-only)',
+                () => _open(context, 'System Health', const SystemHealthScreen())),
+            _row(context, Icons.logout, 'Exit Study', 'Same old trades, other exits: TSI turns, half of the gain given back, break-even stop. Net, give-back, worst dip (read-only, nothing applied)',
+                () => _open(context, 'Exit Study', const ExitStudyScreen())),
             _row(context, Icons.emoji_events_outlined, 'Simple Results', 'One word: is the Brain making money? Net, worst dip, losing streak, equity line, what to USE and what to STOP (read-only)',
                 () => _open(context, 'Simple Results', const SimpleResultsScreen())),
             _row(context, Icons.query_stats, 'Results', 'Which groups of your closed trades make money and which lose (net of fee, read-only)',

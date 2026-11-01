@@ -18,6 +18,7 @@ import time
 import urllib.parse
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import v2_bt_exit2 as X2
 import v2_bt_guard as G
 import v2_bt_rules as R
 import v2_bt_state as ST
@@ -30,7 +31,7 @@ import v2_setup_finder as SF
 import v2_store as S
 
 VERSION = "v2_bt_sim 1 (Part 85a)"
-FINISHED = ("TARGET", "STOP", "TIME")
+FINISHED = ("TARGET", "STOP", "TIME", "CLOSE_RULE")
 
 
 def _chart_extra(ctx, i):
@@ -62,14 +63,14 @@ def _close_rec(side, entry, sim, run, i, step):
             "slip_pct": 2 * R.SLIP_PCT, "mfe_pct": round(max(mfe, 0.0) * 100, 4), "mae_pct": round(max(mae, 0.0) * 100, 4), "hold_candles": sim["hold_candles"]}
 
 
-def _decision_rec(source, sample, symbol, interval, run, i, step, t, d):
-    return {"version": R.BT_VERSION, "source": source, "symbol": symbol, "interval": interval, "close_ts": run[i][0] + step, "side": d["side"], "decision": d["decision"], "sample": sample,
+def _decision_rec(source, sample, symbol, interval, run, i, step, t, d, version=R.BT_VERSION):
+    return {"version": version, "source": source, "symbol": symbol, "interval": interval, "close_ts": run[i][0] + step, "side": d["side"], "decision": d["decision"], "sample": sample,
             "state": d["state"], "reason": d["reason"], "data_upto_ts": run[i][0] + step,
             "snapshot": {"tags": t, "wait_for": d["wait_for"], "wait_kind": d["wait_kind"], "max_wait_candles": d["max_wait_candles"], "entry": d["entry"], "sl": d["sl"], "tp": d["tp"]}}
 
 
-def _trade_rec(source, sample, symbol, interval, run, i, step, d):
-    return {"version": R.BT_VERSION, "source": source, "symbol": symbol, "interval": interval, "side": d["side"], "open_ts": run[i][0] + step, "entry": d["entry"], "sl": d["sl"], "tp": d["tp"],
+def _trade_rec(source, sample, symbol, interval, run, i, step, d, version=R.BT_VERSION):
+    return {"version": version, "source": source, "symbol": symbol, "interval": interval, "side": d["side"], "open_ts": run[i][0] + step, "entry": d["entry"], "sl": d["sl"], "tp": d["tp"],
             "size_usdt": R.SIZE_USDT, "sample": sample}
 
 
@@ -110,20 +111,24 @@ def replay_coin(con, data_dir, symbol, interval="5m"):
     return out
 
 
-def paper_scan(con, data_dir, symbol, interval="5m", now=None, source="PAPER"):
+def paper_scan(con, data_dir, symbol, interval="5m", now=None, source="PAPER", version=None):
     """The newest closed candle of ONE coin, now. -> the decision (and the guard's answer when a trade was wanted). PAPER and SHADOW only; LIVE does not exist here."""
     if source not in ("PAPER", "SHADOW"):
         raise ValueError("source must be PAPER or SHADOW")
     now = int(time.time() if now is None else now)
+    version = version or R.BT_VERSION                              # Part E3: BT-02 (same entry, the Brain decides the exit) runs in SHADOW only
+    if version not in (R.BT_VERSION, X2.BT2) or (version == X2.BT2 and source != "SHADOW"):
+        raise ValueError("BT-02 runs in SHADOW only")
+    defn = X2.definition() if version == X2.BT2 else R.definition()
     run, need, step = load_run(data_dir, symbol, interval), IND.need_candles(), D.STEP[interval]
     if len(run) < need:                                            # the Brain says WHY (Part 85b) and the report shows it
         reason = W.why(data_dir, symbol, interval, now)
-        B.register_version(con, R.BT_VERSION, R.definition())
+        B.register_version(con, version, defn)
         ts = now // step * step
-        B.add_decision(con, {"version": R.BT_VERSION, "source": source, "symbol": symbol, "interval": interval, "close_ts": ts, "side": "LONG", "decision": "NO_OPINION", "sample": "NEW",
+        B.add_decision(con, {"version": version, "source": source, "symbol": symbol, "interval": interval, "close_ts": ts, "side": "LONG", "decision": "NO_OPINION", "sample": "NEW",
                              "state": "DATA_NOT_READY", "reason": reason["text"], "data_upto_ts": ts, "snapshot": {"why": reason}})
         return {"status": "DATA_NOT_READY", "symbol": symbol, "candles": len(run), "need": need, "why": reason}
-    B.register_version(con, R.BT_VERSION, R.definition())
+    B.register_version(con, version, defn)
     i = len(run) - 1
     ctx = ST.prepare(run)
     t = ST.tags(ctx, i)
@@ -134,10 +139,10 @@ def paper_scan(con, data_dir, symbol, interval="5m", now=None, source="PAPER"):
         guard = G.check_entry(con, source, symbol, interval, d["side"], now, run[i][0])
         if not guard["allowed"]:
             d = dict(d, decision="SKIP", reason="Safety guard: " + " ".join(r["text"] for r in guard["reasons"]))
-    new = B.add_decision(con, _decision_rec(source, "NEW", symbol, interval, run, i, step, t, d))
+    new = B.add_decision(con, _decision_rec(source, "NEW", symbol, interval, run, i, step, t, d, version))
     opened = None
     if new and d["decision"] in ("OPEN_LONG", "OPEN_SHORT"):
-        opened = B.open_trade(con, _trade_rec(source, "NEW", symbol, interval, run, i, step, d))
+        opened = B.open_trade(con, _trade_rec(source, "NEW", symbol, interval, run, i, step, d, version))
     return {"status": "OK", "symbol": symbol, "decision": d["decision"], "side": d["side"], "state": d["state"], "reason": d["reason"], "wait_for": d["wait_for"], "new_signal": new,
             "trade_opened": opened, "guard": guard}
 
@@ -164,7 +169,11 @@ def manage_open(con, data_dir, now=None, source="PAPER"):
             g = (px - o[1]) / o[1] * 100.0 * (1 if side == "LONG" else -1)
             sim = {"status": "KILL_SWITCH", "exit_price": px, "gross_pct": g, "hold_candles": held}
         else:
-            sim = V.simulate(run, idx, side, o[2], o[3], _max_hold(con, o[0]), step, now)
+            if o[0] == X2.BT2:                                         # Part E3: the Brain's own exit (TSI / Z read at every candle)
+                r2 = X2.brain_exit(run, ST.prepare(run), idx, side, o[1], o[2], o[3], _max_hold(con, o[0]))
+                sim = dict(r2, gross_pct=0.0 if r2["exit_price"] is None else (r2["exit_price"] - o[1]) / o[1] * 100.0 * (1 if side == "LONG" else -1))
+            else:
+                sim = V.simulate(run, idx, side, o[2], o[3], _max_hold(con, o[0]), step, now)
         if sim["status"] in FINISHED or sim["status"] == "KILL_SWITCH":
             B.close_trade(con, tid, _close_rec(side, o[1], sim, run, idx, step))
             out["closed"] += 1

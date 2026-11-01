@@ -89,13 +89,13 @@ def followed(data_dir, now):
         con.close()
 
 
-def tick(con, data_dir, now=None, source="PAPER", interval="5m"):
+def tick(con, data_dir, now=None, source="PAPER", interval="5m", version=None):
     """ONE round of the Brain: close finished trades, look at every followed coin, answer finished waits. -> a short summary; per coin the decision or the REASON why it had no data."""
     now = int(time.time() if now is None else now)
     out = {"time": now, "source": source, "interval": interval, "managed": M.manage_open(con, data_dir, now, source), "coins": [], "no_data": []}
     for sym in followed(data_dir, now):
         try:
-            r = M.paper_scan(con, data_dir, sym, interval, now, source)
+            r = M.paper_scan(con, data_dir, sym, interval, now, source, version)
         except (sqlite3.Error, ValueError, KeyError) as e:        # one coin never stops the round
             out["no_data"].append({"symbol": sym, "code": "ERROR", "text": "Is coin par Brain mein error aaya (%s)." % type(e).__name__})
             continue
@@ -103,7 +103,7 @@ def tick(con, data_dir, now=None, source="PAPER", interval="5m"):
             out["no_data"].append({"symbol": sym, "code": r["why"]["code"], "text": r["why"]["text"]})
         else:
             out["coins"].append({"symbol": sym, "decision": r["decision"], "state": r["state"], "trade_opened": r["trade_opened"]})
-    out["waits"] = resolve_waits(con, data_dir, source, now)
+    out["waits"] = resolve_waits(con, data_dir, source, now) if version is None else {}   # WAIT answers belong to BT-01
     return out
 
 

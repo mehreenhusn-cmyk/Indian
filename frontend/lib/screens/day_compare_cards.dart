@@ -41,6 +41,7 @@ List<Widget> dayCompareCards(AppPalette p, Map<String, dynamic> r) {
   final b = dcMap(r['brain']);
   final bot = dcMap(r['current_bot']);
   final ta = dcMap(r['take_all']);
+  final b2 = dcMap(r['brain_bt02']);
   final dec = dcMap(b['decisions']);
   final dd = dcMap(b['drawdown']);
   final st = dcMap(b['streak']);
@@ -55,6 +56,13 @@ List<Widget> dayCompareCards(AppPalette p, Map<String, dynamic> r) {
           _col(p, 'Owl Brain', b, '${b['closed'] ?? 0} closed'),
           _col(p, 'Current Bot', bot, '${bot['closed'] ?? 0} closed'),
           _col(p, 'Take-All (simulated)', ta, '${ta['taken'] ?? 0} ideas'),
+        ]),
+        const SizedBox(height: 10),
+        Text('Same Brain, two exits (Part E5)', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: p.textSecondary)),
+        const SizedBox(height: 6),
+        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          _col(p, 'BT-01 (PAPER) fixed exit', b, '${b['closed'] ?? 0} closed'),
+          _col(p, 'BT-02 (SHADOW) Brain decides exit', b2, '${b2['closed'] ?? 0} closed'),
         ]),
         const SizedBox(height: 8),
         for (final s in (r['lines'] is List ? (r['lines'] as List) : const []))

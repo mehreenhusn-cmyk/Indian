@@ -75,6 +75,10 @@ def do_tick(data_dir, now=None):
     con = B.connect(data_dir)
     try:
         r = W.tick(con, data_dir, now, "PAPER", "5m")
+        try:                                                       # Part E3: BT-02 (the Brain decides the exit) walks beside it in SHADOW only; if it fails PAPER still counts
+            W.tick(con, data_dir, now, "SHADOW", "5m", "BT-02")
+        except Exception:
+            pass
     finally:
         con.close()
     return {"coins": len(r.get("coins", [])), "no_data": len(r.get("no_data", [])), "opened": sum(1 for c in r.get("coins", []) if c.get("trade_opened"))}

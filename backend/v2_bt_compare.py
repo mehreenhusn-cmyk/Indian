@@ -7,6 +7,8 @@ Three arms, all NET of fee (+ slippage for the Brain), in USDT, and NEVER added 
                    It is a SIMULATION, the Brain numbers are not: it says how much the Brain's waiting / skipping added or cost. Coins are capped (SIM_COINS) to keep the answer fast; the cap is said in the answer.
 HONEST LIMITS (also in the answer): the Brain and the Current Bot are DIFFERENT trades (other coins, other times), so this is a comparison of results, not of the same signals. The Take-All line is the only
 one that uses the Brain's own ideas. Day = UTC day = the app's day. No win rate, no forecast, nothing is saved, nothing is traded.
+Part M2: month_view() = one month as a calendar (route brain_month).
+Part E5: a fourth number brain_bt02 = the closed SHADOW trades of BT-02 (same entry rule, the Brain decides the exit) next to the PAPER BT-01 (only when source=PAPER).
 Also gives: the Brain's decision counts of the day (taken / waited / skipped / no opinion), gross / fees / slippage of its closed trades, worst dip and losing streak of the day, and a CALENDAR of the last days
 (Brain and Current Bot only, Take-All is not worked out for calendar days) for the day-calendar screen (X2).
 Run (Termux, optional):  python3 backend/v2_bt_compare.py [--data DIR] [--day YYYY-MM-DD] [--source PAPER]  -> the plain lines."""
@@ -143,23 +145,77 @@ def build(data_dir, source="PAPER", day=None, now=None):
     bot = bot_rows(data_dir)
     try:
         if con is None:
+            bt2 = {"closed": 0, "net_usdt": 0.0}
             brain, ta = brain_day_empty(), {"ideas": 0, "taken": 0, "unknown_end": 0, "no_candles": 0, "coins_used": 0, "coins_left_out": 0, "net_usdt": 0.0}
         else:
             brain, ta = brain_day(con, source, a, b), take_all(con, data_dir, source, a, b, now)
+            b2 = brain_day(con, "SHADOW", a, b) if source == "PAPER" else None             # Part E5: BT-02 (the Brain decides the exit) runs in SHADOW beside the PAPER BT-01
+            bt2 = {"closed": b2["closed"], "net_usdt": b2["net_usdt"]} if b2 else {"closed": 0, "net_usdt": 0.0}
         cal = calendar(con, bot, source, now)
     finally:
         if con is not None:
             con.close()
     mine = [x for x in bot if a <= x[0] < b]
     cap = G.DEFAULTS["capital_usdt"]
-    arms = {"brain": brain, "current_bot": {"closed": len(mine), "net_usdt": round(sum(x[1] for x in mine), 2)}, "take_all": ta}
+    arms = {"brain": brain, "current_bot": {"closed": len(mine), "net_usdt": round(sum(x[1] for x in mine), 2)}, "take_all": ta, "brain_bt02": bt2}
     for k, v in arms.items():
         v["pct_of_capital"] = round(v["net_usdt"] / cap * 100.0, 2)
     r = dict(arms, ready=con is not None, framework=VERSION, source=source, day=label, live="LOCKED", capital_usdt=cap, calendar=cal)
     r["lines"] = lines_of(r)
+    r["lines"].append("BT-01 (PAPER) %+.2f USDT, %d closed. BT-02 (SHADOW, the Brain decides the exit) %+.2f USDT, %d closed. Different entries in time, so this is a look, not a proof; BT-02 needs weeks of trades first." % (brain["net_usdt"], brain["closed"], bt2["net_usdt"], bt2["closed"]))
     r["note"] = ("Net of fee, USDT. The Brain and the Current Bot are different trades. Take-All is a simulation on saved candles (%d coin(s) used, %d left out by the cap); "
                  "percent = of the %d USDT guard capital. Evidence, not an order." % (ta["coins_used"], ta["coins_left_out"], cap))
     return r
+
+
+def month_bounds(month, now):
+    """'2026-11' or None (= this month, UTC) -> (start_ts, end_ts, label, previous label, next label or None when it is the future). A bad text = ValueError."""
+    try:
+        d = datetime.datetime.strptime(month, "%Y-%m") if month else datetime.datetime.fromtimestamp(now, datetime.timezone.utc).replace(day=1, tzinfo=None)
+    except ValueError:
+        raise ValueError("month must look like 2026-11")
+    d = d.replace(day=1, hour=0, minute=0, second=0, microsecond=0, tzinfo=None)
+    nxt, prv = (d + datetime.timedelta(days=32)).replace(day=1), (d - datetime.timedelta(days=1)).replace(day=1)
+    ts = lambda x: int(x.replace(tzinfo=datetime.timezone.utc).timestamp())
+    cur = datetime.datetime.fromtimestamp(now, datetime.timezone.utc).strftime("%Y-%m")
+    return ts(d), ts(nxt), d.strftime("%Y-%m"), prv.strftime("%Y-%m"), (nxt.strftime("%Y-%m") if nxt.strftime("%Y-%m") <= cur else None)
+
+
+def month_view(data_dir, source="PAPER", month=None, now=None):
+    """Part M2: ONE UTC month as a calendar (mock 16 idea). Per day: Brain net + trades and Current Bot net + trades (never added). Month numbers: Brain net, Current Bot net, best / worst day, trades, profit / loss days (counts, no win-rate headline),
+    worst dip of the Brain, running-net line by day. Read-only; first_weekday 0 = Monday so the screen can leave the empty cells."""
+    if source not in B.SOURCES:
+        raise ValueError("source must be REPLAY, PAPER or SHADOW")
+    now = int(time.time() if now is None else now)
+    a, b, label, prv, nxt = month_bounds(month, now)
+    con = B.open_ro(data_dir)
+    try:
+        rows = [(ts, n) for ts, n in B_rows(con, source, a) if ts < b]
+    finally:
+        if con is not None:
+            con.close()
+    bot = [(ts, n) for ts, n in bot_rows(data_dir) if a <= ts < b]
+    days = {}
+    for key, xs in (("brain", rows), ("bot", bot)):
+        for ts, n in xs:
+            d = days.setdefault(int((ts - a) // DAY) + 1, {"brain": 0.0, "brain_n": 0, "bot": 0.0, "bot_n": 0})
+            d[key] += n
+            d[key + "_n"] += 1
+    out = [{"day": k, "brain_usdt": round(v["brain"], 2), "brain_trades": v["brain_n"], "bot_usdt": round(v["bot"], 2), "bot_trades": v["bot_n"]} for k, v in sorted(days.items())]
+    brain_days = [x for x in out if x["brain_trades"]]
+    best = max(brain_days, key=lambda x: x["brain_usdt"]) if brain_days else None
+    worst = min(brain_days, key=lambda x: x["brain_usdt"]) if brain_days else None
+    tr = [{"ts": ts, "net": n} for ts, n in rows]
+    line, run = [], 0.0
+    for x in brain_days:
+        run += x["brain_usdt"]
+        line.append(round(run, 2))
+    n_days = int((b - a) // DAY)
+    return {"ready": True, "framework": VERSION, "source": source, "live": "LOCKED", "month": label, "prev": prv, "next": nxt, "days_in_month": n_days, "first_weekday": datetime.datetime.fromtimestamp(a, datetime.timezone.utc).weekday(),
+            "days": out, "brain_usdt": round(sum(n for _t, n in rows), 2), "brain_trades": len(rows), "bot_usdt": round(sum(n for _t, n in bot), 2), "bot_trades": len(bot),
+            "profit_days": sum(1 for x in brain_days if x["brain_usdt"] > 0), "loss_days": sum(1 for x in brain_days if x["brain_usdt"] < 0), "days_with_trades": len(brain_days),
+            "best_day": best, "worst_day": worst, "drawdown": VD.drawdown(VD.equity(tr)), "equity": line,
+            "note": "Net of fee, USDT, UTC days (the app's day). The Brain and the Current Bot are different trades and are never added. Counts of profit and loss days, no win-rate headline. Evidence, not an order."}
 
 
 def brain_day_empty():
