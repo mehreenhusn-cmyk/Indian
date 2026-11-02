@@ -92,6 +92,23 @@ class AppTypography {
     fontFeatures: _tabular,
   );
 
+  /// Round 10b: the number of a stat tile or verdict card (plan: numbers 18 to 22 pt, bold, tabular so live digits do not jitter).
+  static const TextStyle number = TextStyle(
+    fontFamily: fontFamily,
+    fontSize: 20,
+    fontWeight: FontWeight.w700,
+    letterSpacing: -0.4,
+    fontFeatures: _tabular,
+  );
+
+  /// Round 10b: dimmed helper line under a number or a title (plan: labels and metadata 11 to 13 pt).
+  static const TextStyle caption = TextStyle(
+    fontFamily: fontFamily,
+    fontSize: 12,
+    fontWeight: FontWeight.w400,
+    fontFeatures: _tabular,
+  );
+
   /// Tiny uppercase eyebrow above a section ("P&L TODAY").
   static const TextStyle eyebrow = TextStyle(
     fontFamily: fontFamily,

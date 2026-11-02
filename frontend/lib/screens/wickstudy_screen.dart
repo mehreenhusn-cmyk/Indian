@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/owl_card.dart';
+import '../widgets/study_verdict_header.dart';
 
 /// Part 61 (Stop-wick Study 4 of 4): the STOP-WICK STUDY on a screen. Read-only: it only asks the backend for /api/v2/wickstudy (Part 58, the marks),
 /// /api/v2/wickstudy_forward (Part 59, price after the wick) and /api/v2/wickstudy_reentry (Part 60, HYPOTHETICAL re-entry replay), draws the answers and changes
@@ -165,7 +166,13 @@ class _WickStudyScreenState extends State<WickStudyScreen> {
   Widget build(BuildContext context) {
     final p = context.palette;
     final d = _data;
-    final List<Widget> kids = [];
+    final List<Widget> kids = [
+      const StudyVerdictHeader(
+        cardId: 'stopwick',
+        why: 'Stops often get swept by a wick that closes back inside.',
+        what: 'What price did 15 min to 4 h after such a wick, against ordinary candles. A replay: no order, no prediction.',
+      ),
+    ];
     final marks = _m(d?['marks']);
     final fwd = _m(d?['forward']);
     final re = _m(d?['reentry']);

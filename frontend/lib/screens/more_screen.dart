@@ -9,37 +9,23 @@ import '../widgets/owl_pressable.dart';
 import '../widgets/owl_route.dart';
 import '../widgets/report_download_card.dart';
 import 'ai_report_screen.dart';
-import 'data_explorer_screen.dart';
-import 'ledger_screen.dart';
 import 'ping_tab_screen.dart';
-import 'radar_screen.dart';
-import 'prepump_screen.dart';
-import 'setup_screen.dart';
-import 'wickstudy_screen.dart';
-import 'scalp_lab_screen.dart';
 import 'brain_chat_screen.dart';
-import 'results_screen.dart';
 import 'simple_results_screen.dart';
-import 'day_compare_screen.dart';
-import 'learning_progress_screen.dart';
 import 'brain_today_screen.dart';
 import 'screen_check_screen.dart';
-import 'brain_learning_screen.dart';
-import 'brain_studies_screen.dart';
 import 'brain_dashboard_screen.dart';
-import 'brain_health_screen.dart';
-import 'exit_study_screen.dart';
 import 'system_health_screen.dart';
 import 'month_grid_screen.dart';
 import 'reports_screen.dart';
-import 'brain_ready_screen.dart';
 import 'sniper_screen.dart';
 import 'settings_screen.dart';
 import 'strategy_doctor_screen.dart';
-import 'tag_lab_screen.dart';
 import 'timeline_screen.dart';
 
-/// "More" tab: everything that is not used all day, in three small groups.
+/// Round 10b: the "More" page becomes the SETTINGS AND TOOLS page (opened by the top-bar gear since Round 11). Every study moved to the Study Lab hub; what stays
+/// is Market and Brain (they left the bottom bar), tools whose new tab is not built yet (they leave this page when that tab lands), downloads, live data and settings.
+/// Old text: "More" tab: everything that is not used all day, in small groups.
 /// Each row opens a full screen with a back arrow. Nothing here is new logic, these are the
 /// same screens as before, just moved out of the bottom bar.
 class MoreScreen extends StatelessWidget {
@@ -69,18 +55,22 @@ class MoreScreen extends StatelessWidget {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(AppSpacing.l, AppSpacing.l, AppSpacing.l, AppSpacing.xl),
           children: [
-            Text('More', style: t.section.copyWith(fontSize: 22, fontWeight: FontWeight.w800)),
+            Row(children: [
+              Icon(Icons.settings_rounded, size: 22, color: context.palette.textMuted),
+              const SizedBox(width: 8),
+              Text('Settings and tools', style: t.section.copyWith(fontSize: 22, fontWeight: FontWeight.w800)),
+            ]),
             const SizedBox(height: AppSpacing.l),
             _label(context, 'MORE TABS'),
             _row(context, Icons.dashboard_outlined, 'Brain Dashboard', 'One home page: today net, Brain vs Current Bot 30 days, open trades, daily loss cap, recent days (read-only, live stays locked)',
                 () => _open(context, 'Brain Dashboard', const BrainDashboardScreen())),
+            _row(context, Icons.query_stats_outlined, 'Market', 'All pairs and prices', () => context.read<AppProvider>().goToRoute(AppRoute.market)),
+            _row(context, Icons.psychology_outlined, 'Brain', 'Brain Trader: today, signals, paper trades', () => context.read<AppProvider>().goToRoute(AppRoute.brain)),
             _row(context, Icons.sensors_rounded, 'Signals', 'Signals and alerts', () => context.read<AppProvider>().goToRoute(AppRoute.signals)),
             _row(context, Icons.smart_toy_rounded, 'Dual Bot', 'Dual Bot trades, desk and reports', () => context.read<AppProvider>().goToRoute(AppRoute.dualBot)),
             _row(context, Icons.memory_rounded, 'AI', 'AI Vision and the AI tab', () => context.read<AppProvider>().goToRoute(AppRoute.ai)),
             const SizedBox(height: AppSpacing.l),
-            _label(context, 'TRADING TOOLS'),
-            _row(context, Icons.hub_outlined, 'Tag Lab', 'Test ideas on old candles',
-                () => _open(context, 'Tag Lab', const TagLabScreen(), bare: true)),
+            _label(context, 'TOOLS'),
             if (kShowStrategyDoctor)   // hidden by default (config_flags.dart): it opens Strategy Lab / Scan Lab and wakes their background work
               _row(context, Icons.medical_services_outlined, 'Strategy Doctor', 'Why trades win or lose',
                   () => _open(context, 'Strategy Doctor', const StrategyDoctorScreen(), bare: true)),
@@ -88,52 +78,22 @@ class MoreScreen extends StatelessWidget {
                 () => _open(context, 'AI Report', const AiReportScreen(), bare: true)),
             _row(context, Icons.receipt_long_outlined, 'Fees and tax report', 'Gross, fees, net and a tax estimate (read-only)',
                 () => _open(context, 'Fees and tax report', const ReportsScreen())),
-            _row(context, Icons.menu_book_outlined, 'Knowledge Ledger', 'What the research found, with sample sizes (read-only)',
-                () => _open(context, 'Knowledge Ledger', const LedgerScreen())),
-            _row(context, Icons.travel_explore_outlined, 'Data Explorer', 'What happened, what was tested, learned and unknown (read-only)',
-                () => _open(context, 'Data Explorer', const DataExplorerScreen())),
-            _row(context, Icons.radar_outlined, 'Radar', 'Top coins of the last 7 days: what they did next (read-only)',
-                () => _open(context, 'Radar', const RadarScreen())),
-            _row(context, Icons.insights_outlined, 'Setup Finder', 'Price formations without EMA and what came after (read-only)',
-                () => _open(context, 'Setup Finder', const SetupScreen())),
-            _row(context, Icons.trending_up_outlined, 'Pump / Dump Watch', 'Coins in today\'s top 20 vs old cases, price followed (read-only)',
-                () => _open(context, 'Pump / Dump Watch', const PrepumpScreen())),
-            _row(context, Icons.vertical_align_center, 'Stop-wick Study', 'Wicks that swept a swing and closed back, what came after (read-only replay)',
-                () => _open(context, 'Stop-wick Study', const WickStudyScreen())),
-            _row(context, Icons.science_outlined, 'Scalp Lab', 'Replay ledger and big real trades split in pieces (read-only replay)',
-                () => _open(context, 'Scalp Lab', const ScalpLabScreen())),
             _row(context, Icons.image_search_outlined, 'Screenshot Check', 'Type a coin and time: the 2 indicators, its own history and a labelled OPINION (read-only)',
                 () => _open(context, 'Screenshot Check', const ScreenCheckScreen())),
             _row(context, Icons.chat_bubble_outline, 'Ask the Brain', 'Ask in your words (Claude answers only from your saved data, never an order)',
                 () => _open(context, 'Ask the Brain', const BrainChatScreen())),
             _row(context, Icons.today_outlined, 'Brain Today', 'What the Brain did today, each coin in plain words, why some coins have no data (pretend money, read-only)',
                 () => _open(context, 'Brain Today', const BrainTodayScreen())),
-            _row(context, Icons.psychology_outlined, 'What the Brain is learning', 'Which chart states make or lose pretend money, and a what-if on the same closed trades (read-only)',
-                () => _open(context, 'What the Brain is learning', const BrainLearningScreen())),
-            _row(context, Icons.science_outlined, 'Zone, squeeze and limits studies', 'What price did after reaching an SD zone, what a squeeze break did, and whether other stop / target limits beat BT-01 (read-only, nothing is applied)',
-                () => _open(context, 'Zone, squeeze and limits studies', const BrainStudiesScreen())),
-            _row(context, Icons.health_and_safety_outlined, 'Brain Health', 'Is the learning pipeline healthy, how many closed trades each market state has, and what is still missing (read-only, live stays locked)',
-                () => _open(context, 'Brain Health', const BrainHealthScreen())),
-            _row(context, Icons.calendar_month_outlined, 'Day Compare', 'Pick a day: Owl Brain vs Current Bot vs Take-All (simulated), money split, decisions, worst dip (read-only)',
-                () => _open(context, 'Day Compare', const DayCompareScreen())),
             _row(context, Icons.grid_view_rounded, 'Month Calendar', 'A whole month as a grid: Brain net of every day (green / red), month net of Brain and Current Bot, best and worst day, running line (read-only)',
                 () => _open(context, 'Month Calendar', const MonthGridScreen())),
             _row(context, Icons.timeline, 'Brain and Activity', 'One day as a timeline, newest first: what the Brain took, waited on or skipped, and what the Current Bot opened and closed, side by side in time. Coins where both acted (read-only)',
                 () => _open(context, 'Brain and Activity', const TimelineScreen())),
-            _row(context, Icons.trending_up, 'Learning Progress', 'Trades today, profit and loss, week by week: is the Brain making fewer mistakes? Mistakes, fixed, learned (read-only)',
-                () => _open(context, 'Learning Progress', const LearningProgressScreen())),
             _row(context, Icons.monitor_heart_outlined, 'System Health', 'Real facts only: backend, candle feed, Brain tick, safety, CPU, RAM, disk. What cannot be measured says NOT AVAILABLE (read-only)',
                 () => _open(context, 'System Health', const SystemHealthScreen())),
-            _row(context, Icons.logout, 'Exit Study', 'Same old trades, other exits: TSI turns, half of the gain given back, break-even stop. Net, give-back, worst dip (read-only, nothing applied)',
-                () => _open(context, 'Exit Study', const ExitStudyScreen())),
-            _row(context, Icons.verified_outlined, 'Brain Ready?', 'What the Brain does by itself and 8 plain checks: is it ready for more than paper trading? (read-only, live stays locked)',
-                () => _open(context, 'Brain Ready?', const BrainReadyScreen())),
             _row(context, Icons.gps_fixed, 'OwlSniper', 'Trending or sideways banner, order cards that pass or are blocked, the 85% win-chance floor proven on unseen days (watch only, no order is sent)',
                 () => _open(context, 'OwlSniper', const SniperScreen())),
             _row(context, Icons.emoji_events_outlined, 'Simple Results', 'One word: is the Brain making money? Net, worst dip, losing streak, equity line, what to USE and what to STOP (read-only)',
                 () => _open(context, 'Simple Results', const SimpleResultsScreen())),
-            _row(context, Icons.query_stats, 'Results', 'Which groups of your closed trades make money and which lose (net of fee, read-only)',
-                () => _open(context, 'Results', const ResultsScreen())),
             const SizedBox(height: AppSpacing.l),
             _label(context, 'DOWNLOADS'),
             _row(context, Icons.article_outlined, 'App report', 'One text file about the whole app',

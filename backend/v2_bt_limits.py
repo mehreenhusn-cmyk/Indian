@@ -199,14 +199,19 @@ def run_study(data_dir, interval="5m", now=None):
     return out
 
 
+def _na(x):
+    """A missing number prints n/a, never the word None (Round 4)."""
+    return "n/a" if x is None else x
+
+
 def lines_of(out):
-    ln = ["Squeeze study on %d coins: %d squeeze ends, %d groups checked. Baseline (any ready candle) LONG %s R, SHORT %s R net per trade." % (len(out["coins"]), out["squeeze_ends"], out["squeeze_groups_checked"], out["baseline"]["LONG"]["mean_net_r"], out["baseline"]["SHORT"]["mean_net_r"])]
+    ln = ["Squeeze study on %d coins: %d squeeze ends, %d groups checked. Baseline (any ready candle) LONG %s R, SHORT %s R net per trade." % (len(out["coins"]), out["squeeze_ends"], out["squeeze_groups_checked"], _na(out["baseline"]["LONG"]["mean_net_r"]), _na(out["baseline"]["SHORT"]["mean_net_r"]))]
     for r in [x for x in out["squeeze_rows"] if x["verdict"] in ("USE", "AVOID")][:3]:
         ln.append("%s candidate: squeeze break %s, %s: %d cases from %d coins, mean net %+.2f R (TRAIN %+.2f, HOLDOUT %+.2f), %d went back inside 6 candles." % (r["verdict"], r["dir"], r["group"], r["n"], r["coins"], r["mean_net_r"], r["train_net_r"], r["holdout_net_r"], r["went_back"]))
     if not any(x["verdict"] in ("USE", "AVOID") for x in out["squeeze_rows"]):
         ln.append("No squeeze group has a USE or AVOID word yet (30+ cases, 10+ in TRAIN and in HOLDOUT, 3+ coins, same sign in both). The Brain keeps collecting.")
     ref = out["limit_rows"][0]
-    ln.append("Limits study: %d BT-01 entries replayed. BT-01 now (stop %.2f SD, target %.1f R, %d candles): %s%% of price per trade after cost (%s USDT per 100 USDT trade)." % (out["entries"], ref["stop_sd"], ref["target_r"], ref["hold"], ref["mean_net_pct"], ref["usdt_per_trade"]))
+    ln.append("Limits study: %d BT-01 entries replayed. BT-01 now (stop %.2f SD, target %.1f R, %d candles): %s%% of price per trade after cost (%s USDT per 100 USDT trade)." % (out["entries"], ref["stop_sd"], ref["target_r"], ref["hold"], _na(ref["mean_net_pct"]), _na(ref["usdt_per_trade"])))
     better = [x for x in out["limit_rows"] if x["verdict"] == "BETTER CANDIDATE"][:3]
     for r in better:
         ln.append("BT-02 idea (not applied): %s stop %.2f SD, target %.1f R, %d candles, band %.1f-%.1f%%: %+.3f points of price per trade better than BT-01 on %d common trades (TRAIN %+.3f, HOLDOUT %+.3f)." % (r["kind"], r["stop_sd"], r["target_r"], r["hold"], r["band"][0], r["band"][1], r["diff_pct"], r["n_common"], r["train_diff"], r["holdout_diff"]))

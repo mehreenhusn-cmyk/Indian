@@ -9,8 +9,11 @@ enum AppRoute {
   signals, // screen 3 (opened from More)
   dualBot, // screen 4 (opened from More)
   ai, // screen 5 (opened from More)
-  more, // screen 6
+  more, // screen 6 (now the Settings and tools page, opened by the top-bar gear)
   brain, // screen 7
+  sniper, // screen 8 (Round 11: bar tab 3)
+  studyLab, // screen 9 (Round 11: bar tab 4)
+  diagnostics, // screen 10 (Round 11: bar tab 5)
 }
 
 class AppRoutes {
@@ -26,22 +29,31 @@ class AppRoutes {
     AppRoute.ai: 5,
     AppRoute.more: 6,
     AppRoute.brain: 7,
+    AppRoute.sniper: 8,
+    AppRoute.studyLab: 9,
+    AppRoute.diagnostics: 10,
   };
 
-  // The 5 buttons of the bottom bar, left to right.
+  /// How many screens main.dart keeps (screen numbers 0 .. screenCount - 1, no gaps).
+  static int get screenCount => _screenIndex.length;
+
+  // Round 11: the 5 buttons of the bottom bar, left to right. Market and Brain left the bar (they open from the gear page).
   static const List<AppRoute> bottomBar = [
     AppRoute.dashboard,
-    AppRoute.market,
     AppRoute.positions,
-    AppRoute.brain,
-    AppRoute.more,
+    AppRoute.sniper,
+    AppRoute.studyLab,
+    AppRoute.diagnostics,
   ];
 
-  // Swipe order: the bar first, then the pages that live under More, then More.
+  // Swipe order: the 5 bar pages first, then the pages that live behind the gear, then the gear page itself.
   static const List<AppRoute> swipeOrder = [
     AppRoute.dashboard,
-    AppRoute.market,
     AppRoute.positions,
+    AppRoute.sniper,
+    AppRoute.studyLab,
+    AppRoute.diagnostics,
+    AppRoute.market,
     AppRoute.brain,
     AppRoute.signals,
     AppRoute.dualBot,
@@ -49,8 +61,8 @@ class AppRoutes {
     AppRoute.more,
   ];
 
-  // Pages that have no button of their own: they sit under More and keep More lit.
-  static const Set<AppRoute> underMore = {AppRoute.signals, AppRoute.dualBot, AppRoute.ai};
+  // Pages that have no button in the bar: they open from the top-bar gear / the Settings and tools page and keep the GEAR lit.
+  static const Set<AppRoute> underGear = {AppRoute.market, AppRoute.brain, AppRoute.signals, AppRoute.dualBot, AppRoute.ai, AppRoute.more};
 
   static int screenIndex(AppRoute r) => _screenIndex[r]!;
 
@@ -68,8 +80,8 @@ class AppRoutes {
   /// Screen numbers in swipe order (for MainScreen).
   static List<int> get swipeScreens => [for (final r in swipeOrder) screenIndex(r)];
 
-  /// Which bar button is lit for a page: a page under More lights More, a bar page lights itself.
-  static AppRoute litBarRoute(AppRoute r) => underMore.contains(r) ? AppRoute.more : r;
+  /// Which bar button is lit for a page: a bar page lights itself, a gear page lights NO bar button (null; the gear lights instead).
+  static AppRoute? litBarRoute(AppRoute r) => bottomBar.contains(r) ? r : null;
 
   /// Plain name for logs and the Diagnostics text.
   static String label(AppRoute r) {
@@ -87,9 +99,15 @@ class AppRoutes {
       case AppRoute.ai:
         return 'AI';
       case AppRoute.more:
-        return 'More';
+        return 'Settings and tools';
       case AppRoute.brain:
         return 'Brain';
+      case AppRoute.sniper:
+        return 'Owl Sniper';
+      case AppRoute.studyLab:
+        return 'Study Lab';
+      case AppRoute.diagnostics:
+        return 'Diagnostics';
     }
   }
 }

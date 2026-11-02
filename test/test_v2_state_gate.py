@@ -15,7 +15,7 @@ class StateGate(unittest.TestCase):
         s = rd('models', 'view_state.dart')
         self.assertIn("'$h h $r min'", s)
     def test_three_screens_use_gate_and_watch_offline(self):
-        for f in ('positions_screen.dart', 'signals_screen.dart', 'alerts_screen.dart'):
+        for f in ('positions_live_view.dart', 'signals_screen.dart', 'alerts_screen.dart'):
             s = rd('screens', f)
             self.assertIn('OwlStateGate(', s, f)
             self.assertIn("p.liveState == 'offline'", s, f)

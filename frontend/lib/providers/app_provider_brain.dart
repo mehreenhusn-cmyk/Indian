@@ -76,4 +76,7 @@ extension AppProviderBrain on AppProvider {
 
   /// Part S6 (OwlSniper): read-only route sniper (Part S5). Banner, order cards, equity of the unseen test days, floor proof, insight report. Watch only, never an order.
   Future<Map<String, dynamic>> fetchSniper() => _brainGet('/api/v2/sniper');
+
+  /// Round 8 (Study Lab hub): read-only route /api/v2/verdicts = one verdict card per study (see backend/v2_verdicts.py). Same answer rules as every fetch here.
+  Future<Map<String, dynamic>> fetchVerdicts() => _brainGet('/api/v2/verdicts');
 }

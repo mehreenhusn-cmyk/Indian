@@ -71,7 +71,7 @@ class TestGuards(Base):
     def test_only_one_address_and_three_words(self):
         ok = K.kline_url("BTCUSDT", "5m", 10)
         for bad in (ok.replace("klines", "order"), ok + "&signature=x", ok.replace("symbol", "pair"), K.kline_url("btcusdt", "5m", 10), K.kline_url("BTCUSDT", "1h", 10),
-                    K.kline_url("BTCUSDT", "5m", 100), K.kline_url("BTCUSDT", "5m", 0), ok.replace("https://fapi.binance.com", "https://evil.example"), ok + "&limit=5"):
+                    K.kline_url("BTCUSDT", "5m", 1001), K.kline_url("BTCUSDT", "5m", 0), ok.replace("https://fapi.binance.com", "https://evil.example"), ok + "&limit=5"):
             with self.assertRaises(K.FetchFailed, msg=bad):
                 K.http_get(bad)
 
@@ -125,17 +125,17 @@ class TestRefill(Base):
         super().setUp()
         self.seed(1)
 
-    def test_first_run_saves_24_closed_per_interval_and_never_the_forming(self):
+    def test_first_run_saves_500_closed_per_interval_and_never_the_forming(self):
         r = self.go()
-        self.assertEqual((r["state"], r["saved"], r["requests"], r["gaps"]), ("OK", 48, 2, 0))
+        self.assertEqual((r["state"], r["saved"], r["requests"], r["gaps"]), ("OK", 1000, 2, 0))
         for iv, st in (("3m", 180), ("5m", 300)):
             self.assertEqual(self.con.execute("SELECT MAX(open_ts) FROM candles WHERE interval=?", (iv,)).fetchone()[0], NOW // st * st - st)
-        self.assertEqual(self.ex.reqs, [("C00USDT", "3m", 25), ("C00USDT", "5m", 25)])
+        self.assertEqual(self.ex.reqs, [("C00USDT", "3m", 501), ("C00USDT", "5m", 501)])
 
     def test_nothing_missing_means_no_request_and_no_new_rows(self):
         self.go()
         self.ex.reqs.clear()
-        self.assertEqual((self.go(NOW + 60)["requests"], self.ex.reqs, self.n("candles")), (0, [], 48))
+        self.assertEqual((self.go(NOW + 60)["requests"], self.ex.reqs, self.n("candles")), (0, [], 1000))
 
     def test_next_candle_is_one_new_row_and_a_small_request(self):
         self.go()
@@ -148,24 +148,26 @@ class TestRefill(Base):
     def test_stop_of_ten_candles_is_refilled_without_gap(self):
         self.go()
         r = self.go(NOW + 3000)
-        self.assertEqual((r["gaps"], self.n("candles", "interval='5m'")), (0, 34))
+        self.assertEqual((r["gaps"], self.n("candles", "interval='5m'")), (0, 510))
 
-    def test_stop_longer_than_99_candles_saves_99_and_records_the_old_part(self):
+    def test_stop_longer_than_999_candles_saves_999_and_records_the_old_part(self):
         self.go()
-        self.go(NOW + 300 * 150)
+        late = NOW + 300 * 1100                                 # 3.8 days later: a fresh snapshot keeps the coin on the list
+        S.add_snapshot(self.con, late - 300, "C00USDT", 1, 1, 1, rank_gain=1)
+        self.go(late)
         g = self.con.execute("SELECT from_ts, to_ts, reason FROM gap_log WHERE interval='5m'").fetchall()
         self.assertEqual(len(g), 1)
         self.assertIn("too old to refill", g[0][2])
-        self.assertEqual(self.n("candles", "interval='5m'"), 24 + 98)
+        self.assertEqual(self.n("candles", "interval='5m'"), 500 + 999)
         self.ex.reqs.clear()
-        self.assertEqual(self.go(NOW + 300 * 150 + 10)["requests"], 0)
+        self.assertEqual(self.go(NOW + 300 * 1100 + 10)["requests"], 0)
 
     def test_hole_in_the_middle_is_recorded_exactly(self):
         top = NOW // 300 * 300 - 300
         self.ex.skip = {("C00USDT", "5m", top - 600), ("C00USDT", "5m", top - 900)}
         self.go()
         self.assertEqual(self.con.execute("SELECT from_ts, to_ts FROM gap_log WHERE interval='5m'").fetchall(), [(top - 900, top - 600)])
-        self.assertEqual(self.n("candles", "interval='5m'"), 22)
+        self.assertEqual(self.n("candles", "interval='5m'"), 498)
 
     def test_missing_newest_candle_is_recorded_and_not_asked_again(self):
         top = NOW // 300 * 300 - 300
@@ -182,11 +184,11 @@ class TestRefill(Base):
         r = self.go()
         self.assertEqual((r["state"], r["failed"], r["gaps"]), ("PARTIAL", 2, 0))
         self.assertEqual(self.n("candles", "symbol='C01USDT'"), 0)
-        self.assertEqual(self.n("candles", "symbol='C00USDT'"), 48)
-        self.assertEqual(self.ex.reqs.count(("C01USDT", "3m", 25)), 2)          # 2 tries, both counted
+        self.assertEqual(self.n("candles", "symbol='C00USDT'"), 1000)
+        self.assertEqual(self.ex.reqs.count(("C01USDT", "3m", 501)), 2)          # 2 tries, both counted
         self.ex.fail = set()
         self.assertEqual(self.go(NOW + 5)["state"], "OK")
-        self.assertEqual(self.n("candles", "symbol='C01USDT'"), 48)
+        self.assertEqual(self.n("candles", "symbol='C01USDT'"), 1000)
 
     def test_budget_stops_and_the_next_run_continues(self):
         self.seed(10)
@@ -197,7 +199,7 @@ class TestRefill(Base):
         self.assertGreater(self.n("candles"), done)
         while self.go(budget=7)["state"] != "OK":
             pass
-        self.assertEqual(self.n("candles"), 10 * 48)
+        self.assertEqual(self.n("candles"), 10 * 1000)
 
     def test_full_store_pauses_without_network(self):
         orig = S.can_write
@@ -220,7 +222,7 @@ class TestRefill(Base):
         self.go()
         S.can_write = orig
         self.assertEqual((self.n("candles"), self.n("gap_log")), (0, 0))
-        self.assertEqual(self.go(NOW + 5)["saved"], 48)
+        self.assertEqual(self.go(NOW + 5)["saved"], 1000)
 
     def test_no_coins_yet(self):
         self.con.execute("DELETE FROM ticker_snapshot")

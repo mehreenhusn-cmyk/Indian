@@ -3,7 +3,7 @@
 | /api/v2/candles (?symbol=&interval=3m|5m&limit=) | /api/v2/gaps | /api/v2/summary (Part 36: what happened / tested / learned / unknown) | /api/v2/radar (Part 29: saved cohorts and how those coins moved since). The whole API is OFF until the file v2_api_enabled exists in the data folder (answer 404 "off"); then it still only READS.
 Read-only for real: the store is opened with mode=ro + query_only, it is never created here, answers are capped (snapshot 100, candles 500, gaps 200 rows), bad input = 400,
 a database problem = 503 with a short fixed text (no path, no SQL). No network, no write, no order code (guard test). make_router(require_api_token, data_dir) is used by api_server.py
-ONLY after the owner's own ok (protected file) - until then this file is not mounted and changes nothing. Tests: python3 test/test_v2_api.py"""
+ONLY after the owner's own ok (protected file); the owner gave "mount ok" (30 Oct) and api_server.py mounts it inside try / except. Tests: python3 test/test_v2_api.py"""
 import os
 import re
 import sqlite3
@@ -14,6 +14,7 @@ import urllib.parse
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import v2_bt_report as BR
 from api import v2_brain_views as BV
+from api import v2_verdict_views as VV
 import v2_candles as K
 import v2_collector as C
 import v2_prepump as PP
@@ -38,7 +39,7 @@ import v2_wickstudy_reentry as WR
 VERSION = "v2_data 1 (Part 18)"
 FLAG_NAME = "v2_api_enabled"
 CAPS = {"snapshot": 100, "candles": 500, "gaps": 200}
-ROUTES = ("status", "snapshot", "cohort", "candles", "gaps", "summary", "radar", "radar_outcomes", "radar_moves", "setups", "setups_forward", "prepump", "prepump_watch", "wickstudy", "wickstudy_forward", "wickstudy_reentry", "scalp_lab", "scalp_ema", "scalp_pump", "scalp_report", "scalp_large3", "scalp_large5", "screen_check", "brain_chat", "results", "brain_report", "brain_today", "brain_chart", "brain_signal", "brain_trade", "brain_review", "brain_filter", "brain_playbook", "brain_whatif", "brain_zones", "brain_limits", "brain_health", "brain_verdict", "brain_compare", "brain_progress", "brain_dash", "brain_exits", "sys_health", "brain_month", "brain_timeline", "brain_ready")
+ROUTES = ("status", "snapshot", "cohort", "candles", "gaps", "summary", "radar", "radar_outcomes", "radar_moves", "setups", "setups_forward", "prepump", "prepump_watch", "wickstudy", "wickstudy_forward", "wickstudy_reentry", "scalp_lab", "scalp_ema", "scalp_pump", "scalp_report", "scalp_large3", "scalp_large5", "screen_check", "brain_chat", "results", "brain_report", "brain_today", "brain_chart", "brain_signal", "brain_trade", "brain_review", "brain_filter", "brain_playbook", "brain_whatif", "brain_zones", "brain_limits", "brain_health", "brain_verdict", "brain_compare", "brain_progress", "brain_dash", "brain_exits", "sys_health", "brain_month", "brain_timeline", "brain_ready", "verdicts")
 DAY_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
@@ -220,6 +221,7 @@ def v_summary(con, p, now, d):
 
 VIEWS = {"results": v_results, "screen_check": v_screen_check, "scalp_large5": v_scalp_large5, "scalp_large3": v_scalp_large3, "scalp_report": v_scalp_report, "scalp_pump": v_scalp_pump, "scalp_ema": v_scalp_ema, "scalp_lab": v_scalp_lab, "wickstudy_reentry": v_wickstudy_reentry, "wickstudy_forward": v_wickstudy_forward, "wickstudy": v_wickstudy, "prepump_watch": v_prepump_watch, "prepump": v_prepump, "setups_forward": v_setups_forward, "setups": v_setups, "radar": v_radar, "radar_outcomes": v_radar_outcomes, "radar_moves": v_radar_moves, "summary": v_summary, "status": v_status, "snapshot": v_snapshot, "cohort": v_cohort, "candles": v_candles, "gaps": v_gaps}
 VIEWS.update(BV.VIEWS)                             # Part M4c: the Brain pages live in api/v2_brain_views.py
+VIEWS.update(VV.VIEWS)                             # Round 3: verdict cards live in api/v2_verdict_views.py
 
 
 def summary_answer(data_dir):
@@ -252,7 +254,7 @@ def dispatch(name, params, data_dir, now=None):
             return 400, {"error": "source must be REPLAY, PAPER or SHADOW and day like 2026-11-01"}
         except Exception:
             return 503, {"error": "the Brain report could not be made right now"}
-    if name in BV.NAMES:         # own files + the market store read-only inside, no connection needed here
+    if name in BV.NAMES or name in VV.NAMES:         # own files + the market store read-only inside, no connection needed here
         try:
             return 200, VIEWS[name](None, params or {}, now, data_dir)
         except ValueError as e:

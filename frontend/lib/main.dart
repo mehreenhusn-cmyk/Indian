@@ -14,8 +14,12 @@ import 'screens/signals_alerts_screen.dart';
 import 'screens/vision_tab_screen.dart';
 import 'screens/dual_bot_screen.dart';
 import 'screens/more_screen.dart';
+import 'screens/lab_hub_screen.dart';
+import 'screens/sniper_screen.dart';
+import 'screens/system_health_screen.dart';
 import 'screens/india_paper_screen.dart';
 import 'widgets/bottom_nav_bar.dart';
+import 'widgets/tab_page.dart';
 import 'widgets/owl_ambient_background.dart';
 import 'widgets/owl_drawer.dart';
 import 'widgets/live_ticker_bar.dart';
@@ -297,7 +301,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   // already on scrolls it back to the top. Screens are NOT kept alive in the
   // background (that would slow the app); we only remember the scroll
   // positions of the long lists and put them back when you return.
-  final List<GlobalKey> _tabKeys = List.generate(8, (_) => GlobalKey());
+  final List<GlobalKey> _tabKeys = List.generate(AppRoutes.screenCount, (_) => GlobalKey());   // Round 11: one key per screen number
   final Map<int, List<double>> _scrollMemo = {};
 
   /// The big vertical lists of one tab, in tree order.
@@ -422,8 +426,28 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     const DualBotScreen(),
     const VisionTabScreen(),
     const MoreScreen(),
-    const BrainScreen(), // 7 (NEXT-4): own bottom tab
+    const BrainScreen(), // 7 (opened from the gear page since Round 11)
+    const TabPage(title: 'Owl Sniper', child: SniperScreen()), // 8 (Round 11: bar tab 3)
+    const LabHubScreen(), // 9 (Round 11: bar tab 4, owns its Scaffold + title)
+    const TabPage(title: 'Diagnostics', child: SystemHealthScreen()), // 10 (Round 11: bar tab 5)
   ];
+
+  /// Round 11: ONE place that switches tab (bottom bar and top-bar gear both call it).
+  void _selectTab(int index) {
+    AppHaptics.light();
+    if (index == _currentIndex) {
+      _scrollTabToTop(index); // tap the open tab again: back to the top
+      return;
+    }
+    _saveScroll(_currentIndex);
+    JankMeter.instance.setTab(index);
+    setState(() {
+      _currentIndex = index;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _currentIndex == index) _restoreScroll(index, <int, double>{});
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -517,7 +541,20 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
             // stays visible across every tab switch. The outer SafeArea
             // above already guarantees this never collides with the status
             // bar, whether or not a banner is showing above it.
-            const LiveTickerBar(),
+            // Round 11: the top-bar gear opens the Settings and tools page (screen 6); it is lit while a page behind the gear is open.
+            Row(children: [
+              const Expanded(child: LiveTickerBar()),
+              Builder(builder: (ctx) {
+                final route = AppRoutes.fromScreenIndex(_currentIndex);
+                final lit = route != null && AppRoutes.underGear.contains(route);
+                return IconButton(
+                  tooltip: 'Settings and tools',
+                  visualDensity: VisualDensity.compact,
+                  icon: Icon(lit ? Icons.settings_rounded : Icons.settings_outlined, size: 22, color: lit ? ctx.palette.accent : ctx.palette.textMuted),
+                  onPressed: () => _selectTab(AppRoutes.screenIndex(AppRoute.more)),
+                );
+              }),
+            ]),
             // RepaintBoundary keeps 1 Hz price updates on a tab from
             // repainting the ticker bar / banners / nav bar around it.
             Expanded(
@@ -572,21 +609,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
       ),
       bottomNavigationBar: BottomNavBar(
         currentIndex: _currentIndex,
-        onTap: (index) {
-          AppHaptics.light();
-          if (index == _currentIndex) {
-            _scrollTabToTop(index); // tap the open tab again: back to the top
-            return;
-          }
-          _saveScroll(_currentIndex);
-          JankMeter.instance.setTab(index);
-          setState(() {
-            _currentIndex = index;
-          });
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted && _currentIndex == index) _restoreScroll(index, <int, double>{});
-          });
-        },
+        onTap: _selectTab,
       ),
     );
   }

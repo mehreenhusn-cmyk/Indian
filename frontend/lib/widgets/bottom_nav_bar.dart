@@ -4,8 +4,8 @@ import '../theme/app_theme.dart';
 import 'owl_pressable.dart';
 
 /// Bottom navigation - same public API as before (currentIndex + onTap, both are SCREEN indexes of main.dart).
-/// NEXT-4: 5 visible tabs: Dashboard, Market, Positions, Brain, More. Signals (3), Dual Bot (4) and AI (5) keep their screen
-/// index (so AppProvider.goToTab keeps working) but are opened from More, which stays lit while one of them is open.
+/// Round 11: 5 visible tabs: Dashboard, Positions, Sniper, Study Lab, Diagnostics. Market, Brain, Signals, Dual Bot, AI and the Settings page keep
+/// their screen index (so AppProvider.goToTab keeps working) but open from the top-bar gear; while one of them is open NO bar tab is lit.
 /// Floating rounded bar, accent pill on the active tab.
 class BottomNavBar extends StatelessWidget {
   final int currentIndex;
@@ -23,33 +23,30 @@ class BottomNavBar extends StatelessWidget {
 
   static const List<IconData> _icons = [
     Icons.space_dashboard_outlined,
-    Icons.query_stats_outlined,
     Icons.account_balance_wallet_outlined,
-    Icons.psychology_outlined,
-    Icons.widgets_outlined,
+    Icons.gps_fixed,
+    Icons.fact_check_outlined,
+    Icons.monitor_heart_outlined,
   ];
 
   static const List<IconData> _iconsOn = [
     Icons.space_dashboard_rounded,
-    Icons.query_stats_rounded,
     Icons.account_balance_wallet_rounded,
-    Icons.psychology_rounded,
-    Icons.widgets_rounded,
+    Icons.gps_fixed_rounded,
+    Icons.fact_check_rounded,
+    Icons.monitor_heart_rounded,
   ];
 
   static const List<String> _labels = [
     'Dashboard',
-    'Market',
     'Positions',
-    'Brain',
-    'More',
+    'Sniper',
+    'Study Lab',
+    'Diagnostics',
   ];
 
-  // Which visible tab is lit: Signals / Dual Bot / AI are under More, so More stays lit there.
-  int get _lit {
-    final i = _screens.indexOf(currentIndex);
-    return i < 0 ? _screens.length - 1 : i;
-  }
+  // Which visible tab is lit: a gear page (Market, Brain, Signals, Dual Bot, AI, Settings) lights none (-1); the gear in the top bar lights instead.
+  int get _lit => _screens.indexOf(currentIndex);
 
   @override
   Widget build(BuildContext context) {

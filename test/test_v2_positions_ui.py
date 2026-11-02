@@ -1,4 +1,4 @@
-"""Part 20 test: the Flutter half of the safe close preview (frontend/lib/screens/positions_screen.dart + providers/app_provider_positions.dart).
+"""Part 20 test: the Flutter half of the safe close preview (frontend/lib/screens/positions_live_view.dart + providers/app_provider_positions.dart).
 HONEST LIMIT: Dart cannot be compiled in the build sandbox, so these are STATIC source checks (plus a check against the real backend answer) - the owner's own APK build is the compile proof.
 Main questions: are the existing close calls byte-for-byte unchanged, does the real close still happen only after the confirm, does the panic dialog open at once (the preview is never awaited
 before it), does the old preview stay as the fallback, do the keys the Dart code reads exist in the real backend answer, and are both dialogs showing the LIVE / PAPER badge?
@@ -14,7 +14,7 @@ sys.path.insert(0, os.path.join(ROOT, "backend"))
 from api import preview_close as V
 
 LIB = os.path.join(ROOT, "frontend", "lib")
-SCREEN = open(os.path.join(LIB, "screens", "positions_screen.dart"), encoding="utf-8").read()
+SCREEN = open(os.path.join(LIB, "screens", "positions_live_view.dart"), encoding="utf-8").read()
 PROV = open(os.path.join(LIB, "providers", "app_provider_positions.dart"), encoding="utf-8").read()
 # fingerprints (first 16 hex of sha256) of the code as it was BEFORE Part 20 - a deliberate later change must update them
 UNCHANGED_PROV = {"closePosition": "f0bdedb4df96e7c4", "closeAll": "0c136588357dea8b", "panicFlatten": "54d1bdfa2f13894d", "previewCloseAll": "c09df7d16354ba8d",

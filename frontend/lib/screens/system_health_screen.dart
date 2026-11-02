@@ -2,12 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../theme/app_theme.dart';
+import '../providers/app_provider_sniper.dart';
+import '../widgets/data_doctor_card.dart';
 import '../widgets/owl_card.dart';
+import '../widgets/sniper_health_tiles.dart';
 import 'learning_progress_cards.dart';
 
 /// Part M1b: System Health screen, read-only, on the Part M1a route /api/v2/sys_health (idea of mock picture 10, REAL FACTS ONLY).
 /// Shows: one headline (all OK / mostly fine / needs attention), the measured cards two by two (state dot, value, small line), a list of what is NOT MEASURED with the reason, an honest note.
-/// A card the backend could not measure says NOT AVAILABLE and is grey; nothing is faked. Pull down to refresh. Dart NOT compiled (the APK build is the proof).
+/// A card the backend could not measure says NOT AVAILABLE and is grey; nothing is faked. Pull down to refresh.
+/// Round 28 (Diagnostics tab): below the old cards two blocks are added, each loaded on its own so one missing route never hides the other: OwlSniper health (SniperHealthTiles, /api/v2/sniper_health)
+/// and the Data Doctor (DataDoctorCard: which coins have candle gaps + the Termux commands; /api/v2/gaps and /api/v2/status). The old part is unchanged. Dart NOT compiled (the APK build is the proof).
 class SystemHealthScreen extends StatefulWidget {
   const SystemHealthScreen({super.key});
 
@@ -17,6 +22,7 @@ class SystemHealthScreen extends StatefulWidget {
 
 class _SystemHealthScreenState extends State<SystemHealthScreen> {
   Map<String, dynamic>? _r;
+  Map<String, dynamic>? _sh, _gaps, _st;
   bool _busy = true;
 
   @override
@@ -27,10 +33,14 @@ class _SystemHealthScreenState extends State<SystemHealthScreen> {
 
   Future<void> _load() async {
     setState(() => _busy = true);
-    final r = await context.read<AppProvider>().fetchSysHealth();
+    final pv = context.read<AppProvider>();
+    final all = await Future.wait([pv.fetchSysHealth(), pv.fetchSniperHealth(), pv.fetchV2Gaps(), pv.fetchV2Status()]);
     if (!mounted) return;
     setState(() {
-      _r = r;
+      _r = all[0];
+      _sh = all[1];
+      _gaps = all[2];
+      _st = all[3];
       _busy = false;
     });
   }
@@ -88,7 +98,11 @@ class _SystemHealthScreenState extends State<SystemHealthScreen> {
     if (_busy && r == null) {
       kids = [const Padding(padding: EdgeInsets.all(40), child: Center(child: CircularProgressIndicator()))];
     } else if (_bad(r)) {
-      kids = [OWLCard(edge: p.warning, child: Text(_problem(r), style: TextStyle(fontSize: 13, color: p.textPrimary)))];
+      kids = [
+        OWLCard(edge: p.warning, child: Text(_problem(r), style: TextStyle(fontSize: 13, color: p.textPrimary))),
+        SniperHealthTiles(r: _sh),
+        DataDoctorCard(gaps: _gaps, status: _st),
+      ];
     } else {
       final ok = r!;
       final bad = lpNum(ok['bad']);
@@ -118,6 +132,8 @@ class _SystemHealthScreenState extends State<SystemHealthScreen> {
           ]),
         ),
         Text('${ok['note'] ?? ''}', style: TextStyle(fontSize: 11, color: p.textMuted)),
+        SniperHealthTiles(r: _sh),
+        DataDoctorCard(gaps: _gaps, status: _st),
       ];
     }
     return RefreshIndicator(

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/owl_card.dart';
+import '../widgets/study_verdict_header.dart';
 
 /// Part 46 (EMA-free Setup Finder 4 of 4): the SETUP FINDER on a screen. Read-only: it only asks the backend for /api/v2/setups and
 /// /api/v2/setups_forward (Parts 43-45), draws the answers and changes nothing (no setting, no position, no order, no file).
@@ -148,7 +149,13 @@ class _SetupScreenState extends State<SetupScreen> {
   Widget build(BuildContext context) {
     final p = context.palette;
     final d = _data;
-    final List<Widget> kids = [];
+    final List<Widget> kids = [
+      const StudyVerdictHeader(
+        cardId: 'setup_finder',
+        why: 'A price formation might hint at what comes next.',
+        what: '7 formations (price and volume only, no EMA) and what came after, against ordinary candles. Description only, never proof.',
+      ),
+    ];
     final fwd = _m(d?['forward']);
     final types = _l(fwd['types']).whereType<Map>().toList();
     if (_loading && d == null) {

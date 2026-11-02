@@ -159,8 +159,13 @@ def run_study(data_dir, interval="5m", now=None):
     return out
 
 
+def _na(x):
+    """A missing number prints n/a, never the word None (Round 4)."""
+    return "n/a" if x is None else x
+
+
 def lines_of(out):
-    ln = ["Zone study on %d coins, %d arrivals, %d groups checked. Baseline (any ready candle, BT-01 trade) LONG %s R, SHORT %s R net per trade." % (len(out["coins"]), out["cases"], out["groups_checked"], out["baseline"]["LONG"]["mean_net_r"], out["baseline"]["SHORT"]["mean_net_r"])]
+    ln = ["Zone study on %d coins, %d arrivals, %d groups checked. Baseline (any ready candle, BT-01 trade) LONG %s R, SHORT %s R net per trade." % (len(out["coins"]), out["cases"], out["groups_checked"], _na(out["baseline"]["LONG"]["mean_net_r"]), _na(out["baseline"]["SHORT"]["mean_net_r"]))]
     for v in ("USE", "AVOID"):
         for r in [x for x in out["rows"] if x["verdict"] == v][:3]:
             ln.append("%s candidate: %s side, arrival in SD zone %s, %s: %d cases from %d coins, mean net %+.2f R (TRAIN %+.2f, HOLDOUT %+.2f)." % (v, r["side"], r["zone"], "all market states" if r["state"] == "ALL" else r["state"], r["n"], r["coins"], r["mean_net_r"], r["train_net_r"], r["holdout_net_r"]))

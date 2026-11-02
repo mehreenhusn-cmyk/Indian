@@ -12,6 +12,7 @@ part 'app_provider_vision.dart';
 part 'app_provider_aichat.dart';
 part 'app_provider_positions.dart';
 part 'app_provider_brain.dart';
+part 'app_provider_sniper.dart';
 part 'app_provider_settings.dart';
 part 'app_provider_sound.dart';
 

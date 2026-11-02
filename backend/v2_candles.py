@@ -1,6 +1,6 @@
 """v2_candles.py - Part 17: COLLECTORS 4 of 5 - closed 3m / 5m candles for at most 40 coins, with gap refill from public klines. OFF until the owner switches it on
 (kill-switch = the file v2_candles_enabled in the data folder, separate from the ticker switch). Coins = cohort of the last 2 days first, then the newest ticker_snapshot, max 40. Each run asks ONLY for what is missing (nothing missing = no request).
-Only CLOSED candles are saved. Start = last 24 candles; a stop of up to 99 candles is refilled; an older hole or a candle the exchange does not return goes to gap_log - never bridged.
+Only CLOSED candles are saved. Start = last 500 candles (about 41 hours on 5m); a stop of up to 999 candles is refilled; an older hole or a candle the exchange does not return goes to gap_log - never bridged.
 Rate budget: at most 90 requests per run, retries included (the rest waits). Public GET only: ONE address + 3 fixed query words, no key / signature / order code (guard test).
 A failed coin is skipped and retried next run (no gap written). Each coin+interval is saved in ONE transaction. No trading file is touched.
 Run (Termux, optional):  python3 backend/v2_candles.py --on | --off | --status | --once | --loop        Tests: python3 test/test_v2_candles.py"""
@@ -21,7 +21,7 @@ VERSION = "v2_candles 1 (Part 17)"
 BASE = "https://fapi.binance.com/fapi/v1/klines"            # the ONLY address this module may call
 FLAG_NAME = "v2_candles_enabled"
 INTERVALS = ("3m", "5m")
-MAX_SYMBOLS, BUDGET, INITIAL, MAX_LIMIT, TRIES, TIMEOUT, MAX_BYTES, LOOP_SEC = 40, 90, 24, 99, 2, 10, 2_000_000, 60
+MAX_SYMBOLS, BUDGET, INITIAL, MAX_LIMIT, TRIES, TIMEOUT, MAX_BYTES, LOOP_SEC = 40, 90, 500, 1000, 2, 10, 2_000_000, 60
 
 
 class FetchFailed(Exception):

@@ -716,6 +716,23 @@ try:
     app.include_router(_v2_reports_router(require_api_token, DATA_DIR))
 except Exception as _e:
     print(f"[startup] v2 fees+tax route skipped: {_e}")
+# OwlSniper routes (Round 24, read-only, same v2_api_enabled switch; owner ok "mount ok" given). Each block is wrapped: a bad file never stops the backend.
+try:
+    from api.sniper import make_router as _sniper_router
+    app.include_router(_sniper_router(require_api_token, DATA_DIR))
+except Exception as _e:
+    print(f"[startup] sniper routes skipped: {_e}")
+try:
+    from api.health_v2 import make_router as _sniper_health_router
+    app.include_router(_sniper_health_router(require_api_token, DATA_DIR))
+except Exception as _e:
+    print(f"[startup] sniper health route skipped: {_e}")
+# OwlSniper PAPER ENTER route + paper loop (Round 30, paper only, owner ok "mount ok" for all). Wrapped: a bad file never stops the backend.
+try:
+    from api.sniper_paper import make_router as _sniper_paper_router
+    app.include_router(_sniper_paper_router(require_api_token, DATA_DIR))
+except Exception as _e:
+    print(f"[startup] sniper paper route skipped: {_e}")
 # Ledger routes (Part 41, read-only, same v2_api_enabled switch). Owner ok "mount ok" for Part 42.
 try:
     from api.v2_ledger_route import make_router as _v2_ledger_router

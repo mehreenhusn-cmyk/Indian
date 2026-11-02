@@ -1,5 +1,6 @@
 #!/data/data/com.termux/files/usr/bin/bash
 # OWL auto-deploy v5h (2026-10-31) for Termux.
+# v5j (2 Nov, Round 30): GitHub sync now also takes README6.md, PLAN_400.md, FILE_INDEX.md, CLAUDE_HANDOFF.md, AI_HANDOFF_BRIEF.md (the OwlSniper docs). Nothing else changed.
 # v5h (31 Oct, Part 43): STALE-ZIP GUARD. Proof from GitHub Actions: owl_Part73 was pushed AFTER owl_Part34 (file time is not a safe order, e.g. after a re-download) and made v2_radar.py,
 #   v2_data.py, more_screen.dart, app_provider_positions.dart and README4 old again. Now every zip carries its README4 version (v138 ...): a zip with a LOWER version than the newest one already
 #   applied / pushed is SKIPPED (logged), so an old cumulative zip can never overwrite newer files. Zips without a README4 are never skipped.
@@ -76,8 +77,8 @@
 # Settings / trades live outside the code folder, so a new zip never touches them.
 # Needs once:  termux-setup-storage
 
-BUILD=44    # self-update number: a zip replaces this script only if its BUILD is a bigger whole number (v5c=2, v5d=3, v5e=40, v5f=41, v5g=42, v5h=43, v5i=44)
-VERSION="v5i 2026-11-01"
+BUILD=45    # self-update number: a zip replaces this script only if its BUILD is a bigger whole number (v5c=2, v5d=3, v5e=40, v5f=41, v5g=42, v5h=43, v5i=44, v5j=45)
+VERSION="v5j 2026-11-02"
 DL_LIST() {   # every Download folder that exists (no duplicates)
   for d in "$OWL_DL" "$HOME/storage/downloads" "$HOME/storage/shared/Download" "/sdcard/Download" "/storage/emulated/0/Download"; do
     [ -n "$d" ] && [ -d "$d" ] && echo "$(cd "$d" 2>/dev/null && pwd -P)"
@@ -549,7 +550,8 @@ pre = ""
 if len(tops) == 1 and list(tops)[0] not in ("backend", "frontend", ".github", "test", "scanner") and all("/" in n for n in names):
     pre = list(tops)[0] + "/"          # one wrapper folder (like Indian-main/) -> strip it
 ALLOWED = {"backend", "frontend", "tools", "test", "scanner", "android", ".github", "README.md", "README2.md", "README4.md", "pubspec.yaml",
-           "pubspec.lock", "analysis_options.yaml", "web_update.sh", ".gitignore", ".metadata", "README5.md", "docs"}
+           "pubspec.lock", "analysis_options.yaml", "web_update.sh", ".gitignore", ".metadata", "README5.md", "docs",
+           "README6.md", "PLAN_400.md", "FILE_INDEX.md", "CLAUDE_HANDOFF.md", "AI_HANDOFF_BRIEF.md"}
 DOCS_OK = ("docs/mockups/",)
 DOCS_EXT = (".jpg", ".jpeg", ".png", ".md")
 skipped = []

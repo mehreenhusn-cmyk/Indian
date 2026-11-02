@@ -268,4 +268,10 @@ class AppText {
       AppTypography.metadata.copyWith(color: p.textMuted);
   TextStyle get label =>
       AppTypography.label.copyWith(color: p.textMuted);
+  /// Round 10b: 20 pt bold tabular number in the main text colour (stat tiles, verdict cards).
+  TextStyle get number =>
+      AppTypography.number.copyWith(color: p.textPrimary);
+  /// Round 10b: 12 pt dimmed helper line.
+  TextStyle get caption =>
+      AppTypography.caption.copyWith(color: p.textMuted);
 }
