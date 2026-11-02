@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../theme/app_theme.dart';
-import '../providers/app_provider_sniper.dart';
 import '../widgets/data_doctor_card.dart';
 import '../widgets/owl_card.dart';
 import '../widgets/sniper_health_tiles.dart';
