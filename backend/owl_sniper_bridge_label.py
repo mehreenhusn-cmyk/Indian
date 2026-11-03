@@ -175,7 +175,7 @@ def summary(res):
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description="OwlSniper bridge step 3: labels (win / loss, R, MAE, MFE, time) from the candles after each entry (read only)")
-    ap.add_argument("--data", default=os.environ.get("OWL_DATA_DIR") or ".")
+    ap.add_argument("--data", default=B.default_dir())
     ap.add_argument("--since-days", type=float, default=None)
     ap.add_argument("--limit", type=int, default=0, help="only the newest N records (keeps the phone light)")
     ap.add_argument("--sources", default=",".join(B.SOURCES))

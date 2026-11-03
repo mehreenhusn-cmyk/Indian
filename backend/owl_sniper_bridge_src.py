@@ -31,6 +31,15 @@ MAX_ROWS = 20000                         # newest rows per source (keeps the pho
 OWN_SNIPER = ("sniper", "sniper_learn")  # the Sniper's own paper trades are never fed back as "main bot" data
 
 
+def default_dir():
+    """The data folder when no --data is typed: OWL_DATA_DIR, else ~/owl_data (the same pick as api_server.py), else the current folder."""
+    env = os.environ.get("OWL_DATA_DIR")
+    if env:
+        return os.path.expanduser(env)
+    home = os.path.join(os.path.expanduser("~"), "owl_data")
+    return home if os.path.isdir(home) else "."
+
+
 def _num(v):
     if v is None or isinstance(v, bool):
         return None
@@ -233,7 +242,7 @@ def summary(res):
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description="OwlSniper bridge: closed trades of Dual, Brain, main bot in one format (read only)")
-    ap.add_argument("--data", default=os.environ.get("OWL_DATA_DIR") or ".")
+    ap.add_argument("--data", default=default_dir())
     ap.add_argument("--since-days", type=float, default=None)
     ap.add_argument("--include-skipped", action="store_true")
     ap.add_argument("--sample", type=int, default=0)
