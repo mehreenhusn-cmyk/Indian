@@ -3,14 +3,18 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../theme/app_theme.dart';
+import '../widgets/load_state.dart';
 import '../widgets/owl_card.dart';
 import '../widgets/signal_card.dart';
 import 'sniper_compare.dart';
+import 'sniper_extras.dart';
 import 'sniper_panels.dart';
 import 'sniper_pillars.dart';
+import 'sniper_quiet.dart';
 
 /// OwlSniper tab. Part S6 made it; Round 27 rebuilt it on the 3 pillars (Round 25) and the Sniper vs Main Bot panel. Read-only, on GET /api/v2/sniper.
-/// Order: headline -> Pillar B Volatility Guard -> order cards -> Pillar C Terminal Insight -> Sniper vs Main Bot -> Pillar A Capital Shield -> TEST-day equity -> 85% floor -> insight report -> auto-trade strip.
+/// Part 5: right under the headline sits the "Why is Sniper quiet?" card (LEARN progress n of 30 + plain reasons + the REAL gate state); its data is GET /api/v2/sniper_learn, loaded on its own so a slow answer never blocks the page.
+/// Order: headline -> Why quiet -> Pillar B Volatility Guard -> order cards -> Pillar C Terminal Insight -> Sniper vs Main Bot -> Pillar A Capital Shield -> TEST-day equity -> 85% floor -> insight report -> auto-trade strip.
 /// The page asks the backend again every 30 seconds while it is open (a cheap read of small files); the backend starts its own refresh by itself, so nothing has to be run by hand.
 /// OwlSniper only WATCHES: nothing here sends an order, saves anything or switches anything (the auto-trade strip only SHOWS the executor state; arming is a Termux command, never a button).
 /// Dart NOT compiled (the APK build is the proof).
@@ -23,6 +27,7 @@ class SniperScreen extends StatefulWidget {
 
 class _SniperScreenState extends State<SniperScreen> {
   Map<String, dynamic>? _r;
+  Map<String, dynamic>? _learn;
   bool _busy = true;
   bool _all = false;
   Timer? _timer;
@@ -48,6 +53,13 @@ class _SniperScreenState extends State<SniperScreen> {
       _r = r;
       _busy = false;
     });
+    _loadLearn();
+  }
+
+  Future<void> _loadLearn() async {
+    final l = await context.read<AppProvider>().fetchSniperLearn();
+    if (!mounted) return;
+    setState(() => _learn = l);
   }
 
   bool _bad(Map<String, dynamic>? r) => r == null || r['state'] != null || r['error'] != null;
@@ -99,7 +111,7 @@ class _SniperScreenState extends State<SniperScreen> {
       text = 'Auto-trade: ARMED in paper mode only. It opens a paper trade only when every check passes (85% or more, proven on the TEST days).';
       c = p.warning;
     } else {
-      text = 'Auto-trade: OFF. It stays off until you arm it in two steps from Termux. Paper mode only, live orders do not exist.';
+      text = 'Real auto-trade: OFF. It stays off until you arm it in two steps from Termux. Paper mode only, live orders do not exist. LEARN paper trades run on their own (see the card on top).';
       c = p.textSecondary;
     }
     return OWLCard(edge: armed || kill ? c : null, child: Text(text, style: TextStyle(fontSize: 12, color: c)));
@@ -111,14 +123,16 @@ class _SniperScreenState extends State<SniperScreen> {
     final r = _r;
     final List<Widget> kids;
     if (_busy && r == null) {
-      kids = [const Padding(padding: EdgeInsets.all(40), child: Center(child: CircularProgressIndicator()))];
+      kids = [LoadSpinner(onRetry: () => _load())];
     } else if (_bad(r)) {
       kids = [OWLCard(edge: p.warning, child: Text(_problem(r), style: TextStyle(fontSize: 13, color: p.textPrimary)))];
     } else {
       kids = [
         _head(p, r!),
+        SniperQuiet(r: r, learn: _learn),
         SniperVolatilityGuard(r: r),
         SniperSignalList(r: r, showAll: _all, onToggle: () => setState(() => _all = !_all)),
+        SniperExtras(r: r),
         SniperInsightConsole(r: r),
         SniperComparePanel(r: r),
         SniperCapitalShield(r: r),

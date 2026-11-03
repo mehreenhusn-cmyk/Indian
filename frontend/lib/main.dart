@@ -23,6 +23,7 @@ import 'widgets/tab_page.dart';
 import 'widgets/owl_ambient_background.dart';
 import 'widgets/owl_drawer.dart';
 import 'widgets/live_ticker_bar.dart';
+import 'widgets/theme_switch.dart';
 import 'widgets/exit_confirm.dart';
 import 'widgets/owl_connection_banner.dart';
 import 'widgets/owl_welcome_overlay.dart';
@@ -542,8 +543,8 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
             // above already guarantees this never collides with the status
             // bar, whether or not a banner is showing above it.
             // Round 11: the top-bar gear opens the Settings and tools page (screen 6); it is lit while a page behind the gear is open.
+            // Part 21: a Light/Dark button sits right of the gear. Part 14: the gear sits at the far LEFT, the power button at the far RIGHT of the ticker bar, so a wrong tap cannot hit power.
             Row(children: [
-              const Expanded(child: LiveTickerBar()),
               Builder(builder: (ctx) {
                 final route = AppRoutes.fromScreenIndex(_currentIndex);
                 final lit = route != null && AppRoutes.underGear.contains(route);
@@ -554,6 +555,8 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
                   onPressed: () => _selectTab(AppRoutes.screenIndex(AppRoute.more)),
                 );
               }),
+              const ThemeSwitchButton(),
+              const Expanded(child: LiveTickerBar()),
             ]),
             // RepaintBoundary keeps 1 Hz price updates on a tab from
             // repainting the ticker bar / banners / nav bar around it.

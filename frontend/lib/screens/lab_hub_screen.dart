@@ -5,6 +5,8 @@ import '../providers/app_provider.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_theme.dart';
 import '../theme/verdict_style.dart';
+import '../widgets/load_state.dart';
+import '../widgets/lazy_fold.dart';
 import '../widgets/owl_pressable.dart';
 import '../widgets/owl_refresh.dart';
 import '../widgets/owl_route.dart';
@@ -16,6 +18,7 @@ import '../widgets/verdict_header_card.dart';
 import 'brain_health_screen.dart';
 import 'brain_learning_screen.dart';
 import 'brain_ready_screen.dart';
+import 'lab_hub_summary.dart';
 import 'brain_studies_screen.dart';
 import 'data_explorer_screen.dart';
 import 'day_compare_screen.dart';
@@ -27,6 +30,7 @@ import 'radar_screen.dart';
 import 'results_screen.dart';
 import 'scalp_lab_screen.dart';
 import 'setup_screen.dart';
+import 'study_verdicts.dart';
 import 'tag_lab_screen.dart';
 import 'wickstudy_screen.dart';
 
@@ -172,6 +176,8 @@ class _LabHubScreenState extends State<LabHubScreen> {
     final tested = count('NO_EDGE') + count('DIAGNOSIS_ONLY');
     final p = context.palette;
     return [
+      labVerdictSummary(context, cards),
+      const SizedBox(height: AppSpacing.cardGap),
       const PurposeStrip(
         why: 'Backtests printed raw tables with no answer.',
         what: 'One verdict per study. EDGE needs 100+ cases and the same sign in both halves.',
@@ -186,6 +192,8 @@ class _LabHubScreenState extends State<LabHubScreen> {
         const SizedBox(width: 8),
         Expanded(child: StatTile(label: 'NEED DATA', value: '${need.length}', tone: need.isNotEmpty ? 'warn' : '')),
       ]),
+      const SizedBox(height: AppSpacing.cardGap),
+      LazyFold(title: 'Old studies: does Sniper use them?', sub: 'One line per old backtest finding', builder: () => const StudyVerdicts()),
       _label('VERDICTS'),
       VerdictCarousel(cards: decided, onOpen: _openCard),
       if (need.isNotEmpty) ...[
@@ -222,7 +230,7 @@ class _LabHubScreenState extends State<LabHubScreen> {
     final bad = r == null || r['state'] != null || r['ready'] != true;
     Widget content;
     if (_busy && r == null) {
-      content = const Center(child: CircularProgressIndicator());
+      content = LoadSpinner(onRetry: _load);
     } else if (bad) {
       content = ListView(padding: const EdgeInsets.all(AppSpacing.screenPad), children: [
         Container(

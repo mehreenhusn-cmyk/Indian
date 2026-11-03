@@ -51,10 +51,10 @@ List<Widget> dayCompareCards(AppPalette p, Map<String, dynamic> r) {
   return [
     OWLCard(
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        _title(p, 'Performance comparison (net, USDT)', 'Three separate numbers, never added'),
+        _title(p, 'Performance comparison (net, USDT)', 'Three separate books (Owl Brain, Main bot, Take-All), never added'),
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           _col(p, 'Owl Brain', b, '${b['closed'] ?? 0} closed'),
-          _col(p, 'Current Bot', bot, '${bot['closed'] ?? 0} closed'),
+          _col(p, 'Main bot', bot, '${bot['closed'] ?? 0} closed'),
           _col(p, 'Take-All (simulated)', ta, '${ta['taken'] ?? 0} ideas'),
         ]),
         const SizedBox(height: 10),

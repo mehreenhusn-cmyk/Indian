@@ -304,9 +304,9 @@ class _DualBotScreenState extends State<DualBotScreen> {
     if (t.isEmpty) return const SizedBox.shrink();
     final total = _n(t['total']);
     final up = total >= 0;
-    return _card(p, title: 'TODAY (5:30 AM IST TO 5:30 AM IST)', edge: up ? p.profit : p.loss, children: [
+    return _card(p, title: 'DUAL BOT PAPER, TODAY (5:30 AM IST TO 5:30 AM IST)', edge: up ? p.profit : p.loss, children: [
       Text(_usdt(total), style: context.type.primary.copyWith(fontWeight: FontWeight.w900, fontSize: 24, color: up ? p.profit : p.loss)),
-      Text('Today PNL: closed ${_usdt(_n(t['realized']))}, open ${_usdt(_n(t['open_pnl']))}', style: context.type.metadata),
+      Text('Dual Bot paper today: closed ${_usdt(_n(t['realized']))}, open ${_usdt(_n(t['open_pnl']))}', style: context.type.metadata),
       const SizedBox(height: 8),
       _kv('Opened today', '${t['opened'] ?? 0}'),
       _kv('Closed today', '${t['closed'] ?? 0}  (${t['wins'] ?? 0} won, ${t['losses'] ?? 0} lost)'),
@@ -328,7 +328,7 @@ class _DualBotScreenState extends State<DualBotScreen> {
     final bm = _n(_st['btc_margin']);
     return _card(p, title: 'BTC ONLY (${bm > 0 ? bm.toStringAsFixed(0) : '1000'} USDT PER TRADE)', edge: up ? p.profit : p.loss, children: [
       Text(_usdt(total), style: context.type.primary.copyWith(fontWeight: FontWeight.w900, fontSize: 22, color: up ? p.profit : p.loss)),
-      Text('Today: closed ${_usdt(_n(t['realized']))}, open ${_usdt(_n(t['open_pnl']))}. Not part of the totals above.', style: context.type.metadata),
+      Text('Dual Bot paper, BTC only, today: closed ${_usdt(_n(t['realized']))}, open ${_usdt(_n(t['open_pnl']))}. Not part of the totals above.', style: context.type.metadata),
       const SizedBox(height: 8),
       _kv('Opened today', '${t['opened'] ?? 0}'),
       _kv('Closed today', '${t['closed'] ?? 0}  (${t['wins'] ?? 0} won, ${t['losses'] ?? 0} lost)'),

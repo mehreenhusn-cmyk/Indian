@@ -299,7 +299,10 @@ def make_router(require_api_token, data_dir):
                        source: str = "", month: str = "", state: str = "", skip: str = "", only: str = ""):
             # Part M4c: source / month / state / skip / only were missing here before, so FastAPI dropped them and the SHADOW / REPLAY tabs (and the month arrows) always got the default answer
             raw = {"symbol": symbol, "interval": interval, "limit": limit, "day": day, "days": days, "at": at, "q": q, "source": source, "month": month, "state": state, "skip": skip, "only": only}
-            st, body = await asyncio.to_thread(dispatch, name, {k: str(v)[:500] for k, v in raw.items() if v}, data_dir)
+            try:   # Part 1: a slow page answers with a plain 503 after 20 s instead of leaving the app spinning
+                st, body = await asyncio.wait_for(asyncio.to_thread(dispatch, name, {k: str(v)[:500] for k, v in raw.items() if v}, data_dir), timeout=20)
+            except asyncio.TimeoutError:
+                st, body = 503, {"error": "This page took more than 20 seconds to build. Pull down to try again."}
             return JSONResponse(body, status_code=st)
         view.__name__ = "v2_" + name
         r.get("/api/v2/" + name, dependencies=[Depends(require_api_token)])(view)

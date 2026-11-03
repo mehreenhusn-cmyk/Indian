@@ -7,6 +7,7 @@ ARM = TWO separate calls: request_arm() gives a one-time code, confirm_arm(code)
 GATES, in this order (the first one that fails stops the order and is named in the answer):
   1 armed -> 2 paper mode -> 3 a Sniper signal exists -> 4 fresh candle -> 5 regime TRENDING -> 6 win chance >= 85% AND the floor is proven on the TEST days -> 7 stop distance inside MIN / MAX_SL_PCT
   -> 8 open-trade cap (1) -> 9 kill switch / daily loss limit -> 10 same signal never twice (idempotent client id).
+PART 4: route() runs this REAL gate first (unchanged), and only when it does not open, hands the card to the separate LEARN gate (owl_sniper_learn.py, paper only, own floor / size / state).
 The 85% floor is a constant here and is never lowered: a card carrying a lower floor is still held to 85%. Size = 10 USDT base. The stop is only ever moved IN the trade's favour (trail_stop).
 Daily loss limit: when record_close() brings today's (UTC) closed result to -limit or worse, the KILL SWITCH goes on by itself and stays on until the owner calls reset_kill().
 Run (Termux, optional):  python3 backend/owl_sniper_exec.py --data DIR status | arm | confirm CODE | disarm | kill | reset"""
@@ -19,6 +20,7 @@ import time
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import owl_sniper_engine_c1 as C
 import owl_sniper_feed as F
+import owl_sniper_learn as LN
 import owl_sniper_tf as TF
 
 VERSION = "owl_sniper_exec 1 (Round 22)"
@@ -227,6 +229,24 @@ def decide(d, card, floor_verified, now=None, interval="5m", opener=None):
     except StateBroken:
         pass                                                          # the slot stays reserved in the file: the safe side
     return {"decision": "OPEN" if ok else "BLOCKED", "gate": "" if ok else "opener", "text": "Paper order opened." if ok else "The paper opener did not accept the order.", "order": order if ok else None}
+
+
+def route(d, card, floor_verified, now=None, interval="5m", real_opener=None, learn_opener=None):
+    """Part 4: ONE card -> the REAL gate first (decide(), FLOOR 0.85, untouched). If it opens, lane REAL. If it is blocked the card goes to the LEARN gate (paper only, tiny size, tag LEARN), lane LEARN.
+    The owner's kill switch (gate "kill") and a broken executor file (gate "state") stop BOTH lanes. The answer always carries real_gate / real_text, so the screen can say WHY the real gate said no. Never raises."""
+    now = time.time() if now is None else now
+    real = decide(d, card, floor_verified, now, interval, real_opener)
+    info = {"real_gate": real.get("gate", ""), "real_text": real.get("text", "")}
+    st = status(d, now)                                              # the real gate stops at "armed" first, so the kill switch / broken file is read here directly
+    if real["decision"] in ("OPEN", "WOULD_OPEN"):
+        return dict(real, lane="REAL", **info)
+    if not st.get("ok") or (st.get("kill") or {}).get("on"):
+        return dict(real, lane="REAL", gate="kill" if st.get("ok") else "state", text="The owner's kill switch is on." if st.get("ok") else st.get("text", ""), **info)
+    try:
+        ln = LN.decide(d, card, now, interval, learn_opener)
+    except Exception as e:
+        ln = {"decision": "BLOCKED", "gate": "error", "text": "The LEARN gate failed (%s)." % str(e)[:60], "order": None, "tag": LN.TAG}
+    return dict(ln, lane="LEARN", **info)
 
 
 def status(d, now=None):

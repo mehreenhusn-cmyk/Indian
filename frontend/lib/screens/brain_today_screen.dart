@@ -119,7 +119,7 @@ class _BrainTodayScreenState extends State<BrainTodayScreen> {
               else
                 _chip('NO DATA', p.warning),
               const SizedBox(height: 8),
-              for (final line in _s(r['lines'])) Padding(padding: const EdgeInsets.only(bottom: 6), child: Text(line, style: TextStyle(fontSize: 13, color: line.startsWith('Dhyan') ? p.warning : p.textPrimary))),
+              for (final line in _s(r['lines'])) Padding(padding: const EdgeInsets.only(bottom: 6), child: Text(line, style: TextStyle(fontSize: 13, color: line.startsWith('Note:') ? p.warning : p.textPrimary))),
               Text('Words only, nothing is saved and no order is sent.', style: TextStyle(fontSize: 11, color: p.textMuted)),
             ]);
           }

@@ -8,8 +8,8 @@ What it does:
               stop and target are the paper trader's own SL / TP4 (TP1-TP4 are all set to the target, so there is no break-even shift); the time limit is done by sync().
   sync        for every open Sniper order: still open + older than the time limit -> close it at the live price; closed -> report its NET result to the executor (record_close), which frees the slot
               and turns the kill switch on by itself at the daily loss limit. A slot with no trade behind it is freed after a few minutes (result counted as 0, written in the executor log).
-  step        sync, then (only when the executor is ARMED) offer the newest cards to the executor. Used by the background loop in api/sniper_paper.py every ~20 s.
-  enter_symbol  the PAPER ENTER button: the same gates, for one coin. If the executor is not armed the answer is the plain text "OFF (not armed)".
+  step        sync, then offer the newest cards to EX.route() (Part 4): the REAL gate first (only while ARMED), else the LEARN gate (paper only, tag LEARN, own size and state). Used by the background loop in api/sniper_paper.py every ~20 s.
+  enter_symbol  the PAPER ENTER button: the same route, for one coin. Not armed -> the real gate says "OFF (not armed)" and the LEARN gate may still open a tiny paper LEARN trade (the answer says lane LEARN).
 Arming stays a 2-step Termux command (owl_sniper_exec.py arm / confirm). No route can arm."""
 import os
 import sys
@@ -19,13 +19,16 @@ from types import SimpleNamespace
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import owl_sniper_barriers as BR
+import owl_sniper_corr as CR
 import owl_sniper_exec as EX
 import owl_sniper_feed as F
+import owl_sniper_learn as LN
 import owl_sniper_tf as TF
 
 VERSION = "owl_sniper_paper 1 (Round 30)"
 MAP_FILE = "v2_sniper_paper.json"          # {"ids": {client id: {"trade_id": n, "ts": n}}}
 SOURCE, BOT = "sniper", "b1"
+LEARN_SOURCE = "sniper_learn"                # PART 4: LEARN paper trades carry this source (and tag LEARN, trigger text "OwlSniper LEARN ..."), so they can always be told apart from real-gate trades
 INTERVAL = "5m"
 NO_ID_SEC = 180                            # an executor slot with no paper trade behind it is freed after this long
 UNKNOWN_SEC = 900                          # a trade that is neither open nor in the closed list is freed after this long (after its time limit)
@@ -66,17 +69,50 @@ def _force_base(pt, tid, o):
             p = pt._positions.get(tid)
             if p is None:
                 return False
+            learn = o.get("tag") == LN.TAG
             p.update(invest_usdt=float(o["invest_usdt"]), leverage=1.0, btc_fixed_size=False,
-                     trigger="OwlSniper %s signal (win chance %.0f%%, stop %.2f%%)" % (o["side"], 100.0 * float(o.get("confidence") or 0.0), float(o.get("stop_pct") or 0.0)),
+                     trigger="OwlSniper %s%s signal (win chance %.0f%%, stop %.2f%%)" % ("LEARN " if learn else "", o["side"], 100.0 * float(o.get("confidence") or 0.0), float(o.get("stop_pct") or 0.0)),
                      sl_type="OwlSniper stop (%.2f%%)" % float(o.get("stop_pct") or 0.0), timeframe=INTERVAL)
+            if learn:
+                p.update(tag=LN.TAG, sniper_id=o.get("id"), sniper_regime=o.get("regime"), sniper_conf=o.get("confidence"))
         pt._save()
         return True
     except Exception:
         return False
 
 
-def make_opener(d, pt, now=None):
-    """-> opener(order) for EX.decide(). True only when ONE paper trade is open and noted."""
+CORR = {"checked": 0, "blocked": 0, "last": None}   # PART 49 (memory only): how often the cluster check ran / said no, and the last no ({ts, symbol, gate, text})
+
+
+def _corr_block(d, pt, o, now):
+    """PART 49 / FILE 58: does the NEW paper trade join too many same-direction trades that move together? '' = it may open. Else the plain BLOCKED text.
+    Open trades = the Sniper paper trades still open (both lanes). Each counts as 1 R (R units, not USDT, so a tiny LEARN trade and a real-gate trade weigh the same).
+    This check only ADDS a reason to say no: if it fails for any reason the trade opens exactly as before. Paper only, nothing is written."""
+    try:
+        with pt._lock:
+            op = [{"symbol": p.get("symbol"), "side": "LONG" if p.get("action") == "BUY" else "SHORT", "risk_r": 1.0}
+                  for p in pt._positions.values() if p.get("source") in (SOURCE, LEARN_SOURCE) and not p.get("outdated_reason")]
+        r = CR.build(d, op, {"symbol": o["symbol"], "side": o["side"], "risk_r": 1.0}, INTERVAL, now)
+        CORR["checked"] += 1
+        if r.get("decision") == "BLOCKED":
+            CORR["blocked"] += 1
+            CORR["last"] = {"ts": int(now), "symbol": o["symbol"], "gate": r.get("gate"), "text": r.get("text")}
+            return str(r.get("text") or "BLOCKED: too many trades that move together.")
+    except Exception:
+        pass
+    return ""
+
+
+def _corr_note(r, symbol, now):
+    """The route says gate 'opener' for any refusal; when the cluster check was the reason (same coin, within 5 s), say so (gate 'corr' + its plain text)."""
+    last = CORR.get("last")
+    if isinstance(r, dict) and r.get("gate") == "opener" and last and last.get("symbol") == symbol and abs(now - last.get("ts", 0)) <= 5:
+        return dict(r, gate="corr", text=last.get("text") or r.get("text"))
+    return r
+
+
+def make_opener(d, pt, now=None, learn=False):
+    """-> opener(order) for EX.decide() / LN.decide(). True only when ONE paper trade is open and noted. learn=True: the trade gets source \"sniper_learn\"."""
     def opener(o):
         try:
             tp = o.get("take_profit")
@@ -84,7 +120,11 @@ def make_opener(d, pt, now=None):
                 return False                                            # the triple barrier needs its profit line
             if o["symbol"] in pt.get_open_symbols():
                 return False                                            # never touch a trade of another bot
-            tid = pt.open_paper_trade(_signal(o), source=SOURCE, bot=BOT)
+            why = _corr_block(d, pt, o, time.time() if now is None else now)
+            if why:
+                print("[sniper paper] %s not opened: %s" % (o["symbol"], why))      # PART 49: too many same-direction trades that move together
+                return False
+            tid = pt.open_paper_trade(_signal(o), source=LEARN_SOURCE if learn else SOURCE, bot=BOT)
             if tid is None:
                 return False
             if not _force_base(pt, tid, o):
@@ -100,18 +140,17 @@ def make_opener(d, pt, now=None):
 def _find_open(pt, o):
     with pt._lock:
         for tid, p in pt._positions.items():
-            if p.get("source") == SOURCE and p.get("symbol") == o.get("symbol") and (p.get("opened_at_ts") or 0) >= o.get("created", 0) - 5:
+            if p.get("source") == (LEARN_SOURCE if o.get("tag") == LN.TAG else SOURCE) and p.get("symbol") == o.get("symbol") and (p.get("opened_at_ts") or 0) >= o.get("created", 0) - 5:
                 return tid
     return None
 
 
-def sync(d, pt, ts, now=None):
-    """Close the loop for every open Sniper order. Never raises. -> small dict (what was done)."""
-    now = time.time() if now is None else now
+def _sync_lane(d, pt, ts, now, load, record_close, broken):
+    """Close the loop for the open orders of ONE lane (REAL: executor book, LEARN: learn book)."""
     out = {"closed": 0, "time_exit": 0, "released": 0}
     try:
-        st = EX._load(d)
-    except EX.StateBroken:
+        st = load(d)
+    except broken:
         return dict(out, state="broken")
     book = st.get("open") or {}
     if not book:
@@ -126,7 +165,7 @@ def sync(d, pt, ts, now=None):
             tid = _find_open(pt, o)
         if tid is None:
             if age > NO_ID_SEC:
-                EX.record_close(d, cid, 0.0, now)                         # no trade behind the slot: free it (result counted as 0)
+                record_close(d, cid, 0.0, now)                         # no trade behind the slot: free it (result counted as 0)
                 out["released"] += 1
             continue
         if tid in live:
@@ -136,12 +175,23 @@ def sync(d, pt, ts, now=None):
             continue
         row = rows.get(tid)
         if row is not None:
-            EX.record_close(d, cid, float(row.get("pnl_usdt") or 0.0), now)
+            record_close(d, cid, float(row.get("pnl_usdt") or 0.0), now)
             out["closed"] += 1
         elif age > hold + UNKNOWN_SEC:
-            EX.record_close(d, cid, 0.0, now)
+            record_close(d, cid, 0.0, now)
             out["released"] += 1
     return dict(out, state="ok")
+
+
+def sync(d, pt, ts, now=None):
+    """Close the loop for every open Sniper order, REAL and LEARN. Never raises. -> small dict (what was done)."""
+    now = time.time() if now is None else now
+    a = _sync_lane(d, pt, ts, now, EX._load, EX.record_close, EX.StateBroken)
+    b = _sync_lane(d, pt, ts, now, LN._load, LN.record_close, LN.StateBroken)
+    out = {k: a[k] + b[k] for k in ("closed", "time_exit", "released")}
+    out["state"] = "broken" if "broken" in (a["state"], b["state"]) else ("idle" if a["state"] == b["state"] == "idle" else "ok")
+    out["learn_state"] = b["state"]
+    return out
 
 
 def _cards(d):
@@ -150,27 +200,31 @@ def _cards(d):
 
 
 def step(d, pt, ts, now=None):
-    """One turn of the background loop. Never raises."""
+    """One turn of the background loop. Never raises. Every card goes to EX.route(): REAL gate first, then LEARN. `why` counts the gate that stopped the cards (for the Sniper tab)."""
     now = time.time() if now is None else now
     with LOCK:
         try:
             res = {"sync": sync(d, pt, ts, now)}
-            s = EX.status(d, now)
-            if not s.get("ok") or not s.get("armed") or os.path.exists(os.path.join(os.path.realpath(d), F.OFF_FILE)):
+            if os.path.exists(os.path.join(os.path.realpath(d), F.OFF_FILE)):
                 return dict(res, auto="off")
             cards, verified = _cards(d)
-            opener = make_opener(d, pt, now)
-            for c in cards:                                           # newest first: the first card that passes every gate is opened, the cap of 1 stops the rest
-                r = EX.decide(d, c, verified, now, INTERVAL, opener)
+            ro, lo = make_opener(d, pt, now), make_opener(d, pt, now, learn=True)
+            opened, why = [], {}
+            for c in cards:                                           # newest first; the REAL cap is 1, the LEARN cap is 5 (each lane keeps its own cap)
+                r = EX.route(d, c, verified, now, INTERVAL, ro, lo)
+                r = _corr_note(r, c.get("symbol"), now)
                 if r["decision"] == "OPEN":
-                    return dict(res, auto="opened", symbol=c.get("symbol"))
-            return dict(res, auto="waiting", cards=len(cards))
+                    opened.append({"symbol": c.get("symbol"), "lane": r["lane"]})
+                else:
+                    k = "%s:%s" % (r["lane"], r.get("gate") or "none")
+                    why[k] = why.get(k, 0) + 1
+            return dict(res, auto="opened" if opened else "waiting", opened=opened, cards=len(cards), why=why)
         except Exception as e:
             return {"auto": "error", "text": str(e)[:120]}
 
 
 def enter_symbol(d, pt, ts, symbol, now=None):
-    """PAPER ENTER for one coin -> the executor's answer {decision, gate, text, order}. Never raises."""
+    """PAPER ENTER for one coin -> the route's answer {decision, gate, text, order, lane, real_gate, real_text}. Never raises."""
     now = time.time() if now is None else now
     with LOCK:
         try:
@@ -179,6 +233,6 @@ def enter_symbol(d, pt, ts, symbol, now=None):
             card = next((c for c in cards if c.get("symbol") == symbol), None)
             if card is None:
                 return {"decision": "BLOCKED", "gate": "signal", "text": "There is no live Sniper signal for %s right now." % symbol, "order": None}
-            return EX.decide(d, card, verified, now, INTERVAL, make_opener(d, pt, now))
+            return _corr_note(EX.route(d, card, verified, now, INTERVAL, make_opener(d, pt, now), make_opener(d, pt, now, learn=True)), symbol, now)
         except Exception as e:
             return {"decision": "BLOCKED", "gate": "error", "text": "The paper entry could not be made (%s)." % str(e)[:80], "order": None}

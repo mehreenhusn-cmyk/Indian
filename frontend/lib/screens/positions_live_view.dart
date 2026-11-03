@@ -19,6 +19,18 @@ import '../utils/format.dart';
 const _green = AppColors.profit;
 const _red = AppColors.loss;
 
+/// Part 17 (FILE 35): tap "N UP" / "N DOWN" in the top line to show only the winning / only the losing trades (tap again = all). 0 = all, 1 = UP, 2 = DOWN.
+final ValueNotifier<int> positionsSide = ValueNotifier<int>(0);
+
+List<dynamic> _bySide(List<dynamic> list, int side) {
+  if (side == 0) return list;
+  return list.where((x) {
+    if (x is! Map) return false;
+    final v = (x['pnl_usdt'] as num?)?.toDouble() ?? 0.0;
+    return side == 1 ? v >= 0 : v < 0;
+  }).toList();
+}
+
 /// LIVE / PAPER badge for the close dialogs (Part 20). Shows what the backend preview says (`mode`); if there is no answer yet it
 /// falls back to the Live Trading switch in Settings. Display only - it changes nothing.
 Widget _modeBadge(String? mode, bool liveFallback) {
@@ -362,15 +374,10 @@ class PositionsLiveView extends StatelessWidget {
               const _TopSummary(),
               const PositionsTopBar(),
               const PositionsSearchBar(),
-              // Stack, not Column: the summary bar below is a true floating
-              // overlay (v0 "summary-bar" behavior) that sits ON TOP of the
-              // position list rather than reserving its own row in the
-              // layout - cards visibly scroll up and fade behind its frosted
-              // glass instead of stopping short above a fixed footer.
+              // Part 17: ONE place for Close All Profit / Close All Loss, in the layout right above the list (it used to float over the list and hide cards).
+              const _FloatingSummaryBar(),
               Expanded(
-                child: Stack(
-                  children: [
-                    OWLRefresh(
+                child: OWLRefresh(
                       onRefresh: () => context.read<AppProvider>().fetchStatus(),
                       // The LIST only rebuilds when the set/order of positions
                       // changes (open/close). Price/P&L changes are handled by
@@ -380,19 +387,22 @@ class PositionsLiveView extends StatelessWidget {
                       valueListenable: positionsSearch,
                       builder: (context, query, _) => ValueListenableBuilder<int>(
                       valueListenable: positionsSortMode,
-                      builder: (context, sortMode, _) => Selector<AppProvider, int>(
+                      builder: (context, sortMode, _) => ValueListenableBuilder<int>(
+                      valueListenable: positionsSide,
+                      builder: (context, side, _) => Selector<AppProvider, int>(
                       selector: (_, p) => Object.hash(
                         p.positions.isEmpty,
                         p.status.isEmpty,
                         p.error == null,
                         p.liveState == 'offline',
                         sortMode,
+                        side,
                         query,
-                        Object.hashAll(filterPositions(sortedPositions(p.positions, sortMode), query).map((x) => x is Map ? x['id'] : null)),
+                        Object.hashAll(_bySide(filterPositions(sortedPositions(p.positions, sortMode), query), side).map((x) => x is Map ? x['id'] : null)),
                       ),
                       builder: (context, _, child) {
                         final provider = context.read<AppProvider>();
-                        final positions = filterPositions(sortedPositions(provider.positions, sortMode), query);
+                        final positions = _bySide(filterPositions(sortedPositions(provider.positions, sortMode), query), side);
                         if (positions.isEmpty &&
                             provider.status.isEmpty &&
                             provider.error == null) {
@@ -419,6 +429,15 @@ class PositionsLiveView extends StatelessWidget {
                             ),
                           );
                         }
+                        if (positions.isEmpty && side != 0 && provider.positions.isNotEmpty) {
+                          return OWLPullEmpty(
+                            child: OWLEmptyState(
+                              icon: Icons.filter_alt_off_outlined,
+                              title: side == 1 ? 'No trade is UP right now' : 'No trade is DOWN right now',
+                              subtitle: 'Tap the UP / DOWN pill at the top again to see all trades.',
+                            ),
+                          );
+                        }
                         if (positions.isEmpty) {
                           // Part 28: dead backend = "Backend offline", never a fake empty list.
                           return OwlStateGate(
@@ -434,10 +453,8 @@ class PositionsLiveView extends StatelessWidget {
                         }
                         return ListView.builder(
                           physics: owlPullPhysics,
-                          // Bottom padding clears the floating summary bar
-                          // (stats row + pill row + its own margin/glow) so
-                          // the last card never sits clipped underneath it.
-                          padding: const EdgeInsets.only(bottom: 124),
+                          // Part 17: the Close All bar is no longer an overlay (it sits above the list), so no big empty space is reserved here.
+                          padding: const EdgeInsets.only(bottom: 8),
                           itemCount: positions.length,
                           itemBuilder: (context, index) {
                             final pos = positions[index] as Map<String, dynamic>;
@@ -539,18 +556,7 @@ class PositionsLiveView extends StatelessWidget {
                     ),
                     ),
                     ),
-                    // Floating overlay, anchored bottom - renders nothing
-                    // (zero-size) when there are no open positions, handled
-                    // internally by _FloatingSummaryBar so the empty state
-                    // above is the only thing on screen.
-                    const Positioned(
-                      left: 0,
-                      right: 0,
-                      bottom: 0,
-                      child: _FloatingSummaryBar(),
                     ),
-                  ],
-                ),
               ),
             ],
           ),
@@ -582,7 +588,11 @@ class _TopSummary extends StatelessWidget {
       },
       builder: (context, _, child) {
         final positions = context.read<AppProvider>().positions;
-        if (positions.isEmpty) return const SizedBox.shrink();
+        if (positions.isEmpty) {
+          // nothing open: forget the UP / DOWN choice, so the next trades are not hidden by an old filter
+          if (positionsSide.value != 0) WidgetsBinding.instance.addPostFrameCallback((_) => positionsSide.value = 0);
+          return const SizedBox.shrink();
+        }
         double pnl = 0.0;
         int up = 0, down = 0;
         for (final x in positions) {
@@ -596,6 +606,21 @@ class _TopSummary extends StatelessWidget {
           }
         }
         final c = pnl >= 0 ? _green : _red;
+        // Part 17: the two pills are buttons: tap = only UP (or only DOWN) trades, tap again = all.
+        Widget side(String text, Color col, int me) => ValueListenableBuilder<int>(
+              valueListenable: positionsSide,
+              builder: (context, cur, _) => GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () => positionsSide.value = cur == me ? 0 : me,
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(AppSpacing.radiusPill),
+                    border: Border.all(color: cur == me ? col : Colors.transparent, width: 1.4),
+                  ),
+                  child: OWLStatusPill(text: text, color: col, showDot: false),
+                ),
+              ),
+            );
         return Padding(
           padding: const EdgeInsets.only(bottom: AppSpacing.xs),
           child: Row(
@@ -604,9 +629,9 @@ class _TopSummary extends StatelessWidget {
               Text('${fmtSigned(pnl)} USDT',
                   style: context.type.hero.copyWith(fontSize: 28, fontWeight: FontWeight.w800, color: c)),
               const SizedBox(width: 10),
-              OWLStatusPill(text: '$up UP', color: _green, showDot: false),
+              side('$up UP', _green, 1),
               const SizedBox(width: 6),
-              OWLStatusPill(text: '$down DOWN', color: _red, showDot: false),
+              side('$down DOWN', _red, 2),
             ],
           ),
         );

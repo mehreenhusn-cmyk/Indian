@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../theme/app_theme.dart';
+import '../widgets/load_state.dart';
 import '../widgets/owl_card.dart';
 import 'brain_dashboard_cards.dart';
+import 'brain_dashboard_summary.dart';
 
-/// Part M3 (Brain Dashboard), part 1 of 2: read-only, on the Part M3 route /api/v2/brain_dash. One home page of the Brain: today net, Brain 30 days next to Current Bot 30 days,
+/// Part M3 (Brain Dashboard), part 1 of 2: read-only, on the Part M3 route /api/v2/brain_dash. One home page of the Brain: today net, Brain 30 days next to Main bot 30 days,
 /// open positions, today signals, daily loss cap, recent days, all-time net, the Brain's own sentence. The cards are in brain_dashboard_cards.dart (part 2 of 2).
 /// PAPER, SHADOW and REPLAY are three separate tabs, never added. LIVE is locked (a line says so) and has no tab. Dart NOT compiled (the APK build is the proof).
 class BrainDashboardScreen extends StatefulWidget {
@@ -70,7 +72,7 @@ class _BrainDashboardScreenState extends State<BrainDashboardScreen> {
     final r = _r;
     final List<Widget> kids;
     if (_busy && r == null) {
-      kids = [const Padding(padding: EdgeInsets.all(40), child: Center(child: CircularProgressIndicator()))];
+      kids = [LoadSpinner(onRetry: _load)];
     } else if (_bad(r)) {
       kids = [_sources(p), OWLCard(edge: p.warning, child: Text(_problem(r), style: TextStyle(fontSize: 13, color: p.textPrimary)))];
     } else {
@@ -78,6 +80,7 @@ class _BrainDashboardScreenState extends State<BrainDashboardScreen> {
       kids = [
         _sources(p),
         Text('LIVE is LOCKED. Showing the $_src numbers only.', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: p.textSecondary)),
+        brainSummaryCard(p, ok),
         ...brainDashboardCards(p, ok),
       ];
     }

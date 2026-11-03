@@ -4,6 +4,7 @@ import '../models/verdict_card.dart';
 import '../providers/app_provider.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_theme.dart';
+import '../widgets/load_state.dart';
 import '../widgets/owl_card.dart';
 import '../widgets/owl_pressable.dart';
 import '../widgets/stat_tile.dart';
@@ -223,7 +224,7 @@ class _ResultsScreenState extends State<ResultsScreen> {
     final r = _r;
     final List<Widget> kids;
     if (_busy && r == null) {
-      kids = [const Padding(padding: EdgeInsets.all(40), child: Center(child: CircularProgressIndicator()))];
+      kids = [LoadSpinner(onRetry: _load)]; // Part 2: 12 s, then Retry
     } else if (r == null || r['ready'] != true) {
       kids = [OWLCard(edge: p.warning, child: Text(r != null && r['ready'] == false ? '${r['note'] ?? 'Not ready.'}' : _problem(r ?? <String, dynamic>{'state': 'error'}), style: context.type.primary))];
     } else if (_box == null) {

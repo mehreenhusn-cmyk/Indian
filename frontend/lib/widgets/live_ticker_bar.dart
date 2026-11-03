@@ -360,6 +360,26 @@ class _PanicButtonState extends State<_PanicButton> with SingleTickerProviderSta
   }
 
   Future<void> _fire() async {
+    // Part 14: the hold alone is not enough. After the 1.5 s hold the power button asks ONE more time in plain words.
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Close ALL positions?'),
+        content: const Text('The power button closes every open position now. This cannot be undone.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text('Close all', style: TextStyle(color: context.palette.loss, fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+    if (!mounted) return;
+    if (ok != true) {
+      _holdController.reset();
+      return;
+    }
     setState(() {
       _busy = true;
       _armed = true;

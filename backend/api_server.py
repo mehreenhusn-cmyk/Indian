@@ -733,6 +733,12 @@ try:
     app.include_router(_sniper_paper_router(require_api_token, DATA_DIR))
 except Exception as _e:
     print(f"[startup] sniper paper route skipped: {_e}")
+# OwlSniper read-only routes of Parts 9-44 (bridge, risk box, capital, study list, self log). Owner said "mount ok" on 3 Nov 2026. One helper, each route wrapped inside it.
+try:
+    from api.sniper_mount import mount_all as _sniper_mount_all
+    _sniper_mount_all(app, require_api_token, DATA_DIR)
+except Exception as _e:
+    print(f"[startup] sniper mount helper skipped: {_e}")
 # Ledger routes (Part 41, read-only, same v2_api_enabled switch). Owner ok "mount ok" for Part 42.
 try:
     from api.v2_ledger_route import make_router as _v2_ledger_router

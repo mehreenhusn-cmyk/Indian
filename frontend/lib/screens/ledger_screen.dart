@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../theme/app_theme.dart';
+import '../widgets/load_state.dart';
 import '../widgets/owl_card.dart';
 
 /// Part 42 (Knowledge Ledger 4 of 4): the LEDGER on a screen. Read-only: it only asks the backend for /api/v2/ledger (Part 41),
@@ -116,7 +117,7 @@ class _LedgerScreenState extends State<LedgerScreen> {
     final d = _data;
     final List<Widget> kids = [];
     if (_loading && d == null) {
-      kids.add(const Padding(padding: EdgeInsets.only(top: 80), child: Center(child: CircularProgressIndicator())));
+      kids.add(LoadSpinner(onRetry: _refresh)); // Part 2: 12 s, then Retry
     } else if (d == null || d['findings'] is! List) {
       kids.add(OWLCard(edge: p.warning, child: Text(_problem(d?['state']), style: TextStyle(fontSize: 13, color: p.textPrimary))));
     } else {
@@ -229,7 +230,7 @@ class _LedgerDetailState extends State<_LedgerDetail> {
     final d = _data;
     final List<Widget> kids = [];
     if (_loading && d == null) {
-      kids.add(const Padding(padding: EdgeInsets.only(top: 60), child: Center(child: CircularProgressIndicator())));
+      kids.add(LoadSpinner(onRetry: _load)); // Part 2: 12 s, then Retry
     } else if (d == null || d['versions'] is! List) {
       kids.add(OWLCard(edge: p.warning, child: Text(_problem(d?['state']), style: TextStyle(fontSize: 13, color: p.textPrimary))));
     } else {

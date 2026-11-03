@@ -37,8 +37,9 @@ class AppRoutes {
   /// How many screens main.dart keeps (screen numbers 0 .. screenCount - 1, no gaps).
   static int get screenCount => _screenIndex.length;
 
-  // Round 11: the 5 buttons of the bottom bar, left to right. Market and Brain left the bar (they open from the gear page).
-  static const List<AppRoute> bottomBar = [
+  // Part 41 (FILE 50): the FIXED section order of the app, left to right in the bottom bar. This list is the single source of truth:
+  // the swipe order below is built from it, so the bar and the swipe can never disagree. Every section opens with its summary / comparison first (see the frontend plan).
+  static const List<AppRoute> sections = [
     AppRoute.dashboard,
     AppRoute.positions,
     AppRoute.sniper,
@@ -46,23 +47,59 @@ class AppRoutes {
     AppRoute.diagnostics,
   ];
 
-  // Swipe order: the 5 bar pages first, then the pages that live behind the gear, then the gear page itself.
-  static const List<AppRoute> swipeOrder = [
-    AppRoute.dashboard,
-    AppRoute.positions,
-    AppRoute.sniper,
-    AppRoute.studyLab,
-    AppRoute.diagnostics,
+  // Round 11: the 5 buttons of the bottom bar, left to right. Market and Brain left the bar (they open from the gear page).
+  static const List<AppRoute> bottomBar = sections;
+
+  // Settings has ONE fixed home: the top-bar gear at the far left (Part 14), never a bar button and never next to the power button.
+  static const AppRoute settingsRoute = AppRoute.more;
+
+  // The pages behind the gear, in the order the swipe visits them after the 5 sections. Settings and tools is always the LAST one.
+  static const List<AppRoute> gearPages = [
     AppRoute.market,
     AppRoute.brain,
     AppRoute.signals,
     AppRoute.dualBot,
     AppRoute.ai,
-    AppRoute.more,
+    settingsRoute,
   ];
+
+  // Swipe order: the 5 sections first, then the gear pages (built from the two lists above, not typed twice).
+  static const List<AppRoute> swipeOrder = [...sections, ...gearPages];
 
   // Pages that have no button in the bar: they open from the top-bar gear / the Settings and tools page and keep the GEAR lit.
   static const Set<AppRoute> underGear = {AppRoute.market, AppRoute.brain, AppRoute.signals, AppRoute.dualBot, AppRoute.ai, AppRoute.more};
+
+  /// True for the 5 fixed sections; false for a gear page.
+  static bool isSection(AppRoute r) => sections.contains(r);
+
+  /// True only for the Settings and tools page (the gear page that holds the app settings).
+  static bool isSettings(AppRoute r) => r == settingsRoute;
+
+  /// Position of a section in the bar (0 = first), or null for a gear page. Never a guess.
+  static int? sectionNumber(AppRoute r) {
+    final i = sections.indexOf(r);
+    return i < 0 ? null : i;
+  }
+
+  /// Plain-words problems with the order lists (empty = all fine). Pure check: a route missing from the swipe, a route twice, a gear page that also sits in the bar,
+  /// or an underGear set that does not match gearPages. For the Diagnostics text and for a reader of the code; nothing calls it at startup.
+  static List<String> orderProblems() {
+    final out = <String>[];
+    for (final r in AppRoute.values) {
+      final n = swipeOrder.where((x) => x == r).length;
+      if (n == 0) out.add('${label(r)} is missing from the swipe order.');
+      if (n > 1) out.add('${label(r)} is in the swipe order $n times.');
+    }
+    for (final r in gearPages) {
+      if (sections.contains(r)) out.add('${label(r)} is both a section and a gear page.');
+      if (!underGear.contains(r)) out.add('${label(r)} is a gear page but not in underGear.');
+    }
+    for (final r in underGear) {
+      if (!gearPages.contains(r)) out.add('${label(r)} is in underGear but not a gear page.');
+    }
+    if (_screenIndex.length != AppRoute.values.length) out.add('The screen number map does not cover every route.');
+    return out;
+  }
 
   static int screenIndex(AppRoute r) => _screenIndex[r]!;
 

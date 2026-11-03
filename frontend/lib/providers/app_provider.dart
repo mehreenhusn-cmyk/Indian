@@ -178,11 +178,14 @@ class AppProvider extends ChangeNotifier with SoundAlerts {
   /// Deliberately NOT read from the backend `theme` setting: that key is a
   /// legacy Kivy default of "light" and would flip every existing user to
   /// light mode on first launch.
-  ThemeMode get themeMode =>
-      prefs.getString('theme_mode') == 'dark' ? ThemeMode.dark : ThemeMode.light;
+  /// Part 21 (FILE 40): 'system' is stored as its own value now (the Settings button 'System' used to be saved as 'dark').
+  ThemeMode get themeMode {
+    final v = prefs.getString('theme_mode');
+    return v == 'dark' ? ThemeMode.dark : v == 'system' ? ThemeMode.system : ThemeMode.light;
+  }
 
   Future<bool> setThemeMode(ThemeMode mode) async {
-    final ok = await prefs.setString('theme_mode', mode == ThemeMode.light ? 'light' : 'dark');
+    final ok = await prefs.setString('theme_mode', mode == ThemeMode.light ? 'light' : mode == ThemeMode.system ? 'system' : 'dark');
     notifyListeners();
     pushPrefsBackup();
     return ok;

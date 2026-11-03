@@ -2,16 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../theme/app_theme.dart';
+import '../providers/app_provider_sniper.dart';
 import '../widgets/data_doctor_card.dart';
+import '../widgets/load_state.dart';
 import '../widgets/owl_card.dart';
 import '../widgets/sniper_health_tiles.dart';
+import 'diagnostics_cards.dart';
 import 'learning_progress_cards.dart';
 
 /// Part M1b: System Health screen, read-only, on the Part M1a route /api/v2/sys_health (idea of mock picture 10, REAL FACTS ONLY).
 /// Shows: one headline (all OK / mostly fine / needs attention), the measured cards two by two (state dot, value, small line), a list of what is NOT MEASURED with the reason, an honest note.
 /// A card the backend could not measure says NOT AVAILABLE and is grey; nothing is faked. Pull down to refresh.
 /// Round 28 (Diagnostics tab): below the old cards two blocks are added, each loaded on its own so one missing route never hides the other: OwlSniper health (SniperHealthTiles, /api/v2/sniper_health)
-/// and the Data Doctor (DataDoctorCard: which coins have candle gaps + the Termux commands; /api/v2/gaps and /api/v2/status). The old part is unchanged. Dart NOT compiled (the APK build is the proof).
+/// and the Data Doctor (DataDoctorCard: which coins have candle gaps + the Termux commands; /api/v2/gaps and /api/v2/status). Dart NOT compiled (the APK build is the proof).
+/// Part 15 (FILE 32): the green / amber connection tiles (SniperHealthTiles) now sit at the TOP, right under the pull-down, then the system headline and its small cards, then the Data Doctor.
+/// The loading circle is the shared LoadSpinner (12 s, then "taking long" + Retry). Part 16 (FILE 33): the measured cards are ONE compact list and 'Not measured yet' is one closed line (screens/diagnostics_cards.dart).
 class SystemHealthScreen extends StatefulWidget {
   const SystemHealthScreen({super.key});
 
@@ -58,48 +63,17 @@ class _SystemHealthScreenState extends State<SystemHealthScreen> {
     }
   }
 
-  Color _c(AppPalette p, String s) => s == 'OK' ? p.profit : s == 'WARN' ? p.warning : s == 'BAD' ? p.loss : p.textMuted;
-
-  Widget _card(AppPalette p, Map<String, dynamic> x) {
-    final s = '${x['state'] ?? 'NOT AVAILABLE'}';
-    final c = _c(p, s);
-    return OWLCard(
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          Expanded(child: Text('${x['title'] ?? ''}', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: p.textSecondary))),
-          Icon(Icons.circle, size: 10, color: c),
-        ]),
-        const SizedBox(height: 6),
-        Text('${x['value'] ?? '-'}', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: s == 'NOT AVAILABLE' ? p.textMuted : p.textPrimary)),
-        const SizedBox(height: 4),
-        Text('${x['sub'] ?? ''}', style: TextStyle(fontSize: 11, color: p.textMuted)),
-      ]),
-    );
-  }
-
-  List<Widget> _grid(AppPalette p, List<Map<String, dynamic>> cards) {
-    final rows = <Widget>[];
-    for (var i = 0; i < cards.length; i += 2) {
-      rows.add(Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Expanded(child: _card(p, cards[i])),
-        const SizedBox(width: 10),
-        Expanded(child: i + 1 < cards.length ? _card(p, cards[i + 1]) : const SizedBox()),
-      ]));
-    }
-    return rows;
-  }
-
   @override
   Widget build(BuildContext context) {
     final p = context.palette;
     final r = _r;
     final List<Widget> kids;
     if (_busy && r == null) {
-      kids = [const Padding(padding: EdgeInsets.all(40), child: Center(child: CircularProgressIndicator()))];
+      kids = [LoadSpinner(onRetry: _load)];
     } else if (_bad(r)) {
       kids = [
-        OWLCard(edge: p.warning, child: Text(_problem(r), style: TextStyle(fontSize: 13, color: p.textPrimary))),
         SniperHealthTiles(r: _sh),
+        OWLCard(edge: p.warning, child: Text(_problem(r), style: TextStyle(fontSize: 13, color: p.textPrimary))),
         DataDoctorCard(gaps: _gaps, status: _st),
       ];
     } else {
@@ -108,6 +82,7 @@ class _SystemHealthScreenState extends State<SystemHealthScreen> {
       final warn = lpNum(ok['warn']);
       final hc = bad > 0 ? p.loss : warn > 0 ? p.warning : p.profit;
       kids = [
+        SniperHealthTiles(r: _sh),
         OWLCard(
           edge: hc,
           child: Row(children: [
@@ -116,22 +91,9 @@ class _SystemHealthScreenState extends State<SystemHealthScreen> {
             Expanded(child: Text('${ok['headline'] ?? ''}', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: p.textPrimary))),
           ]),
         ),
-        ..._grid(p, lpList(ok['cards'])),
-        OWLCard(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('Not measured yet', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: p.textPrimary)),
-            const SizedBox(height: 2),
-            Text('These are never faked: the backend has no real number for them.', style: TextStyle(fontSize: 11.5, color: p.textMuted)),
-            const SizedBox(height: 8),
-            for (final x in lpList(ok['not_measured']))
-              Padding(
-                padding: const EdgeInsets.only(bottom: 4),
-                child: Text('${x['title']}: ${x['why']}', style: TextStyle(fontSize: 12, color: p.textSecondary)),
-              ),
-          ]),
-        ),
+        DiagCompactCards(cards: lpList(ok['cards'])),
+        DiagNotMeasured(items: lpList(ok['not_measured'])),
         Text('${ok['note'] ?? ''}', style: TextStyle(fontSize: 11, color: p.textMuted)),
-        SniperHealthTiles(r: _sh),
         DataDoctorCard(gaps: _gaps, status: _st),
       ];
     }

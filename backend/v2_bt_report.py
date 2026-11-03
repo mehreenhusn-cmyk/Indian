@@ -41,7 +41,7 @@ def build(data_dir, source="PAPER", day=None, now=None):
         raise ValueError("source must be REPLAY, PAPER or SHADOW")
     con = B.open_ro(data_dir)
     if con is None:
-        return {"ready": False, "live": "LOCKED", "lines": ["Brain Trader ne abhi tak kuch save nahi kiya. Pehle tick ya replay chalao."], "note": "no Brain Trader file yet"}
+        return {"ready": False, "live": "LOCKED", "lines": ["Brain Trader has not saved anything yet. Run a tick or a replay first."], "note": "no Brain Trader file yet"}
     try:
         a, b = _window(day, now)
         dec = {k: n for k, n in _rows(con, "SELECT decision, COUNT(*) FROM bt_decision WHERE source=? AND close_ts>=? AND close_ts<? GROUP BY decision", (source, a, b))}
@@ -63,23 +63,23 @@ def build(data_dir, source="PAPER", day=None, now=None):
         guard = G.status(data_dir, now)
     finally:
         con.close()
-    lines = ["Din: %s se %s tak. Source: %s (nakli paisa, koi asli order nahi)." % (W.ist(a), W.ist(b), source)]
-    lines.append("Brain ne dekha: %d idea khule, %d WAIT, %d SKIP, %d bina raay (data kam)." % (dec.get("OPEN_LONG", 0) + dec.get("OPEN_SHORT", 0), dec.get("WAIT", 0), dec.get("SKIP", 0), dec.get("NO_OPINION", 0)))
+    lines = ["Day: %s to %s. Source: %s (pretend money, no real order)." % (W.ist(a), W.ist(b), source)]
+    lines.append("Brain saw: %d ideas opened, %d WAIT, %d SKIP, %d no opinion (not enough data)." % (dec.get("OPEN_LONG", 0) + dec.get("OPEN_SHORT", 0), dec.get("WAIT", 0), dec.get("SKIP", 0), dec.get("NO_OPINION", 0)))
     for text, c in skips:
-        lines.append("Sabse zyada SKIP wajah (%d baar): %s" % (c, text))
-    lines.append("Trades: %d khule, %d band. Net %+.2f USDT fee + slippage ke baad (costs %.2f USDT). %d plus mein, %d minus mein." % (opened, len(cl), net, cost, sum(1 for r in cl if r[3] > 0), sum(1 for r in cl if r[3] <= 0)))
-    lines.append("WAIT ke jawab: %d aaya, %d drop hua, %d abhi baaki." % (waits["CAME"], waits["DROPPED"], waits["PENDING"]))
-    lines.append("Abhi khule positions: %d." % len(op) if op else "Abhi koi position khuli nahi.")
+        lines.append("Top SKIP reason (%d times): %s" % (c, text))
+    lines.append("Trades: %d opened, %d closed. Net %+.2f USDT after fee + slippage (costs %.2f USDT). %d in profit, %d in loss." % (opened, len(cl), net, cost, sum(1 for r in cl if r[3] > 0), sum(1 for r in cl if r[3] <= 0)))
+    lines.append("WAIT answers: %d came, %d dropped, %d pending." % (waits["CAME"], waits["DROPPED"], waits["PENDING"]))
+    lines.append("Open positions now: %d." % len(op) if op else "No position is open now.")
     for v in nodata.values():
-        lines.append("Data nahi (%s): %s" % (v["symbol"], v["text"]))
+        lines.append("No data (%s): %s" % (v["symbol"], v["text"]))
     learned = [g for g in life["closed_by_state_side"] if g["n"] >= V.MIN_N]
     if learned:
         for g in learned:
-            lines.append("Seekha: %s %s mein %d trades, net %+.2f USDT (fee ke baad)." % (g["state"], g["side"], g["n"], g["net_usdt"]))
+            lines.append("Learned: %s %s has %d trades, net %+.2f USDT (after fee)." % (g["state"], g["side"], g["n"], g["net_usdt"]))
     else:
-        lines.append("Seekhne ke liye abhi data kam hai: kul %d band trades, kisi bhi group mein %d nahi hue. Tab tak koi USE / AVOID nahi bolega." % (life["total_closed"], V.MIN_N))
+        lines.append("Not enough data to learn yet: %d closed trades in total, no group has %d yet. Until then there is no USE / AVOID verdict." % (life["total_closed"], V.MIN_N))
     off = [c["key"] for c in guard.get("chips", []) if c["key"] == "kill_switch" and c["state"] == "TRIPPED"]
-    lines.append("Safety: LIVE band hai." + (" Kill switch ON hai, naye trade nahi khulenge." if off else ""))
+    lines.append("Safety: LIVE is locked." + (" Kill switch is ON, no new trade will open." if off else ""))
     return {"ready": True, "framework": VERSION, "source": source, "live": "LOCKED", "day_start": a, "day_end": b, "decisions": dec, "top_skips": [{"reason": t, "n": c} for t, c in skips],
             "trades": {"opened": opened, "closed": len(cl), "net_usdt": round(net, 2), "costs_usdt": round(cost, 2), "closed_rows": [{"symbol": r[0], "side": r[1], "exit": r[2], "net_usdt": round(r[3], 2)} for r in cl]},
             "open_positions": op, "waits": waits, "no_data": list(nodata.values()), "learned_groups": learned, "all_days": {"total_closed": life["total_closed"], "groups": life["closed_by_state_side"]},

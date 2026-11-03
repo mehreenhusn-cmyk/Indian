@@ -9,6 +9,7 @@ import '../widgets/owl_pressable.dart';
 import '../widgets/owl_route.dart';
 import '../widgets/report_download_card.dart';
 import 'ai_report_screen.dart';
+import 'app_problems_screen.dart';
 import 'ping_tab_screen.dart';
 import 'brain_chat_screen.dart';
 import 'simple_results_screen.dart';
@@ -60,6 +61,9 @@ class MoreScreen extends StatelessWidget {
               const SizedBox(width: 8),
               Text('Settings and tools', style: t.section.copyWith(fontSize: 22, fontWeight: FontWeight.w800)),
             ]),
+            const SizedBox(height: AppSpacing.l),
+            _row(context, Icons.bug_report_outlined, 'App Problems', 'Everything that fails or is slow, in one list: take a screenshot or press Copy all and send it (read-only)',
+                () => _open(context, 'App Problems', const AppProblemsScreen(), bare: true)),
             const SizedBox(height: AppSpacing.l),
             _label(context, 'MORE TABS'),
             _row(context, Icons.dashboard_outlined, 'Brain Dashboard', 'One home page: today net, Brain vs Current Bot 30 days, open trades, daily loss cap, recent days (read-only, live stays locked)',

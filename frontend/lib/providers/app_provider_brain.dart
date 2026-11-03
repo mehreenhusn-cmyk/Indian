@@ -62,6 +62,15 @@ extension AppProviderBrain on AppProvider {
     try {
       final res = await _getResilient(_u(path));
       if (res.statusCode == 404 && res.body.contains('"enabled"')) return {'state': 'off'};
+      if (res.statusCode == 503) {
+        // Part 1: the backend answered but was too slow or busy; say so plainly (it was shown as 'old backend' before)
+        String why = 'The backend is busy or slow right now. Pull down to try again.';
+        try {
+          final b = jsonDecode(res.body);
+          if (b is Map && b['error'] != null) why = '${b['error']}';
+        } catch (_) {}
+        return {'state': 'slow', 'error': why};
+      }
       if (res.statusCode != 200) return {'state': 'old', 'code': res.statusCode};
       final data = jsonDecode(res.body);
       if (data is Map<String, dynamic>) return data;

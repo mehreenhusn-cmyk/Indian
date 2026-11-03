@@ -97,7 +97,7 @@ def tick(con, data_dir, now=None, source="PAPER", interval="5m", version=None):
         try:
             r = M.paper_scan(con, data_dir, sym, interval, now, source, version)
         except (sqlite3.Error, ValueError, KeyError) as e:        # one coin never stops the round
-            out["no_data"].append({"symbol": sym, "code": "ERROR", "text": "Is coin par Brain mein error aaya (%s)." % type(e).__name__})
+            out["no_data"].append({"symbol": sym, "code": "ERROR", "text": "The Brain hit an error on this coin (%s)." % type(e).__name__})
             continue
         if r["status"] == "DATA_NOT_READY":
             out["no_data"].append({"symbol": sym, "code": r["why"]["code"], "text": r["why"]["text"]})

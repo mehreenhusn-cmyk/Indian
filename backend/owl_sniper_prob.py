@@ -93,18 +93,24 @@ def log_loss(ps, ys):
     return round(tot / len(ps), 4)
 
 
+def _net(t):
+    """Net result of one trade: USDT for the Sniper's own trades, R for bridge examples (FILE 12). Never mixed inside one call."""
+    return t["net_usdt"] if "net_usdt" in t else t["net_r"]
+
+
 def _rows(trades, ps, cut):
-    """Win rate and net USDT of the trades whose win chance was >= cut."""
+    """Win rate and net result (USDT, or R for bridge examples) of the trades whose win chance was >= cut."""
     sel = [t for t, p in zip(trades, ps) if p >= cut]
     w = sum(1 for t in sel if t["win"])
     return {"cut": cut, "trades": len(sel), "wins": w, "win_rate": (w / float(len(sel))) if sel else None,
-            "win_low95": round(wilson_low(w, len(sel)), 3) if sel else None, "net_usdt": round(sum(t["net_usdt"] for t in sel), 4)}
+            "win_low95": round(wilson_low(w, len(sel)), 3) if sel else None, "net_usdt": round(sum(_net(t) for t in sel), 4)}
 
 
 # ---------------------------------------------------------------- learn + judge the floor
-def learn_model(train, test, floor=0.85):
-    """TRAIN trades -> model. TEST trades -> the honest check of the floor. -> dict (JSON friendly): ok, model, curve, floor_check, floor_verified, lines."""
-    res = {"version": VERSION, "ok": False, "floor": floor, "train_n": len(train), "test_n": len(test), "model": None, "base_train": None, "base_test": None,
+def learn_model(train, test, floor=0.85, unit="USDT"):
+    """TRAIN trades -> model. TEST trades -> the honest check of the floor. -> dict (JSON friendly): ok, model, curve, floor_check, floor_verified, lines.
+    unit "R" = bridge examples (FILE 12): the result is in R, so the key net_usdt in curve / floor_check then holds R, never USDT."""
+    res = {"version": VERSION, "ok": False, "floor": floor, "net_unit": unit, "train_n": len(train), "test_n": len(test), "model": None, "base_train": None, "base_test": None,
            "loss_train": None, "loss_test": None, "curve": [], "floor_check": None, "floor_verified": False, "feats": list(FEATS), "lines": []}
     L = res["lines"]
     wins = sum(1 for t in train if t["win"])
@@ -139,14 +145,22 @@ def learn_model(train, test, floor=0.85):
     res["floor_verified"] = bool(fc["trades"] >= MIN_FLOOR_TRADES and fc["win_rate"] is not None and fc["win_rate"] >= floor and fc["net_usdt"] > 0)
     L.append("On %d unseen TEST trades %.0f%% won in all (log loss %s; 0.69 would be a coin flip)." % (len(test), 100.0 * res["base_test"], res["loss_test"]))
     if fc["trades"]:
-        L.append("%.0f%% floor on TEST: %d signals rated %.0f%% or more, %d won (%.0f%%, could be as low as %.0f%%), net %+.2f USDT after fees." %
-                 (floor * 100, fc["trades"], floor * 100, fc["wins"], 100.0 * fc["win_rate"], 100.0 * fc["win_low95"], fc["net_usdt"]))
+        L.append("%.0f%% floor on TEST: %d signals rated %.0f%% or more, %d won (%.0f%%, could be as low as %.0f%%), net %+.2f %s after fees." %
+                 (floor * 100, fc["trades"], floor * 100, fc["wins"], 100.0 * fc["win_rate"], 100.0 * fc["win_low95"], fc["net_usdt"], unit))
     else:
         L.append("%.0f%% floor on TEST: no signal was rated %.0f%% or more." % (floor * 100, floor * 100))
     if res["floor_verified"]:
         L.append("RESULT: FLOOR PROVEN on unseen days. Signals of %.0f%% or more may pass." % (floor * 100))
     else:
         L.append("RESULT: FLOOR NOT PROVEN (needs %d or more signals at %.0f%%+ that really won %.0f%%+ and made a profit). No signal can pass. The floor is never lowered." % (MIN_FLOOR_TRADES, floor * 100, floor * 100))
+    return res
+
+
+def learn_bridge(train, test, floor=0.85):
+    """FILE 12: the same model, learned from BRIDGE examples (trades of Dual / Brain / main bot with labels, wins AND losses). Results are in R.
+    It is a SEPARATE result: it is never the Sniper's own proof. floor_verified is forced False and real_gate False, so it can feed LEARN (paper) only; the REAL 85% gate still needs the Sniper's own TEST days."""
+    res = learn_model(train, test, floor, "R")
+    res["bridge"], res["real_gate"], res["bridge_floor_ok"], res["floor_verified"] = True, False, res["floor_verified"], False
     return res
 
 
@@ -160,6 +174,7 @@ class OwlSniperLive(E.OwlSniperEngine):
         self.model = None
         self.model_result = None
         self.floor_verified = False
+        self.bridge_result = None                      # FILE 12: the bridge model; NEVER used by evaluate_live() and never sets floor_verified
 
     # ---- learning
     def learn(self, candle_sets):
@@ -169,6 +184,11 @@ class OwlSniperLive(E.OwlSniperEngine):
         self.model_result, self.model = res, res["model"]
         self.is_trained, self.floor_verified = res["ok"], res["floor_verified"]
         return res
+
+    def learn_bridge(self, train, test):
+        """FILE 12: learn from bridge examples (see learn_bridge()). Does NOT touch self.model, is_trained or floor_verified."""
+        self.bridge_result = learn_bridge(train, test, self.floor)
+        return self.bridge_result
 
     def run_all(self, candle_sets, n_trials=60, seed=42):
         """Part S2 search + Part S3 learning in one go. -> one JSON friendly dict with all the plain lines (Part S4 saves it)."""

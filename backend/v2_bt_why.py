@@ -24,8 +24,8 @@ import v2_store as S
 
 VERSION = "v2_bt_why 1 (Part 85b)"
 IST = 19800
-GAP_TEXT = {"exchange returned no candle": "Binance ne us waqt ki candle di hi nahi",
-            "too old to refill": "collector bahut der band raha (8 ghante se zyada), itni purani candles wapas nahi bharti"}
+GAP_TEXT = {"exchange returned no candle": "Binance did not give a candle for that time",
+            "too old to refill": "the collector was off for too long (more than 8 hours); candles that old are not refilled"}
 
 
 def dur(sec):
@@ -41,7 +41,7 @@ def _gap_text(reason):
     for k, v in GAP_TEXT.items():
         if reason and reason.startswith(k):
             return v
-    return reason or "koi reason save nahi hua (coin collector ki list se kuch der bahar rahi ya collector band tha)"
+    return reason or "no reason was saved (the coin was briefly outside the collector list, or the collector was off)"
 
 
 def _out(code, text, **facts):
@@ -67,7 +67,7 @@ def why(data_dir, symbol, interval="5m", now=None):
     now, need, step = int(time.time() if now is None else now), IND.need_candles(), D.STEP[interval]
     path = S.store_path(data_dir)
     if not os.path.isfile(path):
-        return _out("NO_MARKET_STORE", "Collector ne abhi tak kuch save hi nahi kiya (market store bana nahi).")
+        return _out("NO_MARKET_STORE", "The collector has not saved anything yet (the market store does not exist).")
     con = sqlite3.connect("file:%s?mode=ro" % urllib.parse.quote(path), uri=True, timeout=5)
     try:
         good, _bad = D.clean_candles(D.candles_from_store(con, symbol, interval, 0, 2 ** 31), interval)
@@ -78,40 +78,40 @@ def why(data_dir, symbol, interval="5m", now=None):
         if len(run) >= need and newest is not None and now - newest <= 4 * step:
             note = ""
             if len(good) > len(run):                                    # an older part sits behind a hole: say it, with the reason
-                note = " Pehle ke %d candle ek hole ke peeche hain (%s), wo use nahi hote." % (len(good) - len(run), _hole(con, symbol, interval, runs, step)[1])
-            return _out("OK", "Data theek hai: %d candles ek gap-free run mein.%s" % (len(run), note), **facts)
+                note = " The earlier %d candles are behind a hole (%s) and are not used." % (len(good) - len(run), _hole(con, symbol, interval, runs, step)[1])
+            return _out("OK", "Data is fine: %d candles in one gap-free run.%s" % (len(run), note), **facts)
         rn, col = _runner(data_dir), None                           # a collector problem is the main reason only when it is the whole story; otherwise it is added at the end
         if not K.is_enabled(data_dir):
-            col = ("COLLECTOR_OFF", "Candle collector ka switch OFF hai (v2_candles --off). Isliye naya data nahi aa raha.")
+            col = ("COLLECTOR_OFF", "The candle collector switch is OFF (v2_candles --off), so no new data is coming.")
         elif rn is not None and not rn["running"]:
-            col = ("COLLECTOR_STOPPED", "Collector worker chal nahi raha (Termux band hua ya Android ne maar diya). Heartbeat %s." %
-                   ("kabhi nahi mila" if rn["beat_age_s"] is None else dur(rn["beat_age_s"]) + " purana"))
-        more_txt = (" Upar se: " + col[1]) if col else ""
+            col = ("COLLECTOR_STOPPED", "The collector worker is not running (Termux was closed or Android killed it). Heartbeat %s." %
+                   ("never seen" if rn["beat_age_s"] is None else dur(rn["beat_age_s"]) + " old"))
+        more_txt = (" On top of that: " + col[1]) if col else ""
         fail = None
         for ts, note in con.execute("SELECT ts, note FROM collector_health WHERE status='CANDLES_FETCH_FAILED' AND note LIKE ? ORDER BY ts DESC LIMIT 5", ("%" + symbol + " " + interval + ":%",)).fetchall():
             seg = next((x for x in note.split("; ") if x.startswith(symbol + " " + interval + ": ")), None)
             if seg and fail is None:
                 fail = (ts, seg.split(": ", 1)[1])
         if fail and now - fail[0] <= 2 * 3600 and (newest is None or fail[0] >= newest):
-            return _out("FETCH_FAILED", "Binance se is coin ki candles lene mein error aaya (%s), %s pehle. Agli baar phir try hoga." % (fail[1][:60], dur(now - fail[0])), last_error_ts=fail[0], **facts)
+            return _out("FETCH_FAILED", "Fetching candles of this coin from Binance failed (%s), %s ago. It will be tried again next time." % (fail[1][:60], dur(now - fail[0])), last_error_ts=fail[0], **facts)
         if not good and col:
             return _out(col[0], col[1], **facts)
         if not good:
             on = symbol in K.pick_symbols(con, now)
-            return _out("NOT_FOLLOWED", "Is coin ki ek bhi candle save nahi hai. " + (
-                "Coin collector ki list mein hai, bas abhi pehli candles aani baaki hain." if on else
-                "Collector sirf top gainers / losers (max 40 coin) ki candles rakhta hai; ye coin abhi us list mein nahi hai."), on_list=on, **facts)
+            return _out("NOT_FOLLOWED", "Not a single candle of this coin is saved. " + (
+                "The coin is on the collector list, the first candles have just not arrived yet." if on else
+                "The collector keeps candles only of the top gainers / losers (max 40 coins); this coin is not on that list now."), on_list=on, **facts)
         if len(good) >= need and len(run) < need:
             (b, a, hole), txt = _hole(con, symbol, interval, runs, step)
-            return _out("GAP_CUT", "Candles ke beech ek hole aaya (%d candle gayab, %s se %s tak), isliye Brain us point par DATA_NOT_READY ho gaya. Wajah: %s. Naye run mein abhi %d candle hain, %d chahiye." %
+            return _out("GAP_CUT", "A hole appeared between the candles (%d candles missing, %s to %s), so the Brain went DATA_NOT_READY at that point. Reason: %s. The new run has %d candles so far, %d are needed." %
                         (hole, ist(b + step), ist(a - step), txt, len(run), need) + more_txt, gap_from=b + step, gap_to=a - step, gap_reason=txt, **facts)
         if len(run) < need:
             more = need - len(run)
-            cut = (" Pehle ke %d candle ek hole ke peeche hain (wajah: %s), wo use nahi hote." % (len(good) - len(run), _hole(con, symbol, interval, runs, step)[1])) if len(good) > len(run) else ""
-            return _out("TOO_FEW", "Coin follow ho raha hai par candles kam hain: %d mili, %d chahiye. Lagbhag %s aur lagega.%s" % (len(run), need, dur(more * step), cut) + more_txt, wait_sec=more * step, **facts)
+            cut = (" The earlier %d candles are behind a hole (reason: %s) and are not used." % (len(good) - len(run), _hole(con, symbol, interval, runs, step)[1])) if len(good) > len(run) else ""
+            return _out("TOO_FEW", "The coin is followed but candles are too few: %d found, %d needed. About %s more is needed.%s" % (len(run), need, dur(more * step), cut) + more_txt, wait_sec=more * step, **facts)
         if col:
-            return _out(col[0], col[1] + " Sabse nayi candle %s purani hai." % dur(now - newest), newest_ts=newest, **facts)
-        return _out("STALE", "Sabse nayi candle %s purani hai (%s). Collector ne naya data abhi nahi bhara." % (dur(now - newest), ist(newest)), newest_ts=newest, **facts)
+            return _out(col[0], col[1] + " The newest candle is %s old." % dur(now - newest), newest_ts=newest, **facts)
+        return _out("STALE", "The newest candle is %s old (%s). The collector has not filled new data yet." % (dur(now - newest), ist(newest)), newest_ts=newest, **facts)
     finally:
         con.close()
 

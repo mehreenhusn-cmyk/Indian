@@ -6,6 +6,7 @@ import '../providers/app_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/format.dart';
 import '../widgets/btc_live_tile.dart';
+import '../widgets/compare_books.dart';
 import '../widgets/dashboard_bits.dart';
 import '../widgets/dashboard_equity.dart';
 import '../widgets/dashboard_pairs.dart';
@@ -39,7 +40,7 @@ int _dashBodySig(AppProvider p) {
 
 /// Round 12: the Dashboard, answer first (UI rules 1, 2, 6, 7).
 ///   1 banners (only when something is wrong)   2 title + bot pill + link health   3 status line
-///   4 THE RESULT: the 30-day total is the headline, today / 7 days / open P&L / win rate sit under it
+///   4 THE RESULT: the Main bot's TODAY is the big headline (owner, 3 Nov 2026), 30 days / 7 days / open P&L / win rate sit under it, small
 ///   5 one verdict line from the Study Lab (what the numbers mean)   6 open pairs, one row per coin + side
 ///   7 BTC + Brain vs Bot   8 equity curve   9 ONE folded block "More" (calendar, movers, studies, health)
 /// Nothing was deleted: the old cards moved into the fold or into widgets/dashboard_bits.dart.
@@ -105,6 +106,8 @@ class DashboardScreen extends StatelessWidget {
                       _ResultHero(isLive: isLive, todayPnl: todayPnl, winRate: ((status['win_rate'] ?? 0.0) as num).toDouble(), openCount: ((status['open_count'] ?? 0) as num).toInt()),
                       if (isLive) ...[const SizedBox(height: AppSpacing.cardGap), const LiveWalletCard()],
                       const SizedBox(height: AppSpacing.cardGap),
+                      // Part 41: the books side by side (Main bot / Dual Bot paper / Brain / Sniper LEARN / Sniper Replay), same columns, never added.
+                      if (!isLive) const CompareBooks(),
                       const _ResultsVerdictLine(),
                       const SizedBox(height: AppSpacing.cardGap),
                       const DashboardPairs(),
@@ -139,8 +142,9 @@ class DashboardScreen extends StatelessWidget {
   }
 }
 
-/// THE RESULT card. Paper mode: the headline is the 30-day total (UI rule 6: today must not hide the month),
-/// tiles under it: Today, 7 days, Open P&L, Win rate. Live mode: the headline is the live open P&L and the
+/// THE RESULT card. Paper mode (Part 18): the headline is the MAIN BOT's today (the day starts 5:30 AM IST = 00:00 UTC), big; the 30-day total is only a small tile (it was the headline before, the owner wants today first).
+/// The label says it is the Main bot only: Dual Bot paper and Brain have their own numbers on their own screens, never added here.
+/// Tiles under it: 30 days, 7 days, Open P&L, Win rate. Live mode: the headline is the live open P&L and the
 /// tiles are margin used and open positions (paper stats do not exist there). Every number is printed once.
 class _ResultHero extends StatelessWidget {
   final bool isLive;
@@ -160,11 +164,11 @@ class _ResultHero extends StatelessWidget {
       selector: (_, x) => '${(x.openPnl * 100).round()}|${(x.pnl30d * 100).round()}',
       builder: (context, _, __) {
         final open = prov.openPnl;
-        final head = isLive ? open : prov.pnl30d;
+        final head = isLive ? open : todayPnl;
         final color = head > 0 ? p.profit : (head < 0 ? p.loss : p.textPrimary);
         final n30 = prov.trades30d;
-        final label = isLive ? 'Open P&L now (live account)' : 'Last 30 days, closed trades after fees';
-        final sub = isLive ? '$openCount open positions' : (n30 > 0 ? '$n30 trades' : 'no closed trades in 30 days yet');
+        final label = isLive ? 'Open P&L now (live account)' : 'Main bot, today (day starts 5:30 AM IST)';
+        final sub = isLive ? '$openCount open positions' : 'Main bot only. Dual Bot paper and Brain are shown apart.';
         return Container(
           width: double.infinity,
           padding: const EdgeInsets.all(AppSpacing.l),
@@ -186,9 +190,9 @@ class _ResultHero extends StatelessWidget {
                 const SizedBox(width: AppSpacing.s),
                 Expanded(child: StatTile(label: 'Open positions', value: '$openCount')),
               ] else ...[
-                Expanded(child: StatTile(label: 'Today', value: fmtSigned(todayPnl), tone: _tone(todayPnl))),
+                Expanded(child: StatTile(label: 'Main bot, 30 days', value: fmtSigned(prov.pnl30d), tone: _tone(prov.pnl30d), sub: n30 > 0 ? '$n30 trades' : 'no closed trades yet')),
                 const SizedBox(width: AppSpacing.s),
-                Expanded(child: StatTile(label: '7 days', value: fmtSigned(prov.pnl7d), tone: _tone(prov.pnl7d))),
+                Expanded(child: StatTile(label: 'Main bot, 7 days', value: fmtSigned(prov.pnl7d), tone: _tone(prov.pnl7d))),
               ],
             ]),
             if (!isLive) ...[

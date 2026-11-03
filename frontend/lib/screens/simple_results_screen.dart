@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/equity_line.dart';
+import '../widgets/load_state.dart';
 import '../widgets/owl_card.dart';
 import '../widgets/owl_route.dart';
 import 'results_screen.dart';
@@ -176,7 +177,7 @@ class _SimpleResultsScreenState extends State<SimpleResultsScreen> {
     final r = _r;
     final List<Widget> kids;
     if (_busy && r == null) {
-      kids = [const Padding(padding: EdgeInsets.all(40), child: Center(child: CircularProgressIndicator()))];
+      kids = [LoadSpinner(onRetry: _load)]; // Part 2: 12 s, then Retry
     } else if (_bad(r)) {
       kids = [_msg(p, r)];
     } else {

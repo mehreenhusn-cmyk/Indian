@@ -181,7 +181,7 @@ class SniperFloor extends StatelessWidget {
         ),
         const SizedBox(height: 4),
         Text(
-          ok ? 'The floor held on days the model never saw, so signals of $floorPct% or more may pass.' : 'While the floor is not proven, no signal can pass. The floor is never lowered to make it pass.',
+          ok ? 'The floor held on days the model never saw, so signals of $floorPct% or more may pass.' : 'While the floor is not proven, no REAL trade can pass (LEARN paper trades still run, see the top card). The floor is never lowered to make it pass.',
           style: TextStyle(fontSize: 11.5, color: p.textMuted),
         ),
       ]),

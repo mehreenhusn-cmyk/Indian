@@ -57,22 +57,22 @@ def extra(ctx, i):
     return out
 
 
-CLASH_TEXT = {"PRICE_UP_TSI_FALLING": "Dhyan: price upar ja raha hai par TSI gir raha hai (upar ki chaal mein jaan kam).",
-              "PRICE_DOWN_TSI_RISING": "Dhyan: price neeche ja raha hai par TSI chadh raha hai (neeche ki chaal mein jaan kam).",
-              "TSI_ABOVE_ZERO_BUT_UNDER_SIGNAL": "Dhyan: TSI zero ke upar hai par apni signal line ke neeche (taakat thandi pad rahi hai).",
-              "TSI_BELOW_ZERO_BUT_OVER_SIGNAL": "Dhyan: TSI zero ke neeche hai par signal line ke upar (neeche ka dabaav kam ho raha hai).",
-              "Z_ON_ONE_SIDE_OF_ZERO_OTHER_SIDE_OF_Z_SMA": "Dhyan: Z aur Z-SMA zero ke alag taraf hain."}
-STORM_TEXT = {"RED_BUILDING": "Histogram RED aur badh raha hai (bechne ka dabaav ban raha hai).", "RED_FADING": "Histogram RED hai par chhota ho raha hai.",
-              "GREEN_BUILDING": "Histogram GREEN aur badh raha hai (kharidne ka dabaav ban raha hai).", "GREEN_FADING": "Histogram GREEN hai par chhota ho raha hai."}
+CLASH_TEXT = {"PRICE_UP_TSI_FALLING": "Note: price is going up but TSI is falling (the up move is losing strength).",
+              "PRICE_DOWN_TSI_RISING": "Note: price is going down but TSI is rising (the down move is losing strength).",
+              "TSI_ABOVE_ZERO_BUT_UNDER_SIGNAL": "Note: TSI is above zero but below its own signal line (strength is cooling).",
+              "TSI_BELOW_ZERO_BUT_OVER_SIGNAL": "Note: TSI is below zero but above its signal line (the down pressure is easing).",
+              "Z_ON_ONE_SIDE_OF_ZERO_OTHER_SIDE_OF_Z_SMA": "Note: Z and Z-SMA are on different sides of zero."}
+STORM_TEXT = {"RED_BUILDING": "Histogram is RED and growing (selling pressure is building).", "RED_FADING": "Histogram is RED but shrinking.",
+              "GREEN_BUILDING": "Histogram is GREEN and growing (buying pressure is building).", "GREEN_FADING": "Histogram is GREEN but shrinking."}
 
 
 def lines_for(t, x):
     """Plain sentences for one candle: t = Part 84b tags, x = extra()."""
-    ud = {"UP": "upar gaya", "DOWN": "neeche gaya", "FLAT": "lagbhag flat raha"}
-    o = ["Price EMA50 ke %s hai, SD zone %s, pichhle 12 candle mein %s." % ("upar" if t.get("price_vs_ema") == "ABOVE" else "neeche", t.get("sd_zone"), ud.get(x["price_dir"], "?")),
-         "TSI zero ke %s, signal line ke %s, %s." % ("upar" if x["tsi_vs_zero"] == "ABOVE_ZERO" else "neeche", "upar" if x["tsi_vs_signal"] == "ABOVE" else "neeche", "chadh raha hai" if x["tsi_dir"] == "RISING" else "gir raha hai"),
+    ud = {"UP": "went up", "DOWN": "went down", "FLAT": "stayed almost flat"}
+    o = ["Price is %s EMA50, SD zone %s, in the last 12 candles it %s." % ("above" if t.get("price_vs_ema") == "ABOVE" else "below", t.get("sd_zone"), ud.get(x["price_dir"], "?")),
+         "TSI is %s zero, %s its signal line, and %s." % ("above" if x["tsi_vs_zero"] == "ABOVE_ZERO" else "below", "above" if x["tsi_vs_signal"] == "ABOVE" else "below", "rising" if x["tsi_dir"] == "RISING" else "falling"),
          STORM_TEXT.get(x["storm"], ""),
-         "Z zero ke %s, Z-SMA ke %s, zero ki %s." % ("upar" if x["z_vs_zero"] == "ABOVE_ZERO" else "neeche", "upar" if t.get("z_vs_sma") == "ABOVE" else "neeche", "taraf" if t.get("z_way") == "TOWARD_ZERO" else "door ja raha hai")]
+         "Z is %s zero, %s Z-SMA, and %s." % ("above" if x["z_vs_zero"] == "ABOVE_ZERO" else "below", "above" if t.get("z_vs_sma") == "ABOVE" else "below", "moving toward zero" if t.get("z_way") == "TOWARD_ZERO" else "moving away from zero")]
     o += [CLASH_TEXT[c] for c in x["clash"]]
     return [s for s in o if s]
 
@@ -90,7 +90,7 @@ def view(data_dir, symbol, interval="5m", now=None):
     x = extra(ctx, i)
     d = R.decide(ctx, t, i)
     lines = lines_for(t, x)
-    lines.append("Brain abhi: %s (%s). %s" % (d["decision"], t.get("market_state"), d["reason"]))
+    lines.append("Brain now: %s (%s). %s" % (d["decision"], t.get("market_state"), d["reason"]))
     return {"ready": True, "symbol": symbol, "interval": interval, "candle_time": W.ist(run[i][0] + 300 if interval == "5m" else run[i][0] + 180), "tags": t, "chart": x, "brain": {"decision": d["decision"], "side": d["side"], "reason": d["reason"], "wait_for": d["wait_for"]}, "lines": lines}
 
 

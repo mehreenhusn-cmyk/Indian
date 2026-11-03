@@ -1,5 +1,5 @@
 """api/sniper_paper.py - OwlSniper Round 30: the ONE write route of the Sniper, POST /api/v2/sniper_enter {"symbol": "BTCUSDT"} (the PAPER ENTER button), and the background loop that follows armed signals.
-PAPER ONLY. Live orders do not exist. The route runs the SAME ten gates of owl_sniper_exec.py as the loop (armed, paper, signal, fresh, TRENDING, 85% floor proven, stop range, cap 1, kill switch, same signal never twice);
+PAPER ONLY. Live orders do not exist. PART 4: the route and the loop use EX.route(): the real gate first, else the separate LEARN gate (tag LEARN, tiny paper size); GET /api/v2/sniper_learn shows its progress. The route runs the SAME ten gates of owl_sniper_exec.py as the loop (armed, paper, signal, fresh, TRENDING, 85% floor proven, stop range, cap 1, kill switch, same signal never twice);
 if the executor is not armed the answer is decision BLOCKED, gate "armed", text "The executor is OFF (not armed)." and nothing is opened. No route can arm: arming stays the 2-step Termux command.
 Same switch as the other V2 routes: 404 until the file v2_api_enabled exists in the data folder, and off for good while the file v2_sniper_off exists.
 The loop (a daemon thread started once when the router is made) wakes every LOOP_SEC seconds, never faster: owl_sniper_paper.step() closes the books of finished Sniper trades (net result to the executor, time limit exit) and,
@@ -13,11 +13,13 @@ import time
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import owl_sniper_feed as F
+import owl_sniper_learn as LN
 import owl_sniper_paper as SP
 from api.sniper import api_enabled
 
 VERSION = "api/sniper_paper 1 (Round 30)"
 ENTER_PATH = "/api/v2/sniper_enter"
+LEARN_PATH = "/api/v2/sniper_learn"          # PART 4: GET, LEARN status + progress n of 30 + what the last loop turn did (read only)
 LOOP_SEC = 20
 _state = {"started": False, "last": None, "turns": 0}
 _state_lock = threading.Lock()
@@ -43,7 +45,20 @@ def enter_answer(data_dir, symbol, now=None):
         return 503, {"decision": "BLOCKED", "gate": "paper", "text": "The paper trader is not available in this backend.", "order": None}
     body = SP.enter_symbol(data_dir, pt, ts, sym, now)
     body["paper_only"] = True
+    body["learn"] = LN.progress(data_dir)
     return 200, body
+
+
+def learn_answer(data_dir):
+    """-> (http status, body) for GET /api/v2/sniper_learn. Read only. Never raises."""
+    if not api_enabled(data_dir):
+        return 404, {"enabled": False, "note": "the V2 data API is off"}
+    try:
+        with _state_lock:
+            last, turns = _state["last"], _state["turns"]
+        return 200, {"learn": LN.status(data_dir), "last_turn": last, "turns": turns, "paper_only": True}
+    except Exception as e:
+        return 200, {"learn": {"state": "broken", "text": str(e)[:80]}, "last_turn": None, "turns": 0, "paper_only": True}
 
 
 def _loop(data_dir):
@@ -78,6 +93,11 @@ def make_router(require_api_token, data_dir):
     @r.post(ENTER_PATH, dependencies=[Depends(require_api_token)])
     async def v2_sniper_enter(payload: dict = None):
         st, body = await asyncio.to_thread(enter_answer, data_dir, (payload or {}).get("symbol"))
+        return JSONResponse(body, status_code=st)
+
+    @r.get(LEARN_PATH, dependencies=[Depends(require_api_token)])
+    async def v2_sniper_learn():
+        st, body = await asyncio.to_thread(learn_answer, data_dir)
         return JSONResponse(body, status_code=st)
 
     start_loop(data_dir)
