@@ -3,6 +3,7 @@ import 'dart:ui' show FontFeature;
 import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
+import 'btc_lab_card.dart';
 import 'dual_trade_card.dart';
 import 'owl_card.dart';
 import 'owl_status_pill.dart';
@@ -320,6 +321,7 @@ class _SimpleTabState extends State<SimpleTab> {
       UniverseStrip(desk: widget.desk, archive: widget.archive),
       _signalTypeCard(p),
       _doneCard(p),
+      const BtcLabCard(),
       Padding(
         padding: const EdgeInsets.only(top: 2, bottom: 4),
         child: Text('Want more detail? Now has the full trade cards, Brain has the scores and reports.', style: context.type.metadata),

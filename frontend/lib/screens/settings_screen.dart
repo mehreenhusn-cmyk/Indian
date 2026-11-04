@@ -1768,7 +1768,7 @@ class _BackupTileState extends State<_BackupTile> {
                 Text('Backup history',
                     style: AppTypography.primaryData.copyWith(color: p.textPrimary, fontWeight: FontWeight.w700, fontSize: 15)),
                 const SizedBox(height: 2),
-                Text('Trades, alerts aur AI history Telegram pe zip me bhejo (API keys nahi jati).',
+                Text('Send trades, alerts and AI history to Telegram as a zip (API keys are not included).',
                     style: AppTypography.metadata.copyWith(color: p.textMuted, fontSize: 12)),
               ],
             ),

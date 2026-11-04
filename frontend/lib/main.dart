@@ -32,6 +32,7 @@ import 'services/market_mode.dart';
 import 'services/websocket_service.dart';
 import 'services/foreground_service.dart';
 import 'theme/app_theme.dart';
+import 'theme/app_scale.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -132,6 +133,7 @@ class OwlApp extends StatelessWidget {
             // Instant theme switch: the default 200ms animation lerps the
             // background while text colors flip at once -> ghost/faded text.
             themeAnimationDuration: Duration.zero,
+            builder: (context, child) => AppScale.clampText(context, child), // R23: system font scale clamped 0.9 - 1.15
             home: OwlWelcomeOverlay(prefs: prefs, child: const MarketRoot()),
             debugShowCheckedModeBanner: false,
           );

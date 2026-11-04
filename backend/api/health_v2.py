@@ -5,7 +5,7 @@ Checks (state OK / WARN / BAD / NOT_AVAILABLE, each with one plain sentence):
   scan         v2_sniper_live.json: how old, status, how many coins were stale
   candles      newest saved 5m candle of any coin (age) + is the candle collector switch (v2_candles_enabled) on
   switches     v2_sniper_off (stops the self-start), the refresh lock, the 15m files
-  executor     NOT_AVAILABLE until owl_sniper_exec.py (Round 22) exists; nothing is made up
+  executor     (R21) measured from owl_sniper_exec.status: kill switch, open paper trades, day P&L; NOT_AVAILABLE only when the state cannot be read
 Overall = the worst state of the measured checks. Same switch as the other V2 routes: 404 (enabled False) until the file v2_api_enabled exists in the data folder.
 MOUNTED in Round 24 (api_server.py, try / except block next to the sniper route; owner gave "mount ok")."""
 import os
@@ -17,7 +17,7 @@ import owl_sniper_feed as F
 import owl_sniper_tf as TF
 import v2_candles as VC
 
-VERSION = "api/health_v2 1 (Round 23)"
+VERSION = "api/health_v2 2 (R21)"
 PATH = "/api/v2/sniper_health"
 FLAG_NAME = "v2_api_enabled"
 ORDER = {"OK": 0, "NOT_AVAILABLE": 0, "WARN": 1, "BAD": 2}
@@ -62,6 +62,25 @@ def newest_candle_ts(d):
         con.close()
 
 
+def _executor_check(d, now):
+    """R21: the paper executor (owl_sniper_exec.py) exists, so this card is MEASURED (it said 'not built yet' before). Read-only; any problem reading = NOT_AVAILABLE with the reason."""
+    try:
+        import owl_sniper_exec as X
+        e = X.status(d, now)
+    except Exception as ex:
+        return _c("executor", "Executor", "NOT_AVAILABLE", "The paper executor state could not be read (%s)." % type(ex).__name__)
+    if not e.get("ok", True):
+        return _c("executor", "Executor", "BAD", "The paper executor state file is broken: %s" % str(e.get("text", ""))[:120])
+    kill = e.get("kill") or {}
+    if kill.get("on"):
+        return _c("executor", "Executor", "BAD", "The paper executor kill switch is ON (%s). No new paper order until the owner resets it." % (kill.get("reason") or "no reason saved"))
+    try:
+        pnl = "%+.2f" % float(e.get("day_pnl") or 0)
+    except (TypeError, ValueError):
+        pnl = "n/a"
+    return _c("executor", "Executor", "OK", "Paper executor OK: kill switch off, %d open of max %s, day P&L %s USDT. Live orders are not built, so no real order can be sent." % (len(e.get("open") or []), e.get("max_open", "?"), pnl))
+
+
 def build(d, now):
     """The answer dict. Pure apart from reading files: no network, no write."""
     model, live = F.read_json(d, F.MODEL_FILE), F.read_json(d, F.LIVE_FILE)
@@ -92,7 +111,7 @@ def build(d, now):
     busy = F.lock_busy(d, now)
     f15 = F.read_json(d, TF.files("15m")[0]) is not None
     checks.append(_c("switches", "Switches", "WARN" if off else "OK", "Self-start is %s. A refresh is %s. 15m model file: %s." % ("OFF (file v2_sniper_off)" if off else "ON", "running now" if busy else "not running", "yes" if f15 else "not made yet")))
-    checks.append(_c("executor", "Executor", "NOT_AVAILABLE", "The executor (owl_sniper_exec.py) is not built yet, so there is nothing to measure. OwlSniper is WATCH ONLY."))
+    checks.append(_executor_check(d, now))
     worst = max((c["state"] for c in checks), key=lambda s: ORDER[s])
     head = {"OK": "OwlSniper is healthy.", "WARN": "OwlSniper works, but something needs a look.", "BAD": "OwlSniper has a problem."}[worst if worst != "NOT_AVAILABLE" else "OK"]
     return {"version": VERSION, "overall": "OK" if worst == "NOT_AVAILABLE" else worst, "headline": head, "checks": checks, "watch_only": True, "saved_at": int(now)}

@@ -8,6 +8,8 @@ import 'package:flutter/material.dart';
 /// Numbers use tabular figures so live prices/P&L do not "jitter" sideways
 /// when digits change. The bundled Inter files only ship Regular (400) and
 /// Bold (700); w500 resolves to Regular and w600 to Bold.
+/// R23 text scale (OWL_BRIEF/06): hero 28 (heroXL kept as a name, now 28), title 20, heading 16, row title 15, row number 14.5 (15 in the plan: kept 0.5 smaller so 6-decimal prices still fit 360dp),
+/// secondary 13, caption / label / metadata 12, nothing below 11 (eyebrow 11). System font scale is clamped in app_scale.dart.
 class AppTypography {
   AppTypography._();
 
@@ -26,7 +28,7 @@ class AppTypography {
   /// UI1: the ONE big number of a screen (Today P&L, Net). SR1a: 36px, tight tracking.
   static const TextStyle heroXL = TextStyle(
     fontFamily: fontFamily,
-    fontSize: 36,
+    fontSize: 28,
     fontWeight: FontWeight.w700,
     letterSpacing: -1.0,
     height: 1.05,
@@ -41,7 +43,7 @@ class AppTypography {
 
   static const TextStyle primaryData = TextStyle(
     fontFamily: fontFamily,
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: FontWeight.w500,
     fontFeatures: _tabular,
   );
@@ -55,7 +57,7 @@ class AppTypography {
 
   static const TextStyle metadata = TextStyle(
     fontFamily: fontFamily,
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: FontWeight.w400,
     fontFeatures: _tabular,
   );
@@ -67,7 +69,7 @@ class AppTypography {
   /// hierarchy comes from size, colour and tracking.)
   static const TextStyle label = TextStyle(
     fontFamily: fontFamily,
-    fontSize: 10.5,
+    fontSize: 12,
     fontWeight: FontWeight.w400,
     letterSpacing: 0.25,
     fontFeatures: _tabular,
@@ -86,7 +88,7 @@ class AppTypography {
   /// micro-cap prices (0.123456) still fit on a 360dp phone.
   static const TextStyle priceRow = TextStyle(
     fontFamily: fontFamily,
-    fontSize: 13.5,
+    fontSize: 14.5,
     fontWeight: FontWeight.w700,
     letterSpacing: -0.35,
     fontFeatures: _tabular,
@@ -112,7 +114,7 @@ class AppTypography {
   /// Tiny uppercase eyebrow above a section ("P&L TODAY").
   static const TextStyle eyebrow = TextStyle(
     fontFamily: fontFamily,
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: FontWeight.w700,
     letterSpacing: 0.8,
   );

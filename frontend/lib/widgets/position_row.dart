@@ -8,7 +8,7 @@ import 'owl_pressable.dart';
 import '../screens/position_detail_screen.dart';
 import 'position_card.dart';
 
-/// Round 15: ONE compact row per open position (UI rules 1, 2, 7). Profit is the big number, the percent sits under it.
+/// R22b: price line fits (no '...'), % in one pill. Round 15: ONE compact row per open position (UI rules 1, 2, 7). Profit is the big number, the percent sits under it.
 ///   left   coin, LONG / SHORT chip, "NO STOP" warning when the exchange has no resting stop, then "open 12 min" and entry -> now
 ///   right  profit in USDT (big, green / red), ROI percent under it
 /// Tap the row = it opens the FULL old PositionCard right under it (chart, entry / SL / TP ladder, move SL, set TP, close) plus the AI advice badge.
@@ -79,13 +79,20 @@ class _PositionRowState extends State<PositionRow> {
                 _chip(context, isLong ? 'LONG' : 'SHORT', sideColor),
                 if (unprotected) ...[const SizedBox(width: 6), _chip(context, 'NO STOP', p.loss)],
               ]),
-              if (meta.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 3), child: Text(meta, maxLines: 1, overflow: TextOverflow.ellipsis, style: context.type.metadata)),
+              // R22b: the price line shrinks to fit instead of ending in '...' (was '0.005324 -> 0.00...')
+              if (meta.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 3), child: FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text(meta, maxLines: 1, softWrap: false, style: context.type.metadata))),
             ]),
           ),
           const SizedBox(width: 8),
           Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
             Text(pnl == null ? '--' : fmtSigned(pnl), style: context.type.number.copyWith(fontSize: 20, fontWeight: FontWeight.w800, color: pnlColor)),
-            Text(roi == null ? '--' : '${fmtSigned(roi, 1)}%', style: context.type.metadata.copyWith(color: pnlColor)),
+            const SizedBox(height: 2),
+            // R22b: ONE solid pill for the change % (UI spec: pill = change %, never decoration)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1.5),
+              decoration: BoxDecoration(color: pnlColor.withOpacity(0.12), borderRadius: BorderRadius.circular(AppSpacing.radiusPill)),
+              child: Text(roi == null ? '--' : '${fmtSigned(roi, 1)}%', style: context.type.metadata.copyWith(fontSize: 12, fontWeight: FontWeight.w700, color: pnlColor)),
+            ),
           ]),
           Icon(_open ? Icons.expand_less_rounded : Icons.expand_more_rounded, size: 20, color: p.textMuted),
         ]),

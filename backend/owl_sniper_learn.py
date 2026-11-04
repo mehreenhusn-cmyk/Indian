@@ -108,9 +108,10 @@ def set_config(d, enabled=None, floor=None, size=None, now=None):
     return s
 
 
-def decide(d, card, now=None, interval="5m", opener=None):
+def decide(d, card, now=None, interval="5m", opener=None, explore=False):
     """One Sniper card -> {decision OPEN | WOULD_OPEN | BLOCKED, gate, text, order, tag}. Never raises. Paper only: the caller's opener is a paper opener.
-    The card may carry any regime and any win chance above the LEARN floor. The real 85% gate is NOT consulted here."""
+    The card may carry any regime and any win chance above the LEARN floor. The real 85% gate is NOT consulted here.
+    R3c: explore=True (the autopilot is still learning) = the win-chance floor is NOT checked: tiny paper trades teach wins AND losses. Every other LEARN gate stays (signal, fresh, stop range, cap, kill switch, daily loss, same signal once)."""
     now = time.time() if now is None else now
     try:
         s = _load(d)
@@ -126,7 +127,7 @@ def decide(d, card, now=None, interval="5m", opener=None):
     if not isinstance(t, (int, float)) or now - t > FRESH_STEPS * TF.step(interval):
         return _block("fresh", "The signal candle is too old to act on.")
     p = c.get("confidence")
-    if not isinstance(p, (int, float)) or p < s["floor"]:
+    if not explore and (not isinstance(p, (int, float)) or p < s["floor"]):
         return _block("floor", "Win chance is below the LEARN floor of %.0f%%." % (s["floor"] * 100))
     e, sl = c.get("entry_price"), c.get("stop_loss")
     if not (isinstance(e, (int, float)) and isinstance(sl, (int, float)) and e > 0):
@@ -144,7 +145,7 @@ def decide(d, card, now=None, interval="5m", opener=None):
     if cid in [o.get("id") for o in s["orders"]] or cid in s["open"]:
         return _block("duplicate", "This exact signal was already used.")
     order = {"id": cid, "mode": "learn", "tag": TAG, "symbol": c["symbol"], "side": c["side"], "entry": e, "stop": sl, "take_profit": c.get("take_profit"),
-             "stop_pct": round(dist, 3), "invest_usdt": s["size_usdt"], "confidence": p, "regime": c.get("regime"), "signal_t": t, "created": int(now)}
+             "stop_pct": round(dist, 3), "invest_usdt": s["size_usdt"], "confidence": p, "regime": c.get("regime"), "signal_t": t, "created": int(now), "explore": bool(explore)}
     if opener is None:
         return {"decision": "WOULD_OPEN", "gate": "", "text": "Every LEARN gate passed. No opener was given, so nothing was opened.", "order": order, "tag": TAG}
     s["orders"] = (s["orders"] + [{"id": cid, "ts": int(now), "opened": False}])[-KEEP_ORDERS:]     # saved BEFORE the opener runs: if saving fails, nothing is opened

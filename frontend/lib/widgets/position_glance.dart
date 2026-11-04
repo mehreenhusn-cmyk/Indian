@@ -199,9 +199,9 @@ class _PositionsSearchBarState extends State<PositionsSearchBar> {
     final p = context.palette;
     final border = OutlineInputBorder(borderRadius: BorderRadius.circular(AppSpacing.radiusPill), borderSide: BorderSide(color: p.border));
     return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.s),
+      padding: const EdgeInsets.only(bottom: 4),
       child: SizedBox(
-        height: 38,
+        height: 36,
         child: TextField(
           controller: _c,
           onChanged: (v) => positionsSearch.value = v,
@@ -234,7 +234,9 @@ class _PositionsSearchBarState extends State<PositionsSearchBar> {
 }
 
 class PositionsTopBar extends StatelessWidget {
-  const PositionsTopBar({super.key});
+  /// R22a: true = only the two sort chips (no Spacer, no bottom gap) so they can sit in the same row as the UP / DOWN pills.
+  final bool inline;
+  const PositionsTopBar({super.key, this.inline = false});
 
   @override
   Widget build(BuildContext context) {
@@ -258,10 +260,11 @@ class PositionsTopBar extends StatelessWidget {
         if (w + l == 0) return const SizedBox.shrink();
         final p = context.palette;
         return Padding(
-          padding: const EdgeInsets.only(bottom: AppSpacing.s),
+          padding: EdgeInsets.only(bottom: inline ? AppSpacing.xs : AppSpacing.s),
           child: Row(
+            mainAxisSize: inline ? MainAxisSize.min : MainAxisSize.max,
             children: [
-              const Spacer(),
+              if (!inline) const Spacer(),
               ValueListenableBuilder<int>(
                 valueListenable: positionsSortMode,
                 builder: (context, mode, _) {
@@ -283,7 +286,7 @@ class PositionsTopBar extends StatelessWidget {
                           children: [
                             Text(label,
                                 style: context.type.metadata
-                                    .copyWith(fontSize: 11, color: c, fontWeight: FontWeight.w700)),
+                                    .copyWith(fontSize: 12, color: c, fontWeight: FontWeight.w700)),
                             if (active) ...[
                               const SizedBox(width: 2),
                               Icon(down ? Icons.arrow_downward_rounded : Icons.arrow_upward_rounded, size: 12, color: c),

@@ -22,6 +22,7 @@ import owl_sniper_barriers as BR
 import owl_sniper_corr as CR
 import owl_sniper_exec as EX
 import owl_sniper_feed as F
+import owl_sniper_killreset as KR
 import owl_sniper_learn as LN
 import owl_sniper_tf as TF
 
@@ -111,10 +112,26 @@ def _corr_note(r, symbol, now):
     return r
 
 
+def _learned_tp(d, o):
+    """R4: only for the paper LEARN lane. When the booking learner (owl_sniper_exitlearn) is LEARNED_EXIT for this market state (it beat the fixed 2R on unseen days) the profit line moves to its R multiple of the stop distance.
+    Stop, size and entry are untouched. Any problem or the owner switch (file v2_exitlearn_off) = the order stays as it is."""
+    try:
+        import owl_sniper_exitlearn as XL
+        k = XL.live_tp_r(d, o.get("regime"), INTERVAL)
+        e, sl = float(o["entry"]), float(o["stop"])
+        if not k or e <= 0 or abs(e - sl) <= 0:
+            return o
+        return dict(o, take_profit=e + abs(e - sl) * k if o["side"] == "LONG" else e - abs(e - sl) * k, exit_rule="tp%gR" % k)
+    except Exception:
+        return o
+
+
 def make_opener(d, pt, now=None, learn=False):
     """-> opener(order) for EX.decide() / LN.decide(). True only when ONE paper trade is open and noted. learn=True: the trade gets source \"sniper_learn\"."""
     def opener(o):
         try:
+            if learn:
+                o = _learned_tp(d, o)
             tp = o.get("take_profit")
             if not isinstance(tp, (int, float)) or tp <= 0:
                 return False                                            # the triple barrier needs its profit line
@@ -204,6 +221,7 @@ def step(d, pt, ts, now=None):
     now = time.time() if now is None else now
     with LOCK:
         try:
+            KR.maybe_reset(d, now)                                    # a LEARN kill that the daily loss limit switched on is released on a new UTC day
             res = {"sync": sync(d, pt, ts, now)}
             if os.path.exists(os.path.join(os.path.realpath(d), F.OFF_FILE)):
                 return dict(res, auto="off")

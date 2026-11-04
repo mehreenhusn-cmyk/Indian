@@ -52,6 +52,13 @@ CompareRow dualRow(Map<String, dynamic> r) {
   if (r.isEmpty) return _bad('Dual Bot paper', sub, _day, 'Dual Bot numbers could not be read right now.');
   if ('${r['state']}' == 'error') return _bad('Dual Bot paper', sub, _day, 'Dual Bot numbers could not be read right now.');
   if ('${r['state']}' == 'none') return _bad('Dual Bot paper', sub, _day, 'No Dual Bot archive yet.', state: 'empty');
+  final dt = _m(r['today']); // R16a: the one "Dual today" (alt coins, closed since 5:30 AM IST, from the permanent archive; BTC apart). Old backends have no 'today': the group sum below stays as the fallback.
+  if ('${dt['state']}' == 'ok') {
+    final al = _m(dt['alts']);
+    final c = _i(al['closed']) ?? 0;
+    if (c == 0) return _bad('Dual Bot paper', sub, _day, 'No trade closed today yet.', state: 'empty');
+    return CompareRow(book: 'Dual Bot paper', sub: sub, period: _day, trades: c, wins: _i(al['wins']), net: _n(al['realized']), note: 'Alt coins only. BTC is kept apart. Same number as the Dual screen.');
+  }
   var n = 0, w = 0;
   var net = 0.0;
   for (final g in _m(r['groups']).values) {

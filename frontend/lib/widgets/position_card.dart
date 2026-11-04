@@ -405,14 +405,14 @@ class _PositionCardState extends State<PositionCard> {
                           ),
                         if (aiAvoid)
                           Tooltip(
-                            message: 'AI salah (bot ab bhi trade rakhta hai): ye setup pehle naye trades par bhi kamzor raha - $aiAvoidWhy',
+                            message: 'AI advice (the bot still keeps this trade): this setup was weak on new trades before too - $aiAvoidWhy',
                             triggerMode: TooltipTriggerMode.tap,
                             showDuration: const Duration(seconds: 6),
                             child: const _BadgePill(text: 'AI: AVOID', color: AppColors.warning),
                           ),
                         if (mlAvoid)
                           Tooltip(
-                            message: 'ML salah (bot ab bhi trade rakhta hai): model ne naye trades par asli result se match karke seekha hai, aur use ye setup kamzor laga',
+                            message: 'ML advice (the bot still keeps this trade): the model learned from real results on new trades and rates this setup weak',
                             triggerMode: TooltipTriggerMode.tap,
                             showDuration: const Duration(seconds: 6),
                             child: const _BadgePill(text: 'ML: AVOID', color: AppColors.warning),

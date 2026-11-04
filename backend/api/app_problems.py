@@ -8,7 +8,8 @@ Checks (each in its OWN try / except: one broken check never hides the others, i
   Health   every BAD / WARN card of System Health (v2_sys_health.build): feed age, collector, Brain tick, disk ...
   Candles  candle gaps saved in gap_log during the last 48 hours, worst coins first, with the command that refills them
   Waiting  a report that says NOT ENOUGH DATA (LEARN has n of 30 trades)
-  Not measured  one INFO line: slow routes are NOT timed by the backend yet; the app's own failed fetches are listed by the app (Part 48), not here.
+  Slow routes  (R21) routes whose last answers were slow (api/route_timing.py: average over 1.5 s or one answer over 6 s, at least 3 calls in 30 minutes); one INFO line when nothing was timed yet.
+R21 lighter: system health + candle gaps are read at most once per HEAVY_SEC (120 s), the gap list needs ONE query, and the answer shows how long each check took (timings_ms).
 Item = {id, sev BAD / WARN / INFO, area, where (route, file or screen), text (plain, says what failed), fix (one plain step), ts, when (UTC text)}. Sorted BAD, WARN, INFO. Max 60.
 Answer: state (OK / PROBLEMS / off), headline, counts {BAD, WARN, INFO}, items, checked (list of check names), copy_text (the whole list as plain lines for the Copy all button), answer_age_sec, read_only (always true).
 Light on the phone: built at most once per CACHE_SEC (30 s), ONE build at a time (a second call gets the old answer, or state "busy" when there is none).
@@ -25,12 +26,23 @@ import urllib.parse
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from api.sniper import api_enabled
 
-VERSION = "api/app_problems 1 (Part 47)"
+VERSION = "api/app_problems 2 (R21)"
 PATH = "/api/v2/app_problems"
-CACHE_SEC, MAX_ITEMS, GAP_HOURS = 30, 60, 48
+CACHE_SEC, MAX_ITEMS, GAP_HOURS, HEAVY_SEC = 30, 60, 48, 120
 ORDER = {"BAD": 0, "WARN": 1, "INFO": 2}
 _cache = {"ts": 0.0, "body": None}
 _build_lock, _mem_lock = threading.Lock(), threading.Lock()
+_heavy = {}                                   # check name -> {"ts", "items"}: the two heavy checks are re-read only every HEAVY_SEC
+
+
+def _heavy_cached(name, fn, d, now):
+    """R21: system health and the gap query are the slow checks. Their items are kept for HEAVY_SEC; a failure is never cached."""
+    h = _heavy.get(name)
+    if h and now - h["ts"] < HEAVY_SEC:
+        return h["items"]
+    items = fn(d, now)
+    _heavy[name] = {"ts": now, "items": items}
+    return items
 
 
 def dur(sec):
@@ -116,9 +128,9 @@ def check_candle_gaps(d, now):
         return [_item("INFO", "Candles", "v2_market.db", "There is no candle store file yet, so no gap can be checked.", "Switch the candle collector on (see Switch lines).", now)]
     con = sqlite3.connect("file:%s?mode=ro" % urllib.parse.quote(p), uri=True, timeout=5)
     try:
-        rows = con.execute("SELECT symbol, interval, COUNT(*), MIN(from_ts), MAX(to_ts), MAX(logged_ts) FROM gap_log WHERE kind='candle' AND logged_ts>=? "
-                           "GROUP BY symbol, interval ORDER BY COUNT(*) DESC LIMIT 8", (int(now) - GAP_HOURS * 3600,)).fetchall()
-        total = con.execute("SELECT COUNT(DISTINCT symbol || interval) FROM gap_log WHERE kind='candle' AND logged_ts>=?", (int(now) - GAP_HOURS * 3600,)).fetchone()[0]
+        allrows = con.execute("SELECT symbol, interval, COUNT(*), MIN(from_ts), MAX(to_ts), MAX(logged_ts) FROM gap_log WHERE kind='candle' AND logged_ts>=? "
+                              "GROUP BY symbol, interval ORDER BY COUNT(*) DESC LIMIT 200", (int(now) - GAP_HOURS * 3600,)).fetchall()   # R21: one query (was two)
+        rows, total = allrows[:8], len(allrows)
     finally:
         con.close()
     out = []
@@ -139,31 +151,42 @@ def check_waiting(d, now):
     return []
 
 
-def check_not_measured(d, now):
-    return [_item("INFO", "Not measured", "route speed", "Slow routes are not timed by the backend yet, so a slow route is not listed here. The app lists its own failed or slow fetches (Part 48).",
-                  "Nothing to fix. Check the app's own error log on the Problems page.", now)]
+def check_slow_routes(d, now):
+    """R21: routes the backend timed itself (api/route_timing.py). The app's own failed fetches are listed by the app (Part 48)."""
+    from api import route_timing as RT
+    sl = RT.slow(now)
+    if not sl:
+        s = RT.summary(now)
+        if s["calls"] == 0:
+            return [_item("INFO", "Slow routes", "route timing", "No API answer was timed yet since the backend started, so slow routes cannot be listed.", "Nothing to fix. Open a few screens and pull down once.", now)]
+        return []
+    return [_item("WARN", "Slow routes", x["route"], "%s is slow: average %.1f s over %d calls, worst %.1f s, last %.1f s." % (x["route"], x["avg_ms"] / 1000.0, x["n"], x["max_ms"] / 1000.0, x["last_ms"] / 1000.0),
+                  "Send this line to Claude. It names the route to make lighter.", now) for x in sl[:6]]
 
 
+HEAVY = ("system health", "candle gaps")
 CHECKS = (("routes", check_routes), ("switches", check_switches), ("kill switches", check_kill), ("system health", check_health),
-          ("candle gaps", check_candle_gaps), ("waiting reports", check_waiting), ("not measured", check_not_measured))
+          ("candle gaps", check_candle_gaps), ("waiting reports", check_waiting), ("slow routes", check_slow_routes))
 
 
 def build(data_dir, now=None):
     """-> the answer body. Never raises."""
     now = time.time() if now is None else now
-    items, checked = [], []
+    items, checked, timings = [], [], {}
     for name, fn in CHECKS:
         checked.append(name)
+        t0 = time.perf_counter()
         try:
-            items += fn(data_dir, now)
+            items += _heavy_cached(name, fn, data_dir, now) if name in HEAVY else fn(data_dir, now)
         except Exception as e:                                           # one broken check never hides the others
             items.append(_item("WARN", "Check", name, "The check '%s' could not run (%s: %s)." % (name, type(e).__name__, str(e)[:120]), "Send this line to Claude.", now))
+        timings[name] = int((time.perf_counter() - t0) * 1000)
     items.sort(key=lambda i: (ORDER.get(i["sev"], 3), i["area"], i["where"]))
     items = items[:MAX_ITEMS]
     c = {k: sum(1 for i in items if i["sev"] == k) for k in ORDER}
     head = ("%d red, %d yellow problem(s) found" % (c["BAD"], c["WARN"])) if (c["BAD"] or c["WARN"]) else "No problems found by these checks"
     lines = ["OWL APP PROBLEMS %s - %s" % (_when(now), head)] + ["[%s] %s | %s | %s | Fix: %s" % (i["sev"], i["area"], i["where"], i["text"], i["fix"]) for i in items]
-    return {"state": "PROBLEMS" if (c["BAD"] or c["WARN"]) else "OK", "headline": head, "counts": c, "items": items, "checked": checked,
+    return {"state": "PROBLEMS" if (c["BAD"] or c["WARN"]) else "OK", "headline": head, "counts": c, "items": items, "checked": checked, "timings_ms": timings,
             "copy_text": "\n".join(lines), "read_only": True, "paper_only": True}
 
 

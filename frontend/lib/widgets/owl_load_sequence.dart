@@ -45,7 +45,7 @@ class _OwlLoadSequenceState extends State<OwlLoadSequence> with SingleTickerProv
   static const String _tag = 'SELF-LEARNING  \u2022  AUTONOMOUS  \u2022  ZERO-LAG';
 
   static const Color _white = Color(0xFFFFFFFF);
-  static const Color _copper = Color(0xFFE59A5B);
+  static const Color _copper = Color(0xFFE6EAF2);
   static const Color _grey = Color(0xFF8A8A8A);
   static const Color _accent = Color(0xFF22C55E); // plain green for OK marks and the finished line (no odd teal)
 
@@ -207,7 +207,7 @@ class _OwlLoadSequenceState extends State<OwlLoadSequence> with SingleTickerProv
           height: 42,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: const Color(0xFF1A0F08).withOpacity(0.9),
+            color: const Color(0xFF0C1017).withOpacity(0.9),
             border: Border.all(color: _copper.withOpacity(lit ? 0.95 : 0.35), width: 1.6),
           ),
           child: Center(
@@ -227,7 +227,7 @@ class _OwlLoadSequenceState extends State<OwlLoadSequence> with SingleTickerProv
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(caption, style: TextStyle(fontFamily: 'Inter', fontSize: 11, letterSpacing: 1.2, color: const Color(0xFFC9955F).withOpacity(lit ? 0.95 : 0.35))),
+              Text(caption, style: TextStyle(fontFamily: 'Inter', fontSize: 11, letterSpacing: 1.2, color: const Color(0xFF9AA6BC).withOpacity(lit ? 0.95 : 0.35))),
               const SizedBox(height: 3),
               SizedBox(
                 height: 28,
@@ -247,35 +247,10 @@ class _OwlLoadSequenceState extends State<OwlLoadSequence> with SingleTickerProv
     );
   }
 
+  /// R25: plain white name (no copper gradient, no light streak).
   Widget _nameText(String shown, bool cursor) {
-    const style = TextStyle(fontFamily: 'Inter', fontSize: 22, fontWeight: FontWeight.w700, letterSpacing: 1.3, color: Colors.white, height: 1.15);
-    Widget text(double sweep) => ShaderMask(
-          blendMode: BlendMode.srcIn,
-          shaderCallback: (r) {
-            if (sweep < 0) {
-              return const LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [Color(0xFFFFE2BE), Color(0xFFE59A5B), Color(0xFFB8672E)],
-              ).createShader(r);
-            }
-            final a = (sweep - 0.2).clamp(0.0, 1.0).toDouble();
-            final b = sweep.clamp(0.0, 1.0).toDouble();
-            final c = (sweep + 0.2).clamp(0.0, 1.0).toDouble();
-            return LinearGradient(
-              colors: const [Color(0xFFE59A5B), Color(0xFFFFF3E0), Color(0xFFE59A5B)],
-              stops: [a, b, c],
-            ).createShader(r);
-          },
-          child: Text(shown + (cursor ? '|' : ' '), maxLines: 1, softWrap: false, style: style),
-        );
-    if (_sigChars < _nameTotal) return text(-1);
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0.0, end: 1.3),
-      duration: const Duration(milliseconds: 1500),
-      curve: Curves.easeInOut,
-      builder: (context, v, _) => text(v),
-    );
+    const style = TextStyle(fontFamily: 'Inter', fontSize: 22, fontWeight: FontWeight.w700, letterSpacing: 0.6, color: Colors.white, height: 1.15);
+    return Text(shown + (cursor ? '|' : ' '), maxLines: 1, softWrap: false, style: style);
   }
 
   @override
@@ -386,7 +361,7 @@ class _OwlLoadSequenceState extends State<OwlLoadSequence> with SingleTickerProv
           child: Text(
             'DESIGNED  \u00B7  ARCHITECTED  \u00B7  ENGINEERED',
             textAlign: TextAlign.center,
-            style: _mono(9.5, const Color(0xFFC9955F), w: FontWeight.w700, spacing: 2.6),
+            style: _mono(9.5, const Color(0xFF9AA6BC), w: FontWeight.w700, spacing: 2.6),
           ),
         ),
       ],
@@ -422,7 +397,7 @@ class _BoxBarPainter extends CustomPainter {
       Paint()
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1.6
-        ..color = const Color(0xFFE59A5B),
+        ..color = const Color(0xFFE6EAF2),
     );
 
     const pad = 4.0, gap = 0.6; // tiny gaps so the fill reads as one continuous bar

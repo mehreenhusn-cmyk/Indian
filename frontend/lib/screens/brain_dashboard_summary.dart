@@ -3,7 +3,7 @@ import '../theme/app_theme.dart';
 import '../widgets/owl_card.dart';
 import 'brain_dashboard_cards.dart';
 
-/// Part 19 (FILE 38): the ONE summary card on top of the Brain Dashboard. Read-only, real numbers from /api/v2/brain_dash only.
+/// R18: hero number 28, one short caption line, nothing below 11. Part 19 (FILE 38): the ONE summary card on top of the Brain Dashboard. Read-only, real numbers from /api/v2/brain_dash only.
 /// Big line = Brain net today. Under it ONE plain sentence + three small facts (30 days, open now, risk cap used).
 /// The Brain and the Main bot are separate books: the Main bot number is shown on its own, never added. Dart NOT compiled.
 
@@ -25,7 +25,7 @@ Widget _fact(AppPalette p, String big, String label, [Color? c]) => Expanded(
       child: Column(children: [
         Text(big, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: c ?? p.textPrimary)),
         const SizedBox(height: 2),
-        Text(label, textAlign: TextAlign.center, style: TextStyle(fontSize: 10.5, color: p.textMuted)),
+        Text(label, textAlign: TextAlign.center, style: TextStyle(fontSize: 11, color: p.textMuted)),
       ]),
     );
 
@@ -42,12 +42,12 @@ Widget brainSummaryCard(AppPalette p, Map<String, dynamic> r) {
       Text('Brain today', style: TextStyle(fontSize: 13, color: p.textSecondary)),
       const SizedBox(height: 2),
       Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-        Text(bdSg(net), style: TextStyle(fontSize: 36, fontWeight: FontWeight.w800, color: bdNet(p, net))),
+        Text(bdSg(net), style: TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: bdNet(p, net))),
         const SizedBox(width: 6),
-        Padding(padding: const EdgeInsets.only(bottom: 7), child: Text('USDT', style: TextStyle(fontSize: 13, color: p.textMuted))),
+        Padding(padding: const EdgeInsets.only(bottom: 5), child: Text('USDT', style: TextStyle(fontSize: 13, color: p.textMuted))),
       ]),
       const SizedBox(height: 4),
-      Text(brainSummarySentence(r), style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: bad ? p.loss : p.textPrimary)),
+      Text(brainSummarySentence(r), style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: bad ? p.loss : p.textPrimary)),
       const SizedBox(height: 12),
       Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
         _fact(p, bdSg(pc['brain_usdt']), 'Brain ${pc['days'] ?? 0} days', bdNet(p, pc['brain_usdt'])),
@@ -55,8 +55,7 @@ Widget brainSummaryCard(AppPalette p, Map<String, dynamic> r) {
         _fact(p, '${bdNum(k['used_pct']).toStringAsFixed(0)}%', 'Risk cap used', bad ? p.loss : null),
       ]),
       const SizedBox(height: 8),
-      Text('Main bot is a different book (today ${bdSg(t['bot_net_usdt'])}, ${pc['days'] ?? 0} days ${bdSg(pc['bot_usdt'])}). Never added. Details are below, tap to open.',
-          style: TextStyle(fontSize: 10.5, color: p.textMuted)),
+      Text('Main bot is a separate book (today ${bdSg(t['bot_net_usdt'])}). Never added.', style: TextStyle(fontSize: 11, color: p.textMuted)),
     ]),
   );
 }

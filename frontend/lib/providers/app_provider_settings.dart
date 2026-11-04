@@ -40,12 +40,12 @@ extension AppProviderSettings on AppProvider {
         final ok = m['ok'] == true;
         return (
           ok: ok,
-          message: ok ? 'Backup Telegram pe bhej diya (${m['size_kb']} KB)' : '${m['message'] ?? 'Backup fail'}',
+          message: ok ? 'Backup sent to Telegram (${m['size_kb']} KB)' : '${m['message'] ?? 'Backup fail'}',
         );
       }
       return (ok: false, message: 'Backup fail (${res.statusCode})');
     } catch (e) {
-      return (ok: false, message: 'Backend se connect nahi hua: $e');
+      return (ok: false, message: 'Cannot reach the backend: $e');
     }
   }
 

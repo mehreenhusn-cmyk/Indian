@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../theme/app_theme.dart';
+import '../widgets/last_good.dart';
 import '../widgets/load_state.dart';
 import '../widgets/owl_card.dart';
+import '../widgets/owl_text_tabs.dart';
 import 'brain_dashboard_cards.dart';
 import 'brain_dashboard_summary.dart';
 
@@ -20,6 +22,7 @@ class BrainDashboardScreen extends StatefulWidget {
 class _BrainDashboardScreenState extends State<BrainDashboardScreen> {
   Map<String, dynamic>? _r;
   bool _busy = true;
+  final _lg = LastGood();
   String _src = 'PAPER';
 
   @override
@@ -33,7 +36,8 @@ class _BrainDashboardScreenState extends State<BrainDashboardScreen> {
     final r = await context.read<AppProvider>().fetchBrainDash(_src);
     if (!mounted) return;
     setState(() {
-      _r = r;
+      _lg.take(r, _bad(r)); // R8: a failed refresh keeps the last good data
+      _r = _lg.data;
       _busy = false;
     });
   }
@@ -53,18 +57,21 @@ class _BrainDashboardScreenState extends State<BrainDashboardScreen> {
     }
   }
 
-  Widget _sources(AppPalette p) => Wrap(spacing: 8, children: [
-        for (final s in const ['PAPER', 'SHADOW', 'REPLAY'])
-          ChoiceChip(
-            label: Text(s),
-            selected: _src == s,
-            onSelected: (_) {
-              if (_src == s) return;
-              _src = s;
-              _load();
-            },
-          ),
-      ]);
+  // R25b: plain text tabs (same look as Positions) instead of three chips.
+  Widget _sources(AppPalette p) {
+    const names = ['PAPER', 'SHADOW', 'REPLAY'];
+    return OwlTextTabs(
+      names: names,
+      index: names.indexOf(_src).clamp(0, 2),
+      fontSize: 14,
+      onChanged: (i) {
+        _src = names[i];
+        _lg.reset(); // another source: old numbers must not stay
+        _r = null;
+        _load();
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -79,6 +86,7 @@ class _BrainDashboardScreenState extends State<BrainDashboardScreen> {
       final ok = r!;
       kids = [
         _sources(p),
+        UpdatedLine(lg: _lg, onRetry: _load),
         Text('LIVE is LOCKED. Showing the $_src numbers only.', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: p.textSecondary)),
         brainSummaryCard(p, ok),
         ...brainDashboardCards(p, ok),

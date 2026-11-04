@@ -87,6 +87,8 @@ async def _ai_priority_touch(request, call_next):
         if request.url.path.startswith("/api/"):
             from recovered_bot import load_report
             load_report.note_api(request.url.path, (time.perf_counter() - _t0) * 1000.0)
+            from api import route_timing                      # R21: last answers per route -> App Problems 'slow route' lines
+            route_timing.note(request.url.path, (time.perf_counter() - _t0) * 1000.0)
     except Exception:
         pass
     return response

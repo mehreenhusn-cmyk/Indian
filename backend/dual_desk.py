@@ -11,6 +11,8 @@ import os
 import sqlite3
 import time
 
+import btc_lab as BL
+import dual_today as DT
 import universe_7d as U
 
 BTC, BTC_MARGIN, MARGIN = "BTCUSDT", 1000.0, 100.0
@@ -41,6 +43,7 @@ def desk(base=None, now_s=None):
         return dict(_C["v"])
     day_ms = U.day_start_ms(now)
     out = {"state": "none", "day": U.day_name(day_ms), "since_ms": day_ms, "groups": _blank(), "tags": {}, "err": ""}
+    btc = {"btc": {tf: {"n": 0, "wins": 0, "net": 0.0, "open": 0} for tf in TFS}}      # R16b: BTC is the indicator test coin, kept OUT of the groups (own numbers here)
     try:
         log = U.load_log(base)
         e = log.get(out["day"]) or {}
@@ -50,11 +53,16 @@ def desk(base=None, now_s=None):
             con = sqlite3.connect("file:%s?mode=ro" % path, uri=True, timeout=5)
             try:
                 for sym, tf, t, status, net in con.execute("SELECT sym, tf, t, status, net FROM trades WHERE t >= ?", (day_ms,)):
-                    _add(out["groups"], U.tag_of(sym, t, log), tf, status, net, sym)
+                    if BL.skip(sym, base):
+                        _add(btc, "btc", tf, status, net, sym)
+                    else:
+                        _add(out["groups"], U.tag_of(sym, t, log), tf, status, net, sym)
             finally:
                 con.close()
             out["state"] = "ok"
-        for g in out["groups"].values():             # round once at the end
+        out["today"] = DT.today(base, now_s)         # R16a: THE one "Dual today" (closed since 00:00 UTC, alts only, BTC apart). The Dashboard reads this; the Dual screen gets the same numbers through dual_today.overlay
+        out["btc"], out["btc_in_counts"] = btc["btc"], BL.counts_btc(base)
+        for g in list(out["groups"].values()) + [btc["btc"]]:           # round once at the end
             for c in g.values():
                 c["net"] = round(c["net"], 2)
     except Exception as ex:

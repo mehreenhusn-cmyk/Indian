@@ -25,7 +25,7 @@ class _Msg {
 
 Map<String, dynamic> _m(Object? v) => v is Map ? Map<String, dynamic>.from(v) : <String, dynamic>{};
 
-const _quick = ['bhai BTC me kya hua', 'Brain ke apne trades kaise hain', 'kaunsa data abhi kam hai', 'Scalp Lab me ab tak kya mila'];
+const _quick = ['What happened on BTC?', 'How are the Brain\'s own trades doing?', 'Which data is still too thin?', 'What did Scalp Lab find so far?'];
 
 class _BrainChatScreenState extends State<BrainChatScreen> {
   final _ctl = TextEditingController();
@@ -142,7 +142,7 @@ class _BrainChatScreenState extends State<BrainChatScreen> {
               maxLines: 3,
               textInputAction: TextInputAction.send,
               onSubmitted: (_) => _send(),
-              decoration: const InputDecoration(hintText: 'bhai coin me kya hua?', isDense: true, counterText: '', border: OutlineInputBorder()),
+              decoration: const InputDecoration(hintText: 'Ask about a coin or the Brain', isDense: true, counterText: '', border: OutlineInputBorder()),
             ),
           ),
           const SizedBox(width: 8),

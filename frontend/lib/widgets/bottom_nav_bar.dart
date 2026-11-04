@@ -6,7 +6,7 @@ import 'owl_pressable.dart';
 /// Bottom navigation - same public API as before (currentIndex + onTap, both are SCREEN indexes of main.dart).
 /// Round 11: 5 visible tabs: Dashboard, Positions, Sniper, Study Lab, Diagnostics. Market, Brain, Signals, Dual Bot, AI and the Settings page keep
 /// their screen index (so AppProvider.goToTab keeps working) but open from the top-bar gear; while one of them is open NO bar tab is lit.
-/// Floating rounded bar, accent pill on the active tab.
+/// R25: flat bar like a standard exchange app (see build()).
 class BottomNavBar extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
@@ -51,35 +51,17 @@ class BottomNavBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = context.palette;
-    final dark = p.brightness == Brightness.dark;
-    // Floating rounded bar, inset from the screen edges. Solid fill (no
-    // blur) so it stays smooth on mid-range phones.
-    return SafeArea(
-      top: false,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(10, 4, 10, 8),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
-          decoration: BoxDecoration(
-            color: dark ? p.surfaceElevated : p.surface,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: dark ? Colors.white.withOpacity(0.08) : p.border,
-              width: 1,
-            ),
-            // SR1b: neutral soft shadow in light (was blue tinted); dark keeps its faint accent rim.
-            boxShadow: [
-              BoxShadow(
-                color: dark ? p.accent.withOpacity(0.10) : const Color(0xFF101828).withOpacity(0.07),
-                blurRadius: 18,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
+    // R25: flat full-width bar, one thin line on top, 5 icons with small labels. Selected = filled icon + bold dark/white label, the rest grey.
+    // No floating card, no shadow, no coloured pill.
+    return Container(
+      decoration: BoxDecoration(color: p.bg, border: Border(top: BorderSide(color: p.border, width: 1))),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(4, 6, 4, 4),
           child: Row(
             children: [
-              for (var i = 0; i < _icons.length; i++)
-                Expanded(child: _item(p, i)),
+              for (var i = 0; i < _icons.length; i++) Expanded(child: _item(p, i)),
             ],
           ),
         ),
@@ -89,39 +71,22 @@ class BottomNavBar extends StatelessWidget {
 
   Widget _item(AppPalette p, int index) {
     final selected = _lit == index;
-    final color = selected ? p.accent : p.textMuted;
-
+    final color = selected ? p.textPrimary : p.textMuted;
     return OWLPressable(
       // Tapping the open tab again is passed on too: the app scrolls it to the top.
       onTap: () => onTap(_screens[index]),
-      child: AnimatedContainer(
-        duration: AppMotion.base,
-        curve: AppMotion.standard,
-        padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs + 2),
-        decoration: BoxDecoration(
-          // SR1b: flat active pill (no glow), the icon and label colour already say which tab is open.
-          color: selected ? p.accent.withOpacity(0.10) : Colors.transparent,
-          borderRadius: BorderRadius.circular(AppSpacing.radiusMedium),
-        ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            AnimatedScale(
-              scale: selected ? 1.08 : 1.0,
-              duration: AppMotion.base,
-              curve: Curves.easeOutBack,
-              child: Icon(selected ? _iconsOn[index] : _icons[index], size: 22, color: color),
-            ),
+            Icon(selected ? _iconsOn[index] : _icons[index], size: 24, color: color),
             const SizedBox(height: 3),
             Text(
               _labels[index],
               maxLines: 1,
               overflow: TextOverflow.clip,
-              style: AppTypography.metadata.copyWith(
-                fontSize: 9,
-                color: color,
-                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-              ),
+              style: AppTypography.metadata.copyWith(fontSize: 11, color: color, fontWeight: selected ? FontWeight.w700 : FontWeight.w500),
             ),
           ],
         ),

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../widgets/owl_card.dart';
 
-/// Part M3 part 2 of 2, reworked in Part 20 (FILE 39): the DETAIL of the Brain Dashboard, built from /api/v2/brain_dash. Read-only, no state.
+/// R18: text sizes follow the app text scale (nothing below 11, section title 16). Part M3 part 2 of 2, reworked in Part 20 (FILE 39): the DETAIL of the Brain Dashboard, built from /api/v2/brain_dash. Read-only, no state.
 /// The ONE summary on top is brain_dashboard_summary.dart (Part 19). Here every detail block is a closed fold with a one-line summary
 /// in its title row; tap to open. The Daily risk fold opens by itself when the cap is hit or the kill switch is on.
 /// brain_dash has NO coin-wise numbers (backend sends none), so nothing per coin is shown here: no invented data. Dart NOT compiled.
@@ -17,7 +17,7 @@ Widget _kv(AppPalette p, String big, String label, [Color? c]) => Expanded(
       child: Column(children: [
         Text(big, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: c ?? p.textPrimary)),
         const SizedBox(height: 2),
-        Text(label, textAlign: TextAlign.center, style: TextStyle(fontSize: 10.5, color: p.textMuted)),
+        Text(label, textAlign: TextAlign.center, style: TextStyle(fontSize: 11, color: p.textMuted)),
       ]),
     );
 
@@ -34,8 +34,8 @@ Widget _fold(AppPalette p, String title, String sub, Widget detail, {Color? edge
           expandedCrossAxisAlignment: CrossAxisAlignment.start,
           iconColor: p.textMuted,
           collapsedIconColor: p.textMuted,
-          title: Text(title, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: p.textPrimary)),
-          subtitle: Text(sub, style: TextStyle(fontSize: 11.5, color: p.textMuted)),
+          title: Text(title, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: p.textPrimary)),
+          subtitle: Text(sub, style: TextStyle(fontSize: 12, color: p.textMuted)),
           children: [detail],
         ),
       )),
@@ -46,7 +46,7 @@ Widget _todayDetail(AppPalette p, Map<String, dynamic> r) {
   final why = bdMap(r['why']);
   return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
     Text('${bdSg(t['pct_of_capital'])}% of ${bdNum(r['capital_usdt']).toStringAsFixed(0)} USDT guard capital, ${t['closed'] ?? 0} closed trades',
-        style: TextStyle(fontSize: 11.5, color: bdNet(p, t['net_usdt']))),
+        style: TextStyle(fontSize: 12, color: bdNet(p, t['net_usdt']))),
     const SizedBox(height: 10),
     Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
       _kv(p, bdSg(t['gross_usdt']), 'Gross', bdNet(p, t['gross_usdt'])),
@@ -55,7 +55,7 @@ Widget _todayDetail(AppPalette p, Map<String, dynamic> r) {
       _kv(p, bdSg(t['net_usdt']), 'Final net', bdNet(p, t['net_usdt'])),
     ]),
     const SizedBox(height: 10),
-    Text('Why: ${why['word'] ?? ''}. ${why['text'] ?? ''}', style: TextStyle(fontSize: 11.5, color: p.textSecondary)),
+    Text('Why: ${why['word'] ?? ''}. ${why['text'] ?? ''}', style: TextStyle(fontSize: 12, color: p.textSecondary)),
   ]);
 }
 
@@ -64,12 +64,12 @@ Widget _half(AppPalette p, String name, String big, String sub, Color c) => Expa
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(color: p.surface, borderRadius: BorderRadius.circular(12), border: Border.all(color: p.border)),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(name, style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, color: p.textPrimary)),
+          Text(name, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: p.textPrimary)),
           const SizedBox(height: 6),
           Text(big, style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: c)),
-          Text('USDT', style: TextStyle(fontSize: 10.5, color: p.textMuted)),
+          Text('USDT', style: TextStyle(fontSize: 11, color: p.textMuted)),
           const SizedBox(height: 4),
-          Text(sub, style: TextStyle(fontSize: 10.5, color: p.textSecondary)),
+          Text(sub, style: TextStyle(fontSize: 11, color: p.textSecondary)),
         ]),
       ),
     );
@@ -84,7 +84,7 @@ Widget _paceDetail(AppPalette p, Map<String, dynamic> r) {
       _half(p, 'Main bot, ${pc['days'] ?? 0} days', bdSg(pc['bot_usdt']), '${pc['bot_trades'] ?? 0} trades, today ${bdSg(t['bot_net_usdt'])}', bdNet(p, pc['bot_usdt'])),
     ]),
     const SizedBox(height: 6),
-    Text('Different trades, two separate numbers, never added.', style: TextStyle(fontSize: 10.5, color: p.textMuted)),
+    Text('Different trades, two separate numbers, never added.', style: TextStyle(fontSize: 11, color: p.textMuted)),
   ]);
 }
 
@@ -92,11 +92,11 @@ Widget _openDetail(AppPalette p, Map<String, dynamic> r) {
   final o = bdMap(r['open']);
   final d = bdMap(r['decisions']);
   return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-    Text('Open positions (Brain trades not closed yet)', style: TextStyle(fontSize: 11.5, color: p.textMuted)),
+    Text('Open positions (Brain trades not closed yet)', style: TextStyle(fontSize: 12, color: p.textMuted)),
     const SizedBox(height: 6),
     Row(children: [_kv(p, '${o['total'] ?? 0}', 'Open now'), _kv(p, '${o['long'] ?? 0}', 'Long', p.profit), _kv(p, '${o['short'] ?? 0}', 'Short', p.loss)]),
     const SizedBox(height: 12),
-    Text('Today signals (what the Brain decided today)', style: TextStyle(fontSize: 11.5, color: p.textMuted)),
+    Text('Today signals (what the Brain decided today)', style: TextStyle(fontSize: 12, color: p.textMuted)),
     const SizedBox(height: 6),
     Row(children: [
       _kv(p, '${d['taken'] ?? 0}', 'Taken', p.profit),
@@ -113,7 +113,7 @@ Widget _riskDetail(AppPalette p, Map<String, dynamic> r) {
   final hit = k['hit'] == true;
   final c = hit ? p.loss : pct >= 50 ? p.warning : p.profit;
   return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-    Text('Daily loss cap of the guard: ${bdNum(k['cap_pct']).toStringAsFixed(1)}% of ${bdNum(k['capital_usdt']).toStringAsFixed(0)} USDT', style: TextStyle(fontSize: 11.5, color: p.textMuted)),
+    Text('Daily loss cap of the guard: ${bdNum(k['cap_pct']).toStringAsFixed(1)}% of ${bdNum(k['capital_usdt']).toStringAsFixed(0)} USDT', style: TextStyle(fontSize: 12, color: p.textMuted)),
     const SizedBox(height: 8),
     Row(children: [
       Text('Used ${bdNum(k['used_usdt']).toStringAsFixed(2)} / ${bdNum(k['cap_usdt']).toStringAsFixed(2)} USDT', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: p.textPrimary)),
@@ -126,27 +126,27 @@ Widget _riskDetail(AppPalette p, Map<String, dynamic> r) {
       child: LinearProgressIndicator(value: (pct / 100.0).clamp(0.0, 1.0).toDouble(), minHeight: 10, backgroundColor: p.border, valueColor: AlwaysStoppedAnimation<Color>(c)),
     ),
     const SizedBox(height: 8),
-    Text(hit ? 'The cap is HIT: no new trade until tomorrow.' : 'Only a net loss of today uses the cap. A profit day uses 0.', style: TextStyle(fontSize: 11.5, color: hit ? p.loss : p.textSecondary)),
-    Text('Kill switch: ${k['kill_switch'] == true ? 'ON (everything stopped)' : 'off'}', style: TextStyle(fontSize: 11.5, color: k['kill_switch'] == true ? p.loss : p.textSecondary)),
+    Text(hit ? 'The cap is HIT: no new trade until tomorrow.' : 'Only a net loss of today uses the cap. A profit day uses 0.', style: TextStyle(fontSize: 12, color: hit ? p.loss : p.textSecondary)),
+    Text('Kill switch: ${k['kill_switch'] == true ? 'ON (everything stopped)' : 'off'}', style: TextStyle(fontSize: 12, color: k['kill_switch'] == true ? p.loss : p.textSecondary)),
   ]);
 }
 
 Widget _recentDetail(AppPalette p, List<Map<String, dynamic>> days) {
   if (days.isEmpty) return Text('No closed trade in the last days.', style: TextStyle(fontSize: 12, color: p.textMuted));
   return SizedBox(
-    height: 74,
+    height: 84,
     child: ListView(scrollDirection: Axis.horizontal, children: [
       for (final d in days)
         Container(
-          width: 70,
+          width: 80,
           margin: const EdgeInsets.only(right: 8),
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(color: p.surface, borderRadius: BorderRadius.circular(12), border: Border.all(color: p.border)),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('${d['day']}'.length >= 10 ? '${d['day']}'.substring(5) : '${d['day']}', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: p.textPrimary)),
+            Text('${d['day']}'.length >= 10 ? '${d['day']}'.substring(5) : '${d['day']}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: p.textPrimary)),
             const SizedBox(height: 4),
             Text(bdSg(d['brain_usdt']), style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: bdNet(p, d['brain_usdt']))),
-            Text('Main ${bdSg(d['bot_usdt'])}', style: TextStyle(fontSize: 9.5, color: bdNet(p, d['bot_usdt']))),
+            Text('Main ${bdSg(d['bot_usdt'])}', style: TextStyle(fontSize: 11, color: bdNet(p, d['bot_usdt']))),
           ]),
         ),
     ]),

@@ -3,13 +3,14 @@ import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/data_doctor_card.dart';
+import '../widgets/last_good.dart';
 import '../widgets/load_state.dart';
 import '../widgets/owl_card.dart';
 import '../widgets/sniper_health_tiles.dart';
 import 'diagnostics_cards.dart';
 import 'learning_progress_cards.dart';
 
-/// Part M1b: System Health screen, read-only, on the Part M1a route /api/v2/sys_health (idea of mock picture 10, REAL FACTS ONLY).
+/// R22b Diagnostics: 6 tiles on top, system checks + Data Doctor in closed folds. Part M1b: System Health screen, read-only, on the Part M1a route /api/v2/sys_health (idea of mock picture 10, REAL FACTS ONLY).
 /// Shows: one headline (all OK / mostly fine / needs attention), the measured cards two by two (state dot, value, small line), a list of what is NOT MEASURED with the reason, an honest note.
 /// A card the backend could not measure says NOT AVAILABLE and is grey; nothing is faked. Pull down to refresh.
 /// Round 28 (Diagnostics tab): below the old cards two blocks are added, each loaded on its own so one missing route never hides the other: OwlSniper health (SniperHealthTiles, /api/v2/sniper_health)
@@ -27,6 +28,7 @@ class _SystemHealthScreenState extends State<SystemHealthScreen> {
   Map<String, dynamic>? _r;
   Map<String, dynamic>? _sh, _gaps, _st;
   bool _busy = true;
+  final _lg = LastGood();
 
   @override
   void initState() {
@@ -40,7 +42,8 @@ class _SystemHealthScreenState extends State<SystemHealthScreen> {
     final all = await Future.wait([pv.fetchSysHealth(), pv.fetchSniperHealth(), pv.fetchV2Gaps(), pv.fetchV2Status()]);
     if (!mounted) return;
     setState(() {
-      _r = all[0];
+      _lg.take(all[0], _bad(all[0])); // R8: a failed refresh keeps the last good data
+      _r = _lg.data;
       _sh = all[1];
       _gaps = all[2];
       _st = all[3];
@@ -73,7 +76,7 @@ class _SystemHealthScreenState extends State<SystemHealthScreen> {
       kids = [
         SniperHealthTiles(r: _sh),
         OWLCard(edge: p.warning, child: Text(_problem(r), style: TextStyle(fontSize: 13, color: p.textPrimary))),
-        DataDoctorCard(gaps: _gaps, status: _st),
+        OwlFold(title: 'DATA DOCTOR', headline: 'Candle gaps and the fix commands', bare: true, children: [DataDoctorCard(gaps: _gaps, status: _st)]),
       ];
     } else {
       final ok = r!;
@@ -81,6 +84,7 @@ class _SystemHealthScreenState extends State<SystemHealthScreen> {
       final warn = lpNum(ok['warn']);
       final hc = bad > 0 ? p.loss : warn > 0 ? p.warning : p.profit;
       kids = [
+        UpdatedLine(lg: _lg, onRetry: _load),
         SniperHealthTiles(r: _sh),
         OWLCard(
           edge: hc,
@@ -90,10 +94,19 @@ class _SystemHealthScreenState extends State<SystemHealthScreen> {
             Expanded(child: Text('${ok['headline'] ?? ''}', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: p.textPrimary))),
           ]),
         ),
-        DiagCompactCards(cards: lpList(ok['cards'])),
-        DiagNotMeasured(items: lpList(ok['not_measured'])),
-        Text('${ok['note'] ?? ''}', style: TextStyle(fontSize: 11, color: p.textMuted)),
-        DataDoctorCard(gaps: _gaps, status: _st),
+        // R22b Diagnostics: 6 tiles on top (headline + the 5 Sniper checks); everything else sits in two closed folds.
+        OwlFold(
+          title: 'ALL SYSTEM CHECKS',
+          headline: bad > 0 ? '$bad bad, $warn warn: tap to see each check' : warn > 0 ? '$warn warn: tap to see each check' : 'All measured checks OK',
+          headlineColor: hc,
+          bare: true,
+          children: [
+            DiagCompactCards(cards: lpList(ok['cards'])),
+            DiagNotMeasured(items: lpList(ok['not_measured'])),
+            Text('${ok['note'] ?? ''}', style: TextStyle(fontSize: 11, color: p.textMuted)),
+          ],
+        ),
+        OwlFold(title: 'DATA DOCTOR', headline: 'Candle gaps and the fix commands', bare: true, children: [DataDoctorCard(gaps: _gaps, status: _st)]),
       ];
     }
     return RefreshIndicator(

@@ -349,33 +349,27 @@ class PositionsLiveView extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              // R22a: ONE header row (no '💼 Positions' title: the bottom bar already says it): big total, LIVE chip, PANIC.
+              // Row 2: UP / DOWN pills + sort chips. Then search, then the list, and Close All sits at the very bottom.
+              const Row(
                 children: [
-                  Text(
-                    '💼 Positions',
-                    style: context.type.hero.copyWith(fontSize: 18),
-                  ),
-                  // PHASE 4: always visible, even with zero positions - the
-                  // panic switch's "turn live_trading off right now" half is
-                  // useful on its own, independent of whether anything is
-                  // currently open.
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const LiveStatusChip(),
-                      const SizedBox(width: 10),
-                      const _PanicButton(),
-                    ],
-                  ),
+                  Expanded(child: _TopSummary()),
+                  LiveStatusChip(),
+                  SizedBox(width: 8),
+                  _PanicButton(),
                 ],
               ),
-              const SizedBox(height: AppSpacing.xs),
-              const _TopSummary(),
-              const PositionsTopBar(),
+              // R22b: both halves shrink to fit a small phone, so the DOWN pill and the Profit chip are never cut off at the edge
+              Row(
+                children: const [
+                  Expanded(child: FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: _TopSummary(pills: true))),
+                  SizedBox(width: 6),
+                  Expanded(child: FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerRight, child: PositionsTopBar(inline: true))),
+                ],
+              ),
+              const SizedBox(height: 6),
               const PositionsSearchBar(),
               // Part 17: ONE place for Close All Profit / Close All Loss, in the layout right above the list (it used to float over the list and hide cards).
-              const _FloatingSummaryBar(),
               Expanded(
                 child: OWLRefresh(
                       onRefresh: () => context.read<AppProvider>().fetchStatus(),
@@ -558,6 +552,8 @@ class PositionsLiveView extends StatelessWidget {
                     ),
                     ),
               ),
+              const _FloatingSummaryBar(), // R22a: Close All Profit / Loss at the bottom, right above the bottom bar
+              const SizedBox(height: 4),
             ],
           ),
         ),
@@ -570,7 +566,9 @@ class PositionsLiveView extends StatelessWidget {
 /// trades are up and how many are down. Same numbers as the floating bar below, just first. Shows nothing
 /// when no position is open, and only rebuilds when the shown numbers change.
 class _TopSummary extends StatelessWidget {
-  const _TopSummary();
+  /// R22a: false = only the big total (header row), true = only the UP / DOWN pills (second row).
+  final bool pills;
+  const _TopSummary({this.pills = false});
 
   @override
   Widget build(BuildContext context) {
@@ -621,18 +619,18 @@ class _TopSummary extends StatelessWidget {
                 ),
               ),
             );
+        if (pills) {
+          return Padding(
+            padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [side('$up UP', _green, 1), const SizedBox(width: 6), side('$down DOWN', _red, 2)]),
+          );
+        }
         return Padding(
-          padding: const EdgeInsets.only(bottom: AppSpacing.xs),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Text('${fmtSigned(pnl)} USDT',
-                  style: context.type.hero.copyWith(fontSize: 28, fontWeight: FontWeight.w800, color: c)),
-              const SizedBox(width: 10),
-              side('$up UP', _green, 1),
-              const SizedBox(width: 6),
-              side('$down DOWN', _red, 2),
-            ],
+          padding: const EdgeInsets.only(bottom: 2),
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text('${fmtSigned(pnl)} USDT', style: context.type.hero.copyWith(fontSize: 28, fontWeight: FontWeight.w700, color: c)),
           ),
         );
       },
@@ -699,7 +697,7 @@ class _FloatingSummaryBarState extends State<_FloatingSummaryBar> {
         String amt(double v) => v == 0 ? '0.00 USDT' : '${fmtSigned(v)} USDT';
 
         return Padding(
-          padding: const EdgeInsets.only(bottom: 4),
+          padding: const EdgeInsets.only(top: 4),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(AppSpacing.radiusMedium),
             child: Builder(
@@ -834,7 +832,7 @@ class _NeonPillButtonState extends State<_NeonPillButton> {
           child: Container(
             // Shrunk from 44 - Close All Profit/Loss pair was taking up
             // too much vertical space above the position list.
-            height: widget.amount == null ? 34 : 50,
+            height: widget.amount == null ? 34 : 46,
             alignment: Alignment.center,
             decoration: BoxDecoration(
               color: widget.color.withOpacity(widget.busy ? 0.14 : 0.08),

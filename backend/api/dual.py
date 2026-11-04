@@ -139,7 +139,12 @@ def make_router(safe_status):
             elif action == "stop":
                 dual_lab.set_enabled(False)
             await asyncio.to_thread(dual_lab.ensure_running)
-            return await asyncio.to_thread(dual_lab.status)
+            view = await asyncio.to_thread(dual_lab.status)
+            try:
+                import dual_today                                   # R16a: the Dual screen's "Today" comes from the permanent archive too (dual_lab keeps only 600 trades)
+                return await asyncio.to_thread(dual_today.overlay, view)
+            except Exception:
+                return view
         except Exception as e:
             return {"running": False, "enabled": False, "error": f"{type(e).__name__}: {e}"}
 

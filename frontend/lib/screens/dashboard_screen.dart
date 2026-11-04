@@ -5,6 +5,7 @@ import '../navigation/app_routes.dart';
 import '../providers/app_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/format.dart';
+import '../widgets/brain_strip.dart';
 import '../widgets/btc_live_tile.dart';
 import '../widgets/compare_books.dart';
 import '../widgets/dashboard_bits.dart';
@@ -107,12 +108,11 @@ class DashboardScreen extends StatelessWidget {
                       if (isLive) ...[const SizedBox(height: AppSpacing.cardGap), const LiveWalletCard()],
                       const SizedBox(height: AppSpacing.cardGap),
                       // Part 41: the books side by side (Main bot / Dual Bot paper / Brain / Sniper LEARN / Sniper Replay), same columns, never added.
-                      if (!isLive) const CompareBooks(),
+                      if (!isLive) const BrainStrip(),
                       const _ResultsVerdictLine(),
                       const SizedBox(height: AppSpacing.cardGap),
                       const DashboardPairs(),
                       const BtcLiveTile(),
-                      const DualBotTile(),
                       const SizedBox(height: AppSpacing.cardGap),
                       DashboardEquityChart(provider.equityCurve, provider.equityTf, (tf) => provider.fetchEquity(tf: tf)),
                       const SizedBox(height: AppSpacing.cardGap),

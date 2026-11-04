@@ -62,15 +62,6 @@ extension AppProviderBrain on AppProvider {
     try {
       final res = await _getResilient(_u(path));
       if (res.statusCode == 404 && res.body.contains('"enabled"')) return {'state': 'off'};
-      if (res.statusCode == 503) {
-        // Part 1: the backend answered but was too slow or busy; say so plainly (it was shown as 'old backend' before)
-        String why = 'The backend is busy or slow right now. Pull down to try again.';
-        try {
-          final b = jsonDecode(res.body);
-          if (b is Map && b['error'] != null) why = '${b['error']}';
-        } catch (_) {}
-        return {'state': 'slow', 'error': why};
-      }
       if (res.statusCode != 200) return {'state': 'old', 'code': res.statusCode};
       final data = jsonDecode(res.body);
       if (data is Map<String, dynamic>) return data;
@@ -88,4 +79,36 @@ extension AppProviderBrain on AppProvider {
 
   /// Round 8 (Study Lab hub): read-only route /api/v2/verdicts = one verdict card per study (see backend/v2_verdicts.py). Same answer rules as every fetch here.
   Future<Map<String, dynamic>> fetchVerdicts() => _brainGet('/api/v2/verdicts');
+
+  /// R16b (BTC Lab): read-only route /api/v2/btc_lab = BTC's OWN numbers (BTC is the indicator test coin, kept out of every total).
+  Future<Map<String, dynamic>> fetchBtcLab() => _brainGet('/api/v2/btc_lab');
+
+  /// R6a (Sniper modes): read-only route /api/v2/sniper_modes = SCALP / SHORT_SWING / SWING per market state (advice only). A screen for it comes in R17.
+  Future<Map<String, dynamic>> fetchSniperModes() => _brainGet('/api/v2/sniper_modes');
+
+  /// R7 (Sniper lessons): read-only route /api/v2/sniper_lessons = tag per closed Sniper trade, setup penalty, 3 lessons of the week (advice only). A screen for it comes in R17.
+  Future<Map<String, dynamic>> fetchSniperLessons() => _brainGet('/api/v2/sniper_lessons');
+
+  /// R11 (Lab loss source): read-only route /api/v2/lab_loss = where the money is lost (Entry / Exit / Sideways, in R) + the two fix checks from the learners (advice only). Shown by LabLossSourceCard.
+  Future<Map<String, dynamic>> fetchLabLoss() => _brainGet('/api/v2/lab_loss');
+
+  /// R24a (Current Bot vs Sniper, same days): read-only route /api/v2/sniper_h2h = % per trade of both sides on the days both traded + a verdict from the backend only.
+  Future<Map<String, dynamic>> fetchSniperH2H() => _brainGet('/api/v2/sniper_h2h');
+
+  /// R24b (Sniper graduation checklist): read-only route /api/v2/sniper_grad = 7 checks PASS / FAIL / WAIT + an overall word from the backend only.
+  Future<Map<String, dynamic>> fetchSniperGrad() => _brainGet('/api/v2/sniper_grad');
+
+  /// R13 (Study Lab results board): read-only route /api/v2/lab_results = every test of the V2 Lab backend in ONE shape (verdict, numbers, caveat). Shown by IndicatorLabScreen. Filters are done on the phone.
+  Future<Map<String, dynamic>> fetchLabResults() => _brainGet('/api/v2/lab_results');
+
+  /// R17a (Sniper banner): read-only route /api/v2/sniper_autopilot = EXPLORE / LEARNED, plain reasons, the unseen-days compare (R after fees). Advice only, paper only.
+  Future<Map<String, dynamic>> fetchSniperAutopilot() => _brainGet('/api/v2/sniper_autopilot');
+
+  /// R17b (Sniper learning cards): read-only routes. sniper_hist = training data health (per book apart); sniper_exitlearn = booking learner + the entry learner under 'entry'. (Lessons use fetchSniperLessons.)
+  Future<Map<String, dynamic>> fetchSniperHist() => _brainGet('/api/v2/sniper_hist');
+
+  Future<Map<String, dynamic>> fetchSniperExit() => _brainGet('/api/v2/sniper_exitlearn');
+
+  /// R12 (Lab exit table): read-only route /api/v2/lab_exit = the 9 exit rules x market state table (R per trade after fees, train pick, unseen-days verdict; advice only). Shown by LabExitTableCard.
+  Future<Map<String, dynamic>> fetchLabExit() => _brainGet('/api/v2/lab_exit');
 }

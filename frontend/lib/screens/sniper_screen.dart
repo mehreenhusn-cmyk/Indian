@@ -3,14 +3,18 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../theme/app_theme.dart';
+import '../widgets/last_good.dart';
 import '../widgets/load_state.dart';
 import '../widgets/owl_card.dart';
 import '../widgets/signal_card.dart';
 import 'sniper_compare.dart';
 import 'sniper_extras.dart';
+import 'sniper_lessons_card.dart';
 import 'sniper_panels.dart';
 import 'sniper_pillars.dart';
 import 'sniper_quiet.dart';
+import 'sniper_riskbox_fold.dart';
+import 'sniper_state_banner.dart';
 
 /// OwlSniper tab. Part S6 made it; Round 27 rebuilt it on the 3 pillars (Round 25) and the Sniper vs Main Bot panel. Read-only, on GET /api/v2/sniper.
 /// Part 5: right under the headline sits the "Why is Sniper quiet?" card (LEARN progress n of 30 + plain reasons + the REAL gate state); its data is GET /api/v2/sniper_learn, loaded on its own so a slow answer never blocks the page.
@@ -28,9 +32,12 @@ class SniperScreen extends StatefulWidget {
 class _SniperScreenState extends State<SniperScreen> {
   Map<String, dynamic>? _r;
   Map<String, dynamic>? _learn;
+  Map<String, dynamic>? _ap; // R17a: GET /api/v2/sniper_autopilot (state, reasons, unseen-days compare)
   bool _busy = true;
   bool _all = false;
+  int _tick = 0; // R17b: raised on a pull-down so the four learning cards load again
   Timer? _timer;
+  final _lg = LastGood();
 
   @override
   void initState() {
@@ -46,20 +53,25 @@ class _SniperScreenState extends State<SniperScreen> {
   }
 
   Future<void> _load({bool silent = false}) async {
-    if (!silent) setState(() => _busy = true);
+    if (!silent) setState(() { _busy = true; _tick++; });
     final r = await context.read<AppProvider>().fetchSniper();
     if (!mounted) return;
     setState(() {
-      _r = r;
+      _lg.take(r, _bad(r)); // R8: a failed refresh keeps the last good data
+      _r = _lg.data;
       _busy = false;
     });
     _loadLearn();
   }
 
   Future<void> _loadLearn() async {
-    final l = await context.read<AppProvider>().fetchSniperLearn();
+    final pr = context.read<AppProvider>();
+    final l = await pr.fetchSniperLearn();
     if (!mounted) return;
     setState(() => _learn = l);
+    final a = await pr.fetchSniperAutopilot();
+    if (!mounted) return;
+    setState(() => _ap = a);
   }
 
   bool _bad(Map<String, dynamic>? r) => r == null || r['state'] != null || r['error'] != null;
@@ -74,24 +86,6 @@ class _SniperScreenState extends State<SniperScreen> {
       default:
         return 'Cannot reach the backend right now. Pull down to try again.';
     }
-  }
-
-  String _ago(Object? s) {
-    if (s is! num) return 'not yet';
-    final n = s.toInt();
-    if (n < 90) return '${n}s ago';
-    if (n < 5400) return '${(n / 60).round()} min ago';
-    return '${(n / 3600).toStringAsFixed(1)} h ago';
-  }
-
-  Widget _head(AppPalette p, Map<String, dynamic> r) {
-    final stale = r['stale_coins'] is num ? (r['stale_coins'] as num).toInt() : 0;
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text('${r['headline'] ?? ''}', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: p.textPrimary)),
-      const SizedBox(height: 4),
-      Text('OwlSniper (watch only)  |  checked ${_ago(r['updated_ago_sec'])}  |  learned ${_ago(r['model_ago_sec'])}${r['refreshing'] == true ? '  |  working in the background...' : ''}${stale > 0 ? '  |  $stale coins have old candles' : ''}',
-          style: TextStyle(fontSize: 11, color: p.textMuted)),
-    ]);
   }
 
   /// Shows what the executor is doing. No button: arming is a two-step Termux command on purpose.
@@ -128,17 +122,23 @@ class _SniperScreenState extends State<SniperScreen> {
       kids = [OWLCard(edge: p.warning, child: Text(_problem(r), style: TextStyle(fontSize: 13, color: p.textPrimary)))];
     } else {
       kids = [
-        _head(p, r!),
-        SniperQuiet(r: r, learn: _learn),
+        UpdatedLine(lg: _lg, onRetry: () => _load()),
+        SniperStateBanner(r: r!, learn: _learn, auto: _ap),
+        OwlFold(title: 'WHY QUIET', headline: 'LEARN progress and the plain reasons', bare: true, children: [SniperQuiet(r: r, learn: _learn)]),
         SniperVolatilityGuard(r: r),
         SniperSignalList(r: r, showAll: _all, onToggle: () => setState(() => _all = !_all)),
-        SniperExtras(r: r),
-        SniperInsightConsole(r: r),
-        SniperComparePanel(r: r),
-        SniperCapitalShield(r: r),
-        SniperEquity(r: r),
-        SniperFloor(r: r),
-        SniperReport(r: r),
+        SniperRiskBoxFold(r: r), // R17: Risk Box moved up, shows only when an order card exists
+        SniperLearnSection(refresh: _tick),
+        // R17a: the older panels sit behind ONE fold so the page answers first (R17b adds the four learning cards and moves the Risk Box up).
+        OwlFold(title: 'MORE SNIPER PANELS', headline: 'Terminal insight, vs Main Bot, capital, equity, floor, report', bare: true, children: [
+          SniperExtras(r: r),
+          SniperInsightConsole(r: r),
+          SniperComparePanel(r: r),
+          SniperCapitalShield(r: r),
+          SniperEquity(r: r),
+          SniperFloor(r: r),
+          SniperReport(r: r),
+        ]),
         _auto(p, r),
         Text('${r['note'] ?? 'WATCH ONLY: this page never sends an order.'}', style: TextStyle(fontSize: 11, color: p.textMuted)),
       ];

@@ -13,6 +13,7 @@ import os
 import sqlite3
 import time
 
+import btc_lab as BL
 import universe_7d as U
 
 BTC, BTC_MARGIN, MARGIN = "BTCUSDT", 1000.0, 100.0
@@ -48,6 +49,8 @@ def build(trades, log, now_s):
     day0 = U.day_start_ms(now_s)
     days = {U.day_name(day0 - i * U.DAY_MS): {"n": 0, "long": 0.0, "short": 0.0} for i in range(SHOW_DAYS)}
     for sym, tf, t, side, net in trades:
+        if BL.skip(sym):                                  # R16b: BTC is the indicator test coin, never inside a Brain total
+            continue
         u = _usdt(sym, net)
         c = g[U.tag_of(sym, t, log)]
         c["n"] += 1

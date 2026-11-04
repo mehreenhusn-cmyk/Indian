@@ -5,6 +5,11 @@ import '../providers/app_provider.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_theme.dart';
 import '../theme/verdict_style.dart';
+import '../widgets/lab_exit_table_card.dart';
+import '../widgets/lab_headtohead_card.dart';
+import '../widgets/lab_loss_source_card.dart';
+import '../widgets/sniper_graduation_card.dart';
+import '../widgets/last_good.dart';
 import '../widgets/load_state.dart';
 import '../widgets/lazy_fold.dart';
 import '../widgets/owl_pressable.dart';
@@ -20,6 +25,8 @@ import 'brain_learning_screen.dart';
 import 'brain_ready_screen.dart';
 import 'lab_hub_summary.dart';
 import 'brain_studies_screen.dart';
+import 'indicator_lab_screen.dart';
+import 'lab_playbook_screen.dart';
 import 'data_explorer_screen.dart';
 import 'day_compare_screen.dart';
 import 'exit_study_screen.dart';
@@ -57,6 +64,7 @@ class _LabHubScreenState extends State<LabHubScreen> {
   Map<String, dynamic>? _r;
   bool _busy = true;
   bool _showNeed = false;
+  final _lg = LastGood();
 
   // Where every study lives (README6 section 13, tab 4). zone / squeeze / limits share one screen with 3 tabs.
   static final Map<String, List<_Item>> _groups = {
@@ -101,7 +109,8 @@ class _LabHubScreenState extends State<LabHubScreen> {
     final r = await context.read<AppProvider>().fetchVerdicts();
     if (!mounted) return;
     setState(() {
-      _r = r;
+      _lg.take(r, r == null || r['state'] != null || r['ready'] != true); // R8: a failed refresh keeps the last good data
+      _r = _lg.data;
       _busy = false;
     });
   }
@@ -193,6 +202,18 @@ class _LabHubScreenState extends State<LabHubScreen> {
         Expanded(child: StatTile(label: 'NEED DATA', value: '${need.length}', tone: need.isNotEmpty ? 'warn' : '')),
       ]),
       const SizedBox(height: AppSpacing.cardGap),
+      _row(_Item('', 'Study results: every test, EDGE first', () => const IndicatorLabScreen(), owns: true), null),
+      const SizedBox(height: 4),
+      _row(_Item('', 'Indicator playbook: what works where', () => const LabPlaybookScreen(), owns: true), null),
+      const SizedBox(height: 4),
+      const LabHeadToHeadCard(),
+      const SizedBox(height: AppSpacing.cardGap),
+      const SniperGraduationCard(),
+      const SizedBox(height: AppSpacing.cardGap),
+      const LabLossSourceCard(),
+      const SizedBox(height: AppSpacing.cardGap),
+      const LabExitTableCard(),
+      const SizedBox(height: AppSpacing.cardGap),
       LazyFold(title: 'Old studies: does Sniper use them?', sub: 'One line per old backtest finding', builder: () => const StudyVerdicts()),
       _label('VERDICTS'),
       VerdictCarousel(cards: decided, onOpen: _openCard),
@@ -243,7 +264,10 @@ class _LabHubScreenState extends State<LabHubScreen> {
       content = ListView(
         physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
         padding: const EdgeInsets.fromLTRB(AppSpacing.screenPad, AppSpacing.s, AppSpacing.screenPad, AppSpacing.huge),
-        children: _body(VerdictCard.listFrom(r?['cards'])),
+        children: [
+          UpdatedLine(lg: _lg, onRetry: _load, summary: '${VerdictCard.listFrom(r?['cards']).length} studies'),
+          ..._body(VerdictCard.listFrom(r?['cards'])),
+        ],
       );
     }
     return Scaffold(

@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../providers/app_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/owl_pressable.dart';
 import 'ledger_screen.dart';
 import 'positions_live_view.dart';
 import 'results_screen.dart';
 
-/// Round 14: the Positions TAB. Three parts behind one segmented bar (UI rules 1 and 7):
+/// R22a: no hint line, no count in the tab name, tabs 14 sp. Round 14: the Positions TAB. Three parts behind one segmented bar (UI rules 1 and 7):
 ///   Live     the open trades with close, close-all, panic, TP and SL (the old Positions screen, moved word for word to positions_live_view.dart)
 ///   Ledger   the Knowledge Ledger: what the research found, with sample sizes (read-only, same screen as in the gear page)
 ///   Results  which groups of closed trades make or lose money (read-only, same screen as in the gear page)
@@ -22,11 +20,6 @@ class PositionsScreen extends StatefulWidget {
 
 class _PositionsScreenState extends State<PositionsScreen> {
   static const List<String> _names = ['Live', 'Ledger', 'Results'];
-  static const List<String> _hints = [
-    'Open trades: close, take profit, stop loss',
-    'What the research found, with sample sizes (read-only)',
-    'Which groups of closed trades make or lose money (read-only)',
-  ];
 
   int _tab = 0;
   final Set<int> _seen = {0};
@@ -51,6 +44,7 @@ class _PositionsScreenState extends State<PositionsScreen> {
     }
   }
 
+  // R25: plain text tabs: selected = bold + a short underline, the others grey. No box, no border, no tint.
   Widget _segment(BuildContext context, int i) {
     final p = context.palette;
     final on = i == _tab;
@@ -60,18 +54,15 @@ class _PositionsScreenState extends State<PositionsScreen> {
         onTap: () => _select(i),
         child: Container(
           alignment: Alignment.center,
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          decoration: BoxDecoration(
-            color: on ? p.accent.withOpacity(0.16) : Colors.transparent,
-            borderRadius: BorderRadius.circular(AppSpacing.radiusSmall),
-            border: Border.all(color: on ? p.accent : Colors.transparent),
+          padding: const EdgeInsets.only(top: 8, bottom: 6),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(_names[i], style: _label(context, on)),
+              const SizedBox(height: 5),
+              Container(height: 2.5, width: 22, decoration: BoxDecoration(color: on ? p.textPrimary : Colors.transparent, borderRadius: BorderRadius.circular(2))),
+            ],
           ),
-          child: i == 0
-              ? Selector<AppProvider, int>(
-                  selector: (_, x) => x.positions.length,
-                  builder: (context, n, _) => Text(n > 0 ? 'Live ($n)' : 'Live', style: _label(context, on)),
-                )
-              : Text(_names[i], style: _label(context, on)),
         ),
       ),
     );
@@ -79,7 +70,7 @@ class _PositionsScreenState extends State<PositionsScreen> {
 
   TextStyle _label(BuildContext context, bool on) {
     final p = context.palette;
-    return context.type.primary.copyWith(fontWeight: on ? FontWeight.w800 : FontWeight.w600, color: on ? p.accent : p.textSecondary);
+    return context.type.primary.copyWith(fontSize: 16, fontWeight: on ? FontWeight.w700 : FontWeight.w500, color: on ? p.textPrimary : p.textMuted);
   }
 
   @override
@@ -94,21 +85,10 @@ class _PositionsScreenState extends State<PositionsScreen> {
             bottom: false,
             child: Padding(
               padding: const EdgeInsets.fromLTRB(AppSpacing.l, AppSpacing.s, AppSpacing.l, 0),
-              child: Container(
-                padding: const EdgeInsets.all(3),
-                decoration: BoxDecoration(
-                  color: p.surface,
-                  borderRadius: BorderRadius.circular(AppSpacing.radiusSmall + 3),
-                  border: Border.all(color: p.border),
-                ),
-                child: Row(children: [for (var i = 0; i < _names.length; i++) _segment(context, i)]),
-              ),
+              child: Row(children: [for (var i = 0; i < _names.length; i++) _segment(context, i)]),
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(AppSpacing.l, AppSpacing.xs, AppSpacing.l, AppSpacing.xs),
-            child: Text(_hints[_tab], maxLines: 1, overflow: TextOverflow.ellipsis, style: context.type.metadata),
-          ),
+          const SizedBox(height: AppSpacing.xs), // R22a: the grey hint line under the tabs is gone (it repeated the tab name)
           Expanded(child: IndexedStack(index: _tab, children: [for (var i = 0; i < _names.length; i++) _page(i)])),
         ],
       ),

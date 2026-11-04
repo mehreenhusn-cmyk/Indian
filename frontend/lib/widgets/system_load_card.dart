@@ -316,7 +316,7 @@ class _SystemLoadCardState extends State<SystemLoadCard> {
             Padding(
               padding: const EdgeInsets.fromLTRB(AppSpacing.m, 0, AppSpacing.m, AppSpacing.m),
               child: Text(
-                _failed ? 'Backend abhi jawab nahi de raha. Connect hote hi yahan dikhega.' : 'Loading...',
+                _failed ? 'The backend is not answering. It will show here as soon as it connects.' : 'Loading...',
                 style: AppTypography.metadata.copyWith(color: p.textMuted, fontSize: 12),
               ),
             ),

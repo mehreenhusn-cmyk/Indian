@@ -16,6 +16,7 @@ import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import owl_sniper_barriers as BR
+import owl_sniper_livewide as LW
 import owl_sniper_feed as F
 import owl_sniper_prob as P
 import owl_sniper_tf as TF
@@ -100,6 +101,9 @@ def scan_live(d, now=None, interval="5m", network=True, get=None, sleep=None, ca
                 if r["action"] != "BLOCK_TRADE":
                     S = eng.features(run)
                     card["barrier"] = BR.plan_for_signal(S, S["n"] - 1)
+                    w = LW.wide_for_card(S, run, sym, card.get("side") or ("LONG" if r["action"] == "SNIPER_LONG" else "SHORT"), interval)        # R3d: the 20 numbers for the autopilot
+                    if w:
+                        card["wide"], card["wide_missing"] = w["wide"], w["missing"]
                 cards.append(card)
     finally:
         con.close()

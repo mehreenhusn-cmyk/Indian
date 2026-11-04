@@ -243,7 +243,18 @@ def route(d, card, floor_verified, now=None, interval="5m", real_opener=None, le
     if not st.get("ok") or (st.get("kill") or {}).get("on"):
         return dict(real, lane="REAL", gate="kill" if st.get("ok") else "state", text="The owner's kill switch is on." if st.get("ok") else st.get("text", ""), **info)
     try:
-        ln = LN.decide(d, card, now, interval, learn_opener)
+        try:
+            import owl_sniper_autopilot as AP                   # R3c: while the autopilot is EXPLORING, the LEARN lane skips the win-chance floor (paper, tiny size, caps stay)
+            explore = AP.explore_active(d)
+            if not explore:                                     # R3d: LEARNED = the autopilot model scores the card's live 20 numbers (no opinion = the old floor stays)
+                import owl_sniper_livewide as LW
+                v = LW.verdict(d, card)
+                if v is not None and not v["take"]:
+                    return dict({"decision": "BLOCKED", "gate": "autopilot", "text": v["why"], "order": None, "tag": LN.TAG}, lane="LEARN", **info)
+                explore = v is not None                         # the model said yes: the old 4-number floor is not asked again; every other LEARN gate stays
+        except Exception:
+            explore = False
+        ln = LN.decide(d, card, now, interval, learn_opener, explore=explore)
     except Exception as e:
         ln = {"decision": "BLOCKED", "gate": "error", "text": "The LEARN gate failed (%s)." % str(e)[:60], "order": None, "tag": LN.TAG}
     return dict(ln, lane="LEARN", **info)

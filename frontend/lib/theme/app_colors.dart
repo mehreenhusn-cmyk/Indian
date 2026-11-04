@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// OWL Terminal design tokens (dark AMOLED exchange palette).
+/// OWL Terminal design tokens (dark AMOLED exchange palette). R23: canvas is PURE BLACK, surfaces and the 1px lines are a little darker (terminal look); Light is untouched.
 ///
 /// Single source of truth for every static color. The legacy names used by
 /// the existing screens (obsidian, surfaceDark, glass*, profit, loss, accent,
@@ -15,13 +15,13 @@ class AppColors {
   // ---- Backgrounds (true-black canvas for AMOLED, raised surfaces above) ----
   // Ink-navy canvas: still near-black for AMOLED, but with a cool tint so
   // glass cards have something to glow against (premium glass look).
-  static const Color background = Color(0xFF0A0D14);
-  static const Color surfacePrimary = Color(0xFF111723);
-  static const Color surfaceElevated = Color(0xFF171F2D);
-  static const Color surfaceHigher = Color(0xFF1F293B);
+  static const Color background = Color(0xFF000000);
+  static const Color surfacePrimary = Color(0xFF0C1017);
+  static const Color surfaceElevated = Color(0xFF131923);
+  static const Color surfaceHigher = Color(0xFF1A2230);
 
   // ---- Borders & accent ----
-  static const Color border = Color(0xFF263145);
+  static const Color border = Color(0xFF1E2633);
   // One calm blue-violet for tabs, buttons and selected states.
   static const Color accent = Color(0xFF7388FF);
 

@@ -19,6 +19,7 @@ import sys
 import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import btc_lab as BTCL
 import trade_archive as TA
 import v2_pnl as P
 
@@ -69,6 +70,8 @@ def _pct(entry, stop):
 def from_lab(t, source):
     """Dual and Brain share one trade shape (s, f, ct, d, entry, sl, tps, net, end, bars, hit, mfe ...). -> record, or (None, reason)."""
     sym, tf, d = t.get("s"), t.get("f"), _num(t.get("d"))
+    if BTCL.skip(sym):                                       # R16b: BTC is the indicator test coin, never a Sniper training example
+        return None, "btc_lab"
     step, ct, entry, net = TF_SEC.get(tf), _num(t.get("ct")), _num(t.get("entry")), _num(t.get("net"))
     if not sym or step is None or ct is None or not entry or entry <= 0 or net is None or d not in (1.0, -1.0):
         return None, "bad_row"
@@ -97,6 +100,8 @@ def from_main(t, file_bot="b1"):
     t0, t1, roi, pnl = _num(t.get("opened_at_ts")), _num(t.get("closed_at_ts")), _num(t.get("roi_pct")), _num(t.get("pnl_usdt"))
     if not t.get("symbol") or act not in ("BUY", "SELL") or not entry or entry <= 0 or t0 is None or t1 is None or roi is None or pnl is None or t1 < t0:
         return None, "bad_row"
+    if BTCL.skip(t.get("symbol")):                           # R16b: BTC is the indicator test coin
+        return None, "btc_lab"
     stop = _num(t.get("signal_stop_loss")) or _num(t.get("sl_initial"))
     worst = _num(t.get("min_roi_pct"))
     why = str(t.get("status") or "").replace("CLOSED_", "") or None
