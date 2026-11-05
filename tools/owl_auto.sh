@@ -12,6 +12,7 @@
 #
 #   bash ~/owl_auto.sh            start the watcher (only ONE can run; a 2nd copy refuses)
 #   bash ~/owl_auto.sh pushcheck  why is nothing pushed? (watcher, repo folder, login test, pending zips) -> screen + ~/owl_pushcheck.txt
+#   bash ~/owl_auto.sh hold       v5k: STOP pushing to GitHub (zips still deploy on the phone); release = allow again
 #   bash ~/owl_auto.sh pushnow    push RIGHT NOW without the watcher: the newest owl zip in Download is copied into the repo folder, committed and pushed
 #   bash ~/owl_auto.sh install-bashrc   one-time: every new Termux window starts this watcher by itself if it is not running (no Termux:Boot app needed)
 #   bash ~/owl_auto.sh status     full report -> screen + ~/owl_status.txt + Download/owl_status.txt
@@ -77,8 +78,8 @@
 # Settings / trades live outside the code folder, so a new zip never touches them.
 # Needs once:  termux-setup-storage
 
-BUILD=45    # self-update number: a zip replaces this script only if its BUILD is a bigger whole number (v5c=2, v5d=3, v5e=40, v5f=41, v5g=42, v5h=43, v5i=44, v5j=45)
-VERSION="v5j 2026-11-02"
+BUILD=46    # self-update number: a zip replaces this script only if its BUILD is a bigger whole number (v5c=2, v5d=3, v5e=40, v5f=41, v5g=42, v5h=43, v5i=44, v5j=45, v5k=46)
+VERSION="v5k 2026-11-06"
 DL_LIST() {   # every Download folder that exists (no duplicates)
   for d in "$OWL_DL" "$HOME/storage/downloads" "$HOME/storage/shared/Download" "/sdcard/Download" "/storage/emulated/0/Download"; do
     [ -n "$d" ] && [ -d "$d" ] && echo "$(cd "$d" 2>/dev/null && pwd -P)"
@@ -532,6 +533,12 @@ pending_retry() {
 sync_repo() {
   local zip="$1" out
   is_owl_zip "$zip" || { log "github sync skipped: $(basename "$zip") is not an Indian-main/ zip (other repo), never pushed"; return 0; }   # v5i: also for 'pushnow <zip>'
+  # v5k: HOLD switch. While the file ~/.owl_hold_push exists, NO zip is pushed to GitHub (it is still deployed on the phone). The zip is remembered
+  # and pushed after:  bash ~/owl_auto.sh release   (or at once with: bash ~/owl_auto.sh pushnow, which ignores the hold on purpose).
+  if [ -f "$HOME/.owl_hold_push" ] && [ -z "$OWL_FORCE_PUSH" ]; then
+    grep -qsF "|$zip" "$PENDF" || pending_add "$zip"
+    return 1
+  fi
   git_ok || { log "github sync skipped: no git repo at $REPO"; return 1; }
   if stale_zip "$zip" "$HOME/.owl_push_ver"; then log "github sync skipped: $(basename "$zip") is README4 v$(zip_ver "$zip"), OLDER than v$(cat "$HOME/.owl_push_ver") already pushed (it would put old files back)"; pending_done "$(stat -c '%Y' "$zip" 2>/dev/null || echo 0)"; return 0; fi
   if ! git -C "$REPO" pull -q --rebase --autostash origin main >>"$LOG" 2>&1; then
@@ -738,7 +745,12 @@ case "$1" in
       echo "6 last github lines in ~/owl_auto.log:"; grep -E 'github sync|OVERLAY|zip skipped|zip ignored' "$LOG" 2>/dev/null | tail -n 8 | sed 's/^/     /'
     } 2>&1 | tee "$HOME/owl_pushcheck.txt"
     exit 0 ;;
+  hold)
+    touch "$HOME/.owl_hold_push"; echo "HOLD is ON: zips are deployed on the phone but NOT pushed to GitHub. Release with: bash ~/owl_auto.sh release"; exit 0 ;;
+  release)
+    rm -f "$HOME/.owl_hold_push"; echo "HOLD is OFF: held zips are pushed by the watcher within about 3 minutes (or now: bash ~/owl_auto.sh pushnow)."; exit 0 ;;
   pushnow)
+    export OWL_FORCE_PUSH=1
     git_ok || { echo "no git repo found (looked at ~/Indian-main, ~/Indian-cleanup, ~/Indian, or any folder under ~ whose remote has Indian in it)"; exit 1; }
     echo "repo: $REPO"
     z="$2"
