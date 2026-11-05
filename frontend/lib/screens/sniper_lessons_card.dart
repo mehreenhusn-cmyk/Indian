@@ -3,10 +3,12 @@ import 'package:provider/provider.dart';
 
 import '../providers/app_provider.dart';
 import '../theme/app_theme.dart';
+import 'sniper_ab_card.dart';
 import 'sniper_learn_cards.dart';
+import 'sniper_tpsl_card.dart';
 
 /// R17b: card 4 = WEEKLY LESSONS (GET /api/v2/sniper_lessons: the tag of every closed Sniper trade: entry error / exit error / sideways loss / good, and up to 3 plain lessons of the week),
-/// plus [SniperLearnSection] = the loader that puts all FOUR learning cards on the Sniper tab. Each route loads alone with a 12 s limit, so one slow or broken route only turns ITS card into a plain line.
+/// plus [SniperLearnSection] = the loader that puts all SIX learning cards on the Sniper tab. Each route loads alone with a 12 s limit, so one slow or broken route only turns ITS card into a plain line.
 /// [refresh] = a number the screen raises on a pull-down, so the cards load again. Read only, paper only. Dart NOT compiled (the APK build is the proof).
 class SniperLessonsCard extends StatelessWidget {
   final Map<String, dynamic>? r;
@@ -88,6 +90,10 @@ class _SniperLearnSectionState extends State<SniperLearnSection> {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Padding(padding: const EdgeInsets.only(bottom: 6), child: Text('WHAT IT LEARNED', style: context.type.label.copyWith(color: p.textMuted, fontWeight: FontWeight.w800, letterSpacing: 0.8))),
       SniperBookingCard(r: _exit),
+      gap(),
+      SniperTpslCard(r: _exit),
+      gap(),
+      SniperAbCard(r: _exit),
       gap(),
       SniperEntryCard(r: _exit),
       gap(),

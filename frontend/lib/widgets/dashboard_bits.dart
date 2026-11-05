@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../utils/format.dart';
+import 'owl_row.dart';
 import 'owl_skeleton.dart';
 
 /// Round 12: the small parts of the Dashboard that used to sit inside the 971-line dashboard_screen.dart.
@@ -75,7 +76,12 @@ class CatchUpLine extends StatelessWidget {
   Widget build(BuildContext context) {
     final ts = (info['ts'] as num?)?.toDouble();
     if (ts == null) return const SizedBox.shrink();
-    final at = DateTime.fromMillisecondsSinceEpoch((ts * 1000).round());
+    // Part 15: always India time (IST = UTC + 5:30), whatever the phone clock says; another day shows its date.
+    const ist = Duration(hours: 5, minutes: 30);
+    final at = DateTime.fromMillisecondsSinceEpoch((ts * 1000).round(), isUtc: true).add(ist);
+    final today = DateTime.now().toUtc().add(ist);
+    const mon = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    final day = (at.year == today.year && at.month == today.month && at.day == today.day) ? '' : '${at.day} ${mon[at.month - 1]} ';
     final hh = at.hour.toString().padLeft(2, '0');
     final mm = at.minute.toString().padLeft(2, '0');
     final checked = (info['checked'] as num?)?.toInt() ?? 0;
@@ -85,7 +91,7 @@ class CatchUpLine extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(top: 6),
       child: Text(
-        'Last catch-up $hh:$mm · $gapText · $checked open checked'
+        'Last catch-up $day$hh:$mm IST · $gapText · $checked open checked'
         '${closed > 0 ? ' · $closed closed while away' : ''}',
         style: AppTypography.metadata.copyWith(color: closed > 0 ? context.palette.warning : context.palette.textMuted, fontSize: 11),
       ),
@@ -185,6 +191,7 @@ class _MasterTradingTogglePillState extends State<MasterTradingTogglePill> {
 class DashboardSkeleton extends StatelessWidget {
   const DashboardSkeleton();
 
+  /// Part 12b: grey shimmer shapes in the layout of the new Dashboard (title, hero number, stat line, list rows) instead of a spinner.
   @override
   Widget build(BuildContext context) {
     return const SingleChildScrollView(
@@ -194,26 +201,16 @@ class DashboardSkeleton extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           OWLSkeleton(width: 140, height: 26),
-          SizedBox(height: AppSpacing.l),
-          OWLSkeleton.card(height: 90),
-          SizedBox(height: AppSpacing.l),
-          OWLSkeleton(width: 90, height: 12),
-          SizedBox(height: AppSpacing.s),
-          OWLSkeleton(width: 200, height: 40),
-          SizedBox(height: AppSpacing.xxl),
-          Row(
-            children: [
-              Expanded(child: OWLSkeleton.card(height: 70)),
-              SizedBox(width: AppSpacing.m),
-              Expanded(child: OWLSkeleton.card(height: 70)),
-            ],
-          ),
           SizedBox(height: AppSpacing.xl),
-          OWLSkeleton.card(height: 180),
-          SizedBox(height: AppSpacing.xl),
-          OWLSkeleton.card(height: 64),
+          OWLSkeleton(width: 150, height: 12),
           SizedBox(height: AppSpacing.s),
-          OWLSkeleton.card(height: 64),
+          OWLSkeleton(width: 220, height: 40),
+          SizedBox(height: AppSpacing.l),
+          OWLSkeleton(height: 56),
+          SizedBox(height: AppSpacing.sectionGap),
+          OWLSkeleton(width: 110, height: 12),
+          SizedBox(height: AppSpacing.s),
+          OwlRowSkeleton(rows: 4),
         ],
       ),
     );

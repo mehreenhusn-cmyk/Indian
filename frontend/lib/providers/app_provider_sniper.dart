@@ -11,6 +11,42 @@ extension AppProviderSniper on AppProvider {
   /// Part 5 (LEARN, paper only): GET /api/v2/sniper_learn = {learn: {enabled, floor, size_usdt, open, progress {n, target, wins, losses, net_usdt, text}, kill, ...}, last_turn: {auto, opened, cards, why}, turns}.
   Future<Map<String, dynamic>> fetchSniperLearn() => _sniperGet('/api/v2/sniper_learn');
 
+  /// R26b: GET /api/v2/sniper_gates = {gates[8] PASS / FAIL / WAIT, explore {state, text}, real {state, text}, reason, cards, mistakes {trades, counts, blocked[], journal[], rule}}. Read only.
+  Future<Map<String, dynamic>> fetchSniperGates() => _sniperGet('/api/v2/sniper_gates');
+
+  /// R29a: GET /api/v2/sniper_trades = {open[], closed[]} the Sniper trade record: signal, reason, basis[], entry, take_profit, stop_loss, expected_usdt, risk_usdt, rr, max_hold_sec, typical_hold_sec, and for closed ones pnl_usdt, held_sec, exit_reason, lesson. Read only.
+  Future<Map<String, dynamic>> fetchSniperTrades() => _sniperGet('/api/v2/sniper_trades');
+
+  /// R28b: GET /api/v2/sniper_days = {today, week, days[7]}: Sniper paper results for today and the last 7 days (day starts 5:30 AM IST), BTC never counted. block = {n, wins, losses, win_pct, net, avg, best, worst, profit, loss, lanes, coins_top, coins_worst, exits, tags} (n = 0 has a text only). Read only.
+  Future<Map<String, dynamic>> fetchSniperDays() => _sniperGet('/api/v2/sniper_days');
+
+  /// R30: GET /api/v2/sniper_ctx = {state, session, ctx {btc_1, btc_3, btc_12, btc_trend, hour}, age_sec, btc_counts_in_pnl: false}. BTC move + session the Sniper learns from. Read only.
+  Future<Map<String, dynamic>> fetchSniperCtx() => _sniperGet('/api/v2/sniper_ctx');
+
+  /// Part 16 (R33b): GET /api/v2/sniper_watch = {state OK / NO_DATA / ERROR, saved_at, scanned, stale, fav_n, armed_n, near_n, rows[{rank, symbol, source FAV / MOVER / BOTH, state ARMED / NEAR / WATCH, armed, side, age, move_15m_pct, move_1h_pct, regime, mode, mode_learned, price, entry_price, stop_loss, take_profit, stop_pct, rr, reason}]}. Read only.
+  Future<Map<String, dynamic>> fetchSniperWatch() => _sniperGet('/api/v2/sniper_watch');
+
+  /// Part 17a: GET /api/v2/sniper_eva = {state OK / NOT_ENOUGH_DATA, text, min_n, n_expected, n_compared, n_waiting, lanes {EXPLORE / LEARN / REAL: {state NOT_ENOUGH_DATA / ON_TRACK / BELOW_EXPECTED / ABOVE_EXPECTED, n, text, lines[]}}}. Expected (Risk Box at entry) vs real paper result. Read only.
+  Future<Map<String, dynamic>> fetchSniperEva() => _sniperGet('/api/v2/sniper_eva');
+
+  /// Part 17a: GET /api/v2/sniper_opp = {state OK / NO_TRADES, text, counts, rows[{id, symbol, trade_id, decision STAY / TAKE_PROFIT / ROTATE / KEEP, text}]}. One rough line per open Sniper paper trade. Read only.
+  Future<Map<String, dynamic>> fetchSniperOpp() => _sniperGet('/api/v2/sniper_opp');
+
+  /// Part 17c: GET /api/v2/grad_dual = {state OK / error / busy, grad {arms {current_bot, brain_own: {verdict, passed, failed, waiting, checks[{key, label, state, value, need}], numbers}}, notes}, auto {last_run_ts, runs, steps {scalp_lab, ledger: {ok, note}}}}. Graduation gate of the Dual Bot / Brain (paper only) + the automatic Scalp Lab / Ledger run. Read only.
+  Future<Map<String, dynamic>> fetchGradDual() => _sniperGet('/api/v2/grad_dual');
+
+  /// Part 17c: GET /api/v2/sniper_bridge = {state, by_source {dual, brain, main: {records, rows, labels, examples}}, learn {...}, lines[]}: how much the Sniper learns from the trades of the other bots. Read only (the backend caches it 10 minutes).
+  Future<Map<String, dynamic>> fetchSniperBridge() => _sniperGet('/api/v2/sniper_bridge');
+
+  /// Part 17c: Dual Bot side data, read only: GET /api/layers/pa and /api/layers/vol = {running, report, last, error}, GET /api/dual_universe = {days[], saved_days, cap, err}, GET /api/archive_check = {state match / differ / error / none, json_closed, db_closed, missing, text}.
+  Future<Map<String, dynamic>> fetchLayerPa() => _sniperGet('/api/layers/pa');
+  Future<Map<String, dynamic>> fetchLayerVol() => _sniperGet('/api/layers/vol');
+  Future<Map<String, dynamic>> fetchDualUniverse() => _sniperGet('/api/dual_universe');
+  Future<Map<String, dynamic>> fetchArchiveCheck() => _sniperGet('/api/archive_check');
+
+  /// Part 17d: GET /api/v2/data_health = {state OK / error, candles {switch ON / OFF, owner_off, runner_running, runner_beat_age_s}, history {by_source {dual, brain, main: {records, ready, needs_fetch, known_gap, too_old, too_recent}}, requests_needed, lines[]}, learning {state EXPLORE / LEARNED, n_train, n_test, days, reasons[], age_s}, jobs[{key, label, age_s}]}. Read only.
+  Future<Map<String, dynamic>> fetchDataHealth() => _sniperGet('/api/v2/data_health');
+
   /// Part 12 (Risk Box, read only): GET /api/v2/sniper_riskbox = {state: OK / NOT_ENOUGH_DATA / NO_SIGNAL / busy / error / off, text, lines, n, min_n, win_pct, exp_r, exp_usdt, median_secs, worst_r, ...}.
   /// side empty = the Sniper's own signal. Same answer rules as the other Sniper fetches. Never throws.
   Future<Map<String, dynamic>> fetchSniperRiskBox(String symbol, {String tf = '5m', String side = '', double size = 10, double lev = 1}) =>

@@ -44,7 +44,7 @@ class AppRoutes {
     AppRoute.positions,
     AppRoute.sniper,
     AppRoute.studyLab,
-    AppRoute.diagnostics,
+    AppRoute.more, // Part 13: Settings and tools is now the 5th tab of the bar (the top-bar gear is gone, it was the same page twice)
   ];
 
   // Round 11: the 5 buttons of the bottom bar, left to right. Market and Brain left the bar (they open from the gear page).
@@ -60,14 +60,14 @@ class AppRoutes {
     AppRoute.signals,
     AppRoute.dualBot,
     AppRoute.ai,
-    settingsRoute,
+    AppRoute.diagnostics, // R28c: Diagnostics left the bar; its summary is on the Dashboard, the full page opens from More
   ];
 
   // Swipe order: the 5 sections first, then the gear pages (built from the two lists above, not typed twice).
   static const List<AppRoute> swipeOrder = [...sections, ...gearPages];
 
   // Pages that have no button in the bar: they open from the top-bar gear / the Settings and tools page and keep the GEAR lit.
-  static const Set<AppRoute> underGear = {AppRoute.market, AppRoute.brain, AppRoute.signals, AppRoute.dualBot, AppRoute.ai, AppRoute.more};
+  static const Set<AppRoute> underGear = {AppRoute.market, AppRoute.brain, AppRoute.signals, AppRoute.dualBot, AppRoute.ai, AppRoute.diagnostics};
 
   /// True for the 5 fixed sections; false for a gear page.
   static bool isSection(AppRoute r) => sections.contains(r);

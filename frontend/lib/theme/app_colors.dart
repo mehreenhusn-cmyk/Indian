@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+/// Part P-A (look tokens v2): dark = INK (a cool near-black, not pure black: surfaces step up one level at a time, one hairline border colour, ONE accent). Light = cool off-white, no blue paper.
 /// OWL Terminal design tokens (dark AMOLED exchange palette). R23: canvas is PURE BLACK, surfaces and the 1px lines are a little darker (terminal look); Light is untouched.
 ///
 /// Single source of truth for every static color. The legacy names used by
@@ -15,13 +16,13 @@ class AppColors {
   // ---- Backgrounds (true-black canvas for AMOLED, raised surfaces above) ----
   // Ink-navy canvas: still near-black for AMOLED, but with a cool tint so
   // glass cards have something to glow against (premium glass look).
-  static const Color background = Color(0xFF000000);
-  static const Color surfacePrimary = Color(0xFF0C1017);
+  static const Color background = Color(0xFF07090D);
+  static const Color surfacePrimary = Color(0xFF0D1118);
   static const Color surfaceElevated = Color(0xFF131923);
   static const Color surfaceHigher = Color(0xFF1A2230);
 
   // ---- Borders & accent ----
-  static const Color border = Color(0xFF1E2633);
+  static const Color border = Color(0xFF1D2531); // hairline: 1 px, never thicker
   // One calm blue-violet for tabs, buttons and selected states.
   static const Color accent = Color(0xFF7388FF);
 

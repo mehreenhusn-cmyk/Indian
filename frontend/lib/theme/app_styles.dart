@@ -91,7 +91,8 @@ class AppStyles {
     double? letterSpacing,
   }) {
     return TextStyle(
-      fontFamily: AppTypography.fontFamily,
+      fontFamily: AppTypography.familyNumeric,
+      fontFamilyFallback: AppTypography.familyFallback,
       fontFeatures: const [FontFeature.tabularFigures()],
       fontSize: fontSize,
       fontWeight: fontWeight,
@@ -112,4 +113,8 @@ class AppStyles {
       border: Border.all(color: color.withOpacity(0.35), width: 1),
     );
   }
+
+  /// R31a: ONE thin row divider for every list (no box around each row): 1 px, the theme's border colour.
+  static Widget divider(BuildContext context, {double indent = 0}) =>
+      Divider(height: AppSpacing.dividerWidth, thickness: AppSpacing.dividerWidth, indent: indent, color: context.palette.border);
 }

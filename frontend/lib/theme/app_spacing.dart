@@ -18,11 +18,24 @@ class AppSpacing {
   static const double cardGap = 10.0; // gap between stacked cards (E5: 12 -> 10)
   static const double cardPad = 12.0; // inner padding of a compact card (E5: 14 -> 12)
 
+  // R31a (plan H3): section / row rhythm shared by every screen
+  static const double sectionGap = 24.0; // space between two sections
+  static const double rowMinHeight = 56.0; // a list row is never lower than this
+  static const double rowPadV = 12.0; // vertical padding inside a row
+  static const double dividerWidth = 1.0; // thin line between rows
+
   // Radii
   static const double radiusSmall = 8.0; // controls
-  static const double radiusMedium = 16.0; // cards (SR1a: 14 -> 16)
+  static const double radiusMedium = 12.0; // cards (R31a: 16 -> 12, less toy-like; one card around a whole list, not one per row)
   static const double radiusLarge = 18.0; // major surfaces (SR1a: 20 -> 18)
   static const double radiusPill = 100.0; // status badges
+
+  // P-A / P-B: the floating bottom bar (one place to tune it)
+  static const double radiusBar = 26.0; // bar corners
+  static const double barHeight = 62.0; // the bar itself
+  static const double barLift = 16.0; // how far the lit bubble rises above the bar
+  static const double barBubble = 46.0; // lit bubble size
+  static const double barSide = 12.0; // gap left and right of the bar
 }
 
 /// E5: one shape and size for every button on every screen (Dashboard, Positions, Signals, Alerts, Dual Bot).

@@ -14,6 +14,7 @@ import 'compare_books.dart';
 import 'compare_table.dart';
 import 'owl_pressable.dart';
 import 'owl_route.dart';
+import 'owl_sub_page.dart';
 
 /// R16: the BOOKS STRIP of the Dashboard. ONE line per book: Current Bot, Dual Bot, Brain, Sniper (LEARN). Each line says its own period, so two numbers are never read as the same thing
 /// (the old "1985 vs 469" mix-up). Tap a line = open that bot. Books are never added together.
@@ -105,13 +106,13 @@ class _BrainStripState extends State<BrainStrip> {
       padding: const EdgeInsets.fromLTRB(AppSpacing.cardPad, AppSpacing.s, AppSpacing.cardPad, AppSpacing.s),
       decoration: BoxDecoration(color: p.surface, borderRadius: BorderRadius.circular(AppSpacing.radiusMedium), border: Border.all(color: p.border)),
       child: Column(children: [
-        _line('Current Bot', mainRow(pr), () => const ResultsScreen()),
+        _line('Current Bot', mainRow(pr), () => const OwlSubPage(title: 'Current Bot', child: ResultsScreen())),
         divider,
         _line('Dual Bot', _dual == null ? null : dualRow(_dual!), () => const DualBotScreen()),
         divider,
-        _line('Brain', _brain == null ? null : brainRow(_brain!), () => const BrainDashboardScreen()),
+        _line('Brain', _brain == null ? null : brainRow(_brain!), () => const OwlSubPage(title: 'Brain', child: BrainDashboardScreen())),
         divider,
-        _line('Sniper (LEARN)', _learn == null ? null : learnRow(_learn!), () => const SniperScreen()),
+        _line('Sniper (LEARN)', _learn == null ? null : learnRow(_learn!), () => const OwlSubPage(title: 'Sniper', child: SniperScreen())),
         Padding(
           padding: const EdgeInsets.only(top: 4, bottom: 2),
           child: Row(children: [

@@ -235,6 +235,15 @@ def route(d, card, floor_verified, now=None, interval="5m", real_opener=None, le
     """Part 4: ONE card -> the REAL gate first (decide(), FLOOR 0.85, untouched). If it opens, lane REAL. If it is blocked the card goes to the LEARN gate (paper only, tiny size, tag LEARN), lane LEARN.
     The owner's kill switch (gate "kill") and a broken executor file (gate "state") stop BOTH lanes. The answer always carries real_gate / real_text, so the screen can say WHY the real gate said no. Never raises."""
     now = time.time() if now is None else now
+    if (card or {}).get("xp") is True:                              # R26a: an EXPLORE card goes to the paper LEARN lane ONLY, the real 85% gate never sees it
+        st = status(d, now)
+        if not st.get("ok") or (st.get("kill") or {}).get("on"):
+            return {"decision": "BLOCKED", "gate": "kill", "text": "The owner's kill switch is on.", "order": None, "tag": LN.TAG, "lane": "LEARN", "real_gate": "xp", "real_text": "EXPLORE card"}
+        try:
+            ln = LN.decide(d, card, now, interval, learn_opener, explore=True, xp=True)
+        except Exception as e:
+            ln = {"decision": "BLOCKED", "gate": "error", "text": "The EXPLORE gate failed (%s)." % str(e)[:60], "order": None, "tag": LN.TAG}
+        return dict(ln, lane="LEARN", real_gate="xp", real_text="EXPLORE card: the real gate never sees it.")
     real = decide(d, card, floor_verified, now, interval, real_opener)
     info = {"real_gate": real.get("gate", ""), "real_text": real.get("text", "")}
     st = status(d, now)                                              # the real gate stops at "armed" first, so the kill switch / broken file is read here directly

@@ -5,6 +5,10 @@ import '../navigation/app_routes.dart';
 import '../providers/app_provider.dart';
 import '../theme/app_theme.dart';
 import '../config_flags.dart';
+import '../widgets/font_switch_row.dart';
+import '../widgets/owl_icon_tile.dart';
+import '../widgets/owl_row.dart';
+import '../widgets/owl_sentence.dart';
 import '../widgets/owl_pressable.dart';
 import '../widgets/owl_route.dart';
 import '../widgets/report_download_card.dart';
@@ -12,14 +16,14 @@ import 'ai_report_screen.dart';
 import 'app_problems_screen.dart';
 import 'ping_tab_screen.dart';
 import 'brain_chat_screen.dart';
+import 'data_health_screen.dart';
+import 'data_sources_screen.dart';
 import 'simple_results_screen.dart';
 import 'brain_today_screen.dart';
 import 'screen_check_screen.dart';
 import 'brain_dashboard_screen.dart';
-import 'system_health_screen.dart';
 import 'month_grid_screen.dart';
 import 'reports_screen.dart';
-import 'sniper_screen.dart';
 import 'settings_screen.dart';
 import 'strategy_doctor_screen.dart';
 import 'timeline_screen.dart';
@@ -53,115 +57,77 @@ class MoreScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = context.type;
     final go = context.read<AppProvider>().goToRoute;
+    // P-E: every row has an icon TILE (tinted square). One tint per group: Trading tools = accent, Results = purple, System and Settings = grey. A different icon per row.
+    final pal = context.palette;
+    Widget Function(IconData, String, String, VoidCallback) tile(Color c) => (icon, title, sub, onTap) => OwlRow(title: title, sub: sub, leading: OwlIconTile(icon, c), onTap: onTap);
+    final rT = tile(pal.accent), rR = tile(pal.purple), rS = tile(pal.textSecondary);
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.fromLTRB(AppSpacing.l, AppSpacing.l, AppSpacing.l, AppSpacing.xl),
           children: [
-            Row(children: [
-              Icon(Icons.settings_rounded, size: 22, color: context.palette.textPrimary),
-              const SizedBox(width: 8),
-              Text('Settings and tools', style: t.section.copyWith(fontSize: 20, fontWeight: FontWeight.w700)),
+            Text('More', style: context.type.section.copyWith(fontSize: 22, fontWeight: FontWeight.w800)),
+            // Part 13c: groups in the order Trading tools, Results and reports, System, Settings. ONE card per group with thin lines (no box per row),
+            // every row has a one-line purpose, row height follows the screen (AppScale). The doubles are gone: "System Health" (= Diagnostics) and "OwlSniper" (= the Sniper tab).
+            const OwlSectionLabel('Trading tools'),
+            OwlListCard(children: [
+              rT(Icons.dashboard_outlined, 'Brain Dashboard', 'What the Brain decided and why', () => _open(context, 'Brain Dashboard', const BrainDashboardScreen())),
+              rT(Icons.psychology_outlined, 'Brain', 'The Brain screen: states, books, paper trades', () => go(AppRoute.brain)),
+              rT(Icons.smart_toy_rounded, 'Dual Bot', 'The Dual Bot paper book', () => go(AppRoute.dualBot)),
+              rT(Icons.query_stats_outlined, 'Market', 'Prices, movers and market state', () => go(AppRoute.market)),
+              rT(Icons.sensors_rounded, 'Signals', 'The signals the bots are looking at', () => go(AppRoute.signals)),
+              rT(Icons.memory_rounded, 'AI', 'The AI helper page', () => go(AppRoute.ai)),
+              rT(Icons.chat_bubble_outline, 'Ask the Brain', 'Ask a question in plain words', () => _open(context, 'Ask the Brain', const BrainChatScreen())),
+              rT(Icons.health_and_safety_outlined, 'Data Health', 'Candles, missing data, is the Sniper learning', () => _open(context, 'Data Health', const DataHealthScreen())),
+              rT(Icons.hub_outlined, 'Data and Learning', 'Who teaches the Sniper, live-test gate, auto runs', () => _open(context, 'Data and Learning', const DataSourcesScreen())),
+              rT(Icons.image_search_outlined, 'Screenshot Check', 'Check a chart screenshot against the rules', () => _open(context, 'Screenshot Check', const ScreenCheckScreen())),
             ]),
-            const SizedBox(height: AppSpacing.l),
-            _row(context, Icons.bug_report_outlined, 'App Problems', () => _open(context, 'App Problems', const AppProblemsScreen(), bare: true)),
-            const SizedBox(height: AppSpacing.l),
-            _label(context, 'TABS'),
-            _row(context, Icons.dashboard_outlined, 'Brain Dashboard', () => _open(context, 'Brain Dashboard', const BrainDashboardScreen())),
-            _row(context, Icons.query_stats_outlined, 'Market', () => go(AppRoute.market)),
-            _row(context, Icons.psychology_outlined, 'Brain', () => go(AppRoute.brain)),
-            _row(context, Icons.sensors_rounded, 'Signals', () => go(AppRoute.signals)),
-            _row(context, Icons.smart_toy_rounded, 'Dual Bot', () => go(AppRoute.dualBot)),
-            _row(context, Icons.memory_rounded, 'AI', () => go(AppRoute.ai)),
-            const SizedBox(height: AppSpacing.l),
-            _label(context, 'BRAIN'),
-            _row(context, Icons.today_outlined, 'Brain Today', () => _open(context, 'Brain Today', const BrainTodayScreen())),
-            _row(context, Icons.timeline, 'Brain and Activity', () => _open(context, 'Brain and Activity', const TimelineScreen())),
-            _row(context, Icons.grid_view_rounded, 'Month Calendar', () => _open(context, 'Month Calendar', const MonthGridScreen())),
-            _row(context, Icons.emoji_events_outlined, 'Simple Results', () => _open(context, 'Simple Results', const SimpleResultsScreen())),
-            _row(context, Icons.chat_bubble_outline, 'Ask the Brain', () => _open(context, 'Ask the Brain', const BrainChatScreen())),
-            _row(context, Icons.image_search_outlined, 'Screenshot Check', () => _open(context, 'Screenshot Check', const ScreenCheckScreen())),
-            const SizedBox(height: AppSpacing.l),
-            _label(context, 'SNIPER AND HEALTH'),
-            _row(context, Icons.gps_fixed, 'OwlSniper', () => _open(context, 'OwlSniper', const SniperScreen())),
-            _row(context, Icons.monitor_heart_outlined, 'System Health', () => _open(context, 'System Health', const SystemHealthScreen())),
-            const SizedBox(height: AppSpacing.l),
-            _label(context, 'REPORTS AND TOOLS'),
-            if (kShowStrategyDoctor)   // hidden by default (config_flags.dart): it opens Strategy Lab / Scan Lab and wakes their background work
-              _row(context, Icons.medical_services_outlined, 'Strategy Doctor', () => _open(context, 'Strategy Doctor', const StrategyDoctorScreen(), bare: true)),
-            _row(context, Icons.description_outlined, 'AI Report', () => _open(context, 'AI Report', const AiReportScreen(), bare: true)),
-            _row(context, Icons.receipt_long_outlined, 'Fees and tax report', () => _open(context, 'Fees and tax report', const ReportsScreen())),
-            _row(context, Icons.article_outlined, 'App report', () => _download(context, const ReportDownloadCard())),
-            _row(context, Icons.smart_toy_outlined, 'Dual Bot report',
-                () => _download(
-                    context,
-                    const ReportDownloadCard(
-                      title: 'Dual Bot report',
-                      description:
-                          'One text file for any AI: every Dual Bot trade with its exit and situation, the retest check, setups, lessons and totals.',
-                      textPath: '/api/dual_lab/report',
-                      savePath: '/api/dual_lab/report_save',
-                      fileName: 'owl_dualbot_report.txt',
-                    ))),
-            _row(context, Icons.table_chart_outlined, 'Trades CSV',
-                () => _download(
-                    context,
-                    const ReportDownloadCard(
-                      title: 'Trades CSV',
-                      description:
-                          'All finished trades from the archive (nothing is ever deleted there) as one CSV file. Open it in Sheets or Excel, or send it to any AI.',
-                      textPath: '/api/archive_export',
-                      savePath: '/api/archive_export_save',
-                      fileName: 'owl_trades.csv',
-                      mimeType: 'text/csv',
-                    ))),
-            const SizedBox(height: AppSpacing.l),
-            _label(context, 'DATA AND APP'),
-            _row(context, Icons.bolt_rounded, 'Ping Lab', () => _open(context, 'Ping Lab', const PingTabScreen())),
-            _row(context, Icons.settings_rounded, 'Settings', () => _open(context, 'Settings', const SettingsScreen())),
+            const OwlSectionLabel('Results and reports'),
+            OwlListCard(children: [
+              rR(Icons.today_outlined, 'Brain Today', 'Today in a few lines', () => _open(context, 'Brain Today', const BrainTodayScreen())),
+              rR(Icons.timeline, 'Brain and Activity', 'A timeline of what the Brain did', () => _open(context, 'Brain and Activity', const TimelineScreen())),
+              rR(Icons.grid_view_rounded, 'Month Calendar', 'Profit and loss for each day', () => _open(context, 'Month Calendar', const MonthGridScreen())),
+              rR(Icons.emoji_events_outlined, 'Simple Results', 'Net, win rate and trades in plain words', () => _open(context, 'Simple Results', const SimpleResultsScreen())),
+              rR(Icons.description_outlined, 'AI Report', 'A report to read or send to an AI', () => _open(context, 'AI Report', const AiReportScreen(), bare: true)),
+              rR(Icons.receipt_long_outlined, 'Fees and tax report', 'Fees paid and a tax sheet', () => _open(context, 'Fees and tax report', const ReportsScreen())),
+              rR(Icons.article_outlined, 'App report', 'One text file about the whole app', () => _download(context, const ReportDownloadCard())),
+              rR(Icons.smart_toy_outlined, 'Dual Bot report', 'Every Dual Bot trade as one text file',
+                  () => _download(
+                      context,
+                      const ReportDownloadCard(
+                        title: 'Dual Bot report',
+                        description: 'One text file for any AI: every Dual Bot trade with its exit and situation, the retest check, setups, lessons and totals.',
+                        textPath: '/api/dual_lab/report',
+                        savePath: '/api/dual_lab/report_save',
+                        fileName: 'owl_dualbot_report.txt',
+                      ))),
+              rR(Icons.table_chart_outlined, 'Trades CSV', 'All finished trades for Sheets or Excel',
+                  () => _download(
+                      context,
+                      const ReportDownloadCard(
+                        title: 'Trades CSV',
+                        description: 'All finished trades from the archive (nothing is ever deleted there) as one CSV file. Open it in Sheets or Excel, or send it to any AI.',
+                        textPath: '/api/archive_export',
+                        savePath: '/api/archive_export_save',
+                        fileName: 'owl_trades.csv',
+                        mimeType: 'text/csv',
+                      ))),
+            ]),
+            const OwlSectionLabel('System'),
+            OwlListCard(children: [
+              rS(Icons.monitor_heart_outlined, 'Diagnostics', 'Connections, leaks and what is slow', () => go(AppRoute.diagnostics)),
+              rS(Icons.bug_report_outlined, 'App Problems', 'A plain list of what is wrong, to copy', () => _open(context, 'App Problems', const AppProblemsScreen(), bare: true)),
+              rS(Icons.bolt_rounded, 'Ping Lab', 'How fast the server answers', () => _open(context, 'Ping Lab', const PingTabScreen())),
+              if (kShowStrategyDoctor)   // hidden by default (config_flags.dart): it opens Strategy Lab / Scan Lab and wakes their background work
+                rS(Icons.medical_services_outlined, 'Strategy Doctor', 'Checks the strategy settings', () => _open(context, 'Strategy Doctor', const StrategyDoctorScreen(), bare: true)),
+            ]),
+            const OwlSectionLabel('Settings'),
+            const FontSwitchRow(),
+            OwlListCard(children: [
+              rS(Icons.settings_rounded, 'Settings', 'Keys, limits, alerts and appearance', () => _open(context, 'Settings', const SettingsScreen())),
+            ]),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _label(BuildContext context, String text) {
-    final p = context.palette;
-    return Padding(
-      padding: const EdgeInsets.only(left: 4, bottom: AppSpacing.s),
-      child: Text(text, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, letterSpacing: 0.8, color: p.textPrimary)),
-    );
-  }
-
-  /// ONE line: icon + name + chevron, at least 56 high. No second line of grey text.
-  Widget _row(BuildContext context, IconData icon, String title, VoidCallback onTap) {
-    final p = context.palette;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.s),
-      child: OWLPressable(
-        onTap: onTap,
-        child: Container(
-          constraints: const BoxConstraints(minHeight: 56),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          decoration: BoxDecoration(
-            color: p.surface,
-            borderRadius: BorderRadius.circular(AppSpacing.radiusMedium),
-            border: Border.all(color: p.border, width: 1),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(color: p.accent.withOpacity(0.10), borderRadius: BorderRadius.circular(12)),
-                child: Icon(icon, size: 20, color: p.accent),
-              ),
-              const SizedBox(width: 12),
-              Expanded(child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: p.textPrimary))),
-              Icon(Icons.chevron_right_rounded, size: 22, color: p.textMuted),
-            ],
-          ),
         ),
       ),
     );

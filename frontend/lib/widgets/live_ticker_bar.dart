@@ -6,6 +6,8 @@ import '../providers/app_provider.dart';
 import '../theme/app_theme.dart';
 import '../theme/app_motion.dart';
 import '../services/market_mode.dart';
+import '../theme/app_motion2.dart';
+import 'owl_segmented.dart';
 
 /// OBSIDIAN TERMINAL TOP BAR (formerly "LIVE TICKER BAR").
 ///
@@ -80,9 +82,6 @@ class _LiveTickerBarState extends State<LiveTickerBar> with TickerProviderStateM
             ? (provider.settings['live_leverage'] as num?)?.toInt() ?? 3
             : (provider.settings['leverage'] as num?)?.toInt() ?? 1;
 
-        // Same number as the Dashboard ring: TODAY = closed trades only (stable). LIVE mode: open exchange P&L.
-        final pnl = provider.statsMode == 'live' ? provider.openPnl : provider.closedPnl;
-        final pnlColor = pnl > 0 ? context.palette.profit : (pnl < 0 ? context.palette.loss : context.palette.textMuted);
         final statusColor = connected ? context.palette.profit : context.palette.loss;
 
         return LayoutBuilder(builder: (context, box) {
@@ -140,32 +139,15 @@ class _LiveTickerBarState extends State<LiveTickerBar> with TickerProviderStateM
                 onTap: () => _confirmToggleLiveMode(context, provider, isLive),
                 child: _pill(
                   text: isLive ? 'LIVE' : 'PAPER',
-                  color: isLive ? context.palette.loss : context.palette.accent,
+                  color: isLive ? OwlLook.live(context.palette) : OwlLook.paper(context.palette), // P-C: LIVE = amber, PAPER = blue; red is only for loss
                   filled: true,
                 ),
               ),
               const SizedBox(width: 4),
-              _pill(text: timeframe, color: context.palette.textMuted, filled: false),
-              const SizedBox(width: 6),
-
-              // ---- 24h P&L ----
-              Column(
-                mainAxisSize: MainAxisSize.min,
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    provider.statsMode == 'live' ? 'MAIN OPEN P&L' : 'MAIN TODAY P&L',
-                    style: TextStyle(fontSize: 8, height: 1.1, letterSpacing: 0.4, color: context.palette.textMuted),
-                  ),
-                  Text(
-                    '${pnl >= 0 ? '+' : ''}${pnl.toStringAsFixed(2)}',
-                    style: AppTypography.secondaryData.copyWith(color: pnlColor, fontSize: 12.5, height: 1.15, fontWeight: FontWeight.w800),
-                  ),
-                ],
-              ),
+              // P-C: the timeframe chip left the top bar (it is shown in the top menu); the setting itself is untouched.
               const SizedBox(width: 8),
 
+              // P-D: the P&L number left the top bar (it lives in the Home hero, never twice).
               // ---- Hold-to-confirm PANIC button ----
               _PanicButton(onConfirmed: () => provider.panicFlatten()),
             ],
@@ -273,9 +255,7 @@ class _LiveTickerBarState extends State<LiveTickerBar> with TickerProviderStateM
         color: filled ? color.withOpacity(0.9) : color.withOpacity(0.12),
         borderRadius: BorderRadius.circular(5),
         border: filled ? null : Border.all(color: color.withOpacity(0.5)),
-        boxShadow: filled
-            ? [BoxShadow(color: color.withOpacity(0.18), blurRadius: 4)]
-            : null,
+        // P-C: no shadow (flat look)
       ),
       child: Text(
         text,
@@ -494,74 +474,27 @@ class _PanicRingPainter extends CustomPainter {
 }
 
 
-/// CRYPTO | INDIA switch. One tap changes the market; it sits in the same place in both terminals.
-/// Each market has its own colour so one glance tells which one is on screen:
-/// Crypto = the app's blue accent, India = saffron.
+/// CRYPTO | INDIA switch. One tap (or a swipe across it) changes the market; it sits in the same place in both terminals.
+/// Part P-C: now the sliding OwlSegmented (thumb glides 250 ms). Colours: Crypto = the app accent, India = saffron (indiaColor is still used by the India bottom bar).
 class MarketModeSwitch extends StatelessWidget {
   const MarketModeSwitch({super.key});
 
   static const Color indiaColor = Color(0xFFFF9933);
-
-  Widget _seg(BuildContext context, String label, bool on, Color color, VoidCallback onTap) {
-    final p = context.palette;
-    return Expanded(
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 160),
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: on ? color : Colors.transparent,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Text(
-            label,
-            maxLines: 1,
-            style: TextStyle(
-              color: on ? Colors.black : p.textSecondary,
-              fontSize: 10.5,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 0.2,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
     final p = context.palette;
     return ValueListenableBuilder<String>(
       valueListenable: MarketMode.mode,
-      builder: (context, m, _) {
-        final india = m == 'india';
-        return Container(
-          width: 106,
-          height: 30,
-          padding: const EdgeInsets.all(2),
-          decoration: BoxDecoration(
-            color: p.surfaceHigher,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: (india ? indiaColor : p.accent).withOpacity(0.6)),
-          ),
-          child: Row(children: [
-            _seg(context, 'CRYPTO', !india, p.accent, () {
-              if (india) {
-                AppHaptics.light();
-                MarketMode.set('crypto');
-              }
-            }),
-            _seg(context, 'INDIA', india, indiaColor, () {
-              if (!india) {
-                AppHaptics.light();
-                MarketMode.set('india');
-              }
-            }),
-          ]),
-        );
-      },
+      builder: (context, m, _) => OwlSegmented(
+        labels: const ['CRYPTO', 'INDIA'],
+        index: m == 'india' ? 1 : 0,
+        onChanged: (i) => MarketMode.set(i == 1 ? 'india' : 'crypto'),
+        colors: [p.accent, indiaColor],
+        textOn: const [Colors.white, Color(0xFF1A1206)],
+        width: 120,
+        height: 28,
+      ),
     );
   }
 }

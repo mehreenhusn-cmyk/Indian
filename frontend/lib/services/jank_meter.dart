@@ -8,7 +8,7 @@ class JankMeter {
   JankMeter._();
   static final JankMeter instance = JankMeter._();
 
-  static const List<String> _tabs = ['Dash', 'Market', 'Positions', 'Signals', 'Dual Bot', 'AI', 'More', 'Brain'];
+  static const List<String> _tabs = ['Dash', 'Market', 'Positions', 'Signals', 'Dual Bot', 'AI', 'More', 'Brain', 'Sniper', 'Study Lab', 'Diagnostics']; // Part 14: screens 8 to 10 now have their own name (before: 'Other')
   static const int _slowMs = 32; // a frame longer than 2 normal frames = you can feel it
   static const int _frozenMs = 700; // longer than this = the screen looks stuck
 

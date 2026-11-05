@@ -77,3 +77,10 @@ flutter:
         - asset: assets/fonts/Inter_28pt-Regular.ttf
         - asset: assets/fonts/Inter_24pt-Bold.ttf
           weight: 700
+    # Part 11b: the NEW font (IBM Plex Mono, SIL Open Font Licence, assets/fonts/IBMPlexMono-OFL.txt). Inter above is the OLD font and stays.
+    # IBM Plex Sans is added by the MERGE-TIME block of README4 (its files are not in this zip); until then Sans falls back to Inter.
+    - family: IBMPlexMono
+      fonts:
+        - asset: assets/fonts/IBMPlexMono-Regular.ttf
+        - asset: assets/fonts/IBMPlexMono-Bold.ttf
+          weight: 700

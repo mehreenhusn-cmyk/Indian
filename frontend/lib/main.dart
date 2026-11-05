@@ -6,6 +6,7 @@ import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 
 import 'navigation/app_routes.dart';
 import 'providers/app_provider.dart';
+import 'theme/app_active.dart';
 import 'screens/brain_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/market_screen.dart';
@@ -14,7 +15,7 @@ import 'screens/signals_alerts_screen.dart';
 import 'screens/vision_tab_screen.dart';
 import 'screens/dual_bot_screen.dart';
 import 'screens/more_screen.dart';
-import 'screens/lab_hub_screen.dart';
+import 'screens/study_lab_screen.dart';
 import 'screens/sniper_screen.dart';
 import 'screens/system_health_screen.dart';
 import 'screens/india_paper_screen.dart';
@@ -23,7 +24,8 @@ import 'widgets/tab_page.dart';
 import 'widgets/owl_ambient_background.dart';
 import 'widgets/owl_drawer.dart';
 import 'widgets/live_ticker_bar.dart';
-import 'widgets/theme_switch.dart';
+import 'widgets/owl_top_menu.dart';
+import 'theme/app_motion2.dart';
 import 'widgets/exit_confirm.dart';
 import 'widgets/owl_connection_banner.dart';
 import 'widgets/owl_welcome_overlay.dart';
@@ -31,6 +33,7 @@ import 'services/jank_meter.dart';
 import 'services/market_mode.dart';
 import 'services/websocket_service.dart';
 import 'services/foreground_service.dart';
+import 'theme/app_font.dart';
 import 'theme/app_theme.dart';
 import 'theme/app_scale.dart';
 
@@ -68,6 +71,7 @@ void main() async {
   const bootKey = 'owl_boot_pending';
   final lastBootFailed = prefs.getBool(bootKey) ?? false;
   MarketMode.load(prefs); // reopen in the market you used last
+  AppFont.load(prefs); // Part 11b: new (IBM Plex) or old (Inter) font, saved choice
   if (lastBootFailed) MarketMode.mode.value = 'crypto';
   await prefs.setBool(bootKey, true);
   Timer(const Duration(seconds: 6), () => prefs.setBool(bootKey, false));
@@ -125,7 +129,9 @@ class OwlApp extends StatelessWidget {
       child: Selector<AppProvider, ThemeMode>(
         selector: (_, p) => p.themeMode,
         builder: (context, themeMode, child) {
-          return MaterialApp(
+          return ValueListenableBuilder<bool>(
+            valueListenable: AppFont.useNew,
+            builder: (context, _, __) => MaterialApp(
             title: 'OWL',
             theme: AppTheme.light,
             darkTheme: AppTheme.dark,
@@ -136,6 +142,7 @@ class OwlApp extends StatelessWidget {
             builder: (context, child) => AppScale.clampText(context, child), // R23: system font scale clamped 0.9 - 1.15
             home: OwlWelcomeOverlay(prefs: prefs, child: const MarketRoot()),
             debugShowCheckedModeBanner: false,
+          ),
           );
         },
       ),
@@ -266,7 +273,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
       // WebSocket is the primary feed (~250ms pushes). REST is only the
       // safety net now: fire it just when the socket is down or silent.
       final provider = context.read<AppProvider>();
-      if (provider.wsStale) provider.fetchStatus();
+      if (AppActive.on && provider.wsStale) provider.fetchStatus();
     });
     _keepAliveTimer?.cancel();
     _keepAliveTimer = Timer.periodic(const Duration(minutes: 4), (_) {
@@ -277,6 +284,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     // Sound alerts can be limited to "only while the app is open".
+    AppActive.on = state == AppLifecycleState.resumed; // Part 14: screen timers sleep while the app is in the background
     context.read<AppProvider>().setAppForeground(state == AppLifecycleState.resumed);
     // Phone was locked/app backgrounded then brought back - the socket may
     // have died silently while away (see _pollTimer comment above), so
@@ -431,7 +439,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     const MoreScreen(),
     const BrainScreen(), // 7 (opened from the gear page since Round 11)
     const TabPage(title: 'Owl Sniper', child: SniperScreen()), // 8 (Round 11: bar tab 3)
-    const LabHubScreen(), // 9 (Round 11: bar tab 4, owns its Scaffold + title)
+    const StudyLabScreen(), // 9 (Part 13b: bar tab 4 = the Results Board; the old hub is behind 'Studies and tools')
     const TabPage(title: 'Diagnostics', child: SystemHealthScreen()), // 10 (Round 11: bar tab 5)
   ];
 
@@ -498,6 +506,19 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
       body: Stack(
         children: [
           const Positioned.fill(child: OwlAmbientBackground()),
+          // P-C: while LIVE trading is on, a 2 px amber line runs across the very top of every screen (paper and live can never be mixed up).
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            height: 2,
+            child: IgnorePointer(
+              child: Selector<AppProvider, bool>(
+                selector: (_, pr) => pr.settings['live_trading_enabled'] == true,
+                builder: (context, live, _) => live ? ColoredBox(color: OwlLook.live(context.palette)) : const SizedBox.shrink(),
+              ),
+            ),
+          ),
           SafeArea(
         bottom: false,
         child: Column(
@@ -544,20 +565,9 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
             // stays visible across every tab switch. The outer SafeArea
             // above already guarantees this never collides with the status
             // bar, whether or not a banner is showing above it.
-            // Round 11: the top-bar gear opens the Settings and tools page (screen 6); it is lit while a page behind the gear is open.
-            // Part 21: a Light/Dark button sits right of the gear. Part 14: the gear sits at the far LEFT, the power button at the far RIGHT of the ticker bar, so a wrong tap cannot hit power.
+            // Part 13: the top-bar gear is gone (Settings and tools = the More tab in the bottom bar). Light/Dark button at the left, the power button at the far RIGHT of the ticker bar, so a wrong tap cannot hit power.
             Row(children: [
-              Builder(builder: (ctx) {
-                final route = AppRoutes.fromScreenIndex(_currentIndex);
-                final lit = route != null && AppRoutes.underGear.contains(route);
-                return IconButton(
-                  tooltip: 'Settings and tools',
-                  visualDensity: VisualDensity.compact,
-                  icon: Icon(lit ? Icons.settings_rounded : Icons.settings_outlined, size: 22, color: lit ? ctx.palette.accent : ctx.palette.textMuted),
-                  onPressed: () => _selectTab(AppRoutes.screenIndex(AppRoute.more)),
-                );
-              }),
-              const ThemeSwitchButton(),
+              const OwlTopMenuButton(),
               const Expanded(child: LiveTickerBar()),
             ]),
             // RepaintBoundary keeps 1 Hz price updates on a tab from

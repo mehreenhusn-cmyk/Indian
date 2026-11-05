@@ -9,12 +9,13 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import owl_sniper_bridge_replay as RP
+import owl_sniper_ctx as CX
 import owl_sniper_feedall_feat as W
 
-VERSION = "owl_sniper_livewide 1 (R3d)"
+VERSION = "owl_sniper_livewide 2 (R30)"
 
 
-def wide_for_card(S, run, symbol, side, interval):
+def wide_for_card(S, run, symbol, side, interval, con=None):
     """Live feature series S + its candles (open_ts, o, h, l, c, v) -> the 20 numbers of the newest candle. None when the row is not ready (warm-up) or anything is odd. Never raises."""
     try:
         i = S["n"] - 1
@@ -22,6 +23,7 @@ def wide_for_card(S, run, symbol, side, interval):
         row = RP.make_row(rec, S, [c[5] for c in run[:i + 1]], i, 0.0)
         if row is None:
             return None
+        row["btc"] = CX.live(con, interval, run[i][0])          # R30: BTC + session numbers of the signal candle (con = the live scan's read-only connection)
         wide, missing = W.wide_vec(row)
         return {"wide": wide, "missing": missing, "regime": row.get("regime")}
     except Exception:

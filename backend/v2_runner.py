@@ -4,6 +4,8 @@ What it runs (both already built, both public-GET only, both write only v2_marke
   v2_collector.loop  (Part 16: every 5 min one ticker GET -> top gainers / losers + the 00:00 UTC cohort)
   v2_candles.loop    (Part 17: closed 3m / 5m candles for max 40 coins, request budget, gaps recorded)
   v2_bt_auto.loop    (Part 89a-auto: the paper Brain tick every 5 min + the zone study every 6 h; own thread, own switch file v2_bt_auto_enabled)
+  v2_candles_ws.loop (Part 17e: LIVE closed candles from the Binance websocket, REST fills the holes; same candle switch)
+  v2_lab_auto.loop   (Part 17c: Scalp Lab fill + Knowledge Ledger fill every 6 h; own thread, own switch file v2_lab_auto_off)
 How it starts: the backend calls start_watchdog(DATA_DIR) 45 s after boot (same pattern as the Brain / Dual / Price Action workers). The watchdog
 checks every 2 min; if the worker's heartbeat file (v2_runner_beat.json) is older than 2 min it starts ONE worker (own process, file lock, so a
 second copy cannot run). A dead loop ends the worker, so the watchdog starts a fresh one. Log: v2_runner.log in the data folder (cut at 1 MB).
@@ -30,6 +32,7 @@ import v2_store as S
 VERSION = "v2_runner 1 (Part 72)"
 BEAT_FILE, LOCK_FILE, FIRST_ON, LOG_FILE = "v2_runner_beat.json", "v2_runner.lock", "v2_runner_first_on", "v2_runner.log"
 BEAT_STALE_S, BEAT_EVERY_S, WATCH_EVERY_S, SPAWN_GAP_S, LOG_MAX = 120, 30, 120, 60, 1000000
+HEAL_EVERY_S = 600
 _SPAWN = {"t": 0.0}
 
 
@@ -147,11 +150,26 @@ def worker(data_dir):
         threading.Thread(target=BA.loop, args=(d,), name="brain", daemon=True).start()
     except Exception as e:
         print("brain auto-runner not started: %s" % type(e).__name__, flush=True)
+    try:                    # Part 17c: Scalp Lab + Knowledge Ledger fill themselves every 6 h (own thread; owner switch file v2_lab_auto_off)
+        import v2_lab_auto as LA
+        threading.Thread(target=LA.loop, args=(d,), name="lab_auto", daemon=True).start()
+    except Exception as e:
+        print("lab auto-runner not started: %s" % type(e).__name__, flush=True)
+    try:                    # Part 17e: live candles from the Binance websocket (own thread; REST fills the holes; same candle switch)
+        import v2_candles_ws as KW
+        threading.Thread(target=KW.loop, args=(d,), name="candles_ws", daemon=True).start()
+    except Exception as e:
+        print("candle websocket not started: %s" % type(e).__name__, flush=True)
+    last_heal = 0.0
     while all(t.is_alive() for t in threads):
         try:
             write_beat(d)
         except OSError:
             pass
+        if time.time() - last_heal >= HEAL_EVERY_S:      # Part 17d: every 10 min, a candle switch that went OFF by accident is switched ON again (not if the owner used --off)
+            last_heal = time.time()
+            if K.self_heal(d):
+                print("candle switch was OFF without an owner-off file: switched ON again", flush=True)
         time.sleep(BEAT_EVERY_S)
     print("a collector loop ended: runner stops, the backend watchdog starts a new one", flush=True)
     return 1

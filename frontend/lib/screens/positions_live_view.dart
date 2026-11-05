@@ -7,6 +7,7 @@ import '../widgets/position_card.dart';
 import '../widgets/position_row.dart';
 import '../widgets/ai_advice_badge.dart';
 import '../widgets/position_glance.dart';
+import '../widgets/positions_close_bits.dart';
 import '../widgets/owl_empty_state.dart';
 import '../models/view_state.dart';
 import '../widgets/owl_state_gate.dart';
@@ -187,36 +188,7 @@ Future<void> _confirmAndCloseAll(
           _modeBadge(previewMode, provider.settings['live_trading_enabled'] == true),
         ],
       ),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ...positions.map((p) {
-            final pnl = (p['pnl_usdt'] as num?)?.toDouble() ?? 0.0;
-            return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 2),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text('${p['symbol']}', style: ctx.type.secondary),
-                  Text('${pnl >= 0 ? '+' : ''}${pnl.toStringAsFixed(2)} USDT',
-                      style: TextStyle(color: pnl >= 0 ? _green : _red)),
-                ],
-              ),
-            );
-          }),
-          Divider(color: ctx.palette.border, height: 20),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('Total', style: ctx.type.primary.copyWith(fontWeight: FontWeight.w700)),
-              Text('${totalPnl >= 0 ? '+' : ''}${totalPnl.toStringAsFixed(2)} USDT',
-                  style: AppTypography.primaryData.copyWith(
-                      color: totalPnl >= 0 ? _green : _red, fontWeight: FontWeight.bold)),
-            ],
-          ),
-        ],
-      ),
+      content: CloseAllPreviewList(positions: positions, total: totalPnl), // R28a: scrolls, long names and amounts are never cut
       actions: [
         TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
         TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Close All')),
@@ -757,6 +729,7 @@ class _FloatingSummaryBarState extends State<_FloatingSummaryBar> {
                         ),
                       ],
                     ),
+                    CloseAllTotalLine(profit: profitSum, loss: lossSum), // R28a: Profit + Loss = Net, right under the two buttons
                   ],
                 ),
               ),
@@ -834,6 +807,7 @@ class _NeonPillButtonState extends State<_NeonPillButton> {
             // too much vertical space above the position list.
             height: widget.amount == null ? 34 : 46,
             alignment: Alignment.center,
+            padding: const EdgeInsets.symmetric(horizontal: 8), // R28a: room so a long amount shrinks instead of being cut
             decoration: BoxDecoration(
               color: widget.color.withOpacity(widget.busy ? 0.14 : 0.08),
               borderRadius: BorderRadius.circular(AppSpacing.radiusPill),
@@ -861,9 +835,9 @@ class _NeonPillButtonState extends State<_NeonPillButton> {
                   : Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text(widget.label, style: AppTypography.primaryData.copyWith(color: widget.color, fontWeight: FontWeight.w600, fontSize: 11)),
+                        FittedBox(fit: BoxFit.scaleDown, child: Text(widget.label, style: AppTypography.primaryData.copyWith(color: widget.color, fontWeight: FontWeight.w600, fontSize: 11))),
                         const SizedBox(height: 1),
-                        Text(widget.amount!, style: AppTypography.primaryData.copyWith(color: widget.color, fontWeight: FontWeight.w800, fontSize: 16)),
+                        FittedBox(fit: BoxFit.scaleDown, child: Text(widget.amount!, style: AppTypography.primaryData.copyWith(color: widget.color, fontWeight: FontWeight.w800, fontSize: 16))),
                       ],
                     ),
               secondChild: SizedBox(

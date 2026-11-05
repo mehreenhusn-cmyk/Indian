@@ -25,7 +25,6 @@ import 'brain_learning_screen.dart';
 import 'brain_ready_screen.dart';
 import 'lab_hub_summary.dart';
 import 'brain_studies_screen.dart';
-import 'indicator_lab_screen.dart';
 import 'lab_playbook_screen.dart';
 import 'data_explorer_screen.dart';
 import 'day_compare_screen.dart';
@@ -202,8 +201,6 @@ class _LabHubScreenState extends State<LabHubScreen> {
         Expanded(child: StatTile(label: 'NEED DATA', value: '${need.length}', tone: need.isNotEmpty ? 'warn' : '')),
       ]),
       const SizedBox(height: AppSpacing.cardGap),
-      _row(_Item('', 'Study results: every test, EDGE first', () => const IndicatorLabScreen(), owns: true), null),
-      const SizedBox(height: 4),
       _row(_Item('', 'Indicator playbook: what works where', () => const LabPlaybookScreen(), owns: true), null),
       const SizedBox(height: 4),
       const LabHeadToHeadCard(),
@@ -272,7 +269,7 @@ class _LabHubScreenState extends State<LabHubScreen> {
     }
     return Scaffold(
       backgroundColor: p.bg,
-      appBar: AppBar(backgroundColor: p.bg, elevation: 0, title: Text('Study Lab', style: context.type.section.copyWith(fontWeight: FontWeight.w700))),
+      appBar: AppBar(backgroundColor: p.bg, elevation: 0, title: Text('Studies and tools', style: context.type.section.copyWith(fontWeight: FontWeight.w700))),
       body: OWLRefresh(onRefresh: _load, child: content),
     );
   }

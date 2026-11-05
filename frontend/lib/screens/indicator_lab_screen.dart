@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/app_provider.dart';
+import '../theme/app_active.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_theme.dart';
 import '../widgets/indicator_lab_cards.dart';
@@ -17,7 +18,9 @@ import 'lab_test_detail_screen.dart';
 /// Data = GET /api/v2/lab_results (read only). Summary strip on top (counts over ALL tests), then a verdict chip row and a study chip row. Tests that still need data are ONE folded line (chip NEED DATA).
 /// Long lists show 25 cards and a "show more" button, so the phone never builds hundreds of cards. Read only: a verdict is evidence, not an order. Dart NOT compiled (the APK build is the proof).
 class IndicatorLabScreen extends StatefulWidget {
-  const IndicatorLabScreen({super.key});
+  /// Part 13b: embedded = the board is the BODY of the Study Lab tab (no own Scaffold / app bar).
+  final bool embedded;
+  const IndicatorLabScreen({super.key, this.embedded = false});
 
   @override
   State<IndicatorLabScreen> createState() => _IndicatorLabScreenState();
@@ -25,7 +28,7 @@ class IndicatorLabScreen extends StatefulWidget {
 
 class _IndicatorLabScreenState extends State<IndicatorLabScreen> {
   static const _page = 25;
-  static const _verdicts = {'All tested': 'ALL', 'EDGE': 'EDGE', 'LOSING': 'LOSING', 'Diagnosis': 'DIAGNOSIS_ONLY', 'No edge': 'NO_EDGE', 'Need data': 'NOT_ENOUGH_DATA'};
+  static const _verdicts = {'All tested': 'ALL', 'EDGE': 'EDGE', 'LOSING': 'LOSING', 'Candidate': 'DIAGNOSIS_ONLY', 'Need data': 'NOT_ENOUGH_DATA', 'No edge': 'NO_EDGE'};
   Map<String, dynamic>? _r;
   bool _busy = true;
   String _verdict = 'ALL';
@@ -36,13 +39,19 @@ class _IndicatorLabScreenState extends State<IndicatorLabScreen> {
   @override
   void initState() {
     super.initState();
+    _r = ScreenCache.get('lab_results'); // Part 14: the last good board at once, refresh quietly
+    if (_r != null) {
+      _lg.take(_r, false);
+      _lg.at = ScreenCache.when('lab_results');
+      _busy = false;
+    }
     _load();
   }
 
   static bool _bad(Map<String, dynamic>? r) => r == null || r['state'] == 'error' || r['state'] == 'old' || r['results'] is! List;
 
   Future<void> _load() async {
-    setState(() => _busy = true);
+    if (_r == null) setState(() => _busy = true);
     final r = await context.read<AppProvider>().fetchLabResults();
     if (!mounted) return;
     setState(() {
@@ -50,6 +59,7 @@ class _IndicatorLabScreenState extends State<IndicatorLabScreen> {
       _r = _lg.data;
       _busy = false;
     });
+    if (!_bad(r)) ScreenCache.put('lab_results', r);
   }
 
   String _problem(Map<String, dynamic> r) {
@@ -95,7 +105,7 @@ class _IndicatorLabScreenState extends State<IndicatorLabScreen> {
       const SizedBox(height: AppSpacing.cardGap),
       const PurposeStrip(
         why: 'Every study printed its own table, so no one could compare them.',
-        what: 'One card per test, EDGE first. EDGE needs the same sign in both halves; the rest is a hint or a wait.',
+        what: 'One row per test: EDGE, CANDIDATE (looked good, not proven), need data, no edge, losing. EDGE needs 30+ cases and the same sign in both halves.',
       ),
       const SizedBox(height: AppSpacing.cardGap),
       LabChipRow(options: _verdicts, counts: vCounts, selected: _verdict, onSelect: (k) => _pick(verdict: k, family: 'ALL')),
@@ -146,6 +156,7 @@ class _IndicatorLabScreenState extends State<IndicatorLabScreen> {
         children: _body(LabTest.listFrom(r['results'])),
       );
     }
+    if (widget.embedded) return OWLRefresh(onRefresh: _load, child: content);
     return Scaffold(
       backgroundColor: p.bg,
       appBar: AppBar(backgroundColor: p.bg, elevation: 0, title: Text('Study results', style: context.type.section.copyWith(fontWeight: FontWeight.w700))),

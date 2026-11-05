@@ -15,6 +15,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import owl_sniper_entrylearn as EL
 import owl_sniper_exitlearn as XL
 import owl_sniper_feed as F
+import owl_sniper_tpsl as TS
+import owl_sniper_xrules as XR
 from api.sniper import api_enabled
 
 VERSION = "api/sniper_exitlearn 1 (R4)"
@@ -41,6 +43,13 @@ def short_entry(st):
             "compare": st.get("compare"), "n_train": st.get("n_train"), "n_test": st.get("n_test"), "days": st.get("days"), "made": st.get("made"), "advice_only": True}
 
 
+def short_tpsl(st):
+    """R32a: the TP/SL combo learner (owl_sniper_tpsl, own file v2_sniper_tpsl.json). Paper LEARN lane only; v2_tpsl_off switches it off."""
+    st = st or {}
+    return {"state": st.get("state") or "NOT_LEARNED_YET", "reasons": st.get("reasons") or [], "rules": st.get("rules") or {}, "grid": st.get("grid") or {}, "compare": st.get("compare"),
+            "n_train": st.get("n_train"), "n_test": st.get("n_test"), "days": st.get("days"), "made": st.get("made"), "default": st.get("default"), "switch_off": False}
+
+
 def answer(d, now=None):
     """-> (http status, body). Never raises."""
     now = time.time() if now is None else now
@@ -49,7 +58,9 @@ def answer(d, now=None):
     if _off(d):
         return 200, {"state": "off", "paper_only": True, "reasons": ["The Sniper is switched off (file v2_sniper_off)."]}
     st = XL.load(d)
-    last = {"entry": short_entry(EL.load(d)), "turns": _state["turns"], "running": _state["running"], "last_run": _state["last"], "learn_lane_switch_off": os.path.exists(os.path.join(os.path.realpath(d), XL.OFF_FILE))}
+    last = {"entry": short_entry(EL.load(d)), "turns": _state["turns"], "running": _state["running"], "last_run": _state["last"], "learn_lane_switch_off": os.path.exists(os.path.join(os.path.realpath(d), XL.OFF_FILE)),
+            "ab": XR.view(d),
+            "tpsl": dict(short_tpsl(TS.load(d)), switch_off=os.path.exists(os.path.join(os.path.realpath(d), TS.OFF_FILE)))}
     if st is None:
         return 200, dict(short(None), paper_only=True, version=VERSION, state="NOT_LEARNED_YET", age_sec=None,
                          reasons=["The booking learner has not run yet. First run starts about 5 minutes after the backend starts, then every 30 minutes."], **last)
@@ -66,6 +77,7 @@ def _loop(d):
                     t0 = time.time()
                     st = XL.run(d, persist=True)
                     EL.run(d, persist=True)                              # R5: the entry learner runs right after (own file, advice only)
+                    TS.run(d, persist=True)                              # R32a: the TP/SL combo learner (own file, paper LEARN lane only)
                     _state["last"] = {"at": int(time.time()), "state": st.get("state"), "seconds": round(time.time() - t0, 1), "note": (st.get("reasons") or [""])[0][:120]}
                     _state["turns"] += 1
                 finally:

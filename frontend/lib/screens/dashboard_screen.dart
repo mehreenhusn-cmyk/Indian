@@ -11,17 +11,15 @@ import '../widgets/compare_books.dart';
 import '../widgets/dashboard_bits.dart';
 import '../widgets/dashboard_equity.dart';
 import '../widgets/dashboard_pairs.dart';
-import '../widgets/diag_pinned_strip.dart';
-import '../widgets/diagnostics_card.dart';
-import '../widgets/live_status_chip.dart';
+import '../widgets/diag_section.dart';
 import '../widgets/live_wallet_card.dart';
 import '../widgets/owl_card.dart';
-import '../widgets/owl_connection_indicator.dart';
 import '../widgets/owl_pressable.dart';
 import '../widgets/owl_refresh.dart';
+import '../widgets/owl_number.dart';
+import '../widgets/owl_status_header.dart';
 import '../widgets/pnl_calendar.dart';
-import '../widgets/stat_tile.dart';
-import '../widgets/system_load_card.dart';
+import '../widgets/sniper_days_card.dart';
 import '../widgets/tag_lab_tile.dart';
 import '../widgets/top_movers_card.dart';
 import '../widgets/verdict_badge.dart';
@@ -68,7 +66,6 @@ class DashboardScreen extends StatelessWidget {
             final connError = provider.error;
             final botError = status['last_error'];
             return Column(children: [
-              const DiagPinnedStrip(),
               Expanded(
                 child: OWLRefresh(
                   onRefresh: () => provider.fetchStatus().timeout(const Duration(seconds: 6), onTimeout: () {}),
@@ -80,35 +77,16 @@ class DashboardScreen extends StatelessWidget {
                       if (connError == null && botError != null) ...[DashErrorBanner(icon: Icons.warning_amber_rounded, text: 'Bot: $botError'), const SizedBox(height: AppSpacing.cardGap)],
                       if (lossHit) ...[const DashRiskBanner(icon: Icons.lock_clock, text: 'Daily loss limit hit - auto-trading paused for today', isLoss: true), const SizedBox(height: AppSpacing.cardGap)],
                       if (!lossHit && targetHit) ...[const DashRiskBanner(icon: Icons.emoji_events, text: 'Daily target hit - auto-trading paused for today', isLoss: false), const SizedBox(height: AppSpacing.cardGap)],
-                      Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                        Text('Dashboard', style: context.type.section.copyWith(fontSize: 22, fontWeight: FontWeight.w800)),
-                        Row(mainAxisSize: MainAxisSize.min, children: [
-                          MasterTradingTogglePill(
-                            enabled: (provider.settings['trading_enabled'] as bool?) ?? true,
-                            onToggle: (next) => provider.updateSettings({'trading_enabled': next}).then((r) => r != null && r['trading_enabled'] == next),
-                          ),
-                          const SizedBox(width: 8),
-                          Selector<AppProvider, int>(
-                            selector: (_, p) => Object.hash(p.error == null, p.wsConnected, p.wsLatencyMs),
-                            builder: (context, _, __) {
-                              final p = context.read<AppProvider>();
-                              return OWLConnectionIndicator(isBackendLive: p.error == null, isWsLive: p.wsConnected, latency: p.wsLatencyMs);
-                            },
-                          ),
-                        ]),
-                      ]),
-                      const SizedBox(height: AppSpacing.s),
-                      Wrap(crossAxisAlignment: WrapCrossAlignment.center, spacing: 10, runSpacing: 4, children: [
-                        const LiveStatusChip(),
-                        Text('${status['symbols_tracked'] ?? 0} coins watched', style: context.type.metadata),
-                      ]),
-                      if (status['last_reconcile'] is Map) CatchUpLine(Map<String, dynamic>.from(status['last_reconcile'] as Map)),
+                      // P-D: ONE status header (title, bot pill, one dot row; tap = details sheet with the catch-up in IST) instead of three loose lines.
+                      OwlStatusHeader(status: status),
                       const SizedBox(height: AppSpacing.l),
                       _ResultHero(isLive: isLive, todayPnl: todayPnl, winRate: ((status['win_rate'] ?? 0.0) as num).toDouble(), openCount: ((status['open_count'] ?? 0) as num).toInt()),
                       if (isLive) ...[const SizedBox(height: AppSpacing.cardGap), const LiveWalletCard()],
                       const SizedBox(height: AppSpacing.cardGap),
                       // Part 41: the books side by side (Main bot / Dual Bot paper / Brain / Sniper LEARN / Sniper Replay), same columns, never added.
                       if (!isLive) const BrainStrip(),
+                      // R28b (Part 9): Sniper Today / Sniper 7 Days (two tabs, paper only, BTC not counted).
+                      if (!isLive) ...[const SniperDaysCard(), const SizedBox(height: AppSpacing.cardGap)],
                       const _ResultsVerdictLine(),
                       const SizedBox(height: AppSpacing.cardGap),
                       const DashboardPairs(),
@@ -116,18 +94,19 @@ class DashboardScreen extends StatelessWidget {
                       const SizedBox(height: AppSpacing.cardGap),
                       DashboardEquityChart(provider.equityCurve, provider.equityTf, (tf) => provider.fetchEquity(tf: tf)),
                       const SizedBox(height: AppSpacing.cardGap),
+                      // R28c (Part 10): Diagnostics is an organized section here (connections, leaks, this app, Sniper); the old engineering cards sit in its DETAILS fold.
+                      const DiagSection(),
+                      const SizedBox(height: AppSpacing.cardGap),
                       // UI rule 7: calendar, movers, studies and health sit behind ONE tap, so the page answers first.
                       OwlFold(
                         title: 'MORE',
-                        headline: 'Calendar, top movers, Tag Lab, system health',
+                        headline: 'Calendar, top movers, Tag Lab',
                         bare: true,
                         children: [
                           PnlCalendar(data: provider.calendarData, onMonthChanged: (m) => provider.fetchCalendar(month: m)),
                           const SizedBox(height: AppSpacing.cardGap),
                           const TopMoversCard(),
                           const TagLabTile(),
-                          const DiagnosticsCard(),
-                          const SystemLoadCard(),
                         ],
                       ),
                     ]),
@@ -158,53 +137,34 @@ class _ResultHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final p = context.palette;
     final prov = context.read<AppProvider>();
     return Selector<AppProvider, String>(
       selector: (_, x) => '${(x.openPnl * 100).round()}|${(x.pnl30d * 100).round()}',
       builder: (context, _, __) {
         final open = prov.openPnl;
         final head = isLive ? open : todayPnl;
-        final color = head > 0 ? p.profit : (head < 0 ? p.loss : p.textPrimary);
         final n30 = prov.trades30d;
         final label = isLive ? 'Open P&L now (live account)' : 'Main bot, today (day starts 5:30 AM IST)';
         final sub = isLive ? '$openCount open positions' : 'Main bot only. Dual Bot paper and Brain are shown apart.';
-        return Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(AppSpacing.l),
-          decoration: BoxDecoration(color: p.surface, borderRadius: BorderRadius.circular(AppSpacing.radiusMedium), border: Border.all(color: p.border)),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(label, style: context.type.label),
-            const SizedBox(height: 4),
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              alignment: Alignment.centerLeft,
-              child: Text('${fmtSigned(head)} USDT', maxLines: 1, style: context.type.number.copyWith(fontSize: 36, fontWeight: FontWeight.w800, color: color)),
-            ),
-            const SizedBox(height: 2),
-            Text(sub, style: context.type.metadata),
-            const SizedBox(height: AppSpacing.m),
-            Row(children: [
-              if (isLive) ...[
-                Expanded(child: StatTile(label: 'Margin used', value: prov.openMarginUsed.toStringAsFixed(2))),
-                const SizedBox(width: AppSpacing.s),
-                Expanded(child: StatTile(label: 'Open positions', value: '$openCount')),
-              ] else ...[
-                Expanded(child: StatTile(label: 'Main bot, 30 days', value: fmtSigned(prov.pnl30d), tone: _tone(prov.pnl30d), sub: n30 > 0 ? '$n30 trades' : 'no closed trades yet')),
-                const SizedBox(width: AppSpacing.s),
-                Expanded(child: StatTile(label: 'Main bot, 7 days', value: fmtSigned(prov.pnl7d), tone: _tone(prov.pnl7d))),
-              ],
-            ]),
-            if (!isLive) ...[
-              const SizedBox(height: AppSpacing.s),
-              Row(children: [
-                Expanded(child: StatTile(label: 'Open P&L', value: fmtSigned(open), tone: _tone(open))),
-                const SizedBox(width: AppSpacing.s),
-                Expanded(child: StatTile(label: 'Win rate', value: '${winRate.toStringAsFixed(1)}%', sub: '$openCount open')),
-              ]),
-            ],
-          ]),
-        );
+        // Part 12b: flat hero (no box): small spaced label, ONE big number, one grey line, then ONE thin-lined strip of facts (OwlStatStrip).
+        final stats = isLive
+            ? [OwlStat(prov.openMarginUsed.toStringAsFixed(2), 'Margin used'), OwlStat('$openCount', 'Open positions')]
+            : [
+                OwlStat(fmtSigned(prov.pnl30d), '30 days', tone: _tone(prov.pnl30d)),
+                OwlStat(fmtSigned(prov.pnl7d), '7 days', tone: _tone(prov.pnl7d)),
+                OwlStat(fmtSigned(open), 'Open P&L', tone: _tone(open)),
+                OwlStat('${winRate.toStringAsFixed(1)}%', 'Win rate'),
+              ];
+        return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(label.toUpperCase(), maxLines: 1, overflow: TextOverflow.ellipsis, style: context.type.label.copyWith(letterSpacing: 1.0, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 6),
+          OwlNumber(head, suffix: 'USDT', size: 38, animate: true),
+          const SizedBox(height: 2),
+          Text(sub, style: context.type.metadata),
+          if (!isLive && n30 > 0) Text('Last 30 days: $n30 closed trades', style: context.type.metadata),
+          const SizedBox(height: AppSpacing.m),
+          OwlStatStrip(stats),
+        ]);
       },
     );
   }

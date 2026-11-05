@@ -65,6 +65,23 @@ class _SniperStateBannerState extends State<SniperStateBanner> {
     return 'LEARN $n of 30 paper trades$extra';
   }
 
+  /// Part 13c: a thin bar under the LEARN line (n of 30). Nothing when the count is unknown (never a made-up 0 %).
+  Widget _bar(AppPalette p, Map<String, dynamic>? l) {
+    final n = l == null ? null : _i(_m(_m(l['learn'])['progress'])['n']);
+    if (n == null) return const SizedBox.shrink();
+    final frac = (n / 30.0).clamp(0.0, 1.0);
+    return Padding(
+      padding: const EdgeInsets.only(top: 6, bottom: 2),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(3),
+        child: Stack(children: [
+          Container(height: 5, color: p.border),
+          FractionallySizedBox(widthFactor: frac, child: Container(height: 5, color: frac >= 1 ? p.profit : p.warning)),
+        ]),
+      ),
+    );
+  }
+
   String _testLine(Map<String, dynamic>? a) {
     if (a == null) return 'Unseen-days test: loading...';
     final c = _m(a['compare']);
@@ -110,6 +127,7 @@ class _SniperStateBannerState extends State<SniperStateBanner> {
         ]),
         const SizedBox(height: 8),
         Text(_learnLine(widget.learn), style: context.type.primary.copyWith(fontWeight: FontWeight.w700)),
+        _bar(context.palette, widget.learn),
         const SizedBox(height: 4),
         Text(_testLine(widget.auto), style: context.type.secondary),
         if (first.isNotEmpty) ...[

@@ -16,6 +16,14 @@ Routes (each a GET, read only, behind the app's token check, 404 until v2_api_en
   /api/v2/lab_results      (R9)       ONE TestResult list for Z-SMA / SD bands / pairs / combos, EDGE first, filter family + verdict (writes ONLY the four study files v2_sniper_zsma / sdbands / ind_pairs / combo)
   /api/v2/sniper_h2h       (R24a)     Current Bot vs Sniper on the SAME days, % per trade, verdict (read only, writes nothing)
   /api/v2/sniper_grad      (R24b)     graduation checklist: 7 checks PASS / FAIL / WAIT (read only, writes nothing)
+  /api/v2/sniper_trades    (R29a)     the trade record: open + closed Sniper trades with signal, basis, entry, TP / SL, expected profit, hold, result, lesson (read only)
+  /api/v2/sniper_ctx       (R30)      BTC move / trend + session the Sniper learns from (read only; BTC is never added to a P&L)
+  /api/v2/sniper_watch     (R33a)     ranked watchlist: Market Watch favourites + big movers, ARMED / NEAR / WATCH + one line each, ?armed=1 (writes ONLY v2_sniper_watch.json)
+  /api/v2/sniper_eva       (Part 17a) expected vs actual per lane: the Risk Box frozen at entry vs the real paper result, no verdict below 30 compared trades (read only)
+  /api/v2/sniper_opp       (Part 17a) one STAY / TAKE PROFIT / ROTATE / KEEP line per open Sniper paper trade, rough (read only)
+  /api/v2/grad_dual        (Part 17c) graduation gate of the Dual Bot / Brain (v2_graduation.py) + last automatic Scalp Lab / Ledger run (read only)
+  /api/v2/data_health      (Part 17d) candle switch + runner, what training data is missing per source, autopilot state, last write of each background file (read only)
+  /api/v2/sniper_gates     (R26b)     8 gates PASS / FAIL / WAIT + one reason + the mistakes journal (read only, writes nothing)
 Each route is mounted in its OWN try / except: a route file that cannot be imported (a missing file, a typo) is skipped with one line in the startup log and never stops the backend or the other routes.
 STATUS is a plain dict the backend keeps in memory: {"mounted": [names], "skipped": [{"name", "why"}]}. The Problems page (Part 47) reads it, so a skipped route shows up there with its reason.
 GET /api/v2/sniper_learn is NOT here: it lives in api/sniper_paper.py, which api_server.py already mounts. Nothing here can send an order.
@@ -39,6 +47,15 @@ ROUTES = (
     ("api.v2_lab_route", "lab results"),
     ("api.sniper_h2h", "sniper h2h"),
     ("api.sniper_grad", "sniper graduation"),
+    ("api.sniper_gates", "sniper gates"),
+    ("api.sniper_trades", "sniper trades"),
+    ("api.sniper_ctx", "sniper ctx"),
+    ("api.sniper_days", "sniper days"),
+    ("api.sniper_watch", "sniper watch"),
+    ("api.sniper_eva", "sniper eva"),
+    ("api.sniper_opp", "sniper opp"),
+    ("api.v2_grad_dual", "dual graduation"),
+    ("api.v2_data_health", "data health"),
 )
 STATUS = {"version": VERSION, "mounted": [], "skipped": []}
 

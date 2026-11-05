@@ -15,6 +15,7 @@ import time
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import owl_sniper_bridge_learn as BL
 import owl_sniper_bridge_src as B
+import owl_sniper_ctx as CX
 import owl_sniper_feedall_feat as W
 import owl_sniper_tf as TF
 
@@ -59,6 +60,7 @@ def build(d, limit=0, since_days=None, now=None, knowledge=True):
         out["error"] = "%s: %s" % (type(e).__name__, str(e)[:100])
         return out
     merged, n_merged = merge(ex)
+    btc = CX.attach(d, merged)                                  # R30: BTC move / trend + session hour per example (read only)
     miss_total = 0
     for e in merged:
         e["wide"], m = W.wide_vec(e)
@@ -75,7 +77,7 @@ def build(d, limit=0, since_days=None, now=None, knowledge=True):
     days = len({int(e["entry_ts"] // 86400) for e in merged})
     out.update({"examples": merged, "skipped": {"replay": rp["skipped"], "label": lb["skipped"]},
                 "counts": {"records": len(x["recs"]), "examples_raw": len(ex), "examples": len(merged), "merged_same_signal": n_merged, "days": days,
-                           "knowledge_rows": len(out["knowledge"]["rows"]), "wide_numbers": len(W.WIDE_FEATS), "wide_missing_total": miss_total, "by_source": by}})
+                           "knowledge_rows": len(out["knowledge"]["rows"]), "wide_numbers": len(W.WIDE_FEATS), "btc_ctx": btc, "wide_missing_total": miss_total, "by_source": by}})
     out["seconds"] = round(time.time() - t0, 2)
     return out
 

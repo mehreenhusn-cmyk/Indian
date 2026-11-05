@@ -19,7 +19,8 @@ class AppTheme {
     final base = ThemeData(
       useMaterial3: true,
       brightness: Brightness.dark,
-      fontFamily: AppTypography.fontFamily,
+      fontFamily: AppTypography.family,
+      fontFamilyFallback: AppTypography.familyFallback,
     );
     return base.copyWith(
       scaffoldBackgroundColor: AppColors.background,
@@ -36,7 +37,7 @@ class AppTheme {
         surface: AppColors.surfacePrimary,
         error: AppColors.negative,
       ),
-      appBarTheme: const AppBarTheme(
+      appBarTheme: AppBarTheme(
         backgroundColor: AppColors.background,
         elevation: 0,
         scrolledUnderElevation: 0,
@@ -46,7 +47,8 @@ class AppTheme {
           color: AppColors.textPrimary,
           fontSize: 16,
           fontWeight: FontWeight.w600,
-          fontFamily: AppTypography.fontFamily,
+          fontFamily: AppTypography.family,
+          fontFamilyFallback: AppTypography.familyFallback,
         ),
       ),
       pageTransitionsTheme: const PageTransitionsTheme(builders: {
@@ -94,7 +96,8 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.light,
-      fontFamily: AppTypography.fontFamily,
+      fontFamily: AppTypography.family,
+      fontFamilyFallback: AppTypography.familyFallback,
       scaffoldBackgroundColor: AppPalette.light.bg,
       primaryColor: AppPalette.light.accent,
       colorScheme: ColorScheme.light(
@@ -113,7 +116,8 @@ class AppTheme {
           color: AppPalette.light.textPrimary,
           fontSize: 16,
           fontWeight: FontWeight.w600,
-          fontFamily: AppTypography.fontFamily,
+          fontFamily: AppTypography.family,
+          fontFamilyFallback: AppTypography.familyFallback,
         ),
       ),
       pageTransitionsTheme: const PageTransitionsTheme(builders: {
@@ -216,14 +220,14 @@ class AppPalette {
   static const AppPalette light = AppPalette(
     // Soft pearl-lavender canvas + white cards: modern, not plain white.
     // SR1a: off-white canvas so the white cards lift off it; hairline borders a little softer.
-    bg: Color(0xFFF4F5F8),
+    bg: Color(0xFFF5F6F8), // P-A: cool off-white, same family as the cards (no blue paper)
     surface: Color(0xFFFFFFFF),
     surfacePrimary: Color(0xFFFFFFFF),
     surfaceElevated: Color(0xFFFFFFFF),
-    surfaceHigher: Color(0xFFEEF0F4),
-    border: Color(0xFFE6E8EE),
+    surfaceHigher: Color(0xFFEDEFF2),
+    border: Color(0xFFE3E6EB),
     glassFill: Color(0xFFFFFFFF),
-    glassBorder: Color(0xFFE6E8EE),
+    glassBorder: Color(0xFFE3E6EB),
     glassHighlight: Color(0x06000000),
     accent: Color(0xFF4F5DF0),
     profit: Color(0xFF16A34A),

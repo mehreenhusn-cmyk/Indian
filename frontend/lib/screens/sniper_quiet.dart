@@ -21,6 +21,7 @@ const Map<String, String> _gateText = {
   'LEARN:duplicate': 'this exact signal was already traded',
   'LEARN:opener': 'the paper trader refused (the coin is already open in another bot, or no target price)',
   'LEARN:corr': 'too many trades in the same direction already move together (risk cluster limit)',
+  'LEARN:mistake': 'this coin + side + market state lost its last 3 trades, so it rests 24 hours',
   'LEARN:switch': 'LEARN mode is switched off',
   'LEARN:state': 'the LEARN state file is broken',
   'LEARN:error': 'the LEARN gate failed',

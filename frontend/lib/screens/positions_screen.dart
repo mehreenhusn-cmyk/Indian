@@ -1,6 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/app_provider.dart';
+import '../theme/app_motion2.dart';
 import '../theme/app_theme.dart';
+import '../utils/format.dart';
+import '../widgets/owl_number.dart';
 import '../widgets/owl_pressable.dart';
+import '../widgets/owl_row.dart';
+import '../widgets/sniper_positions.dart';
 import 'ledger_screen.dart';
 import 'positions_live_view.dart';
 import 'results_screen.dart';
@@ -19,7 +26,7 @@ class PositionsScreen extends StatefulWidget {
 }
 
 class _PositionsScreenState extends State<PositionsScreen> {
-  static const List<String> _names = ['Live', 'Ledger', 'Results'];
+  static const List<String> _names = ['Live', 'Sniper', 'Ledger', 'Results']; // R29b: Sniper = the open Sniper paper trades + chart
 
   int _tab = 0;
   final Set<int> _seen = {0};
@@ -38,6 +45,8 @@ class _PositionsScreenState extends State<PositionsScreen> {
       case 0:
         return const PositionsLiveView();
       case 1:
+        return const SniperPositions();
+      case 2:
         return const LedgerScreen();
       default:
         return const ResultsScreen();
@@ -54,13 +63,13 @@ class _PositionsScreenState extends State<PositionsScreen> {
         onTap: () => _select(i),
         child: Container(
           alignment: Alignment.center,
-          padding: const EdgeInsets.only(top: 8, bottom: 6),
+          padding: const EdgeInsets.only(top: 6, bottom: 4),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(_names[i], style: _label(context, on)),
               const SizedBox(height: 5),
-              Container(height: 2.5, width: 22, decoration: BoxDecoration(color: on ? p.textPrimary : Colors.transparent, borderRadius: BorderRadius.circular(2))),
+              AnimatedContainer(duration: OwlMotion.slide, curve: OwlMotion.smooth, height: 2.5, width: on ? 22 : 8, decoration: BoxDecoration(color: on ? p.textPrimary : Colors.transparent, borderRadius: BorderRadius.circular(2))),
             ],
           ),
         ),
@@ -70,7 +79,7 @@ class _PositionsScreenState extends State<PositionsScreen> {
 
   TextStyle _label(BuildContext context, bool on) {
     final p = context.palette;
-    return context.type.primary.copyWith(fontSize: 16, fontWeight: on ? FontWeight.w700 : FontWeight.w500, color: on ? p.textPrimary : p.textMuted);
+    return context.type.primary.copyWith(fontSize: 15, fontWeight: on ? FontWeight.w700 : FontWeight.w500, color: on ? p.textPrimary : p.textMuted);
   }
 
   @override
@@ -89,6 +98,17 @@ class _PositionsScreenState extends State<PositionsScreen> {
             ),
           ),
           const SizedBox(height: AppSpacing.xs), // R22a: the grey hint line under the tabs is gone (it repeated the tab name)
+          // P-F: pinned summary line (Live tab): the source is named (Main bot, paper or live), then how many are open and the open P&L.
+          if (_tab == 0)
+            Selector<AppProvider, String>(
+              selector: (_, x) => '${(x.openPnl * 100).round()}|${x.status['open_count']}|${x.statsMode}',
+              builder: (context, _, __) {
+                final x = context.read<AppProvider>();
+                final n = ((x.status['open_count'] ?? 0) as num).toInt();
+                final o = x.openPnl;
+                return OwlSummaryLine(source: x.statsMode == 'live' ? 'Main bot - live' : 'Main bot - paper', facts: [OwlStat('$n', 'open'), OwlStat(fmtSigned(o), 'USDT open P&L', tone: o > 0 ? 'good' : (o < 0 ? 'bad' : ''))]);
+              },
+            ),
           Expanded(child: IndexedStack(index: _tab, children: [for (var i = 0; i < _names.length; i++) _page(i)])),
         ],
       ),

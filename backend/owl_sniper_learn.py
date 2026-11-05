@@ -28,6 +28,7 @@ FLOOR_DEFAULT, FLOOR_MIN, FLOOR_MAX = 0.62, 0.50, 0.80      # the real floor is 
 SIZE_DEFAULT, SIZE_MIN, SIZE_MAX = 1.0, 0.5, 5.0            # USDT per LEARN trade, 1x
 MAX_OPEN = 5
 DAILY_LOSS_LIMIT = 0.5                                      # USDT lost in one UTC day -> LEARN kill switch (reset by the owner)
+XP_SIZE, XP_LEV, XP_MAX_OPEN, XP_DAILY_LOSS = 100.0, 10.0, 40, 1000.0   # R26a EXPLORE paper trades: margin USDT, leverage, open at once, runaway cap per UTC day (own book, paper)
 MIN_SAMPLE = 30                                             # closed LEARN trades before any verdict
 FRESH_STEPS = 3
 KEEP_ORDERS = 400
@@ -41,7 +42,7 @@ class StateBroken(Exception):
 
 def _default():
     return {"v": 1, "enabled": True, "floor": FLOOR_DEFAULT, "size_usdt": SIZE_DEFAULT, "max_open": MAX_OPEN, "daily_loss_limit": DAILY_LOSS_LIMIT,
-            "day": "", "day_pnl": 0.0, "kill": {"on": False, "reason": ""}, "open": {}, "orders": [],
+            "day": "", "day_pnl": 0.0, "xp_day_pnl": 0.0, "kill": {"on": False, "reason": ""}, "open": {}, "orders": [],
             "closed": {"n": 0, "wins": 0, "losses": 0, "pnl": 0.0}, "log": []}
 
 
@@ -78,7 +79,7 @@ def _day(now):
 
 def _roll(s, now):
     if s["day"] != _day(now):
-        s["day"], s["day_pnl"] = _day(now), 0.0
+        s["day"], s["day_pnl"], s["xp_day_pnl"] = _day(now), 0.0, 0.0
 
 
 def _log(s, now, text):
@@ -108,7 +109,7 @@ def set_config(d, enabled=None, floor=None, size=None, now=None):
     return s
 
 
-def decide(d, card, now=None, interval="5m", opener=None, explore=False):
+def decide(d, card, now=None, interval="5m", opener=None, explore=False, xp=False):
     """One Sniper card -> {decision OPEN | WOULD_OPEN | BLOCKED, gate, text, order, tag}. Never raises. Paper only: the caller's opener is a paper opener.
     The card may carry any regime and any win chance above the LEARN floor. The real 85% gate is NOT consulted here.
     R3c: explore=True (the autopilot is still learning) = the win-chance floor is NOT checked: tiny paper trades teach wins AND losses. Every other LEARN gate stays (signal, fresh, stop range, cap, kill switch, daily loss, same signal once)."""
@@ -136,16 +137,28 @@ def decide(d, card, now=None, interval="5m", opener=None, explore=False):
     if not C.MIN_SL_PCT <= dist <= C.MAX_SL_PCT:
         return _block("stop", "The stop is %.2f%% away; only %.2f%% to %.2f%% is allowed." % (dist, C.MIN_SL_PCT, C.MAX_SL_PCT))
     cid = client_id(interval, c)
-    if len(s["open"]) >= int(s["max_open"]):
-        return _block("cap", "%d LEARN trades are already open (the cap is %d)." % (len(s["open"]), int(s["max_open"])))
+    n_xp = len([1 for o in s["open"].values() if o.get("xp")])
+    if xp:                                                      # R26a: EXPLORE paper trades have their own cap and one trade per coin
+        if n_xp >= XP_MAX_OPEN:
+            return _block("cap", "%d EXPLORE trades are already open (the cap is %d)." % (n_xp, XP_MAX_OPEN))
+        if any(o.get("xp") and o.get("symbol") == c["symbol"] for o in s["open"].values()):
+            return _block("cap", "An EXPLORE trade on %s is already open." % c["symbol"])
+        import owl_sniper_mistakes as MS                       # R26b: a coin + side + market state that lost its last 3 trades rests 24 h (never raises)
+        why = None if c.get("fill") else MS.blocked(d, c.get("symbol"), c.get("side"), c.get("regime"), now)   # R33: a FILL card (no signal, learning trade) never rests: the owner wants trades even after mistakes
+        if why:
+            return _block("mistake", why)
+    elif len(s["open"]) - n_xp >= int(s["max_open"]):
+        return _block("cap", "%d LEARN trades are already open (the cap is %d)." % (len(s["open"]) - n_xp, int(s["max_open"])))
     if s["kill"]["on"]:
         return _block("kill", "The LEARN kill switch is on: " + (s["kill"]["reason"] or "owner"))
-    if s["day_pnl"] <= -abs(float(s["daily_loss_limit"])):
+    if xp and s.get("xp_day_pnl", 0.0) <= -XP_DAILY_LOSS:
+        return _block("kill", "Today's EXPLORE loss cap (%.0f USDT paper) is reached. It resets on a new UTC day." % XP_DAILY_LOSS)
+    if not xp and s["day_pnl"] <= -abs(float(s["daily_loss_limit"])):
         return _block("kill", "Today's LEARN loss limit is reached.")
     if cid in [o.get("id") for o in s["orders"]] or cid in s["open"]:
         return _block("duplicate", "This exact signal was already used.")
     order = {"id": cid, "mode": "learn", "tag": TAG, "symbol": c["symbol"], "side": c["side"], "entry": e, "stop": sl, "take_profit": c.get("take_profit"),
-             "stop_pct": round(dist, 3), "invest_usdt": s["size_usdt"], "confidence": p, "regime": c.get("regime"), "signal_t": t, "created": int(now), "explore": bool(explore)}
+             "stop_pct": round(dist, 3), "invest_usdt": XP_SIZE if xp else s["size_usdt"], "leverage": XP_LEV if xp else 1.0, "xp": bool(xp), "confidence": p, "regime": c.get("regime"), "signal_t": t, "created": int(now), "explore": bool(explore)}
     if opener is None:
         return {"decision": "WOULD_OPEN", "gate": "", "text": "Every LEARN gate passed. No opener was given, so nothing was opened.", "order": order, "tag": TAG}
     s["orders"] = (s["orders"] + [{"id": cid, "ts": int(now), "opened": False}])[-KEEP_ORDERS:]     # saved BEFORE the opener runs: if saving fails, nothing is opened
@@ -178,16 +191,20 @@ def record_close(d, cid, pnl_usdt, now=None):
     except StateBroken:
         return False
     _roll(s, now)
-    if s["open"].pop(cid, None) is None:
+    o = s["open"].pop(cid, None)
+    if o is None:
         return False
     x = float(pnl_usdt) if isinstance(pnl_usdt, (int, float)) and pnl_usdt == pnl_usdt else 0.0
     cl = s["closed"]
     cl["n"] += 1
     cl["wins" if x > 0 else "losses"] += 1
     cl["pnl"] = round(cl["pnl"] + x, 6)
-    s["day_pnl"] = round(s["day_pnl"] + x, 6)
+    if o.get("xp"):                                              # R26a: an EXPLORE result never feeds the tiny-LEARN kill switch
+        s["xp_day_pnl"] = round(s.get("xp_day_pnl", 0.0) + x, 6)
+    else:
+        s["day_pnl"] = round(s["day_pnl"] + x, 6)
     _log(s, now, "LEARN closed %s: %+.4f USDT" % (cid, x))
-    if s["day_pnl"] <= -abs(float(s["daily_loss_limit"])) and not s["kill"]["on"]:
+    if not o.get("xp") and s["day_pnl"] <= -abs(float(s["daily_loss_limit"])) and not s["kill"]["on"]:
         s["kill"] = {"on": True, "reason": "daily LEARN loss limit reached"}
         _log(s, now, "LEARN kill switch ON (daily loss limit)")
     try:
@@ -226,7 +243,7 @@ def status(d, now=None):
         return {"state": "broken", "text": str(e), "live_allowed": False}
     _roll(s, now)
     return {"state": "ok", "tag": TAG, "enabled": s["enabled"], "floor": s["floor"], "size_usdt": s["size_usdt"], "max_open": s["max_open"], "open": list(s["open"]),
-            "day_pnl": s["day_pnl"], "daily_loss_limit": s["daily_loss_limit"], "kill": s["kill"], "progress": progress(d), "log": s["log"][-10:], "live_allowed": LIVE_ALLOWED}
+            "day_pnl": s["day_pnl"], "daily_loss_limit": s["daily_loss_limit"], "xp": {"size": XP_SIZE, "lev": XP_LEV, "max_open": XP_MAX_OPEN, "open": len([1 for o in s["open"].values() if o.get("xp")]), "day_pnl": s.get("xp_day_pnl", 0.0), "daily_loss_cap": XP_DAILY_LOSS}, "kill": s["kill"], "progress": progress(d), "log": s["log"][-10:], "live_allowed": LIVE_ALLOWED}
 
 
 def main(argv=None):

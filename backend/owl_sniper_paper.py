@@ -20,10 +20,15 @@ from types import SimpleNamespace
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import owl_sniper_barriers as BR
 import owl_sniper_corr as CR
+import owl_sniper_eva_hook as EVH
 import owl_sniper_exec as EX
+import owl_sniper_explore as XP
 import owl_sniper_feed as F
 import owl_sniper_killreset as KR
 import owl_sniper_learn as LN
+import owl_sniper_mistakes as MS
+import owl_sniper_record as REC
+import owl_sniper_xrules as XR
 import owl_sniper_tf as TF
 
 VERSION = "owl_sniper_paper 1 (Round 30)"
@@ -71,8 +76,8 @@ def _force_base(pt, tid, o):
             if p is None:
                 return False
             learn = o.get("tag") == LN.TAG
-            p.update(invest_usdt=float(o["invest_usdt"]), leverage=1.0, btc_fixed_size=False,
-                     trigger="OwlSniper %s%s signal (win chance %.0f%%, stop %.2f%%)" % ("LEARN " if learn else "", o["side"], 100.0 * float(o.get("confidence") or 0.0), float(o.get("stop_pct") or 0.0)),
+            p.update(invest_usdt=float(o["invest_usdt"]), leverage=float(o.get("leverage") or 1.0), btc_fixed_size=False,
+                     trigger="OwlSniper %s%s signal (win chance %.0f%%, stop %.2f%%)" % ("EXPLORE " if o.get("xp") else ("LEARN " if learn else ""), o["side"], 100.0 * float(o.get("confidence") or 0.0), float(o.get("stop_pct") or 0.0)),
                      sl_type="OwlSniper stop (%.2f%%)" % float(o.get("stop_pct") or 0.0), timeframe=INTERVAL)
             if learn:
                 p.update(tag=LN.TAG, sniper_id=o.get("id"), sniper_regime=o.get("regime"), sniper_conf=o.get("confidence"))
@@ -117,6 +122,10 @@ def _learned_tp(d, o):
     Stop, size and entry are untouched. Any problem or the owner switch (file v2_exitlearn_off) = the order stays as it is."""
     try:
         import owl_sniper_exitlearn as XL
+        import owl_sniper_tpsl as TS                                   # R32a: a learned stop + profit COMBO (both lines) comes first
+        o2 = TS.apply(d, o, INTERVAL)
+        if o2 is not o:
+            return o2
         k = XL.live_tp_r(d, o.get("regime"), INTERVAL)
         e, sl = float(o["entry"]), float(o["stop"])
         if not k or e <= 0 or abs(e - sl) <= 0:
@@ -131,13 +140,13 @@ def make_opener(d, pt, now=None, learn=False):
     def opener(o):
         try:
             if learn:
-                o = _learned_tp(d, o)
+                o.update(XR.plan(d, _learned_tp(d, o)))                   # R32b: arm A / B + the rule's profit line; update in place so the trade record shows the real lines
             tp = o.get("take_profit")
             if not isinstance(tp, (int, float)) or tp <= 0:
                 return False                                            # the triple barrier needs its profit line
             if o["symbol"] in pt.get_open_symbols():
                 return False                                            # never touch a trade of another bot
-            why = _corr_block(d, pt, o, time.time() if now is None else now)
+            why = "" if o.get("xp") else _corr_block(d, pt, o, time.time() if now is None else now)      # R26a: EXPLORE paper trades may pile up on purpose (that is the data)
             if why:
                 print("[sniper paper] %s not opened: %s" % (o["symbol"], why))      # PART 49: too many same-direction trades that move together
                 return False
@@ -147,6 +156,7 @@ def make_opener(d, pt, now=None, learn=False):
             if not _force_base(pt, tid, o):
                 pt.close_position_manual(tid)
                 return False
+            XR.note(d, o, tid, now)                                        # R32b: remember arm, rule, size, stop distance of this trade
             _map_put(d, o["id"], tid, time.time() if now is None else now)   # a failed note is not fatal: sync() can still find the trade by coin + time
             return True
         except Exception:
@@ -213,7 +223,8 @@ def sync(d, pt, ts, now=None):
 
 def _cards(d):
     live = F.read_json(d, F.LIVE_FILE) or {}
-    return [c for c in (live.get("cards") or []) if isinstance(c, dict) and c.get("action") in ("SNIPER_LONG", "SNIPER_SHORT")], live.get("floor_verified") is True
+    real = [c for c in (live.get("cards") or []) if isinstance(c, dict) and c.get("action") in ("SNIPER_LONG", "SNIPER_SHORT")]
+    return real + XP.cards(d), live.get("floor_verified") is True       # R26a: + the fresh EXPLORE cards (they are routed to the LEARN lane only)
 
 
 def step(d, pt, ts, now=None):
@@ -223,6 +234,9 @@ def step(d, pt, ts, now=None):
         try:
             KR.maybe_reset(d, now)                                    # a LEARN kill that the daily loss limit switched on is released on a new UTC day
             res = {"sync": sync(d, pt, ts, now)}
+            res["xrules"] = XR.manage(d, pt, now)                        # R32b: arm B exits (stop to entry, trail, time line) for open Sniper paper trades only
+            XP.maybe_scan(d, now)                                     # R26a: once per candle step, makes the EXPLORE cards
+            MS.maybe_refresh(d, now, force=res["sync"].get("closed", 0) > 0)   # R26b: tag the closed trades, update the blocked combos + the journal
             if os.path.exists(os.path.join(os.path.realpath(d), F.OFF_FILE)):
                 return dict(res, auto="off")
             cards, verified = _cards(d)
@@ -233,6 +247,8 @@ def step(d, pt, ts, now=None):
                 r = _corr_note(r, c.get("symbol"), now)
                 if r["decision"] == "OPEN":
                     opened.append({"symbol": c.get("symbol"), "lane": r["lane"]})
+                    REC.note_open(d, c, r.get("order"), now)                  # R29a: keep signal, basis, expected profit and hold of this trade
+                    EVH.freeze_async(d, r.get("order"), now)                    # Part 17a: freeze the Risk Box answer (EVA), own thread
                 else:
                     k = "%s:%s" % (r["lane"], r.get("gate") or "none")
                     why[k] = why.get(k, 0) + 1
@@ -251,6 +267,10 @@ def enter_symbol(d, pt, ts, symbol, now=None):
             card = next((c for c in cards if c.get("symbol") == symbol), None)
             if card is None:
                 return {"decision": "BLOCKED", "gate": "signal", "text": "There is no live Sniper signal for %s right now." % symbol, "order": None}
-            return _corr_note(EX.route(d, card, verified, now, INTERVAL, make_opener(d, pt, now), make_opener(d, pt, now, learn=True)), symbol, now)
+            r = _corr_note(EX.route(d, card, verified, now, INTERVAL, make_opener(d, pt, now), make_opener(d, pt, now, learn=True)), symbol, now)
+            if r.get("decision") == "OPEN":
+                REC.note_open(d, card, r.get("order"), now)                       # R29a
+                EVH.freeze_async(d, r.get("order"), now)                          # Part 17a
+            return r
         except Exception as e:
             return {"decision": "BLOCKED", "gate": "error", "text": "The paper entry could not be made (%s)." % str(e)[:80], "order": None}

@@ -76,8 +76,8 @@ class LabTest {
 
   bool get needsData => verdict == 'NOT_ENOUGH_DATA';
 
-  /// EDGE first, then LOSING, DIAGNOSIS, NO EDGE, NOT ENOUGH DATA (the backend order is kept inside one verdict).
-  static int rank(String v) => const ['EDGE', 'LOSING', 'DIAGNOSIS_ONLY', 'NO_EDGE', 'NOT_ENOUGH_DATA'].indexOf(v);
+  /// Part 13b: EDGE first, then CANDIDATE (= DIAGNOSIS_ONLY on the wire: looked good, not proven), NOT ENOUGH DATA, NO EDGE, LOSING (the backend order is kept inside one verdict).
+  static int rank(String v) => const ['EDGE', 'DIAGNOSIS_ONLY', 'NOT_ENOUGH_DATA', 'NO_EDGE', 'LOSING'].indexOf(v);
 }
 
 /// Plain names for the families of the backend (the word on a card and on a chip).
@@ -219,17 +219,16 @@ class _LabTestCardState extends State<LabTestCard> {
     final t = widget.t;
     final vs = VerdictStyle.of(p, t.verdict);
     final frac = t.needsData && t.needN > 0 ? (t.n / t.needN).clamp(0.0, 1.0) : null;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.cardGap),
-      child: OWLPressable(
+    // Part 13b: a FLAT row (no box per test): thin line under it, a coloured bar on the left for an EDGE.
+    return OWLPressable(
         onTap: () => setState(() => _open = !_open),
         pressedScale: 0.99,
         child: Container(
-          padding: const EdgeInsets.all(AppSpacing.cardPad),
-          decoration: BoxDecoration(color: p.surface, borderRadius: BorderRadius.circular(AppSpacing.radiusMedium), border: Border.all(color: t.verdict == 'EDGE' ? vs.color.withOpacity(0.6) : p.border)),
+          padding: const EdgeInsets.symmetric(vertical: AppSpacing.m, horizontal: 2),
+          decoration: BoxDecoration(border: Border(bottom: BorderSide(color: p.border), left: BorderSide(color: t.verdict == 'EDGE' ? vs.color : Colors.transparent, width: 3))),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
-              VerdictBadge(verdict: t.verdict, compact: true),
+              t.verdict == 'DIAGNOSIS_ONLY' ? _chip(p, 'CANDIDATE', c: p.accent) : VerdictBadge(verdict: t.verdict, compact: true),
               const SizedBox(width: 6),
               _chip(p, labFamily(t.family)),
               if (t.side.isNotEmpty) ...[const SizedBox(width: 4), _chip(p, t.side, c: t.side == 'LONG' ? p.profit : (t.side == 'SHORT' ? p.loss : null))],
@@ -239,6 +238,7 @@ class _LabTestCardState extends State<LabTestCard> {
             const SizedBox(height: 6),
             Text(t.title, style: context.type.primary.copyWith(fontWeight: FontWeight.w700)),
             if (t.headline.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 2), child: Text(t.headline, style: context.type.secondary.copyWith(color: p.textPrimary))),
+            if (t.context.isNotEmpty && !t.needsData) Padding(padding: const EdgeInsets.only(top: 2), child: Text('Setting: ${t.context}', maxLines: 1, overflow: TextOverflow.ellipsis, style: context.type.metadata)),
             const SizedBox(height: 6),
             if (frac != null) ...[
               ClipRRect(
@@ -251,7 +251,6 @@ class _LabTestCardState extends State<LabTestCard> {
             if (_open) ...[
               const SizedBox(height: 8),
               if (t.detail.isNotEmpty) Text(t.detail, style: context.type.secondary),
-              if (t.context.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 6), child: Text('Setting: ${t.context}', style: context.type.metadata)),
               if (t.reasonMissing.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 6), child: Text('Missing: ${t.reasonMissing}', style: context.type.secondary.copyWith(color: p.warning))),
               if (t.nextAction.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 4), child: Text('To do: ${t.nextAction}', style: context.type.secondary)),
               if (t.caveat.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 6), child: Text(t.caveat, style: context.type.metadata)),
@@ -274,7 +273,6 @@ class _LabTestCardState extends State<LabTestCard> {
             ],
           ]),
         ),
-      ),
     );
   }
 }

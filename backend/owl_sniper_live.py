@@ -101,7 +101,7 @@ def scan_live(d, now=None, interval="5m", network=True, get=None, sleep=None, ca
                 if r["action"] != "BLOCK_TRADE":
                     S = eng.features(run)
                     card["barrier"] = BR.plan_for_signal(S, S["n"] - 1)
-                    w = LW.wide_for_card(S, run, sym, card.get("side") or ("LONG" if r["action"] == "SNIPER_LONG" else "SHORT"), interval)        # R3d: the 20 numbers for the autopilot
+                    w = LW.wide_for_card(S, run, sym, card.get("side") or ("LONG" if r["action"] == "SNIPER_LONG" else "SHORT"), interval, con)        # R3d / R30 (con = BTC context): the 20 numbers for the autopilot
                     if w:
                         card["wide"], card["wide_missing"] = w["wide"], w["missing"]
                 cards.append(card)

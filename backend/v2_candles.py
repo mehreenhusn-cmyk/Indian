@@ -47,12 +47,43 @@ def is_enabled(data_dir):
         return False
 
 
+OWNER_OFF_NAME = "v2_candles_owner_off"     # Part 17d: this file = the OWNER switched the candles off on purpose (python3 backend/v2_candles.py --off); only then the runner leaves the switch OFF
+
+
+def owner_off(data_dir):
+    return os.path.lexists(os.path.join(os.path.realpath(data_dir), OWNER_OFF_NAME))
+
+
 def set_enabled(data_dir, on):
     p = flag_path(data_dir)
     if os.path.islink(p):
         raise S.StoreRefused("the switch file must not be a link")
+    m = os.path.join(os.path.realpath(data_dir), OWNER_OFF_NAME)
+    if os.path.islink(m):
+        raise S.StoreRefused("the owner-off file must not be a link")
     with open(p, "w", encoding="utf-8") as f:
         f.write("1\n" if on else "0\n")
+    if on:
+        if os.path.lexists(m):
+            os.remove(m)
+    else:
+        with open(m, "w", encoding="utf-8") as f:
+            f.write("candles switched OFF by the owner (--off); the runner will not switch them on again until --on\n")
+
+
+def self_heal(data_dir):
+    """Part 17d: the switch file is gone or says OFF but the owner did NOT switch it off (no owner-off file) -> write ON again. -> True if it did. Never raises."""
+    try:
+        if is_enabled(data_dir) or owner_off(data_dir):
+            return False
+        p = flag_path(data_dir)
+        if os.path.islink(p):
+            return False
+        with open(p, "w", encoding="utf-8") as f:
+            f.write("1\n")
+        return True
+    except OSError:
+        return False
 
 
 def kline_url(symbol, interval, limit):

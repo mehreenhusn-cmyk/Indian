@@ -15,9 +15,10 @@ import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import owl_sniper_bridge_learn as BL
+import owl_sniper_feedall_feat as WF
 import owl_sniper_prob as P
 
-VERSION = "owl_sniper_autopilot 1 (R3a)"
+VERSION = "owl_sniper_autopilot 2 (R30)"
 PAPER_ONLY = True
 LIVE_ALLOWED = False
 FILE = "v2_sniper_autopilot.json"
@@ -149,7 +150,10 @@ def explore_active(d):
 def load(d):
     try:
         with open(os.path.join(d, FILE)) as f:
-            return json.load(f)
+            st = json.load(f)
+        if (st.get("model") or {}).get("w") and len(st["model"]["w"]) != len(WF.WIDE_FEATS):     # R30: the number list grew (BTC + session): an old model is dropped, the Sniper learns again
+            st = dict(st, state="EXPLORE", model=None, cut=None, reasons=list(st.get("reasons") or []) + ["Old model used another number list (R30 added BTC + session numbers); it was dropped and is learned again."])
+        return st
     except Exception:
         return None
 

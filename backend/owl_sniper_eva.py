@@ -9,7 +9,7 @@ How it works (plain words):
      median time ratio, share of trades with a deeper dip than the 90% line (about 10% is normal). Verdict: BELOW_EXPECTED (the whole gap range is under 0 = warning), ON_TRACK (the range holds 0), ABOVE_EXPECTED (the whole range is over 0).
   Lanes (REAL / LEARN / ...) are judged apart, never added together.
 Report only: a warning is shown, nothing is paused automatically (owner approval needed for any automatic reaction; not built).
-NOT wired yet: record_expected() has to be called where a Sniper paper trade opens, and the closed Sniper trades have to be turned into bridge records (source "sniper") by a later file. Until then the report says how many expectations are waiting.
+WIRED in Part 17a: owl_sniper_eva_hook.freeze_async() is called where a Sniper paper trade opens (owl_sniper_paper.py); api/sniper_eva.py turns the closed Sniper paper trades into actuals (R = paper P&L / 1R in USDT) and serves report() as GET /api/v2/sniper_eva. The dip (MAE) is not measured for paper trades, so that line stays empty.
 API: record_expected(d, uid, box, lane="REAL", now=None), load_expected(d), actual_from_label(label), label_actuals(d, records, now=None), compare_one(exp, act), cohort(rows), report(d, actuals, now=None). CLI:
   python3 backend/owl_sniper_eva.py --data DIR [--actuals FILE.json]   (FILE = list of actuals {uid, r_net, secs, mae_r, mfe_r, result}; without it only the waiting expectations are counted)"""
 import argparse
