@@ -37,7 +37,15 @@ SniperLv sniperLevels(Map<String, dynamic> rec, Map<String, dynamic>? pos) => Sn
       _n(rec['take_profit']) ?? _n(pos?['effective_tp1']) ?? _n(pos?['tp1']),
     );
 
-String sniperMins(Object? s) => _n(s) == null ? '--' : (_n(s)! >= 3600 ? '${(_n(s)! / 3600).toStringAsFixed(1)} h' : '${(_n(s)! / 60).round()} min');
+String sniperMins(Object? s) => _n(s) == null ? '--' : fmtSpan(_n(s)!);   // owner rule: 1 h or more = "2 h 10 min"
+
+/// Plan F: the learned TP / SL time line of an open trade (30+ closed trades), or the learning progress. '' when the backend sent nothing.
+String sniperLearnLine(Object? lt) {
+  if (lt is! Map) return '';
+  if (lt['scope'] == 'learning') return 'Time learning: ${lt['n'] ?? 0} / ${lt['need'] ?? 30} closed trades';
+  final tp = _n(lt['tp_sec']), sl = _n(lt['sl_sec']);
+  return 'Usually: TP in ${sniperMins(tp)}, SL in ${sniperMins(sl)} (${lt['n']} trades, ${lt['scope']})';
+}
 
 /// Plan E: the result of an SL / TP check. [ok] true = fine, false = something to look at, null = cannot tell (a number is missing).
 class SniperCheck {
@@ -176,6 +184,7 @@ class _SniperPositionChartState extends State<SniperPositionChart> {
               if (_n(rec['expected_usdt']) != null)
                 _line(p, 'Expected ${fmtSigned(_n(rec['expected_usdt'])!)} USDT at the target, risk -${(_n(rec['risk_usdt']) ?? 0).toStringAsFixed(2)} USDT (after fees)  |  ${rec['rr'] ?? '--'}R'),
               _line(p, '${closed ? 'Held' : 'Open'} ${sniperMins(age)}${_n(rec['max_hold_sec']) == null ? '' : ' of up to ${sniperMins(rec['max_hold_sec'])}'}${_n(rec['typical_hold_sec']) == null ? '' : '  |  typical ${sniperMins(rec['typical_hold_sec'])}'}'),
+              if (!closed && sniperLearnLine(rec['learn_time']).isNotEmpty) _line(p, sniperLearnLine(rec['learn_time']), size: 11.5),
               _line(p, chk.text, c: chkColor, size: 11.5, bold: chk.ok == false),
               if (closed && _n(rec['vs_expected']) != null) _line(p, 'Result vs the expected ${fmtSigned(_n(rec['expected_usdt']) ?? 0)} USDT: ${fmtSigned(_n(rec['vs_expected'])!)} USDT'),
               if (closed && (rec['lesson'] ?? '').toString().isNotEmpty) _line(p, '${rec['tag'] ?? ''}: ${rec['lesson']}', size: 11.5),

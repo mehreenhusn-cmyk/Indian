@@ -20,8 +20,9 @@ import owl_sniper_learn as LN
 import owl_sniper_lessons as LS
 import owl_sniper_mistakes as MS
 import owl_sniper_tf as TF
+import owl_sniper_tptime as TT
 
-VERSION = "owl_sniper_record 2 (R29b)"
+VERSION = "owl_sniper_record 3 (Plan F)"
 FILE, KEEP, JOIN_SEC = "v2_sniper_trades.json", 300, 15
 
 
@@ -109,8 +110,10 @@ def build(d, now=None, limit=30):
             closed.append(dict(base, closed_at=int(t1), held_sec=held, pnl_usdt=pnl, roi_pct=_num(t.get("roi_pct")), exit_reason=t.get("clean_exit_reason") or t.get("exit_reason") or "", tag=tag,
                                lesson=MS.LESSON[tag] % info.get("mfe_r", 0.0) if tag == "EXIT_ERROR" else MS.LESSON[tag], vs_expected=None if pnl is None or "expected_usdt" not in base else round(pnl - base["expected_usdt"], 2)))
         typ = sorted(holds)[len(holds) // 2] if len(holds) >= 5 else None
+        tl = TT.build(rows)
+        out["time_learn"] = tl
         live, tids = _open_ids(d), _trade_ids(d)
-        opn = [dict(r, state="OPEN", age_sec=int(now - r["opened_at"]), typical_hold_sec=typ, trade_id=tids.get(r["id"])) for r in recs.values() if r["id"] in live and r["id"] not in used]
+        opn = [dict(r, state="OPEN", age_sec=int(now - r["opened_at"]), typical_hold_sec=typ, trade_id=tids.get(r["id"]), learn_time=TT.expect(tl, r.get("regime"), r.get("side"))) for r in recs.values() if r["id"] in live and r["id"] not in used]
         opn.sort(key=lambda r: -r["opened_at"])
         out.update(open=opn[:limit], closed=closed[:limit], typical_hold_sec=typ, counts={"open": len(opn), "closed": len(closed), "with_record": sum(1 for c in closed if "expected_usdt" in c)})
     except Exception as e:

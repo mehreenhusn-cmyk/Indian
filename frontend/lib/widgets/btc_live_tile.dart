@@ -23,6 +23,7 @@ class _BtcLiveTileState extends State<BtcLiveTile> {
   double? _prev;
   bool _up = true;
   bool _busy = false;
+  final List<double> _hist = [];   // Plan G: last prices (1 per second) for the mini chart; real ticks only, nothing invented
 
   @override
   void initState() {
@@ -48,7 +49,11 @@ class _BtcLiveTileState extends State<BtcLiveTile> {
     final px = _n(d['price']);
     setState(() {
       if (px != null && _prev != null && px != _prev) _up = px > _prev!;
-      if (px != null) _prev = px;
+      if (px != null) {
+        _prev = px;
+        _hist.add(px);
+        if (_hist.length > 90) _hist.removeAt(0);
+      }
       _d = d;
     });
   }
@@ -84,7 +89,8 @@ class _BtcLiveTileState extends State<BtcLiveTile> {
             borderRadius: BorderRadius.circular(AppSpacing.radiusLarge),
             border: Border.all(color: p.accent.withOpacity(0.55)),
           ),
-          child: Row(children: [
+          child: Column(children: [
+            Row(children: [
             Container(
               width: 38,
               height: 38,
@@ -122,8 +128,40 @@ class _BtcLiveTileState extends State<BtcLiveTile> {
               ]),
             ),
           ]),
+            if (_hist.length >= 5) ...[
+              const SizedBox(height: 8),
+              SizedBox(height: 34, width: double.infinity, child: CustomPaint(painter: _BtcSpark(_hist, _hist.last >= _hist.first ? p.profit : p.loss))),
+            ],
+          ]),
         ),
       ),
     );
   }
+}
+
+/// Plan G: the BTC mini chart = the last ticks of this screen (about 90 s), one line + soft fill. No package, no animation.
+class _BtcSpark extends CustomPainter {
+  final List<double> v;
+  final Color c;
+  _BtcSpark(this.v, this.c);
+
+  @override
+  void paint(Canvas cv, Size s) {
+    var lo = v.reduce((a, b) => a < b ? a : b);
+    var hi = v.reduce((a, b) => a > b ? a : b);
+    if (hi - lo < 0.01) hi = lo + 1;
+    double y(double x) => s.height - 3 - (x - lo) / (hi - lo) * (s.height - 6);
+    final line = Path();
+    for (var i = 0; i < v.length; i++) {
+      final o = Offset(i / (v.length - 1) * s.width, y(v[i]));
+      i == 0 ? line.moveTo(o.dx, o.dy) : line.lineTo(o.dx, o.dy);
+    }
+    final fill = Path.from(line)..lineTo(s.width, s.height)..lineTo(0, s.height)..close();
+    cv.drawPath(fill, Paint()..shader = LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [c.withOpacity(0.22), c.withOpacity(0.0)]).createShader(Offset.zero & s));
+    cv.drawPath(line, Paint()..color = c..style = PaintingStyle.stroke..strokeWidth = 1.8..strokeJoin = StrokeJoin.round..strokeCap = StrokeCap.round);
+    cv.drawCircle(Offset(s.width, y(v.last)), 3, Paint()..color = c);
+  }
+
+  @override
+  bool shouldRepaint(_BtcSpark o) => o.v.length != v.length || o.c != c || o.v.last != v.last;
 }

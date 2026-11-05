@@ -117,7 +117,12 @@ class DashboardEquityChart extends StatelessWidget {
         height: 160,
         child: LineChart(
           LineChartData(
-            gridData: FlGridData(show: false),
+            gridData: FlGridData(
+              show: true,
+              drawVerticalLine: false,
+              horizontalInterval: range / 3,
+              getDrawingHorizontalLine: (_) => FlLine(color: context.palette.textMuted.withOpacity(0.10), strokeWidth: 1),
+            ),
             borderData: FlBorderData(show: false),
             titlesData: FlTitlesData(
               show: true,
@@ -157,7 +162,7 @@ class DashboardEquityChart extends StatelessWidget {
             ]),
             lineTouchData: LineTouchData(
               touchTooltipData: LineTouchTooltipData(
-                tooltipBgColor: const Color(0xFF1B222C),
+                tooltipBgColor: context.palette.surface,
                 getTooltipItems: (touched) => touched.map((t) {
                   final i = t.x.toInt().clamp(0, data.length - 1).toInt();
                   final pnl = _num(data[i]['pnl']);
@@ -185,7 +190,11 @@ class DashboardEquityChart extends StatelessWidget {
                 ),
                 belowBarData: BarAreaData(
                   show: true,
-                  color: lineColor.withOpacity(0.12),
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [lineColor.withOpacity(0.28), lineColor.withOpacity(0.0)],
+                  ),
                 ),
               ),
             ],
@@ -194,6 +203,12 @@ class DashboardEquityChart extends StatelessWidget {
           ),
         ),
       ),
+      if (hasTrades)
+        Padding(
+          padding: const EdgeInsets.only(top: 6),
+          child: Text('Peak ${ys.reduce((x, y) => x > y ? x : y).toStringAsFixed(2)}  |  Low ${ys.reduce((x, y) => x < y ? x : y).toStringAsFixed(2)}  |  ${data.length} points',
+              style: AppTypography.metadata.copyWith(color: context.palette.textMuted, fontSize: 11)),
+        ),
       if (!hasTrades)
         Padding(
           padding: const EdgeInsets.only(top: 6),

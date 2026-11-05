@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
+import '../utils/format.dart';
+import 'sniper_position_chart.dart' show sniperLearnLine;
 import '../widgets/owl_card.dart';
 
 /// R29a (Sniper tab): the TRADE RECORD. Data: GET /api/v2/sniper_trades (read only, paper only), loaded by sniper_screen.dart.
@@ -15,7 +17,7 @@ String _px(Object? v) {
 }
 
 String _usd(Object? v) => _n(v) == null ? '-' : '${_n(v)! >= 0 ? '+' : ''}${_n(v)!.toStringAsFixed(2)} USDT';
-String _mins(Object? s) => _n(s) == null ? '-' : (_n(s)! >= 3600 ? '${(_n(s)! / 3600).toStringAsFixed(1)} h' : '${(_n(s)! / 60).round()} min');
+String _mins(Object? s) => _n(s) == null ? '-' : fmtSpan(_n(s)!);   // owner rule: 1 h or more = "2 h 10 min"
 
 class SniperTradeRecord extends StatelessWidget {
   final Map<String, dynamic>? g;
@@ -43,6 +45,7 @@ class SniperTradeRecord extends StatelessWidget {
           _line(p, 'Expected ${_usd(t['expected_usdt'])} if the target is hit, risk -${_n(t['risk_usdt'])!.toStringAsFixed(2)} USDT (after fees)  |  ${t['rr'] ?? '-'}R'),
         if (_n(t['max_hold_sec']) != null)
           _line(p, 'Hold: up to ${_mins(t['max_hold_sec'])}${_n(t['typical_hold_sec']) != null ? ', typical ${_mins(t['typical_hold_sec'])}' : ''}${open ? '  |  open ${_mins(t['age_sec'])}' : ''}', size: 11.5),
+        if (open && sniperLearnLine(t['learn_time']).isNotEmpty) _line(p, sniperLearnLine(t['learn_time']), size: 11.5),
         if (!open) ...[
           _line(p, 'Result ${_usd(pnl)}  |  held ${_mins(t['held_sec'])}  |  exit ${t['exit_reason'] ?? '-'}', c: c, bold: true),
           if (_n(t['vs_expected']) != null) _line(p, 'Against the expected profit: ${_usd(t['vs_expected'])}', size: 11.5),

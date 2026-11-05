@@ -1,6 +1,7 @@
 #!/data/data/com.termux/files/usr/bin/bash
 # OWL auto-deploy v5h (2026-10-31) for Termux.
 # v5j (2 Nov, Round 30): GitHub sync now also takes README6.md, PLAN_400.md, FILE_INDEX.md, CLAUDE_HANDOFF.md, AI_HANDOFF_BRIEF.md (the OwlSniper docs). Nothing else changed.
+# v5l (5 Nov 2026, BUILD 47): HOLD IS OFF FOR GOOD. Every downloaded Indian-main/ zip is deployed AND pushed to GitHub; an old ~/.owl_hold_push file is removed by the watcher.
 # v5h (31 Oct, Part 43): STALE-ZIP GUARD. Proof from GitHub Actions: owl_Part73 was pushed AFTER owl_Part34 (file time is not a safe order, e.g. after a re-download) and made v2_radar.py,
 #   v2_data.py, more_screen.dart, app_provider_positions.dart and README4 old again. Now every zip carries its README4 version (v138 ...): a zip with a LOWER version than the newest one already
 #   applied / pushed is SKIPPED (logged), so an old cumulative zip can never overwrite newer files. Zips without a README4 are never skipped.
@@ -78,7 +79,7 @@
 # Settings / trades live outside the code folder, so a new zip never touches them.
 # Needs once:  termux-setup-storage
 
-BUILD=46    # self-update number: a zip replaces this script only if its BUILD is a bigger whole number (v5c=2, v5d=3, v5e=40, v5f=41, v5g=42, v5h=43, v5i=44, v5j=45, v5k=46)
+BUILD=47    # self-update number: a zip replaces this script only if its BUILD is a bigger whole number (v5c=2, v5d=3, v5e=40, v5f=41, v5g=42, v5h=43, v5i=44, v5j=45, v5k=46, v5l=47)
 VERSION="v5k 2026-11-06"
 DL_LIST() {   # every Download folder that exists (no duplicates)
   for d in "$OWL_DL" "$HOME/storage/downloads" "$HOME/storage/shared/Download" "/sdcard/Download" "/storage/emulated/0/Download"; do
@@ -535,9 +536,9 @@ sync_repo() {
   is_owl_zip "$zip" || { log "github sync skipped: $(basename "$zip") is not an Indian-main/ zip (other repo), never pushed"; return 0; }   # v5i: also for 'pushnow <zip>'
   # v5k: HOLD switch. While the file ~/.owl_hold_push exists, NO zip is pushed to GitHub (it is still deployed on the phone). The zip is remembered
   # and pushed after:  bash ~/owl_auto.sh release   (or at once with: bash ~/owl_auto.sh pushnow, which ignores the hold on purpose).
-  if [ -f "$HOME/.owl_hold_push" ] && [ -z "$OWL_FORCE_PUSH" ]; then
-    grep -qsF "|$zip" "$PENDF" || pending_add "$zip"
-    return 1
+  # v5l (owner 5 Nov: "I download the zip, GitHub must update"): the hold is OFF for good. A leftover ~/.owl_hold_push file is deleted here, so a download always pushes.
+  if [ -f "$HOME/.owl_hold_push" ]; then
+    rm -f "$HOME/.owl_hold_push"; log "v5l: old push hold file removed - zips are pushed to GitHub again"
   fi
   git_ok || { log "github sync skipped: no git repo at $REPO"; return 1; }
   if stale_zip "$zip" "$HOME/.owl_push_ver"; then log "github sync skipped: $(basename "$zip") is README4 v$(zip_ver "$zip"), OLDER than v$(cat "$HOME/.owl_push_ver") already pushed (it would put old files back)"; pending_done "$(stat -c '%Y' "$zip" 2>/dev/null || echo 0)"; return 0; fi
@@ -746,7 +747,7 @@ case "$1" in
     } 2>&1 | tee "$HOME/owl_pushcheck.txt"
     exit 0 ;;
   hold)
-    touch "$HOME/.owl_hold_push"; echo "HOLD is ON: zips are deployed on the phone but NOT pushed to GitHub. Release with: bash ~/owl_auto.sh release"; exit 0 ;;
+    echo "v5l: the hold switch is switched off for good (owner wish: every downloaded zip updates GitHub). Nothing changed."; exit 0 ;;
   release)
     rm -f "$HOME/.owl_hold_push"; echo "HOLD is OFF: held zips are pushed by the watcher within about 3 minutes (or now: bash ~/owl_auto.sh pushnow)."; exit 0 ;;
   pushnow)
