@@ -6,6 +6,7 @@ import '../theme/app_motion2.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_theme.dart';
 import 'dashboard_bits.dart';
+import 'brain_strip.dart' show learnCountNow;
 import 'live_status_chip.dart';
 import 'owl_number.dart';
 import 'owl_pressable.dart';
@@ -94,6 +95,11 @@ class _DotRow extends StatelessWidget {
             Text(ms == null ? '-- ms' : '$ms ms', style: context.type.number.copyWith(fontSize: 12, fontWeight: FontWeight.w600, color: OwlLook.ping(p, ms))),
             const LiveStatusChip(),
             Text('$coins coins', style: context.type.metadata),
+            // Part 7: LEARN progress on the always-visible line. Shown only once a real answer is known (never a made-up 0).
+            ValueListenableBuilder<int?>(
+              valueListenable: learnCountNow,
+              builder: (context, n, _) => n == null ? const SizedBox.shrink() : Text('LEARN $n/30', style: context.type.metadata.copyWith(color: n >= 30 ? p.profit : p.warning, fontWeight: FontWeight.w700)),
+            ),
             if (liveTrading) _LiveTradingDot(color: OwlLook.live(p)),
           ]),
         ),

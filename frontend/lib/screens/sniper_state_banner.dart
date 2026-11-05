@@ -65,6 +65,50 @@ class _SniperStateBannerState extends State<SniperStateBanner> {
     return 'LEARN $n of 30 paper trades$extra';
   }
 
+  /// Part 5: the LEARN progress at hero size: big "n / 30", the bar, then WON | LOST | NET (only what the backend really sent; lost = n - won), and a red chip if the kill switch is on.
+  /// No made-up number: a missing value prints "--". (The clean-samples count is not in this answer, so it is not shown here.)
+  Widget _learnHero(BuildContext context) {
+    final p = context.palette;
+    final l = widget.learn;
+    if (l == null) return Text('LEARN paper trades: loading...', style: context.type.secondary);
+    final pg = _m(_m(l['learn'])['progress']);
+    final n = _i(pg['n']);
+    if (n == null) return Text('LEARN paper trades: no answer yet.', style: context.type.secondary);
+    final w = _i(pg['wins']);
+    final net = _d(pg['net_usdt']);
+    final lost = w == null ? null : (n - w).clamp(0, n);
+    final netColor = net == null || net == 0 ? p.textPrimary : (net > 0 ? p.profit : p.loss);
+    final ex = _m(_m(widget.auto)['executor']);
+    final killOn = _m(ex['kill'])['on'] == true;
+    Widget mini(String label, String value, Color c) => Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(label, maxLines: 1, style: context.type.label.copyWith(fontSize: 10.5, letterSpacing: 0.6)),
+            const SizedBox(height: 1),
+            Text(value, maxLines: 1, softWrap: false, overflow: TextOverflow.fade, style: context.type.number.copyWith(fontSize: 16, fontWeight: FontWeight.w700, color: c)),
+          ]),
+        );
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+        Text('$n', style: context.type.number.copyWith(fontSize: 32, fontWeight: FontWeight.w800, color: n >= 30 ? p.profit : p.textPrimary)),
+        Text(' / 30', style: context.type.number.copyWith(fontSize: 18, color: p.textMuted)),
+        const SizedBox(width: 10),
+        Expanded(child: Padding(padding: const EdgeInsets.only(bottom: 5), child: Text('LEARN paper trades', maxLines: 1, overflow: TextOverflow.ellipsis, style: context.type.label.copyWith(letterSpacing: 0.6)))),
+        if (killOn)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(color: p.loss.withOpacity(0.14), borderRadius: BorderRadius.circular(20), border: Border.all(color: p.loss.withOpacity(0.5))),
+            child: Text('KILL SWITCH ON', style: context.type.label.copyWith(color: p.loss, fontWeight: FontWeight.w800, fontSize: 10.5)),
+          ),
+      ]),
+      _bar(p, l),
+      if (n > 0) ...[
+        const SizedBox(height: 6),
+        Row(children: [mini('WON', w == null ? '--' : '$w', p.profit), mini('LOST', lost == null ? '--' : '$lost', lost != null && lost > 0 ? p.loss : p.textPrimary), mini('NET USDT', net == null ? '--' : _sg(net), netColor)]),
+      ],
+      if (n < 30) Padding(padding: const EdgeInsets.only(top: 6), child: Text('Too early for a verdict: ${30 - n} more trades.', style: context.type.metadata)),
+    ]);
+  }
+
   /// Part 13c: a thin bar under the LEARN line (n of 30). Nothing when the count is unknown (never a made-up 0 %).
   Widget _bar(AppPalette p, Map<String, dynamic>? l) {
     final n = l == null ? null : _i(_m(_m(l['learn'])['progress'])['n']);
@@ -126,8 +170,7 @@ class _SniperStateBannerState extends State<SniperStateBanner> {
           Expanded(child: Text('OwlSniper: paper only, watch', style: context.type.metadata)),
         ]),
         const SizedBox(height: 8),
-        Text(_learnLine(widget.learn), style: context.type.primary.copyWith(fontWeight: FontWeight.w700)),
-        _bar(context.palette, widget.learn),
+        _learnHero(context),
         const SizedBox(height: 4),
         Text(_testLine(widget.auto), style: context.type.secondary),
         if (first.isNotEmpty) ...[

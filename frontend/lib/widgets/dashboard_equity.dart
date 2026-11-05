@@ -27,13 +27,13 @@ class DashboardEquityChart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tfRow = SizedBox(
-      height: 32,
+      height: 36,
       child: ListView(
         scrollDirection: Axis.horizontal,
         children: _equityTfOptions.map((tf) {
           final isSelected = tf == selectedTf;
           return Padding(
-            padding: const EdgeInsets.only(right: 6),
+            padding: const EdgeInsets.only(right: 8), // Part 6: more room between the time buttons
             child: ChoiceChip(
               label: Text(tf),
               selected: isSelected,
@@ -47,7 +47,7 @@ class DashboardEquityChart extends StatelessWidget {
               side: BorderSide(
                 color: isSelected ? context.palette.accent : Colors.transparent,
               ),
-              padding: const EdgeInsets.symmetric(horizontal: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 10), // Part 6: was 4, the buttons looked cramped
               materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
               visualDensity: VisualDensity.compact,
             ),

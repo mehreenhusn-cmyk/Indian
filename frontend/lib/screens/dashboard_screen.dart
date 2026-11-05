@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../theme/app_active.dart';
 import '../models/verdict_card.dart';
 import '../navigation/app_routes.dart';
 import '../providers/app_provider.dart';
@@ -83,16 +85,17 @@ class DashboardScreen extends StatelessWidget {
                       // P-D: ONE status header (title, bot pill, one dot row; tap = details sheet with the catch-up in IST) instead of three loose lines.
                       OwlStatusHeader(status: status),
                       const SizedBox(height: AppSpacing.l),
-                      // Plan B (picture ref3), top to bottom: 1 hero TODAY P&L (+ INR small, target ring only if a target is set)  2 four-column strip (Open P&L, Win rate, Open positions, Signals; taps)
+                      // Part 7: the status header above is the always-visible health line: BE, WS, ms, LIVE age, coins, LEARN n/30 (tap = details). Order below = see Part 3.
+                      // Plan B (picture ref3), top to bottom: 1 hero TODAY P&L (+ INR small, target ring only if a target is set)  2 four-column strip (Open P&L, BTC, Open positions, Signals; taps)
                       // 3 calendar  4 7 / 30 days  5 Diagnostics + System Load side by side  6 Dual / Brain / Sniper rows  7 Recent Activity  8 Equity curve  9 MORE fold (nothing deleted).
                       _ResultHero(isLive: isLive, todayPnl: todayPnl, openCount: ((status['open_count'] ?? 0) as num).toInt(), target: target, inrRate: inrRate, stale: connError != null),
                       if (isLive) ...[const SizedBox(height: AppSpacing.cardGap), const LiveWalletCard()],
                       const SizedBox(height: AppSpacing.m),
-                      _ResultStrip(isLive: isLive, winRate: ((status['win_rate'] ?? 0.0) as num).toDouble(), openCount: ((status['open_count'] ?? 0) as num).toInt()),
+                      _ResultStrip(isLive: isLive, openCount: ((status['open_count'] ?? 0) as num).toInt()),
+                      if (!isLive) Padding(padding: const EdgeInsets.only(top: 6), child: Text('Main bot, paper. Dual Bot, Brain and Sniper have their own numbers below; they are never added.', style: context.type.metadata.copyWith(color: context.palette.textMuted))),
+                      // Part 3 order (owner: calendar lower): result > 7 / 30 days > Diagnostics + load > the three books > Recent Activity > Equity > P&L calendar > MORE.
                       const SizedBox(height: AppSpacing.l),
-                      PnlCalendar(data: provider.calendarData, onMonthChanged: (m) => provider.fetchCalendar(month: m)),
-                      if (!isLive) ...[const SizedBox(height: AppSpacing.cardGap), const _PeriodRow()],
-                      const SizedBox(height: AppSpacing.cardGap),
+                      if (!isLive) ...[const _PeriodRow(), const SizedBox(height: AppSpacing.l)],
                       const DiagLoadRow(),
                       const SizedBox(height: AppSpacing.cardGap),
                       // Part 41: the books side by side (Dual Bot paper / Brain / Sniper LEARN), same columns, never added. The "Current Bot" row is gone: the hero above is the Main bot.
@@ -101,10 +104,12 @@ class DashboardScreen extends StatelessWidget {
                       const SizedBox(height: AppSpacing.cardGap),
                       DashboardEquityChart(provider.equityCurve, provider.equityTf, (tf) => provider.fetchEquity(tf: tf)),
                       const SizedBox(height: AppSpacing.cardGap),
+                      PnlCalendar(data: provider.calendarData, onMonthChanged: (m) => provider.fetchCalendar(month: m)),
+                      const SizedBox(height: AppSpacing.cardGap),
                       // UI rule 7: everything that moved out of the main order sits behind ONE tap (nothing deleted).
                       OwlFold(
                         title: 'MORE',
-                        headline: 'Open pairs, BTC, Study Lab line, top movers, Tag Lab, Diagnostics details',
+                        headline: 'BTC chart, open pairs, Study Lab verdict, top movers, Tag Lab, Diagnostics details',
                         bare: true,
                         children: [
                           const _ResultsVerdictLine(),
@@ -180,14 +185,60 @@ class _ResultHero extends StatelessWidget {
   }
 }
 
-/// Plan B: the 4-column strip under the hero: OPEN P&L, WIN RATE, OPEN POSITIONS, SIGNALS (live mode: margin used + open positions, no paper stats).
-/// Taps: Open P&L and Open positions -> Positions (Live is its first tab), Signals -> Signals / Alerts screen. Open P&L and Signals refresh on their own Selector.
-class _ResultStrip extends StatelessWidget {
+/// Plan B: the 4-column strip under the hero: OPEN P&L, BTC price, OPEN POSITIONS, SIGNALS (live mode: margin used + open positions, no paper stats).
+/// Owner (5 Nov 2026): Win rate is out, the live BTC price is in (green/red by its last move; "--" until the first real price arrives).
+/// BTC is read from the same light GET /api/btc/live the BTC tile uses, every 3 s, only while the Dashboard is on screen, one call at a time.
+/// Taps: Open P&L and Open positions -> Positions (Live is its first tab), Signals -> Signals / Alerts screen, BTC -> Signals with the BTC chip on.
+class _ResultStrip extends StatefulWidget {
   final bool isLive;
-  final double winRate;
   final int openCount;
 
-  const _ResultStrip({required this.isLive, required this.winRate, required this.openCount});
+  const _ResultStrip({required this.isLive, required this.openCount});
+
+  @override
+  State<_ResultStrip> createState() => _ResultStripState();
+}
+
+class _ResultStripState extends State<_ResultStrip> {
+  Timer? _timer;
+  bool _busy = false;
+  double? _btc;
+  bool _up = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _tick();
+    _timer = AppActive.every(const Duration(seconds: 5), () => _tick()); // Part 7b: 3 s -> 5 s, none in the background
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _tick() async {
+    if (_busy || !mounted || !TickerMode.of(context)) return;
+    _busy = true;
+    final d = await context.read<AppProvider>().getBtcJson('/api/btc/live');
+    _busy = false;
+    if (!mounted || d == null) return;
+    final v = d['price'];
+    final px = v is num ? v.toDouble() : double.tryParse('$v');
+    if (px == null) return;
+    setState(() {
+      if (_btc != null && px != _btc) _up = px > _btc!;
+      _btc = px;
+    });
+  }
+
+  String _btcText() {
+    final v = _btc;
+    if (v == null) return '--';
+    final s = (v >= 1000 ? v.round().toString() : v.toStringAsFixed(2));
+    return s.replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
+  }
 
   String _tone(double v) => v > 0 ? 'good' : (v < 0 ? 'bad' : '');
 
@@ -195,18 +246,19 @@ class _ResultStrip extends StatelessWidget {
   Widget build(BuildContext context) {
     final prov = context.read<AppProvider>();
     void toPositions() => prov.goToRoute(AppRoute.positions);
+    final openCount = widget.openCount;
     return Selector<AppProvider, String>(
       selector: (_, x) => '${(x.openPnl * 100).round()}|${x.signals.length}|${(x.openMarginUsed * 100).round()}',
       builder: (context, _, __) {
         final open = prov.openPnl;
-        final stats = isLive
+        final stats = widget.isLive
             ? [
                 OwlStat(prov.openMarginUsed.toStringAsFixed(2), 'Margin used'),
                 OwlStat('$openCount', 'Open positions', onTap: toPositions),
               ]
             : [
                 OwlStat(fmtSigned(open), 'Open P&L', tone: _tone(open), onTap: toPositions),
-                OwlStat('${winRate.toStringAsFixed(1)}%', 'Win rate'),
+                OwlStat(_btcText(), 'BTC', tone: _btc == null ? '' : (_up ? 'good' : 'bad'), onTap: prov.openBtcSignals),
                 OwlStat('$openCount', 'Positions', onTap: toPositions),
                 OwlStat('${prov.signals.length}', 'Signals', onTap: () => prov.goToRoute(AppRoute.signals)),
               ];
@@ -227,14 +279,19 @@ class _PeriodRow extends StatelessWidget {
     return Selector<AppProvider, String>(
       selector: (_, x) => '${(x.pnl7d * 100).round()}|${(x.pnl30d * 100).round()}',
       builder: (context, _, __) {
+        // Part 3: label on top, the FULL number under it (no "USDT" word beside it, so it is never cut to "+225.91 US...").
         Widget one(String label, double v) => Expanded(
-              child: Row(children: [
-                Text(label.toUpperCase(), style: context.type.label.copyWith(fontSize: 11, letterSpacing: 0.8)),
-                const SizedBox(width: 8),
-                Flexible(child: Text('${fmtSigned(v)} USDT', maxLines: 1, overflow: TextOverflow.ellipsis, style: context.type.primary.copyWith(fontWeight: FontWeight.w700, color: v > 0 ? p.profit : (v < 0 ? p.loss : p.textPrimary)))),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('${label.toUpperCase()} (USDT)', maxLines: 1, overflow: TextOverflow.ellipsis, style: context.type.label.copyWith(fontSize: 11, letterSpacing: 0.8)),
+                const SizedBox(height: 2),
+                Text(fmtSigned(v), maxLines: 1, softWrap: false, overflow: TextOverflow.fade, style: context.type.number.copyWith(fontSize: 17, fontWeight: FontWeight.w700, color: v > 0 ? p.profit : (v < 0 ? p.loss : p.textPrimary))),
               ]),
             );
-        return Row(children: [one('7 days', prov.pnl7d), const SizedBox(width: AppSpacing.m), one('30 days', prov.pnl30d)]);
+        return Container(
+          padding: const EdgeInsets.only(bottom: AppSpacing.m),
+          decoration: BoxDecoration(border: Border(bottom: BorderSide(color: p.border))),
+          child: Row(children: [one('7 days', prov.pnl7d), const SizedBox(width: AppSpacing.m), one('30 days', prov.pnl30d)]),
+        );
       },
     );
   }

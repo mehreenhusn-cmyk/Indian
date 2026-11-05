@@ -45,6 +45,23 @@ class LastGood {
   }
 }
 
+/// Part 6: THE one stale mark for a card (Dashboard cards use it, same words everywhere). [at] = when the last GOOD answer arrived.
+///   failed + old data  ->  "Last known, 5 min ago" (amber)      refreshing + old data  ->  "Updating..." (grey)      otherwise nothing.
+/// It never shows when there is no old data yet (then the card shows its own Loading / -- line). No number is made up.
+class StaleMark extends StatelessWidget {
+  final DateTime? at;
+  final bool failed, updating;
+  const StaleMark({super.key, required this.at, this.failed = false, this.updating = false});
+
+  @override
+  Widget build(BuildContext context) {
+    if (at == null || (!failed && !updating)) return const SizedBox.shrink();
+    final p = context.palette;
+    final text = failed ? 'Last known, ${LastGood.ago(at)}' : 'Updating...';
+    return Text(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: context.type.metadata.copyWith(fontSize: 11, color: failed ? p.warning : p.textMuted));
+  }
+}
+
 /// ONE small line on top of a screen: optional 1-line summary, then "Updated 40s ago". After a failed refresh it turns into
 /// "Could not refresh. Showing data from 40s ago." with a Retry button. The label moves on by itself every 5 seconds.
 class UpdatedLine extends StatefulWidget {

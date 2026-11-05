@@ -321,24 +321,18 @@ class PositionsLiveView extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // R22a: ONE header row (no '💼 Positions' title: the bottom bar already says it): big total, LIVE chip, PANIC.
-              // Row 2: UP / DOWN pills + sort chips. Then search, then the list, and Close All sits at the very bottom.
-              const Row(
-                children: [
-                  Expanded(child: _TopSummary()),
-                  LiveStatusChip(),
-                  SizedBox(width: 8),
-                  _PanicButton(),
-                ],
-              ),
-              // R22b: both halves shrink to fit a small phone, so the DOWN pill and the Profit chip are never cut off at the edge
+              // Part 4: ONE header row = UP / DOWN pills (left), LIVE chip, PANIC (right). The sort chips (Time / Profit) are the 2nd row, then search, then the list.
+              // The pinned line above (positions_screen.dart) already says how many are open and the total Open P&L, so no total is repeated here.
               Row(
-                children: const [
-                  Expanded(child: FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: _TopSummary(pills: true))),
-                  SizedBox(width: 6),
-                  Expanded(child: FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerRight, child: PositionsTopBar(inline: true))),
+                children: [
+                  const Expanded(child: Align(alignment: Alignment.centerLeft, child: FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: _TopSummary(pills: true)))),
+                  const SizedBox(width: 6),
+                  const LiveStatusChip(),
+                  const SizedBox(width: 6),
+                  const _PanicButton(),
                 ],
               ),
+              const Align(alignment: Alignment.centerLeft, child: PositionsTopBar(inline: true)),
               const SizedBox(height: 6),
               const PositionsSearchBar(),
               // Part 17: ONE place for Close All Profit / Close All Loss, in the layout right above the list (it used to float over the list and hide cards).

@@ -101,7 +101,7 @@ class _IndicatorLabScreenState extends State<IndicatorLabScreen> {
     final shown = list.length < _shown ? list.length : _shown;
     return [
       UpdatedLine(lg: _lg, onRetry: _load, summary: line),
-      LabSummaryStrip(byVerdict: by),
+      LabSummaryStrip(byVerdict: by, onTap: (k) => _pick(verdict: k, family: 'ALL')), // Part 9: big tiles, tap = filter
       const SizedBox(height: AppSpacing.cardGap),
       const PurposeStrip(
         why: 'Every study printed its own table, so no one could compare them.',

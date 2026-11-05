@@ -321,14 +321,15 @@ extension AppProviderPositions on AppProvider {
 
   /// Part 77 (Brain chat screen): ONE question to the read-only Part 76 route. The answer is Claude's wording of backend facts (state ok / no_key / quota / bad_key / rate / offline ...) or state off / old / error. Never throws.
   /// One send only (the helper never repeats a slow GET), so one question = one Claude call; the answer can take up to about 40 s.
-  Future<Map<String, dynamic>> fetchBrainChat(String q) => _ledgerGet('/api/v2/brain_chat?q=${Uri.encodeQueryComponent(q)}');
+  Future<Map<String, dynamic>> fetchBrainChat(String q) => _ledgerGet('/api/v2/brain_chat?q=${Uri.encodeQueryComponent(q)}', cap: const Duration(seconds: 60));
 
   /// Part 81 (Results screen): the read-only Part 80 route. Which groups of closed trades make or lose money, net of fee; no setting, no order.
   Future<Map<String, dynamic>> fetchResults() => _ledgerGet('/api/v2/results');
 
-  Future<Map<String, dynamic>> _ledgerGet(String path) async {
+  /// Part 1b: a read-only list call gives up after [cap] (15 s) and answers {state: error}, so a screen shows its Retry instead of an endless spinner.
+  Future<Map<String, dynamic>> _ledgerGet(String path, {Duration cap = const Duration(seconds: 15)}) async {
     try {
-      final res = await _getResilient(_u(path));
+      final res = await _getResilient(_u(path)).timeout(cap);
       if (res.statusCode == 404 && res.body.contains('"enabled"')) return {'state': 'off'};
       if (res.statusCode != 200) return {'state': 'old', 'code': res.statusCode};
       final data = jsonDecode(res.body);

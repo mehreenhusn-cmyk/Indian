@@ -69,6 +69,9 @@ extension AppProviderSniper on AppProvider {
   /// Same answer rules as the other Sniper fetches (off / old / error). Never throws.
   Future<Map<String, dynamic>> fetchAppProblems() => _sniperGet('/api/v2/app_problems');
 
+  /// Part 2: calls the backend is still answering + the routes that keep it busy (api/route_timing.py). Same answer rules (off / old / error). Never throws.
+  Future<Map<String, dynamic>> fetchSlowCalls() => _sniperGet('/api/v2/slow_calls');
+
   /// Health of the Sniper: model, scan, candles, switches, executor (NOT_AVAILABLE until it is built). overall = OK / WARN / BAD.
   Future<Map<String, dynamic>> fetchSniperHealth() => _sniperGet('/api/v2/sniper_health');
 

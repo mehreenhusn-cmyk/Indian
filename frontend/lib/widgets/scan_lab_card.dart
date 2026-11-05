@@ -1,3 +1,4 @@
+import '../theme/app_active.dart';
 import 'dart:async';
 import 'dart:convert';
 
@@ -27,7 +28,7 @@ class _ScanLabCardState extends State<ScanLabCard> {
   void initState() {
     super.initState();
     _poll();
-    _timer = Timer.periodic(const Duration(seconds: 8), (_) {
+    _timer = AppActive.every(const Duration(seconds: 15), () { // Part 7b: 8 s -> 15 s
       if (_st['running'] == true) _poll();
     });
   }

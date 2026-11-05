@@ -48,8 +48,9 @@ class SniperLearnSection extends StatefulWidget {
 }
 
 class _SniperLearnSectionState extends State<SniperLearnSection> {
-  static const _limit = Duration(seconds: 12);
-  Map<String, dynamic>? _hist, _exit, _lessons; // null = still loading
+  static const _limit = Duration(seconds: 8);
+  static Map<String, dynamic>? _cHist, _cExit, _cLessons; // Part 5: last good answers, shown at once next time
+  Map<String, dynamic>? _hist = _cHist, _exit = _cExit, _lessons = _cLessons; // null = still loading (first time only)
   int _gen = 0; // a late answer of an older load is thrown away
 
   @override
@@ -75,12 +76,16 @@ class _SniperLearnSectionState extends State<SniperLearnSection> {
   void _load() {
     final pr = context.read<AppProvider>();
     final g = ++_gen;
-    void put(void Function(Map<String, dynamic>) set, Future<Map<String, dynamic>> f) => _safe(f).then((r) {
-          if (mounted && g == _gen) setState(() => set(r));
+    // Part 5: a failed try keeps the old card (last known) instead of replacing it with an error line.
+    void put(void Function(Map<String, dynamic>) set, void Function(Map<String, dynamic>) keep, Map<String, dynamic>? old, Future<Map<String, dynamic>> f) => _safe(f).then((r) {
+          if (!mounted || g != _gen) return;
+          final failed = r['state'] == 'error' && old != null;
+          if (!failed) keep(r);
+          setState(() => set(failed ? old : r));
         });
-    put((r) => _hist = r, pr.fetchSniperHist());
-    put((r) => _exit = r, pr.fetchSniperExit());
-    put((r) => _lessons = r, pr.fetchSniperLessons());
+    put((r) => _hist = r, (r) => _cHist = r, _hist, pr.fetchSniperHist());
+    put((r) => _exit = r, (r) => _cExit = r, _exit, pr.fetchSniperExit());
+    put((r) => _lessons = r, (r) => _cLessons = r, _lessons, pr.fetchSniperLessons());
   }
 
   @override

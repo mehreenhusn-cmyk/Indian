@@ -82,7 +82,7 @@ extension AppProviderSettings on AppProvider {
       // instead of silently always requesting 5m. Callers can still pass an
       // explicit tf to override (not currently used, but keeps the option).
       final resolvedTf = tf ?? (settings['timeframe'] as String?) ?? '5m';
-      final res = await _getResilient(_u('/api/candles/$symbol?limit=$limit&tf=$resolvedTf'));
+      final res = await _getResilient(_u('/api/candles/$symbol?limit=$limit&tf=$resolvedTf')).timeout(const Duration(seconds: 12)); // Part 1b: never an endless chart spinner
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body) as Map<String, dynamic>;
         final candles = (data['candles'] as List<dynamic>?) ?? [];

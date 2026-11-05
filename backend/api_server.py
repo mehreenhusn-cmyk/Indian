@@ -82,7 +82,22 @@ async def _ai_priority_touch(request, call_next):
     except Exception:
         pass
     _t0 = time.perf_counter()
-    response = await call_next(request)
+    _tok = 0
+    try:                                   # Part 2: watch the call while it runs (api/route_timing.py waiting())
+        if request.url.path.startswith("/api/"):
+            from api import route_timing as _rt
+            _tok = _rt.begin(request.url.path)
+    except Exception:
+        _tok = 0
+    try:
+        response = await call_next(request)
+    finally:
+        try:
+            if _tok:
+                from api import route_timing as _rt2
+                _rt2.end(_tok)
+        except Exception:
+            pass
     try:                                   # how long every answer took -> load_report.py (where is the bottleneck?)
         if request.url.path.startswith("/api/"):
             from recovered_bot import load_report

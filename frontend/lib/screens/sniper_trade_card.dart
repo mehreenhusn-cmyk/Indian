@@ -36,7 +36,13 @@ class SniperTradeRecord extends StatelessWidget {
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Expanded(child: Text('${t['symbol']}  ${long ? 'LONG' : 'SHORT'}', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: p.textPrimary))),
-          Text(open ? 'OPEN  ${t['lane'] ?? ''}' : '${t['lane'] ?? ''}', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: c)),
+          if (open) Padding(padding: const EdgeInsets.only(right: 6), child: Text('OPEN', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: c))),
+          if ('${t['lane'] ?? ''}'.isNotEmpty) // Part 5: the source (LEARN / EXPLORE / ...) is a real chip, not a coloured word
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+              decoration: BoxDecoration(color: p.warning.withOpacity(0.14), borderRadius: BorderRadius.circular(6)),
+              child: Text('${t['lane']}', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: p.warning)),
+            ),
         ]),
         if (t['signal'] != null && '${t['signal']}'.isNotEmpty) _line(p, 'Signal: ${t['reason'] != null && '${t['reason']}'.isNotEmpty ? t['reason'] : t['signal']}', c: p.textPrimary),
         if (basis.isNotEmpty) _line(p, 'Why: $basis'),

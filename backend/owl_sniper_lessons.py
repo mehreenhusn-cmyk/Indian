@@ -1,6 +1,6 @@
 """owl_sniper_lessons.py - OwlSniper LESSONS MEMORY (R7). PAPER ONLY, READ ONLY: reads the long-term closed-trade archive (closed_trades_archive.jsonl) and writes ONE own file (v2_sniper_lessons.json). No network, no order code, no trade is changed.
 Owner wish: "the Sniper must remember WHY a trade went wrong, and a repeated mistake must lower that setup's score; once a week it tells me what it learned in 3 lines."
-Only the Sniper's OWN paper trades are read (source sniper / sniper_learn). 1R = the trade's own stop distance (leverage is forced to 1x, so the ROI% of a trade is its price move %).
+Only the Sniper's OWN paper trades are read (source sniper / sniper_learn). 1R = the trade's own stop distance IN ROI TERMS: stop distance % x the trade's own leverage (Part 5 fix: LEARN trades run 1x, EXPLORE trades run 10x, and ROI% = price move % x leverage; before, 1R was always the plain price distance, so a 10x trade showed +18R instead of +1.8R).
 EVERY closed trade gets ONE tag (first rule that fits):
   EXIT_ERROR     the trade reached +1R in its favour, then it ended at 0 or lower, or it kept less than half of its best gain  ("profit was given back")
   GOOD           profit, and it kept at least half of its best gain
@@ -54,12 +54,14 @@ def tag_trade(t):
         peak = _num(t.get("peak_roi"))
     if roi is None or pnl is None or not entry or not stop or peak is None or entry <= 0:
         return "UNKNOWN", {}
-    risk = abs(entry - stop) / entry * 100.0
+    lev = _num(t.get("leverage"))
+    lev = lev if lev and lev > 0 else 1.0                       # Part 5: no leverage on the row = 1x, never a guess
+    risk = abs(entry - stop) / entry * 100.0 * lev            # the stop distance in the SAME unit as roi_pct / peak (ROI %)
     if risk <= 0:
         return "UNKNOWN", {}
     mfe_r, got_r = max(0.0, peak) / risk, roi / risk
     inv = _num(t.get("invest_usdt")) or 0.0
-    info = {"mfe_r": round(mfe_r, 2), "result_r": round(got_r, 2), "left_usdt": round(max(0.0, peak - roi) * inv / 100.0, 4)}     # left_usdt = best gain minus what was kept
+    info = {"lev": lev, "mfe_r": round(mfe_r, 2), "result_r": round(got_r, 2), "left_usdt": round(max(0.0, peak - roi) * inv / 100.0, 4)}     # left_usdt = best gain minus what was kept
     kept = roi / peak if peak > 0 else 0.0
     if mfe_r >= REACH_1R and (roi <= 0 or kept < KEEP_HALF):
         return "EXIT_ERROR", info

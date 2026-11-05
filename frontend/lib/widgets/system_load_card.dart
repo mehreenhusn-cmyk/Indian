@@ -1,3 +1,4 @@
+import '../theme/app_active.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -25,7 +26,7 @@ class SystemLoadCard extends StatefulWidget {
 }
 
 class _SystemLoadCardState extends State<SystemLoadCard> {
-  static const _refresh = Duration(seconds: 3);
+  static const _refresh = Duration(seconds: 10); // Part 7b: 3 s -> 10 s (same /api/system as diag_load_row); skipped while the app is in the background
 
   Timer? _timer;
   Map<String, dynamic>? _data;
@@ -37,7 +38,7 @@ class _SystemLoadCardState extends State<SystemLoadCard> {
   void initState() {
     super.initState();
     _load();
-    _timer = Timer.periodic(_refresh, (_) => _load());
+    _timer = AppActive.every(_refresh, () => _load());
   }
 
   @override

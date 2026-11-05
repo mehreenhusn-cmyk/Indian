@@ -58,12 +58,13 @@ class _DualBotScreenState extends State<DualBotScreen> {
   String _brainTrust = ''; // Smart Brain trust verdict (earned / not_yet / learning) for the status bar
   int _filter = 0; // Now tab filter: 0 = All, 1 = Good only, 2 = Long, 3 = Short
   Timer? _timer;
+  bool _polling = false; // Part 1: one poll at a time (before, slow replies piled up and kept the backend busy)
 
   @override
   void initState() {
     super.initState();
     _poll();
-    _timer = Timer.periodic(const Duration(seconds: 8), (_) => _poll());
+    _timer = Timer.periodic(const Duration(seconds: 10), (_) => _poll());
   }
 
   @override
@@ -74,11 +75,22 @@ class _DualBotScreenState extends State<DualBotScreen> {
   }
 
   Future<void> _poll({String action = ''}) async {
-    if (!mounted) return;
+    if (!mounted || _polling) return;
+    _polling = true;
+    try {
+      await _pollMain(action);
+      // Part 1: the two small side calls run together, not one after the other (was up to 35 s in a row).
+      await Future.wait([_pollBrain(), _pollDesk()]);
+    } finally {
+      _polling = false;
+    }
+  }
+
+  Future<void> _pollMain(String action) async {
     try {
       final base = context.read<AppProvider>().baseUrl;
       final q = action.isEmpty ? '' : '?action=$action';
-      final res = await http.get(Uri.parse('$base/api/dual_lab$q')).timeout(const Duration(seconds: 20));
+      final res = await http.get(Uri.parse('$base/api/dual_lab$q')).timeout(const Duration(seconds: 8));
       if (res.statusCode != 200) throw 'HTTP ${res.statusCode}';
       final m = jsonDecode(utf8.decode(res.bodyBytes));
       if (m is! Map) throw 'unexpected reply';
@@ -97,8 +109,6 @@ class _DualBotScreenState extends State<DualBotScreen> {
       _retry?.cancel();
       _retry = Timer(const Duration(seconds: 3), () => _poll());
     }
-    await _pollBrain();
-    await _pollDesk();
   }
 
   /// Small desk numbers from the archive. A failure is silent: the strip just keeps its last answer.
@@ -106,13 +116,13 @@ class _DualBotScreenState extends State<DualBotScreen> {
     if (!mounted) return;
     try {
       final base = context.read<AppProvider>().baseUrl;
-      final res = await http.get(Uri.parse('$base/api/dual_desk')).timeout(const Duration(seconds: 10));
+      final res = await http.get(Uri.parse('$base/api/dual_desk')).timeout(const Duration(seconds: 6));
       final m = res.statusCode == 200 ? jsonDecode(utf8.decode(res.bodyBytes)) : null;
       if (m is Map && mounted) setState(() => _desk = Map<String, dynamic>.from(m));
     } catch (_) {}
     try {
       final base = context.read<AppProvider>().baseUrl;
-      final res = await http.get(Uri.parse('$base/api/archive')).timeout(const Duration(seconds: 10));
+      final res = await http.get(Uri.parse('$base/api/archive')).timeout(const Duration(seconds: 6));
       final m = res.statusCode == 200 ? jsonDecode(utf8.decode(res.bodyBytes)) : null;
       if (m is Map && mounted) setState(() => _arch = Map<String, dynamic>.from(m));
     } catch (_) {}
@@ -123,7 +133,7 @@ class _DualBotScreenState extends State<DualBotScreen> {
     if (!mounted) return;
     try {
       final base = context.read<AppProvider>().baseUrl;
-      final res = await http.get(Uri.parse('$base/api/smart_brain')).timeout(const Duration(seconds: 15));
+      final res = await http.get(Uri.parse('$base/api/smart_brain')).timeout(const Duration(seconds: 8));
       if (res.statusCode != 200) return;
       final m = jsonDecode(utf8.decode(res.bodyBytes));
       if (m is Map && m['by_key'] is Map && mounted) {

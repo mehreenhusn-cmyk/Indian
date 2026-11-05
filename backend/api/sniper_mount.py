@@ -10,6 +10,7 @@ Routes (each a GET, read only, behind the app's token check, 404 until v2_api_en
   /api/v2/sniper_prior     (Part 38)  old studies and 'Sniper uses it'
   /api/v2/sniper_selflog   (Part 44)  self log
   /api/v2/app_problems     (Part 47)  App Problems list (read only)
+  /api/v2/slow_calls       (Part 2)   calls waiting now + busiest routes (read only)
   /api/v2/btc_lab          (R16b)     BTC's own numbers (BTC is kept out of every total)
   /api/v2/sniper_lessons   (R7)       what the Sniper learned from its own mistakes: tag per trade, setup penalty, 3 lessons of the week (writes ONLY v2_sniper_lessons.json)
   /api/v2/sniper_modes     (R6)       SCALP / SHORT_SWING / SWING mode per market state + judged exit (writes ONLY v2_sniper_modes.json)
@@ -56,6 +57,7 @@ ROUTES = (
     ("api.sniper_opp", "sniper opp"),
     ("api.v2_grad_dual", "dual graduation"),
     ("api.v2_data_health", "data health"),
+    ("api.route_timing", "slow calls"),
 )
 STATUS = {"version": VERSION, "mounted": [], "skipped": []}
 

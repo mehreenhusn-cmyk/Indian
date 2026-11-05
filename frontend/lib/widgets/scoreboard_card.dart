@@ -1,3 +1,4 @@
+import '../theme/app_active.dart';
 import 'dart:async';
 import 'dart:convert';
 
@@ -29,7 +30,7 @@ class _ScoreboardCardState extends State<ScoreboardCard> {
   void initState() {
     super.initState();
     _load();
-    _timer = Timer.periodic(const Duration(seconds: 8), (_) {
+    _timer = AppActive.every(const Duration(seconds: 15), () { // Part 7b: 8 s -> 15 s
       if (_d['replay_running'] == true) _load();
     });
   }

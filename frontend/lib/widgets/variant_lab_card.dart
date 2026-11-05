@@ -1,3 +1,4 @@
+import '../theme/app_active.dart';
 import 'dart:async';
 import 'dart:convert';
 
@@ -30,7 +31,7 @@ class _VariantLabCardState extends State<VariantLabCard> {
   void initState() {
     super.initState();
     _poll();
-    _timer = Timer.periodic(const Duration(seconds: 6), (_) {
+    _timer = AppActive.every(const Duration(seconds: 15), () { // Part 7b: 6 s -> 15 s, none in the background
       if (_st['running'] == true) _poll();
     });
   }

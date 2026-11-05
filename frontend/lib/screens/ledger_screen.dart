@@ -74,7 +74,8 @@ Widget _row(AppPalette p, String label, String value, {Color? color, bool bold =
     );
 
 class _LedgerScreenState extends State<LedgerScreen> {
-  Map<String, dynamic>? _data;
+  static Map<String, dynamic>? _cache; // Part 1b: last good answer stays on screen while a new one loads
+  Map<String, dynamic>? _data = _cache;
   bool _loading = true;
 
   @override
@@ -87,7 +88,8 @@ class _LedgerScreenState extends State<LedgerScreen> {
     final d = await context.read<AppProvider>().fetchLedger();
     if (!mounted) return;
     setState(() {
-      _data = d;
+      if (d['findings'] is List) _cache = d;
+      _data = (d['findings'] is! List && _cache != null) ? _cache : d; // keep old data when the new try failed
       _loading = false;
     });
   }
@@ -119,7 +121,11 @@ class _LedgerScreenState extends State<LedgerScreen> {
     if (_loading && d == null) {
       kids.add(LoadSpinner(onRetry: _refresh)); // Part 2: 12 s, then Retry
     } else if (d == null || d['findings'] is! List) {
-      kids.add(OWLCard(edge: p.warning, child: Text(_problem(d?['state']), style: TextStyle(fontSize: 13, color: p.textPrimary))));
+      kids.add(OWLCard(edge: p.warning, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(_problem(d?['state']), style: TextStyle(fontSize: 13, color: p.textPrimary)),
+        const SizedBox(height: 8),
+        OutlinedButton(onPressed: _refresh, child: const Text('Retry')),
+      ])));
     } else {
       final list = (d['findings'] as List).whereType<Map>().toList();
       kids.add(Text('Read-only. Not ranked by win rate. Every result shows its sample size and its denominator. Old versions and failed ideas are kept.',

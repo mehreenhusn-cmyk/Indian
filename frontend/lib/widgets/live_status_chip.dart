@@ -37,7 +37,7 @@ class _LiveStatusChipState extends State<LiveStatusChip> {
     final pr = context.read<AppProvider>();
     final st = pr.liveState;
     final age = pr.liveAgeSec;
-    final a = age == null ? '' : fmtSpan(age);
+    final a = (age == null || age < 3) ? '' : fmtSpan(age); // Part 1b: fresh data = plain "LIVE", not "LIVE · 0 S"
     final txt = st == 'offline'
         ? 'OFFLINE'
         : (st == 'delayed' ? 'DELAYED${a.isEmpty ? '' : ' · $a'}' : 'LIVE${a.isEmpty ? '' : ' · $a'}');

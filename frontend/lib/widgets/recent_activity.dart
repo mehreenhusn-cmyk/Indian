@@ -8,6 +8,7 @@ import '../screens/timeline_screen.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_theme.dart';
 import 'owl_route.dart';
+import 'last_good.dart';
 import 'owl_sub_page.dart';
 
 /// Plan B: RECENT ACTIVITY block of the Dashboard (picture ref3). The newest few lines of the Brain and Activity timeline (GET /api/v2/brain_timeline, PAPER, today),
@@ -15,15 +16,20 @@ import 'owl_sub_page.dart';
 /// "View all" opens the full timeline screen. Dart NOT compiled (the APK build is the proof).
 class RecentActivity extends StatefulWidget {
   final int count;
-  const RecentActivity({super.key, this.count = 5});
+  const RecentActivity({super.key, this.count = 6}); // Part 6: 6 lines (was 5), then View all
 
   @override
   State<RecentActivity> createState() => _RecentActivityState();
 }
 
 class _RecentActivityState extends State<RecentActivity> {
-  Map<String, dynamic>? _r;
-  bool _failed = false;
+  static Map<String, dynamic>? _cache; // Part 6: last good answer + its time, shown at once on the next visit
+  static DateTime? _cacheAt;
+  Map<String, dynamic>? _r = _cache;
+  DateTime? _at = _cacheAt;
+  bool _failed = false; // nothing good to show yet and the try failed
+  bool _stale = false; // old data on screen and the newest try failed
+  bool _busy = false;
 
   @override
   void initState() {
@@ -32,20 +38,38 @@ class _RecentActivityState extends State<RecentActivity> {
   }
 
   Future<void> _load() async {
+    if (_busy) return;
+    _busy = true; // only called from initState, so no setState needed before the first build
     try {
       final r = await context.read<AppProvider>().fetchBrainTimeline('PAPER', null).timeout(const Duration(seconds: 12));
       if (!mounted) return;
       final ok = r['ready'] == true && r['state'] == null && r['error'] == null;
       setState(() {
+        _busy = false;
         if (ok) {
           _r = r;
+          _at = DateTime.now();
+          _cache = r;
+          _cacheAt = _at;
           _failed = false;
+          _stale = false;
         } else if (_r == null) {
-          _failed = true; // last good data stays on screen if a later refresh fails
+          _failed = true;
+        } else {
+          _stale = true; // last good data stays on screen, marked "Last known"
         }
       });
     } catch (_) {
-      if (mounted && _r == null) setState(() => _failed = true);
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          if (_r == null) {
+            _failed = true;
+          } else {
+            _stale = true;
+          }
+        });
+      }
     }
   }
 
@@ -65,6 +89,8 @@ class _RecentActivityState extends State<RecentActivity> {
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Expanded(child: Text('RECENT ACTIVITY', style: context.type.label.copyWith(letterSpacing: 1.0, fontWeight: FontWeight.w700))),
+          Flexible(child: StaleMark(at: _at, failed: _stale, updating: _busy && !_stale)),
+          const SizedBox(width: 8),
           GestureDetector(
             behavior: HitTestBehavior.opaque,
             onTap: _openAll,

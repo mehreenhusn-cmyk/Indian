@@ -405,7 +405,7 @@ class _SignalsScreenState extends State<SignalsScreen> {
           children: [
             // UI3a/b: the day's net result is the big number (same 34px hero as Dashboard), win rate is its note.
             OwlHero(
-              label: _btcOnly ? 'BTC TODAY' : 'TODAY',
+              label: _btcOnly ? 'BTC SIGNALS TODAY' : 'SIGNALS TODAY', // Part 8: not just "TODAY" (the Dashboard TODAY is the Main bot account P&L, this one is the result of the signals)
               value: td.net,
               note: wr != null ? 'Win rate ${wr.toStringAsFixed(0)}%  ·  ${td.decided} closed' : 'No closed trade today yet',
             ),
@@ -422,6 +422,7 @@ class _SignalsScreenState extends State<SignalsScreen> {
             const SizedBox(height: AppSpacing.s + 2),
             Text(
               [
+                'Signal results only. The Main bot account P&L for today is on the Dashboard.',
                 'All loaded: ${s.all.total} signals, ${s.all.wins} won, ${s.all.losses} lost, net ${fmtSigned(s.all.net)} USDT',
                 if (_btcOnly) 'BTC paper size: 1000 USDT at 10x. Tap a trade for its chart, Details for the levels.',
               ].join('\n'),

@@ -113,20 +113,32 @@ String labAgo(int s) {
 /// The four tiles on top: EDGE / LOSING / TESTED (no proof) / NEED DATA, counted over ALL tests (the filter never changes them).
 class LabSummaryStrip extends StatelessWidget {
   final Map<String, int> byVerdict;
-  const LabSummaryStrip({super.key, required this.byVerdict});
+  final void Function(String verdictKey)? onTap; // Part 9: tap a tile = filter the list to that verdict (null = tiles do not react)
+  const LabSummaryStrip({super.key, required this.byVerdict, this.onTap});
 
-  Widget _tile(BuildContext context, String label, int v, String sub, Color? c) {
+  // Part 9: BIG number (30 sp), the tile is tinted and has a coloured edge when its count is above 0, the number shrinks to fit (never cut).
+  Widget _tile(BuildContext context, String label, int v, String sub, Color? c, String key) {
     final p = context.palette;
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.cardPad, vertical: AppSpacing.s + 2),
-        decoration: BoxDecoration(color: p.surface, borderRadius: BorderRadius.circular(AppSpacing.radiusSmall + 4), border: Border.all(color: p.border)),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(label, style: context.type.metadata),
-          Text('$v', style: context.type.section.copyWith(fontWeight: FontWeight.w800, color: v > 0 && c != null ? c : p.textPrimary)),
-          Text(sub, style: context.type.metadata, maxLines: 1, overflow: TextOverflow.ellipsis),
-        ]),
+    final on = v > 0 && c != null;
+    final tile = Container(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.cardPad, vertical: AppSpacing.s + 4),
+      decoration: BoxDecoration(
+        color: on ? c.withOpacity(0.10) : p.surface,
+        borderRadius: BorderRadius.circular(AppSpacing.radiusSmall + 4),
+        border: Border.all(color: on ? c.withOpacity(0.55) : p.border),
       ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(label, style: context.type.metadata.copyWith(fontWeight: FontWeight.w800, letterSpacing: 0.6), maxLines: 1, overflow: TextOverflow.ellipsis),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerLeft,
+          child: Text('$v', style: context.type.section.copyWith(fontSize: 30, height: 1.15, fontWeight: FontWeight.w800, color: on ? c : p.textPrimary)),
+        ),
+        Text(sub, style: context.type.metadata, maxLines: 1, overflow: TextOverflow.ellipsis),
+      ]),
+    );
+    return Expanded(
+      child: onTap == null ? tile : OWLPressable(onTap: () => onTap!(key), pressedScale: 0.97, child: tile),
     );
   }
 
@@ -135,13 +147,13 @@ class LabSummaryStrip extends StatelessWidget {
     final p = context.palette;
     int c(String w) => byVerdict[w] ?? 0;
     return Row(children: [
-      _tile(context, 'EDGE', c('EDGE'), 'proven', p.profit),
+      _tile(context, 'EDGE', c('EDGE'), 'proven', p.profit, 'EDGE'),
       const SizedBox(width: 8),
-      _tile(context, 'LOSING', c('LOSING'), 'costs money', p.loss),
+      _tile(context, 'LOSING', c('LOSING'), 'costs money', p.loss, 'LOSING'),
       const SizedBox(width: 8),
-      _tile(context, 'TESTED', c('NO_EDGE') + c('DIAGNOSIS_ONLY'), 'no proof', null),
+      _tile(context, 'TESTED', c('NO_EDGE') + c('DIAGNOSIS_ONLY'), 'no proof', null, 'ALL'),
       const SizedBox(width: 8),
-      _tile(context, 'NEED DATA', c('NOT_ENOUGH_DATA'), 'wait', p.warning),
+      _tile(context, 'NEED DATA', c('NOT_ENOUGH_DATA'), 'wait', p.warning, 'NOT_ENOUGH_DATA'),
     ]);
   }
 }
@@ -225,7 +237,7 @@ class _LabTestCardState extends State<LabTestCard> {
         pressedScale: 0.99,
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: AppSpacing.m, horizontal: 2),
-          decoration: BoxDecoration(border: Border(bottom: BorderSide(color: p.border), left: BorderSide(color: t.verdict == 'EDGE' ? vs.color : Colors.transparent, width: 3))),
+          decoration: BoxDecoration(border: Border(bottom: BorderSide(color: p.border), left: BorderSide(color: (t.verdict == 'EDGE' || t.verdict == 'LOSING') ? vs.color : Colors.transparent, width: 4))),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
               t.verdict == 'DIAGNOSIS_ONLY' ? _chip(p, 'CANDIDATE', c: p.accent) : VerdictBadge(verdict: t.verdict, compact: true),
@@ -236,7 +248,7 @@ class _LabTestCardState extends State<LabTestCard> {
               Icon(_open ? Icons.expand_less_rounded : Icons.expand_more_rounded, size: 20, color: p.textMuted),
             ]),
             const SizedBox(height: 6),
-            Text(t.title, style: context.type.primary.copyWith(fontWeight: FontWeight.w700)),
+            Text(t.title, style: context.type.primary.copyWith(fontWeight: FontWeight.w800)),
             if (t.headline.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 2), child: Text(t.headline, style: context.type.secondary.copyWith(color: p.textPrimary))),
             if (t.context.isNotEmpty && !t.needsData) Padding(padding: const EdgeInsets.only(top: 2), child: Text('Setting: ${t.context}', maxLines: 1, overflow: TextOverflow.ellipsis, style: context.type.metadata)),
             const SizedBox(height: 6),

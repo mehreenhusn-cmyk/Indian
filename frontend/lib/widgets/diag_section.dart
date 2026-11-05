@@ -32,7 +32,7 @@ class DiagSection extends StatefulWidget {
 }
 
 class _DiagSectionState extends State<DiagSection> {
-  Map<String, dynamic>? _prob, _snip;
+  Map<String, dynamic>? _prob, _snip, _slow;
 
   @override
   void initState() {
@@ -47,6 +47,9 @@ class _DiagSectionState extends State<DiagSection> {
     });
     pr.fetchSniperHealth().then((r) {
       if (mounted) setState(() => _snip = r);
+    });
+    pr.fetchSlowCalls().then((r) {
+      if (mounted) setState(() => _slow = r);
     });
   }
 
@@ -76,6 +79,24 @@ class _DiagSectionState extends State<DiagSection> {
           Expanded(child: Text(detail, maxLines: 2, overflow: TextOverflow.ellipsis, style: context.type.metadata)),
         ]),
       );
+
+  /// Part 2: SLOW CALLS = which backend calls are still waiting right now and which routes keep the phone busy. One short line each, nothing invented.
+  Widget _slowCalls(BuildContext context, AppPalette p) {
+    final d = _m(_slow);
+    if (_slow == null) return Text('Loading...', style: context.type.metadata);
+    if ('${d['state']}' != 'OK') return Text('Not available from this backend (update the backend).', style: context.type.metadata);
+    final w = _l(d['waiting']), tp = _l(d['top']);
+    final rows = <Widget>[];
+    for (final x in w.take(2)) {
+      rows.add(_dotRow(context, p.loss, 'waiting', '${_m(x)['route']} for ${_i(_m(x)['waiting_sec'])} s'));
+    }
+    for (final x in tp.take(3)) {
+      final t = _m(x);
+      rows.add(_dotRow(context, p.textMuted, 'busy', '${t['route']}: ${t['per_min']}/min, avg ${_i(t['avg_ms'])} ms, ${t['busy_sec_min']} s per minute'));
+    }
+    if (rows.isEmpty) return Text('${d['headline'] ?? 'No slow calls.'}', style: context.type.metadata);
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: rows);
+  }
 
   void _openProblems() => Navigator.of(context).push(OwlRoute(builder: (_) => const AppProblemsScreen()));
 
@@ -134,6 +155,8 @@ class _DiagSectionState extends State<DiagSection> {
               _group(context, 'THIS APP', right: errs.isEmpty ? 'no failed fetch' : '${errs.length} failed / slow', rightColor: errs.isEmpty ? p.profit : p.warning),
               for (final e in errs.take(2)) _dotRow(context, e.slow ? p.warning : p.loss, e.path.split('/').last, e.what),
               if (errs.isEmpty) Text('Since the app started, every fetch answered in time.', style: context.type.metadata),
+              _group(context, 'SLOW CALLS', right: _slow == null ? '' : (_l(_m(_slow)['waiting']).isNotEmpty ? '${_l(_m(_slow)['waiting']).length} waiting' : (_l(_m(_slow)['slow']).isNotEmpty ? 'slow' : 'ok')), rightColor: _l(_m(_slow)['waiting']).isNotEmpty ? p.loss : (_l(_m(_slow)['slow']).isNotEmpty ? p.warning : p.profit)),
+              _slowCalls(context, p),
               _group(context, 'SNIPER', right: shLevel.isEmpty ? '' : shLevel, rightColor: shLevel == 'OK' ? p.profit : (shLevel == 'WARN' ? p.warning : (shLevel == 'BAD' ? p.loss : null))),
               Text(_snip == null ? 'Loading...' : (shLevel.isEmpty ? 'Sniper health is not available from this backend yet.' : 'Model, scan, candles and switches: ${shLevel == 'OK' ? 'all fine' : 'open Full diagnostics for the detail'}.'), style: context.type.metadata),
               const SizedBox(height: AppSpacing.s),

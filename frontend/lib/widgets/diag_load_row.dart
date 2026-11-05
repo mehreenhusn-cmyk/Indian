@@ -1,3 +1,4 @@
+import '../theme/app_active.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -28,7 +29,7 @@ class _DiagLoadRowState extends State<DiagLoadRow> {
   void initState() {
     super.initState();
     _load();
-    _timer = Timer.periodic(const Duration(seconds: 6), (_) => _load());
+    _timer = AppActive.every(const Duration(seconds: 10), () => _load()); // Part 7b: 6 s -> 10 s, none in the background
   }
 
   @override

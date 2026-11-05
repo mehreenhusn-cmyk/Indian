@@ -94,15 +94,15 @@ class OwlStatStrip extends StatelessWidget {
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
               onTap: s.onTap,
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              child: Padding(padding: const EdgeInsets.only(right: 8), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               FittedBox(
                 fit: BoxFit.scaleDown,
                 alignment: Alignment.centerLeft,
-                child: Text(s.value, maxLines: 1, style: context.type.number.copyWith(color: s.tone == 'good' ? p.profit : s.tone == 'bad' ? p.loss : p.textPrimary)),
+                child: Text(s.value, maxLines: 1, style: context.type.number.copyWith(fontSize: 17, color: s.tone == 'good' ? p.profit : s.tone == 'bad' ? p.loss : p.textPrimary)), // Part 3: 17 sp so FittedBox is only a safety net, not the normal case
               ),
               const SizedBox(height: 2),
               Text(s.label.toUpperCase(), maxLines: 1, overflow: TextOverflow.ellipsis, style: context.type.label.copyWith(fontSize: 11, letterSpacing: 0.8)),
-            ]),
+            ])),
             ),
           ),
       ]),

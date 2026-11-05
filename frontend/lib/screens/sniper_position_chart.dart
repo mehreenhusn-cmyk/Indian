@@ -5,6 +5,7 @@ import '../theme/app_spacing.dart';
 import '../theme/app_theme.dart';
 import '../utils/format.dart';
 import '../widgets/candle_chart.dart';
+import '../widgets/load_state.dart';
 import '../widgets/owl_card.dart';
 
 /// R29b (Part 4): ONE open Sniper paper trade with a chart, like the Current Bot position card.
@@ -136,7 +137,10 @@ class _SniperPositionChartState extends State<SniperPositionChart> {
     final chkColor = chk.ok == null ? p.textMuted : (chk.ok! ? p.profit : p.loss);
     final tpLevels = <int, double?>{1: lv.tp};
     final basis = (rec['basis'] is List ? rec['basis'] as List : const []).take(5).map((e) => '$e').toList();
-    String away(double? target) => (target == null || ltp == null || ltp == 0) ? '--' : '${((target - ltp).abs() / ltp * 100).toStringAsFixed(2)}%';
+    // Part 5: a closed trade has no live price, so the distance is measured from the ENTRY (was "-- away"); an open trade still uses the live price.
+    final base = closed ? lv.entry : ltp;
+    final awayWord = closed ? 'from entry' : 'away';
+    String away(double? target) => (target == null || base == null || base == 0) ? '--' : '${((target - base).abs() / base * 100).toStringAsFixed(2)}%';
 
     return Scaffold(
       backgroundColor: p.bg,
@@ -168,10 +172,10 @@ class _SniperPositionChartState extends State<SniperPositionChart> {
             behavior: HitTestBehavior.opaque,
             onTap: () => showCandleChartSheet(context, symbol, entry: lv.entry, sl: lv.sl, tpLevels: tpLevels, isLong: isLong, entryTsMs: entryMs, title: '$symbol  Sniper'),
             child: SizedBox(
-              height: 260,
+              height: _loading ? 130 : 260, // Part 5: while the candles load the box is short (was a 260 px empty gap)
               width: double.infinity,
               child: _loading
-                  ? const Center(child: CircularProgressIndicator())
+                  ? LoadSpinner(onRetry: _load, slowAfter: const Duration(seconds: 8)) // Part 1b: after 8 s it says so and offers Retry
                   : CandleChart(candles: _candles, entry: lv.entry, sl: lv.sl, tpLevels: tpLevels, entryTsMs: entryMs, showEma: true, visibleCount: 90, errorText: _error),
             ),
           ),
@@ -180,7 +184,7 @@ class _SniperPositionChartState extends State<SniperPositionChart> {
           OWLCard(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text('THE PLAN', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: p.textMuted)),
-              _line(p, 'Entry ${fmtPrice(lv.entry)}  |  TP ${fmtPrice(lv.tp)} (${away(lv.tp)} away)  |  SL ${fmtPrice(lv.sl)} (${away(lv.sl)} away)', c: p.textPrimary),
+              _line(p, 'Entry ${fmtPrice(lv.entry)}  |  TP ${fmtPrice(lv.tp)} (${away(lv.tp)} $awayWord)  |  SL ${fmtPrice(lv.sl)} (${away(lv.sl)} $awayWord)', c: p.textPrimary),
               if (_n(rec['expected_usdt']) != null)
                 _line(p, 'Expected ${fmtSigned(_n(rec['expected_usdt'])!)} USDT at the target, risk -${(_n(rec['risk_usdt']) ?? 0).toStringAsFixed(2)} USDT (after fees)  |  ${rec['rr'] ?? '--'}R'),
               _line(p, '${closed ? 'Held' : 'Open'} ${sniperMins(age)}${_n(rec['max_hold_sec']) == null ? '' : ' of up to ${sniperMins(rec['max_hold_sec'])}'}${_n(rec['typical_hold_sec']) == null ? '' : '  |  typical ${sniperMins(rec['typical_hold_sec'])}'}'),
