@@ -204,8 +204,17 @@ class _PositionCardState extends State<PositionCard> {
     final ltp = (pos['ltp'] as num?)?.toDouble();
     final pnl = (pos['pnl_usdt'] as num?)?.toDouble() ?? 0.0;
     final roi = (pos['roi_pct'] as num?)?.toDouble() ?? 0.0;
+    // Plan C: real values only. A missing value shows "--", never 0 and never a guess (no made-up liquidation price).
+    final roiOrNull = (pos['roi_pct'] as num?)?.toDouble();
+    final inrRate = (liveProvider.settings['inr_rate'] as num?)?.toDouble() ?? 0.0;
     final invest = (pos['invest_usdt'] as num?)?.toDouble();
     final isProfit = pnl >= 0;
+    final levRaw = (pos['leverage'] as num?)?.toDouble();
+    final sizeText = (invest != null && levRaw != null && levRaw > 0) ? fmtMoney(invest * levRaw) : '--'; // notional = margin x leverage
+    final marginText = invest == null ? '--' : fmtMoney(invest);
+    final liqNum = (pos['liq_price'] as num?)?.toDouble(); // only if the backend sends it
+    final srcRaw = '${pos['source'] ?? ''}'.trim();
+    final srcText = srcRaw.isEmpty ? 'Main bot' : srcRaw;
     // Leverage: taken from the position when the backend sends it, else
     // derived from ROI / raw price move, else 1 - used only to show the
     // per-level USDT profit in the ladder (invest x price-move% x leverage).
@@ -391,6 +400,7 @@ class _PositionCardState extends State<PositionCard> {
                             tradeId is int ? '#$tradeId $symbol' : '$symbol',
                             overflow: TextOverflow.ellipsis,
                             style: context.type.section.copyWith(fontSize: 14, fontWeight: FontWeight.w700)),
+                        _BadgePill(text: srcText, color: AppColors.textSecondary),
                         if (atBreakeven) const _BadgePill(text: 'BE', color: AppColors.textSecondary),
                         if (isUnprotected)
                           const _BadgePill(text: 'UNPROTECTED', color: _red, filled: true),
@@ -427,7 +437,7 @@ class _PositionCardState extends State<PositionCard> {
                     ),
                   ),
                   const SizedBox(width: 6),
-                  _ProfitBlock(pnl: pnl, isProfit: isProfit),
+                  _ProfitBlock(pnl: pnl, isProfit: isProfit, roi: roiOrNull, inr: fmtInr(pnl, inrRate)),
                   const SizedBox(width: 2),
                   InkWell(
                     borderRadius: BorderRadius.circular(16),
@@ -456,7 +466,7 @@ class _PositionCardState extends State<PositionCard> {
               Row(
                 children: [
                   _statCell(context, 'ENTRY', _fmt(entry)),
-                  _statCell(context, 'LTP', _fmt(ltp)),
+                  _statCell(context, 'MARK', _fmt(ltp)),
                   _statCell(context, 'OPEN', '', alignEnd: true, liveOpenedAt: pos['opened_at_ts'] as num?),
                 ],
               ),
@@ -467,6 +477,14 @@ class _PositionCardState extends State<PositionCard> {
                   slPct: (sl != null && entry != null && entry != 0) ? pctOf(sl) : null,
                   targetLabel: 'TP$effectiveTarget',
                 ),
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  _statCell(context, 'SIZE', sizeText),
+                  _statCell(context, 'MARGIN', marginText),
+                  _statCell(context, 'LIQ PRICE', liqNum == null ? '--' : _fmt(liqNum), alignEnd: true),
+                ],
+              ),
                   ],
                 ),
               ),
@@ -497,6 +515,16 @@ class _PositionCardState extends State<PositionCard> {
                         child: Row(
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
+                          TextButton(
+                            style: TextButton.styleFrom(
+                              foregroundColor: context.palette.accent,
+                              padding: const EdgeInsets.symmetric(horizontal: 8),
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                            onPressed: () => showCandleChartSheet(context, symbol, entry: entry, sl: sl, tpLevels: tpLevels, isLong: isLong, entryTsMs: entryTsMs),
+                            child: const Text('Chart >'),
+                          ),
                           if (tradeId != null)
                             TextButton(
                               style: TextButton.styleFrom(
@@ -805,23 +833,29 @@ class _GlassmorphicSurface extends StatelessWidget {
 class _ProfitBlock extends StatelessWidget {
   final double pnl;
   final bool isProfit;
-  const _ProfitBlock({required this.pnl, required this.isProfit});
+  final double? roi;
+  final String? inr;
+  const _ProfitBlock({required this.pnl, required this.isProfit, this.roi, this.inr});
 
   @override
   Widget build(BuildContext context) {
+    final p = context.palette;
     final color = isProfit ? _green : _red;
     final sign = isProfit ? '+' : '';
+    // Plan C hierarchy: the big number is the percent (ROI), then the USDT amount, then the INR amount small and grey.
     return Column(
       crossAxisAlignment: CrossAxisAlignment.end,
       mainAxisSize: MainAxisSize.min,
       children: [
+        Text(roi == null ? '--' : '${roi! >= 0 ? '+' : ''}${roi!.toStringAsFixed(2)}%', maxLines: 1, style: AppTypography.primaryData.copyWith(color: roi == null ? p.textMuted : color, fontWeight: FontWeight.w800, fontSize: 20)),
         Text.rich(
           TextSpan(children: [
-            TextSpan(text: '$sign${pnl.toStringAsFixed(2)}', style: AppTypography.primaryData.copyWith(color: color, fontWeight: FontWeight.w800, fontSize: 20)),
-            TextSpan(text: ' USDT', style: TextStyle(color: context.palette.textMuted, fontWeight: FontWeight.w600, fontSize: 10)),
+            TextSpan(text: '$sign${pnl.toStringAsFixed(2)}', style: AppTypography.primaryData.copyWith(color: color, fontWeight: FontWeight.w700, fontSize: 13)),
+            TextSpan(text: ' USDT', style: TextStyle(color: p.textMuted, fontWeight: FontWeight.w600, fontSize: 10)),
           ]),
           maxLines: 1,
         ),
+        if (inr != null) Text('approx. $inr', maxLines: 1, style: TextStyle(color: p.textMuted, fontSize: 10)),
       ],
     );
   }

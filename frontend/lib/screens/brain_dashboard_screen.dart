@@ -81,7 +81,14 @@ class _BrainDashboardScreenState extends State<BrainDashboardScreen> {
     if (_busy && r == null) {
       kids = [LoadSpinner(onRetry: _load)];
     } else if (_bad(r)) {
-      kids = [_sources(p), OWLCard(edge: p.warning, child: Text(_problem(r), style: TextStyle(fontSize: 13, color: p.textPrimary)))];
+      kids = [
+        _sources(p),
+        OWLCard(edge: p.warning, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(_problem(r), style: TextStyle(fontSize: 13, color: p.textPrimary)),
+          const SizedBox(height: 10),
+          OutlinedButton(onPressed: _load, child: const Text('Retry')), // Plan D: failure = message + Retry, numbers stay "--"
+        ])),
+      ];
     } else {
       final ok = r!;
       kids = [

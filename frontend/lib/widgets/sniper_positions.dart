@@ -115,6 +115,7 @@ class _SniperPositionsState extends State<SniperPositions> {
             ]),
             _txt(p, 'Entry ${fmtPrice(lv.entry)} -> Now ${fmtPrice(ltp)}${roi == null ? '' : '   ${fmtSigned(roi, 1)}% ROI'}', c: p.textPrimary),
             _txt(p, 'SL ${fmtPrice(lv.sl)}  |  TP ${fmtPrice(lv.tp)}'),
+            if (sniperVerify(rec, pos).ok == false) _txt(p, sniperVerify(rec, pos).text, size: 11, c: p.loss, bold: true), // Plan E: only a problem is shown on the card, the full check is on the chart page
             Row(children: [
               Expanded(child: _txt(p, '${rec['lane'] ?? 'SNIPER'}  |  open ${sniperMins(age)}${_n(rec['max_hold_sec']) == null ? '' : ' of up to ${sniperMins(rec['max_hold_sec'])}'}', size: 11.5, c: p.textMuted)),
               _txt(p, 'Chart >', size: 11.5, c: p.warning, bold: true),
@@ -127,13 +128,17 @@ class _SniperPositionsState extends State<SniperPositions> {
     );
   }
 
-  Widget _closedCard(AppPalette p, Map<String, dynamic> t) {
+  Widget _closedCard(BuildContext context, AppPalette p, Map<String, dynamic> t) {
     final pnl = _n(t['pnl_usdt']);
     final c = pnl == null ? p.textMuted : (pnl >= 0 ? p.profit : p.loss);
     final tag = '${t['tag'] ?? ''}';
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.s),
-      child: OWLCard(
+      child: GestureDetector(
+       behavior: HitTestBehavior.opaque,
+       // Plan E: a closed trade opens its chart too (entry / SL / TP lines, result, exit reason, lesson).
+       onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => SniperPositionChart(rec: t, closed: true))),
+       child: OWLCard(
         edge: c,
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
@@ -141,7 +146,9 @@ class _SniperPositionsState extends State<SniperPositions> {
             Text(pnl == null ? '--' : '${fmtSigned(pnl)} USDT', style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800, color: c)),
           ]),
           _txt(p, 'Closed by ${(t['exit_reason'] ?? '').toString().isEmpty ? '--' : t['exit_reason']}  |  held ${sniperMins(t['held_sec'])}${tag.isEmpty ? '' : '  |  $tag'}', size: 11.5),
+          _txt(p, 'Chart >', size: 11.5, c: p.warning, bold: true),
         ]),
+       ),
       ),
     );
   }
@@ -190,7 +197,7 @@ class _SniperPositionsState extends State<SniperPositions> {
             const SizedBox(height: AppSpacing.m),
             Text('CLOSED  (newest first)', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: p.textMuted)),
             const SizedBox(height: AppSpacing.s),
-            for (final t in shown) _closedCard(p, _m(t)),
+            for (final t in shown) _closedCard(context, p, _m(t)),
             if (closed.length > 8)
               GestureDetector(
                 behavior: HitTestBehavior.opaque,

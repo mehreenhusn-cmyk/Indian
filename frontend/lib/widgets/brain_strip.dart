@@ -99,15 +99,12 @@ class _BrainStripState extends State<BrainStrip> {
   @override
   Widget build(BuildContext context) {
     final p = context.palette;
-    final pr = context.read<AppProvider>();
     final divider = Divider(height: 1, color: p.border);
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(AppSpacing.cardPad, AppSpacing.s, AppSpacing.cardPad, AppSpacing.s),
       decoration: BoxDecoration(color: p.surface, borderRadius: BorderRadius.circular(AppSpacing.radiusMedium), border: Border.all(color: p.border)),
       child: Column(children: [
-        _line('Current Bot', mainRow(pr), () => const OwlSubPage(title: 'Current Bot', child: ResultsScreen())),
-        divider,
         _line('Dual Bot', _dual == null ? null : dualRow(_dual!), () => const DualBotScreen()),
         divider,
         _line('Brain', _brain == null ? null : brainRow(_brain!), () => const OwlSubPage(title: 'Brain', child: BrainDashboardScreen())),

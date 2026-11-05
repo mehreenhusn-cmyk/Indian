@@ -2,7 +2,21 @@ part of 'dual_bot_screen.dart';
 
 /// R19: the NOW tab cards of the Dual Bot screen (top strip, open trades, today, BTC, bot control). A 'part of' file: do NOT import it,
 /// it is pulled in by dual_bot_screen.dart. Code moved unchanged from the old 957-line file.
+/// Plan D: a number the backend did not send shows "--", never a made-up 0.
+String _dashN(dynamic v, [int dp = 0]) => v is num ? v.toStringAsFixed(dp) : '--';
+
 extension _DualNowTab on _DualBotScreenState {
+  /// Plan D: nothing arrived and the last try failed: say so with "--" and a Retry button (no zeros, no endless "Connecting...").
+  Widget _failCard(AppPalette p) {
+    return _card(p, title: 'DUAL BOT (PAPER)', edge: p.warning, children: [
+      Text('--', style: context.type.primary.copyWith(fontWeight: FontWeight.w900, fontSize: 24, color: p.textMuted)),
+      const SizedBox(height: 4),
+      Text('Cannot read the Dual Bot data right now. $_err', style: context.type.metadata, maxLines: 3, overflow: TextOverflow.ellipsis),
+      const SizedBox(height: 8),
+      OutlinedButton(onPressed: () => _poll(), child: const Text('Retry')),
+    ]);
+  }
+
   Widget _statusCard(AppPalette p) {
     final state = '${_st['state'] ?? ''}';
     final running = state == 'running' || state == 'loading' || (state.isEmpty && _st['running'] == true);
@@ -15,7 +29,7 @@ extension _DualNowTab on _DualBotScreenState {
     final btcNote = btcMargin > 0 ? 'BTC is always included, with ${btcMargin.toStringAsFixed(0)} USDT per trade. ' : '';
     return _card(p, title: 'DUAL BOT (PAPER)', edge: p.accent, children: [
       Text(
-          'Paper only: ${_n(_st['margin']).toStringAsFixed(0)} USDT per trade at ${_n(_st['lev']).toStringAsFixed(0)}x. '
+          'Paper only: ${_dashN(_st['margin'])} USDT per trade at ${_dashN(_st['lev'])}x. '
           '$btcNote'
           'Your live bot is not touched.',
           style: context.type.metadata),

@@ -164,7 +164,13 @@ class AppProvider extends ChangeNotifier with SoundAlerts {
   }
 
   /// Part 27: open a page by NAME (AppRoute), not by a number. goToTab(int) stays for old callers.
-  void goToRoute(AppRoute route) => goToTab(AppRoutes.screenIndex(route));
+  /// Plan C: counts "open the Positions page on its Live tab" requests (Dashboard Open P&L / Positions tiles). PositionsScreen watches it and selects tab 0.
+  int positionsLiveReq = 0;
+
+  void goToRoute(AppRoute route) {
+    if (route == AppRoute.positions) positionsLiveReq++;
+    goToTab(AppRoutes.screenIndex(route));
+  }
 
   int? consumeTabRequest() {
     if (navigateToTabRequest < 0) return null;

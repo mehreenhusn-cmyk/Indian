@@ -575,7 +575,6 @@ class _TopSummary extends StatelessWidget {
             down++;
           }
         }
-        final c = pnl >= 0 ? _green : _red;
         // Part 17: the two pills are buttons: tap = only UP (or only DOWN) trades, tap again = all.
         Widget side(String text, Color col, int me) => ValueListenableBuilder<int>(
               valueListenable: positionsSide,
@@ -597,14 +596,8 @@ class _TopSummary extends StatelessWidget {
             child: Row(mainAxisSize: MainAxisSize.min, children: [side('$up UP', _green, 1), const SizedBox(width: 6), side('$down DOWN', _red, 2)]),
           );
         }
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 2),
-          child: FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
-            child: Text('${fmtSigned(pnl)} USDT', style: context.type.hero.copyWith(fontSize: 28, fontWeight: FontWeight.w700, color: c)),
-          ),
-        );
+        // Plan C: the total Open P&L is shown ONCE, in the pinned line of the Positions tab (positions_screen.dart), not again here.
+        return const SizedBox.shrink();
       },
     );
   }
@@ -729,7 +722,7 @@ class _FloatingSummaryBarState extends State<_FloatingSummaryBar> {
                         ),
                       ],
                     ),
-                    CloseAllTotalLine(profit: profitSum, loss: lossSum), // R28a: Profit + Loss = Net, right under the two buttons
+                    // Plan C: the extra Net line under the buttons is gone (the pinned line already shows the total).
                   ],
                 ),
               ),
@@ -805,7 +798,7 @@ class _NeonPillButtonState extends State<_NeonPillButton> {
           child: Container(
             // Shrunk from 44 - Close All Profit/Loss pair was taking up
             // too much vertical space above the position list.
-            height: widget.amount == null ? 34 : 46,
+            height: 40,
             alignment: Alignment.center,
             padding: const EdgeInsets.symmetric(horizontal: 8), // R28a: room so a long amount shrinks instead of being cut
             decoration: BoxDecoration(
@@ -837,7 +830,7 @@ class _NeonPillButtonState extends State<_NeonPillButton> {
                       children: [
                         FittedBox(fit: BoxFit.scaleDown, child: Text(widget.label, style: AppTypography.primaryData.copyWith(color: widget.color, fontWeight: FontWeight.w600, fontSize: 11))),
                         const SizedBox(height: 1),
-                        FittedBox(fit: BoxFit.scaleDown, child: Text(widget.amount!, style: AppTypography.primaryData.copyWith(color: widget.color, fontWeight: FontWeight.w800, fontSize: 16))),
+                        FittedBox(fit: BoxFit.scaleDown, child: Text(widget.amount!, style: AppTypography.primaryData.copyWith(color: widget.color, fontWeight: FontWeight.w800, fontSize: 13))),
                       ],
                     ),
               secondChild: SizedBox(

@@ -29,6 +29,7 @@ class _PositionsScreenState extends State<PositionsScreen> {
   static const List<String> _names = ['Live', 'Sniper', 'Ledger', 'Results']; // R29b: Sniper = the open Sniper paper trades + chart
 
   int _tab = 0;
+  int _liveReq = -1; // Plan C: last seen AppProvider.positionsLiveReq
   final Set<int> _seen = {0};
 
   void _select(int i) {
@@ -85,6 +86,16 @@ class _PositionsScreenState extends State<PositionsScreen> {
   @override
   Widget build(BuildContext context) {
     final p = context.palette;
+    // Plan C: arriving from the Dashboard (Open P&L / Positions tile) always lands on the Live tab.
+    final req = context.select<AppProvider, int>((x) => x.positionsLiveReq);
+    if (_liveReq == -1) {
+      _liveReq = req;
+    } else if (req != _liveReq) {
+      _liveReq = req;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _select(0);
+      });
+    }
     return Material(
       type: MaterialType.transparency,
       child: Column(
@@ -101,12 +112,12 @@ class _PositionsScreenState extends State<PositionsScreen> {
           // P-F: pinned summary line (Live tab): the source is named (Main bot, paper or live), then how many are open and the open P&L.
           if (_tab == 0)
             Selector<AppProvider, String>(
-              selector: (_, x) => '${(x.openPnl * 100).round()}|${x.status['open_count']}|${x.statsMode}',
+              selector: (_, x) => '${(x.openPnl * 100).round()}|${x.status['open_count']}|${x.statsMode}|${x.settings['inr_rate']}',
               builder: (context, _, __) {
                 final x = context.read<AppProvider>();
                 final n = ((x.status['open_count'] ?? 0) as num).toInt();
                 final o = x.openPnl;
-                return OwlSummaryLine(source: x.statsMode == 'live' ? 'Main bot - live' : 'Main bot - paper', facts: [OwlStat('$n', 'open'), OwlStat(fmtSigned(o), 'USDT open P&L', tone: o > 0 ? 'good' : (o < 0 ? 'bad' : ''))]);
+                return OwlSummaryLine(source: x.statsMode == 'live' ? 'Main bot - live' : 'Main bot - paper', facts: [OwlStat('$n', 'open'), OwlStat(fmtSigned(o), 'USDT open P&L', tone: o > 0 ? 'good' : (o < 0 ? 'bad' : '')), if (fmtInr(o, (x.settings['inr_rate'] as num?)?.toDouble() ?? 0.0) != null) OwlStat(fmtInr(o, (x.settings['inr_rate'] as num?)?.toDouble() ?? 0.0)!, 'approx.')]);
               },
             ),
           Expanded(child: IndexedStack(index: _tab, children: [for (var i = 0; i < _names.length; i++) _page(i)])),

@@ -190,6 +190,7 @@ class _DualBotScreenState extends State<DualBotScreen> {
     final recent = _maps(_st['recent']);
     final nOpen = recent.where((t) => '${t['status']}' == 'open').length;
     final today = _map(_map(_st['summary'])['today']);
+    if (_st.isEmpty && _err.isNotEmpty) return [_failCard(p)]; // Plan D: failure = "--" + Retry, not zeros
     if (_seg == 0) {
       return [
         SimpleTab(
@@ -209,7 +210,7 @@ class _DualBotScreenState extends State<DualBotScreen> {
       return [
         _stripCard(p),
         _openCard(p),
-        _group('TODAY', 'Closed ${_usdt(_n(today['realized']))}, open ${_usdt(_n(today['open_pnl']))}', [_todayCard(p), _btcDualCard(p)]),
+        _group('TODAY', today.isEmpty ? '--' : 'Closed ${_usdt(_n(today['realized']))}, open ${_usdt(_n(today['open_pnl']))}', [_todayCard(p), _btcDualCard(p)]),
         _group('OPPORTUNITIES', 'What the Brain is watching and its own pretend trades', [OpportunitiesTab(brain: _brain)]),
         _group('BOT CONTROL', '${_st['state_text'] ?? 'Connecting...'}', [_statusCard(p)]),
       ];
