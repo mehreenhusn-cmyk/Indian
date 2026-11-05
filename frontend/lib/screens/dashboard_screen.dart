@@ -13,7 +13,7 @@ import '../widgets/dashboard_equity.dart';
 import '../widgets/dashboard_pairs.dart';
 import '../widgets/diag_section.dart';
 import '../widgets/live_wallet_card.dart';
-import '../widgets/owl_card.dart';
+import '../widgets/owl_card.dart' hide OwlStat; // Part 17f: owl_number.dart has the OwlStat data class used here; owl_card.dart has a widget with the same name
 import '../widgets/owl_pressable.dart';
 import '../widgets/owl_refresh.dart';
 import '../widgets/owl_number.dart';

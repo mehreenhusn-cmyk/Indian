@@ -6,7 +6,7 @@ import '../theme/app_active.dart';
 import '../theme/app_theme.dart';
 import '../widgets/last_good.dart';
 import '../widgets/load_state.dart';
-import '../widgets/owl_card.dart';
+import '../widgets/owl_card.dart' hide OwlStat; // Part 17f: owl_number.dart has the OwlStat data class used here; owl_card.dart has a widget with the same name
 import '../widgets/owl_number.dart';
 import '../widgets/owl_route.dart';
 import '../widgets/owl_row.dart';
