@@ -66,9 +66,6 @@ flutter:
   uses-material-design: true
 
   assets:
-    - assets/owl_mascot.png
-    - assets/welcome_bg.jpg
-    - assets/bg_terminal.jpg
     - assets/sounds/
 
   fonts:

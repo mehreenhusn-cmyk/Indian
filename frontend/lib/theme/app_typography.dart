@@ -27,7 +27,7 @@ class AppTypography {
   static TextStyle get heroNumber => TextStyle(
     fontFamily: familyNumeric,
     fontFamilyFallback: familyFallback,
-    fontSize: 28,
+    fontSize: 34, // Plan A scale: hero 34
     fontWeight: FontWeight.w700,
     letterSpacing: -0.8,
     fontFeatures: _tabular,
@@ -37,7 +37,7 @@ class AppTypography {
   static TextStyle get heroXL => TextStyle(
     fontFamily: familyNumeric,
     fontFamilyFallback: familyFallback,
-    fontSize: 28,
+    fontSize: 34, // Plan A scale: hero 34
     fontWeight: FontWeight.w700,
     letterSpacing: -1.0,
     height: 1.05,
@@ -114,7 +114,7 @@ class AppTypography {
   static TextStyle get number => TextStyle(
     fontFamily: familyNumeric,
     fontFamilyFallback: familyFallback,
-    fontSize: 20,
+    fontSize: 22, // Plan A scale: big number 22
     fontWeight: FontWeight.w700,
     letterSpacing: -0.4,
     fontFeatures: _tabular,

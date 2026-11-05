@@ -6,7 +6,6 @@ import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import '../providers/app_provider.dart';
 import '../theme/app_theme.dart';
-import '../widgets/owl_ambient_background.dart';
 import '../widgets/owl_entrance.dart';
 import '../widgets/owl_eye_dot.dart';
 import '../widgets/owl_pressable.dart';
@@ -315,7 +314,6 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
       drawer: _buildDrawer(p),
       body: Stack(
         children: [
-        const Positioned.fill(child: OwlAmbientBackground()),
         SafeArea(
           child: Column(
             children: [

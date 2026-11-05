@@ -16,7 +16,7 @@ class AppColors {
   // ---- Backgrounds (true-black canvas for AMOLED, raised surfaces above) ----
   // Ink-navy canvas: still near-black for AMOLED, but with a cool tint so
   // glass cards have something to glow against (premium glass look).
-  static const Color background = Color(0xFF07090D);
+  static const Color background = Color(0xFF000000); // Plan A: pure black canvas (was 0xFF07090D)
   static const Color surfacePrimary = Color(0xFF0D1118);
   static const Color surfaceElevated = Color(0xFF131923);
   static const Color surfaceHigher = Color(0xFF1A2230);

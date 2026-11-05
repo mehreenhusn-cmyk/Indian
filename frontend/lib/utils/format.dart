@@ -82,3 +82,30 @@ String fmtMoney(double? v, [int dp = 2]) {
 
 /// Drop a trailing .0 : 100.0 -> 100, 2.5 -> 2.5
 String fmtCompact(double v) => v % 1 == 0 ? v.toStringAsFixed(0) : v.toStringAsFixed(1);
+
+/// Plan A: Indian digit grouping (12,34,567) for a whole number.
+String _inrGroup(int n) {
+  final neg = n < 0;
+  final s = n.abs().toString();
+  if (s.length <= 3) return neg ? '-$s' : s;
+  var rest = s.substring(0, s.length - 3);
+  final tail = s.substring(s.length - 3);
+  final parts = <String>[];
+  while (rest.length > 2) {
+    parts.insert(0, rest.substring(rest.length - 2));
+    rest = rest.substring(0, rest.length - 2);
+  }
+  if (rest.isNotEmpty) parts.insert(0, rest);
+  final out = '${parts.join(',')},$tail';
+  return neg ? '-$out' : out;
+}
+
+/// Plan A: USDT -> INR text for the small line under a money number.
+/// null amount or a rate <= 0 -> null (the caller shows nothing, never a made-up 0).
+/// The rate is the FIXED setting inr_rate, not a live exchange rate.
+String? fmtInr(double? usdt, double rate, {bool signed = true}) {
+  if (usdt == null || rate <= 0) return null;
+  final v = (usdt * rate).round();
+  final sign = signed && v > 0 ? '+' : '';
+  return '$sign\u20B9${_inrGroup(v)}';
+}

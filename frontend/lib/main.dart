@@ -21,7 +21,6 @@ import 'screens/system_health_screen.dart';
 import 'screens/india_paper_screen.dart';
 import 'widgets/bottom_nav_bar.dart';
 import 'widgets/tab_page.dart';
-import 'widgets/owl_ambient_background.dart';
 import 'widgets/owl_drawer.dart';
 import 'widgets/live_ticker_bar.dart';
 import 'widgets/owl_top_menu.dart';
@@ -505,7 +504,6 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
       // inset, applied to whichever child happens to be first.
       body: Stack(
         children: [
-          const Positioned.fill(child: OwlAmbientBackground()),
           // P-C: while LIVE trading is on, a 2 px amber line runs across the very top of every screen (paper and live can never be mixed up).
           Positioned(
             top: 0,
