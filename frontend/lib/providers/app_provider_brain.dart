@@ -39,6 +39,9 @@ extension AppProviderBrain on AppProvider {
   /// Part 91b (Simple Results): read-only Part 91a route. One verdict word, net, worst dip, losing streak, equity line, USE / STOP lines. Source = PAPER, SHADOW or REPLAY (never LIVE).
   Future<Map<String, dynamic>> fetchBrainVerdict([String source = 'PAPER']) => _brainGet('/api/v2/brain_verdict?source=${Uri.encodeQueryComponent(source)}');
 
+  /// E6: read-only route brain_why = {state, total, taken, waited, skipped, no_opinion, open_now, reasons[{decision, reason, n}], last[], lines[]}: why the Brain is not trading today.
+  Future<Map<String, dynamic>> fetchBrainWhy([String source = 'PAPER']) => _brainGet('/api/v2/brain_why?source=${Uri.encodeQueryComponent(source)}');
+
   /// Part M3 (Brain Dashboard): read-only route brain_dash. Today net, Brain vs Current Bot 30 days, open trades, signals, daily loss cap, recent days. Source = PAPER, SHADOW or REPLAY (never LIVE).
   Future<Map<String, dynamic>> fetchBrainDash([String source = 'PAPER']) => _brainGet('/api/v2/brain_dash?source=${Uri.encodeQueryComponent(source)}');
 

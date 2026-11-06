@@ -14,6 +14,7 @@ import '../widgets/owl_sub_page.dart';
 import '../widgets/skeleton_retry.dart';
 import '../widgets/sniper_eva_card.dart';
 import '../widgets/sniper_winners_card.dart';
+import '../widgets/sniper_days_card.dart';
 import '../widgets/sniper_positions.dart';
 import '../widgets/signal_card.dart';
 import '../widgets/sniper_watch_card.dart';
@@ -181,6 +182,7 @@ class _SniperScreenState extends State<SniperScreen> {
       kids = [
         UpdatedLine(lg: _lg, onRetry: () => _load()),
         SniperStateBanner(r: r!, learn: _learn, auto: _ap),
+        const SniperDaysCard(), // E6: Today / 7 days of the Sniper at the top, same idea as the Dashboard
         SniperWatchCard(w: _watch ?? _watchBad), // Part 16: watchlist cards (skeleton until the first answer)
         // Part 13: GATES and WHY QUIET said the same thing twice (what stops the Sniper), so they are ONE fold now.
         OwlFold(title: 'WHY QUIET AND GATES', headline: _gates?['reason'] == null ? 'LEARN progress, plain reasons, which checks pass' : '${_gates!['reason']}', bare: true, children: [SniperQuiet(r: r, learn: _learn), SniperGates(g: _gates)]),

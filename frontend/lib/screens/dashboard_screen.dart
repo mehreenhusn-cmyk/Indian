@@ -92,14 +92,12 @@ class DashboardScreen extends StatelessWidget {
                       if (isLive) ...[const SizedBox(height: AppSpacing.cardGap), const LiveWalletCard()],
                       const SizedBox(height: AppSpacing.m),
                       _ResultStrip(isLive: isLive, openCount: ((status['open_count'] ?? 0) as num).toInt()),
-                      if (!isLive) Padding(padding: const EdgeInsets.only(top: 6), child: Text('Main bot, paper. Dual Bot, Brain and Sniper have their own numbers below; they are never added.', style: context.type.metadata.copyWith(color: context.palette.textMuted))),
+                      if (!isLive) Padding(padding: const EdgeInsets.only(top: 6), child: Text('This is the Main bot only. The other bots are listed one by one below.', style: context.type.metadata.copyWith(color: context.palette.textMuted))),
                       // Part 3 order (owner: calendar lower): result > 7 / 30 days > Diagnostics + load > the three books > Recent Activity > Equity > P&L calendar > MORE.
                       const SizedBox(height: AppSpacing.l),
+                      // E6: the bots one by one come FIRST (owner: no scrolling to find them), then 7 / 30 days. Diagnostics + load moved into MORE.
+                      if (!isLive) ...[const BrainStrip(), const SizedBox(height: AppSpacing.l)],
                       if (!isLive) ...[const _PeriodRow(), const SizedBox(height: AppSpacing.l)],
-                      const DiagLoadRow(),
-                      const SizedBox(height: AppSpacing.cardGap),
-                      // Part 41: the books side by side (Dual Bot paper / Brain / Sniper LEARN), same columns, never added. The "Current Bot" row is gone: the hero above is the Main bot.
-                      if (!isLive) ...[const BrainStrip(), const SizedBox(height: AppSpacing.cardGap)],
                       const RecentActivity(),
                       const SizedBox(height: AppSpacing.cardGap),
                       DashboardEquityChart(provider.equityCurve, provider.equityTf, (tf) => provider.fetchEquity(tf: tf)),
@@ -109,9 +107,11 @@ class DashboardScreen extends StatelessWidget {
                       // UI rule 7: everything that moved out of the main order sits behind ONE tap (nothing deleted).
                       OwlFold(
                         title: 'MORE',
-                        headline: 'BTC chart, open pairs, Study Lab verdict, top movers, Tag Lab, Diagnostics details',
+                        headline: 'Backend health and load, BTC chart, open pairs, Study Lab verdict, top movers, Tag Lab',
                         bare: true,
                         children: [
+                          const DiagLoadRow(),
+                          const SizedBox(height: AppSpacing.cardGap),
                           const _ResultsVerdictLine(),
                           const SizedBox(height: AppSpacing.cardGap),
                           const DashboardPairs(),
@@ -158,7 +158,7 @@ class _ResultHero extends StatelessWidget {
       builder: (context, _, __) {
         final head = isLive ? prov.openPnl : todayPnl;
         final label = isLive ? 'Open P&L now (live account)' : 'Today P&L - Main bot';
-        final sub = isLive ? '$openCount open positions' : 'Realized (closed trades). Day starts 5:30 AM IST.';
+        final sub = isLive ? '$openCount open positions' : 'Closed trades only. Today = since 5:30 AM IST.';
         final showRing = !isLive && target > 0;
         final pct = showRing ? todayPnl / target : 0.0;
         return Row(crossAxisAlignment: CrossAxisAlignment.center, children: [

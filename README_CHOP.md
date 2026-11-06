@@ -153,3 +153,11 @@ Each later Part adds its commands here. The owner runs them once at the end.
 - Words: sniper_state_banner.dart EXPLORE -> PRACTISING, NOT LEARNED YET -> STILL LEARNING; sniper_gates.dart lanes PRACTICE / REAL MONEY.
 - After pushing: restart the backend once (bash ~/owl_auto.sh restart) so the new route and the new Sniper texts load.
 - NOT COMPILED (Dart), so the first compile is the APK build.
+
+## 19. Part E6 (6 Nov 2026): Brain why, Sniper Today, cleaner Dashboard
+- NEW backend/v2_bt_why.py + view brain_why in api/v2_brain_views.py (GET /api/v2/brain_why?source=PAPER, read only): today's Brain decisions (taken / waited / skipped / no opinion) grouped by the reason the Brain stored, open trades now, minutes since the last decision. Run with sample rows and an empty folder; NOT run on the real Brain file yet.
+- NEW widgets/brain_why_card.dart: "Why is the Brain not trading?" on top of the Brain page (brain_dashboard_cards.dart). Provider: fetchBrainWhy.
+- Sniper tab: the existing SniperDaysCard (Today and last 7 days, route sniper_days) now sits at the top under the state banner. It was written earlier but was not placed on any screen.
+- Dashboard (dashboard_screen.dart): the bots one by one (BrainStrip) and 7 / 30 days come right under the big number; Diagnostics + System load moved into the MORE fold; texts shortened ("Closed trades only. Today = since 5:30 AM IST.", "This is the Main bot only...").
+- OPEN QUESTION, not changed: the Dashboard says Main bot today +537.09 and 30 days -5509.74, the Brain page says Main bot today +1009.51 and 30 days -5172.28 at the same minute. Two different sources (status today_pnl_usdt vs the paper_b1 results file). Needs a look at both before one is trusted.
+- After pushing: restart the backend once (bash ~/owl_auto.sh restart). NOT COMPILED (Dart).

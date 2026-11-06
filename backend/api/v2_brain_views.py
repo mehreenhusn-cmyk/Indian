@@ -23,6 +23,7 @@ import v2_bt_limits as LM
 import v2_brain_chat as BC
 import v2_candles as K
 import v2_bt_timeline as TL
+import v2_bt_why as WY
 
 
 def v_brain_chat(con, p, now, d):
@@ -150,5 +151,10 @@ def v_brain_timeline(con, p, now, d):
     return TL.build(d, p.get("source") or "PAPER", p.get("day") or None, now)
 
 
-VIEWS = {"brain_ready": v_brain_ready, "brain_chat": v_brain_chat, "brain_dash": v_brain_dash, "brain_month": v_brain_month, "sys_health": v_sys_health, "brain_exits": v_brain_exits, "brain_progress": v_brain_progress, "brain_compare": v_brain_compare, "brain_verdict": v_brain_verdict, "brain_health": v_brain_health, "brain_limits": v_brain_limits, "brain_zones": v_brain_zones, "brain_playbook": v_brain_playbook, "brain_whatif": v_brain_whatif, "brain_filter": v_brain_filter, "brain_review": v_brain_review, "brain_signal": v_brain_signal, "brain_trade": v_brain_trade, "brain_today": v_brain_today, "brain_chart": v_brain_chart, "brain_report": v_brain_report, "brain_timeline": v_brain_timeline}
+def v_brain_why(con, p, now, d):
+    """E6: why is the Brain not trading today? Today's decisions grouped by decision and reason, read only. ?source=PAPER."""
+    return WY.build(d, p.get("source") or "PAPER", now)
+
+
+VIEWS = {"brain_why": v_brain_why, "brain_ready": v_brain_ready, "brain_chat": v_brain_chat, "brain_dash": v_brain_dash, "brain_month": v_brain_month, "sys_health": v_sys_health, "brain_exits": v_brain_exits, "brain_progress": v_brain_progress, "brain_compare": v_brain_compare, "brain_verdict": v_brain_verdict, "brain_health": v_brain_health, "brain_limits": v_brain_limits, "brain_zones": v_brain_zones, "brain_playbook": v_brain_playbook, "brain_whatif": v_brain_whatif, "brain_filter": v_brain_filter, "brain_review": v_brain_review, "brain_signal": v_brain_signal, "brain_trade": v_brain_trade, "brain_today": v_brain_today, "brain_chart": v_brain_chart, "brain_report": v_brain_report, "brain_timeline": v_brain_timeline}
 NAMES = tuple(n for n in VIEWS if n not in ("brain_chat", "brain_report"))      # these two are answered another way inside dispatch

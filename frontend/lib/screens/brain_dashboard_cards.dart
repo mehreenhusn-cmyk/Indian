@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../widgets/brain_why_card.dart';
 import '../theme/app_theme.dart';
 import '../widgets/owl_card.dart';
 
@@ -176,6 +177,8 @@ List<Widget> brainDashboardCards(AppPalette p, Map<String, dynamic> r) {
   final days = bdList(r['recent']);
   final bad = k['hit'] == true || k['kill_switch'] == true;
   return [
+    BrainWhyCard(source: '${r['source'] ?? 'PAPER'}'),
+    const SizedBox(height: 8),
     _fold(p, 'Today detail', 'Gross ${bdSg(t['gross_usdt'])}, fees ${bdSg(t['fees_usdt'])}, net ${bdSg(t['net_usdt'])} USDT', _todayDetail(p, r)),
     _fold(p, 'Brain vs Main bot', '${pc['days'] ?? 0} days: Brain ${bdSg(pc['brain_usdt'])}, Main bot ${bdSg(pc['bot_usdt'])}', _paceDetail(p, r)),
     _fold(p, 'Open and signals', '${o['total'] ?? 0} open, ${d['taken'] ?? 0} taken today', _openDetail(p, r)),
