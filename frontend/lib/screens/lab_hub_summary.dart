@@ -43,15 +43,17 @@ Widget labVerdictSummary(BuildContext context, List<VerdictCard> cards) {
       Text('Study Lab answer', style: TextStyle(fontSize: 12, color: p.textSecondary)),
       const SizedBox(height: 4),
       Text(labSummaryLine(cards), style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: p.textPrimary)),
+      const SizedBox(height: 4),
+      Text('In plain words: ${cards.length} tests ran on past trades. ${edge == 0 ? 'None' : '$edge'} showed a real profit that also held on days it had not seen. $lose lose money after fees. ${n('NO_EDGE')} show no profit either way, ${n('NOT_ENOUGH_DATA')} have too few trades to say. Nothing here places a trade.', style: TextStyle(fontSize: 12.5, color: p.textSecondary)),
       Wrap(children: [
-        chip('EDGE', edge, p.profit),
-        chip('LOSING', lose, p.loss),
-        chip('NO EDGE', n('NO_EDGE'), p.textSecondary),
-        chip('DIAGNOSIS', n('DIAGNOSIS_ONLY'), p.accent),
-        chip('NOT ENOUGH DATA', n('NOT_ENOUGH_DATA'), p.warning),
+        chip('PROVEN PROFIT', edge, p.profit),
+        chip('LOSES MONEY', lose, p.loss),
+        chip('NO PROOF', n('NO_EDGE'), p.textSecondary),
+        chip('INFO ONLY', n('DIAGNOSIS_ONLY'), p.accent),
+        chip('TOO EARLY', n('NOT_ENOUGH_DATA'), p.warning),
       ]),
       const SizedBox(height: 6),
-      Text('A verdict is evidence, not an order. EDGE needs 100+ cases and the same sign in both halves.', style: TextStyle(fontSize: 10.5, color: p.textMuted)),
+      Text('A result is evidence, not an order. PROVEN PROFIT (EDGE) needs 100+ trades and the same result in both halves of the data.', style: TextStyle(fontSize: 10.5, color: p.textMuted)),
     ]),
   );
 }

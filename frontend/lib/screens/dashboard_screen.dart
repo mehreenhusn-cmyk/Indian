@@ -92,7 +92,7 @@ class DashboardScreen extends StatelessWidget {
                       if (isLive) ...[const SizedBox(height: AppSpacing.cardGap), const LiveWalletCard()],
                       const SizedBox(height: AppSpacing.m),
                       _ResultStrip(isLive: isLive, openCount: ((status['open_count'] ?? 0) as num).toInt()),
-                      if (!isLive) Padding(padding: const EdgeInsets.only(top: 6), child: Text('This is the Main bot only. The other bots are listed one by one below.', style: context.type.metadata.copyWith(color: context.palette.textMuted))),
+                      if (!isLive) Padding(padding: const EdgeInsets.only(top: 6), child: Text('This is the main paper book. Sniper trades are inside this number too, because they use the same book. Dual and Brain are separate, listed below.', style: context.type.metadata.copyWith(color: context.palette.textMuted))),
                       // Part 3 order (owner: calendar lower): result > 7 / 30 days > Diagnostics + load > the three books > Recent Activity > Equity > P&L calendar > MORE.
                       const SizedBox(height: AppSpacing.l),
                       // E6: the bots one by one come FIRST (owner: no scrolling to find them), then 7 / 30 days. Diagnostics + load moved into MORE.

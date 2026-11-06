@@ -135,7 +135,7 @@ class _PositionRowState extends State<PositionRow> {
               label: const Text('Trade details'),
             ),
           ),
-          PositionCard(pos: pos),
+          PositionCard(pos: pos, startOpen: true),
         ],
       ]),
     );

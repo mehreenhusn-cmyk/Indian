@@ -40,7 +40,9 @@ const _breakevenTolerancePct = 0.15;
 /// the exchange).
 class PositionCard extends StatefulWidget {
   final Map<String, dynamic> pos;
-  const PositionCard({super.key, required this.pos});
+  /// E7: true = the card starts OPEN (used inside PositionRow, so one tap on the row shows the chart and ladder at once, not 3 taps).
+  final bool startOpen;
+  const PositionCard({super.key, required this.pos, this.startOpen = false});
 
   @override
   State<PositionCard> createState() => _PositionCardState();
@@ -82,6 +84,7 @@ class _PositionCardState extends State<PositionCard> {
   @override
   void initState() {
     super.initState();
+    _expanded = widget.startOpen;
     // Keeps the "Open Xm Ys" label ticking (shared clock, only that text rebuilds).
     _DurationClock.join();
     // The 120-candle chart lives only in the EXPANDED panel, so candles are fetched when the card is
