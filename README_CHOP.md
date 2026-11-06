@@ -135,3 +135,11 @@ Each later Part adds its commands here. The owner runs them once at the end.
 ## 16. Push note (6 Nov 2026)
 - The phone watcher (tools/owl_auto.sh) pushes only a fixed list of files. README_CHOP.md was NOT on it, so this zip carries owl_auto.sh BUILD 48 (one name added to ALLOWED, nothing else changed). The watcher self-updates from the zip, so README_CHOP.md may reach GitHub with this push or with the next zip (every zip carries it).
 - The owner only downloads the zip (owl_C4c.zip is the newest, cumulative C1 to C4b + owl_auto.sh). No Termux command.
+
+## 17. Part E1 (6 Nov 2026): plain English for the b3 screens
+- Owner said the b3 page was hard to read (jargon: "chop gate: chop: EMA flat, 6 EMA crosses in 20", score on every skip, "LOSS AVOIDED -0.45%" looked like a loss).
+- NEW frontend/lib/screens/chop_plain.dart (155): pure text helpers `chopRuleName`, `chopPlainWhy`, `chopHeadline`, `chopShowScore`, `chopVerdict`, `chopExitName`, `chopSummaryLine`. The backend texts (chop_filter.py why, chop_bot.rule_of) are NOT changed; unknown texts fall back to the raw backend text. If a rule or why text is added in the backend, add its words here.
+- chop_screen.dart: decision rows = symbol + side + time, a headline ("Skipped: Sideways market" / "Taken, full size"), one plain sentence, the score only for a taken trade or a score-too-low skip, a verdict pill (GOOD SKIP "it would have lost 0.45%", MISSED "it would have made +1.20%", WON, LOST); a summary line over the list ("Last 50 signals: 0 taken, 50 skipped. Main reason: sideways market"); closed trade exits in words (Stop hit / Target hit).
+- chop_why_tab.dart: Missed Rally alarm and Rule report use the same friendly names (Skipped: ... / Taken: ...).
+- Still to do: E2 (b3 vs current bot card says "b3 took no trade yet" and shows the current bot on the same signals), E3 (Sniper cards in plain words: owl_sniper_opp.py text + sniper_trade_card.dart).
+- NOT COMPILED, NOT RUN.

@@ -10,6 +10,7 @@ import '../widgets/owl_card.dart';
 import '../widgets/owl_row.dart';
 import '../widgets/owl_sentence.dart';
 import '../widgets/owl_status_pill.dart';
+import 'chop_plain.dart';
 
 Map<String, dynamic> _m(dynamic v) => v is Map ? Map<String, dynamic>.from(v) : <String, dynamic>{};
 List<Map<String, dynamic>> _ml(dynamic v) => v is List ? v.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList() : <Map<String, dynamic>>[];
@@ -195,8 +196,8 @@ class _ChopWhyTabState extends State<ChopWhyTab> {
                 Text('would have made ${_usdt(_n(rows[i]['v_net']))}%', style: context.type.primary.copyWith(color: p.warning, fontWeight: FontWeight.w700)),
               ]),
               const SizedBox(height: 3),
-              Text('Blocked by ${_s(rows[i]['rule'])}: ${_s(rows[i]['why'])}', maxLines: 3, overflow: TextOverflow.ellipsis, style: context.type.secondary),
-              Text('${_ist(rows[i]['candle_ts'])}  score ${_n(rows[i]['score']).toStringAsFixed(0)}  exit ${_s(rows[i]['v_exit'])}', style: context.type.caption),
+              Text('Skipped: ${chopRuleName(_s(rows[i]['rule']))}. ${chopPlainWhy(rows[i])}', maxLines: 4, overflow: TextOverflow.ellipsis, style: context.type.secondary),
+              Text('${_ist(rows[i]['candle_ts'])}  score ${_n(rows[i]['score']).toStringAsFixed(0)}  it would have ended: ${chopExitName(_s(rows[i]['v_exit']))}', style: context.type.caption),
             ])),
           ],
         ]),
@@ -243,7 +244,7 @@ class _ChopWhyTabState extends State<ChopWhyTab> {
           _rowBox(Row(children: [
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('${_s(r['action'])}  ${_s(r['rule'])}', maxLines: 1, overflow: TextOverflow.ellipsis, style: context.type.primary.copyWith(fontWeight: FontWeight.w600)),
+                Text('${r['action'] == 'TAKE' ? 'Taken' : 'Skipped'}: ${chopRuleName(_s(r['rule']))}', maxLines: 1, overflow: TextOverflow.ellipsis, style: context.type.primary.copyWith(fontWeight: FontWeight.w600)),
                 Text('${_n(r['judged']).toInt()} judged, ${_n(r['right']).toInt()} right, ${_n(r['wrong']).toInt()} wrong (${_s(r['right_pct'])}% right)', style: context.type.metadata),
               ]),
             ),

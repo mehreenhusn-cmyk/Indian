@@ -11,6 +11,7 @@ import '../widgets/owl_row.dart';
 import '../widgets/owl_sentence.dart';
 import '../widgets/owl_status_pill.dart';
 import '../widgets/owl_text_tabs.dart';
+import 'chop_plain.dart';
 import 'chop_why_tab.dart';
 
 // Part C4a (README_CHOP): shared helpers, top-level so C4b (chop_why_tab.dart) can copy the same style.
@@ -226,6 +227,7 @@ class _ChopScreenState extends State<ChopScreen> {
       OwlSectionLabel('Closed trades', note: closed.isEmpty ? '' : 'last ${closed.length > 15 ? 15 : closed.length}'),
       closed.isEmpty ? _notice(context, 'No closed b3 trades yet.') : OwlListCard(children: [for (final t in closed.take(15)) _closedRow(context, t)]),
       OwlSectionLabel('Decisions', note: dec.isEmpty ? '' : 'last ${dec.length > 30 ? 30 : dec.length}'),
+      if (dec.isNotEmpty) Padding(padding: const EdgeInsets.only(bottom: AppSpacing.s), child: Text(chopSummaryLine(dec, open.length), style: context.type.secondary)),
       dec.isEmpty
           ? _notice(context, 'No decisions yet. Switch b3 ON; it needs about 400 saved 5m candles per coin before it decides.')
           : OwlListCard(children: [for (final d in dec.take(30)) _decisionRow(context, d)]),
@@ -370,7 +372,7 @@ class _ChopScreenState extends State<ChopScreen> {
             Text(_s(t['size']), style: context.type.metadata),
           ]),
           const SizedBox(height: 2),
-          Text('${_s(t['exit_reason'])}  ${_ist(t['exit_ts'])}', style: context.type.metadata),
+          Text('${chopExitName(_s(t['exit_reason']))}  ${_ist(t['exit_ts'])}', style: context.type.metadata),
         ]),
       ),
       Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
@@ -383,34 +385,29 @@ class _ChopScreenState extends State<ChopScreen> {
   Widget _decisionRow(BuildContext context, Map<String, dynamic> d) {
     final p = context.palette;
     final take = d['action'] == 'TAKE';
-    final verdict = d['verdict'];
-    final label = _s(d['v_label']);
-    final vnet = d['v_net'];
-    String vtext = '';
-    if (!take && label == 'RALLY_MISSED') vtext = 'rally missed ${_usdt(_n(vnet))}%';
-    if (!take && label == 'LOSS_AVOIDED') vtext = 'loss avoided ${_usdt(_n(vnet))}%';
-    if (take && vnet != null && (label == 'WIN' || label == 'LOSS')) vtext = '${label == 'WIN' ? 'won' : 'lost'} ${_usdt(_n(vnet))}%';
+    final v = chopVerdict(d);
     return _rowBox(Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Row(children: [
         Text(_s(d['symbol']), style: context.type.primary.copyWith(fontWeight: FontWeight.w700)),
         const SizedBox(width: 6),
         if (_s(d['side']).isNotEmpty) _sidePill(context, _s(d['side'])),
-        const SizedBox(width: 6),
-        OWLStatusPill(text: take ? 'TAKE ${_s(d['size'])}' : 'SKIP', color: take ? p.profit : p.textMuted, showDot: false),
-        if (d['late'] == 1) ...[const SizedBox(width: 4), OWLStatusPill(text: 'LATE', color: p.accent, showDot: false)],
+        if (d['late'] == 1) ...[const SizedBox(width: 4), OWLStatusPill(text: 'LATE ENTRY', color: p.accent, showDot: false)],
         const Spacer(),
-        Text('score ${_n(d['score']).toStringAsFixed(0)}', style: context.type.metadata),
-      ]),
-      const SizedBox(height: 3),
-      Text('${_s(d['rule'])}: ${_s(d['why'])}', maxLines: 3, overflow: TextOverflow.ellipsis, style: context.type.secondary),
-      const SizedBox(height: 3),
-      Row(children: [
         Text(_ist(d['candle_ts']), style: context.type.caption),
-        const Spacer(),
-        if (verdict == 'right') OWLStatusPill(text: 'RIGHT${vtext.isEmpty ? '' : '  $vtext'}', color: p.profit, showDot: false),
-        if (verdict == 'wrong') OWLStatusPill(text: 'WRONG${vtext.isEmpty ? '' : '  $vtext'}', color: p.loss, showDot: false),
-        if (verdict == null && d['v_label'] != 'NA') Text('waiting for verdict', style: context.type.caption),
       ]),
+      const SizedBox(height: 4),
+      Text(chopHeadline(d), style: context.type.primary.copyWith(fontWeight: FontWeight.w700, color: take ? p.profit : p.textSecondary)),
+      const SizedBox(height: 2),
+      Text(chopPlainWhy(d) + (chopShowScore(d) ? '  (score ${_n(d['score']).toStringAsFixed(0)})' : ''), style: context.type.secondary),
+      const SizedBox(height: 4),
+      if (v.pill != null)
+        Row(children: [
+          OWLStatusPill(text: v.pill!, color: v.good ? p.profit : p.loss, showDot: false),
+          const SizedBox(width: 6),
+          Expanded(child: Text(v.detail, style: context.type.metadata)),
+        ])
+      else if (d['v_label'] != 'NA')
+        Text(take ? 'Trade still open or running...' : 'Checking what would have happened...', style: context.type.caption),
     ]));
   }
 
