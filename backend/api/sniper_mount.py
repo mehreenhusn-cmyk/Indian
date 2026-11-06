@@ -24,6 +24,7 @@ Routes (each a GET, read only, behind the app's token check, 404 until v2_api_en
   /api/v2/sniper_opp       (Part 17a) one STAY / TAKE PROFIT / ROTATE / KEEP line per open Sniper paper trade, rough (read only)
   /api/v2/grad_dual        (Part 17c) graduation gate of the Dual Bot / Brain (v2_graduation.py) + last automatic Scalp Lab / Ledger run (read only)
   /api/v2/data_health      (Part 17d) candle switch + runner, what training data is missing per source, autopilot state, last write of each background file (read only)
+  /api/v2/chop*            (Part C3)  the both-indicator PAPER bot b3 on 5m: overview, log, report (read only) + switch ON / OFF + apply learned weights (write only chop_b3.db and chop_b3_weights.json)
   /api/v2/sniper_gates     (R26b)     8 gates PASS / FAIL / WAIT + one reason + the mistakes journal (read only, writes nothing)
 Each route is mounted in its OWN try / except: a route file that cannot be imported (a missing file, a typo) is skipped with one line in the startup log and never stops the backend or the other routes.
 STATUS is a plain dict the backend keeps in memory: {"mounted": [names], "skipped": [{"name", "why"}]}. The Problems page (Part 47) reads it, so a skipped route shows up there with its reason.
@@ -58,6 +59,7 @@ ROUTES = (
     ("api.v2_grad_dual", "dual graduation"),
     ("api.v2_data_health", "data health"),
     ("api.route_timing", "slow calls"),
+    ("api.chop", "chop b3"),
 )
 STATUS = {"version": VERSION, "mounted": [], "skipped": []}
 
