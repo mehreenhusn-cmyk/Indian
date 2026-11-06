@@ -1,5 +1,6 @@
 #!/data/data/com.termux/files/usr/bin/bash
 # OWL auto-deploy v5h (2026-10-31) for Termux.
+# v5m (6 Nov 2026, BUILD 48): GitHub sync now also takes README_CHOP.md (the both-indicator Chop bot b3 notes). Nothing else changed.
 # v5j (2 Nov, Round 30): GitHub sync now also takes README6.md, PLAN_400.md, FILE_INDEX.md, CLAUDE_HANDOFF.md, AI_HANDOFF_BRIEF.md (the OwlSniper docs). Nothing else changed.
 # v5l (5 Nov 2026, BUILD 47): HOLD IS OFF FOR GOOD. Every downloaded Indian-main/ zip is deployed AND pushed to GitHub; an old ~/.owl_hold_push file is removed by the watcher.
 # v5h (31 Oct, Part 43): STALE-ZIP GUARD. Proof from GitHub Actions: owl_Part73 was pushed AFTER owl_Part34 (file time is not a safe order, e.g. after a re-download) and made v2_radar.py,
@@ -79,7 +80,7 @@
 # Settings / trades live outside the code folder, so a new zip never touches them.
 # Needs once:  termux-setup-storage
 
-BUILD=47    # self-update number: a zip replaces this script only if its BUILD is a bigger whole number (v5c=2, v5d=3, v5e=40, v5f=41, v5g=42, v5h=43, v5i=44, v5j=45, v5k=46, v5l=47)
+BUILD=48    # self-update number: a zip replaces this script only if its BUILD is a bigger whole number (v5c=2, v5d=3, v5e=40, v5f=41, v5g=42, v5h=43, v5i=44, v5j=45, v5k=46, v5l=47)
 VERSION="v5k 2026-11-06"
 DL_LIST() {   # every Download folder that exists (no duplicates)
   for d in "$OWL_DL" "$HOME/storage/downloads" "$HOME/storage/shared/Download" "/sdcard/Download" "/storage/emulated/0/Download"; do
@@ -559,7 +560,7 @@ if len(tops) == 1 and list(tops)[0] not in ("backend", "frontend", ".github", "t
     pre = list(tops)[0] + "/"          # one wrapper folder (like Indian-main/) -> strip it
 ALLOWED = {"backend", "frontend", "tools", "test", "scanner", "android", ".github", "README.md", "README2.md", "README4.md", "pubspec.yaml",
            "pubspec.lock", "analysis_options.yaml", "web_update.sh", ".gitignore", ".metadata", "README5.md", "docs",
-           "README6.md", "PLAN_400.md", "FILE_INDEX.md", "CLAUDE_HANDOFF.md", "AI_HANDOFF_BRIEF.md"}
+           "README_CHOP.md", "README6.md", "PLAN_400.md", "FILE_INDEX.md", "CLAUDE_HANDOFF.md", "AI_HANDOFF_BRIEF.md"}
 DOCS_OK = ("docs/mockups/",)
 DOCS_EXT = (".jpg", ".jpeg", ".png", ".md")
 skipped = []

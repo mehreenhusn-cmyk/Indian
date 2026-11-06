@@ -16,6 +16,7 @@ import 'ai_report_screen.dart';
 import 'app_problems_screen.dart';
 import 'ping_tab_screen.dart';
 import 'brain_chat_screen.dart';
+import 'chop_screen.dart';
 import 'data_health_screen.dart';
 import 'data_sources_screen.dart';
 import 'simple_results_screen.dart';
@@ -72,6 +73,7 @@ class MoreScreen extends StatelessWidget {
             // every row has a one-line purpose, row height follows the screen (AppScale). The doubles are gone: "System Health" (= Diagnostics) and "OwlSniper" (= the Sniper tab).
             const OwlSectionLabel('Trading tools'),
             OwlListCard(children: [
+              rT(Icons.filter_alt_outlined, 'Chop Bot (b3)', 'Both-indicator paper bot: today, trades, decisions', () => _open(context, 'Chop Bot (b3)', const ChopScreen())),
               rT(Icons.dashboard_outlined, 'Brain Dashboard', 'What the Brain decided and why', () => _open(context, 'Brain Dashboard', const BrainDashboardScreen())),
               rT(Icons.psychology_outlined, 'Brain', 'The Brain screen: states, books, paper trades', () => go(AppRoute.brain)),
               rT(Icons.smart_toy_rounded, 'Dual Bot', 'The Dual Bot paper book', () => go(AppRoute.dualBot)),
