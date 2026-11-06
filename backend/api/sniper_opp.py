@@ -39,7 +39,7 @@ def build(d, now, pnl=None):
         live = pnl.get(r.get("trade_id")) if r.get("trade_id") is not None else None
         meta[r["id"]] = {"symbol": r.get("symbol"), "side": r.get("side"), "trade_id": r.get("trade_id"), "lane": r.get("lane")}
         if live is None or None in (inv, lev, sp) or sp <= 0 or inv <= 0:
-            notes.append(dict(meta[r["id"]], id=r["id"], decision="KEEP", text="KEEP: no live profit number for this trade right now, so no stay or rotate advice."))
+            notes.append(dict(meta[r["id"]], id=r["id"], decision="KEEP", text="Nothing to do. The live price is not available for this trade right now. The stop or the target will close it."))
             continue
         risk = inv * lev * sp / 100.0
         e = exp.get(r["id"])

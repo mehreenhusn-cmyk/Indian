@@ -114,10 +114,11 @@ class _SniperPositionsState extends State<SniperPositions> {
               Text(pnl == null ? '--' : '${fmtSigned(pnl)} USDT', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: c)),
             ]),
             _txt(p, 'Entry ${fmtPrice(lv.entry)} -> Now ${fmtPrice(ltp)}${roi == null ? '' : '   ${fmtSigned(roi, 1)}% ROI'}', c: p.textPrimary),
-            _txt(p, 'SL ${fmtPrice(lv.sl)}  |  TP ${fmtPrice(lv.tp)}'),
+            _txt(p, 'Stop (loss limit) ${fmtPrice(lv.sl)}  |  Target (profit goal) ${fmtPrice(lv.tp)}'),
+            if (pnl != null) _txt(p, 'Right now ${pnl >= 0 ? 'up' : 'down'} ${pnl.abs().toStringAsFixed(2)} USDT. You do not need to do anything: the stop or the target closes it by itself.', size: 11.5, c: p.textSecondary),
             if (sniperVerify(rec, pos).ok == false) _txt(p, sniperVerify(rec, pos).text, size: 11, c: p.loss, bold: true), // Plan E: only a problem is shown on the card, the full check is on the chart page
             Row(children: [
-              Expanded(child: _txt(p, '${rec['lane'] ?? 'SNIPER'}  |  open ${sniperMins(age)}${_n(rec['max_hold_sec']) == null ? '' : ' of up to ${sniperMins(rec['max_hold_sec'])}'}', size: 11.5, c: p.textMuted)),
+              Expanded(child: _txt(p, '${rec['lane'] ?? 'SNIPER'}  |  open for ${sniperMins(age)}${_n(rec['max_hold_sec']) == null ? '' : ', will be closed after ${sniperMins(rec['max_hold_sec'])} at most'}', size: 11.5, c: p.textMuted)),
               _txt(p, 'Chart >', size: 11.5, c: p.warning, bold: true),
             ]),
             if (opp != null) _txt(p, '${opp['text'] ?? ''}', size: 11, c: _oppColor(p, '${opp['decision']}')),

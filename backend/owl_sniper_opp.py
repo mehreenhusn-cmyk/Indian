@@ -64,31 +64,32 @@ def decide(trade, alts=(), can_open=True, c=None):
     box, age, r = t.get("box"), _num(t.get("age_secs")), _num(t.get("r_net_now"))
     med, p75, er = (_num((box or {}).get(k)) for k in ("median_secs", "p75_secs", "exp_r"))
     if not isinstance(box, dict) or box.get("state") != "OK" or None in (age, r, med, p75, er) or med <= 0:
-        return _out(t, "KEEP", "KEEP: no measured time for this setup, so no stay or rotate advice. The stop and the target decide.")
+        return _out(t, "KEEP", "Nothing to do. There is not enough past data for this kind of trade to give advice. The stop or the target will close it.")
     usd = _num(t.get("risk_usdt"))
     prof = "%+.2f R%s" % (r, (" = %+.2f USDT" % (r * usd)) if usd else "")
+    nowtxt = ("%s %.2f USDT" % ("up" if r * usd >= 0 else "down", abs(r * usd))) if usd else ("%s %.2f of the amount at risk" % ("up" if r >= 0 else "down", abs(r)))
     base = {"profit_r": round(r, 3), "profit_usdt": round(r * usd, 4) if usd else None, "age_secs": age, "median_secs": med, "p75_secs": p75, "exp_r": er}
     if r < c["min_profit_r"]:
-        return _out(t, "KEEP", "KEEP: the profit in hand (%s) is %s %.2f R. Closing now would only pay the costs; the stop and the target decide." % (prof, "a loss or below the" if r <= 0 else "below the", c["min_profit_r"]), **base)
+        return _out(t, "KEEP", "Nothing to do. Right now it is %s. %s The stop or the target will close it." % (nowtxt, "Closing a losing trade early only adds fees." if r <= 0 else "The gain is too small to be worth closing early."), **base)
     if age <= med:
-        return _out(t, "STAY", "STAY: %s after %s, still inside the normal time (half of similar trades end within %s)." % (prof, _dur(age), _dur(med)), **base)
+        return _out(t, "STAY", "Wait. Right now it is %s after %s. That is still a normal time: half of similar trades close within %s." % (nowtxt, _dur(age), _dur(med)), **base)
     slow = "slower than half of similar trades" if age <= p75 else "slower than 3 of 4 similar trades"
     gain = er - r
     if gain <= 0:
-        return _out(t, "TAKE_PROFIT", "TAKE PROFIT: %s after %s, %s. Similar trades end at about %+.2f R, so waiting is not expected to add anything." % (prof, _dur(age), slow, er), stay_gain_r=round(gain, 3), **base)
+        return _out(t, "TAKE_PROFIT", "Good time to take the profit. Right now it is %s after %s, %s. Similar trades finish with about the same gain, so waiting is not expected to add more." % (nowtxt, _dur(age), slow), stay_gain_r=round(gain, 3), **base)
     left = max(p75 - age, MIN_LEFT_SECS) if age < p75 else None
     stay_rate = (gain / (left / 3600.0)) if left else 0.0
     best = next((a for a in sorted((a for a in alts or () if isinstance(a, dict) and _num(a.get("r_per_hour")) and a["r_per_hour"] > 0), key=lambda a: -a["r_per_hour"]) if a.get("id") != t.get("id")), None)
-    head = "%s after %s, %s. It may add about %+.2f R more (rough), %s." % (prof, _dur(age), slow, gain, ("that is about %+.2f R per hour" % stay_rate) if left else "but it is past the 75% time, so no rate is counted")
+    head = "Right now it is %s after %s, %s. It may still gain a little more (a rough guess)." % (nowtxt, _dur(age), slow)
     extra = dict(base, stay_gain_r=round(gain, 3), stay_rate_r_per_hour=round(stay_rate, 3))
     if best is None:
-        return _out(t, "STAY", "STAY: " + head + " No better PROVEN setup is available right now.", **extra)
+        return _out(t, "STAY", "Wait. " + head + " No better trade is available right now.", **extra)
     if not can_open:
-        return _out(t, "STAY", "STAY: " + head + " A better setup exists (%s) but no slot or margin would be free." % best.get("id"), alt=best, **extra)
+        return _out(t, "STAY", "Wait. " + head + " A better trade exists (%s) but there is no free slot." % best.get("id"), alt=best, **extra)
     if best["r_per_hour"] >= c["rotate_factor"] * stay_rate and best["r_per_hour"] > 0:
-        txt = "ROTATE: %s %s offers about %+.2f R per hour (%s)." % (head, best.get("id"), best["r_per_hour"], best.get("label", "?").replace("_", " ").lower())
+        txt = "Consider switching. %s Another trade (%s) looks clearly better right now." % (head, best.get("id"))
         return _out(t, "ROTATE", txt, alt=best, **extra)
-    return _out(t, "STAY", "STAY: " + head + " The best alternative (%s, %+.2f R per hour) is not %.0f times better." % (best.get("id"), best["r_per_hour"], c["rotate_factor"]), alt=best, **extra)
+    return _out(t, "STAY", "Wait. " + head + " The other trade (%s) is not clearly better, so no switch." % best.get("id"), alt=best, **extra)
 
 
 def report(trades, alts=(), can_open=True, c=None):
@@ -102,7 +103,7 @@ def report(trades, alts=(), can_open=True, c=None):
             pool = [a for a in pool if a.get("id") != r["alt"].get("id")]
         rows.append(r)
     n = {k: sum(1 for x in rows if x["decision"] == k) for k in ("KEEP", "STAY", "TAKE_PROFIT", "ROTATE")}
-    text = "No open trade." if not rows else "%d open: %d rotate, %d take profit, %d stay, %d keep (no advice)." % (len(rows), n["ROTATE"], n["TAKE_PROFIT"], n["STAY"], n["KEEP"])
+    text = "No open trade." if not rows else "%d open: %d to switch, %d ready to take profit, %d waiting, %d with nothing to do." % (len(rows), n["ROTATE"], n["TAKE_PROFIT"], n["STAY"], n["KEEP"])
     return {"version": VERSION, "state": "OK" if rows else "NO_TRADES", "counts": n, "rows": rows, "text": text, "lines": [text] + [x["text"] for x in rows if x["decision"] in ("ROTATE", "TAKE_PROFIT")], "paper_only": True, "report_only": True}
 
 

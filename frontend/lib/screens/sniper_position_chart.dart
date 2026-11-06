@@ -187,7 +187,7 @@ class _SniperPositionChartState extends State<SniperPositionChart> {
               _line(p, 'Entry ${fmtPrice(lv.entry)}  |  TP ${fmtPrice(lv.tp)} (${away(lv.tp)} $awayWord)  |  SL ${fmtPrice(lv.sl)} (${away(lv.sl)} $awayWord)', c: p.textPrimary),
               if (_n(rec['expected_usdt']) != null)
                 _line(p, 'Expected ${fmtSigned(_n(rec['expected_usdt'])!)} USDT at the target, risk -${(_n(rec['risk_usdt']) ?? 0).toStringAsFixed(2)} USDT (after fees)  |  ${rec['rr'] ?? '--'}R'),
-              _line(p, '${closed ? 'Held' : 'Open'} ${sniperMins(age)}${_n(rec['max_hold_sec']) == null ? '' : ' of up to ${sniperMins(rec['max_hold_sec'])}'}${_n(rec['typical_hold_sec']) == null ? '' : '  |  typical ${sniperMins(rec['typical_hold_sec'])}'}'),
+              _line(p, '${closed ? 'Held for' : 'Open for'} ${sniperMins(age)}${_n(rec['max_hold_sec']) == null ? '' : ', closes after ${sniperMins(rec['max_hold_sec'])} at most'}${_n(rec['typical_hold_sec']) == null ? '' : '  |  typical ${sniperMins(rec['typical_hold_sec'])}'}'),
               if (!closed && sniperLearnLine(rec['learn_time']).isNotEmpty) _line(p, sniperLearnLine(rec['learn_time']), size: 11.5),
               _line(p, chk.text, c: chkColor, size: 11.5, bold: chk.ok == false),
               if (closed && _n(rec['vs_expected']) != null) _line(p, 'Result vs the expected ${fmtSigned(_n(rec['expected_usdt']) ?? 0)} USDT: ${fmtSigned(_n(rec['vs_expected'])!)} USDT'),

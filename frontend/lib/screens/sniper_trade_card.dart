@@ -48,9 +48,9 @@ class SniperTradeRecord extends StatelessWidget {
         if (basis.isNotEmpty) _line(p, 'Why: $basis'),
         _line(p, 'Entry ${_px(t['entry'] ?? t['entry_price'])}  |  TP ${_px(t['take_profit'])}  |  SL ${_px(t['stop_loss'])}', c: p.textPrimary),
         if (_n(t['expected_usdt']) != null)
-          _line(p, 'Expected ${_usd(t['expected_usdt'])} if the target is hit, risk -${_n(t['risk_usdt'])!.toStringAsFixed(2)} USDT (after fees)  |  ${t['rr'] ?? '-'}R'),
+          _line(p, 'If the target is hit: ${_usd(t['expected_usdt'])}. If the stop is hit: -${_n(t['risk_usdt'])!.toStringAsFixed(2)} USDT (fees included)'),
         if (_n(t['max_hold_sec']) != null)
-          _line(p, 'Hold: up to ${_mins(t['max_hold_sec'])}${_n(t['typical_hold_sec']) != null ? ', typical ${_mins(t['typical_hold_sec'])}' : ''}${open ? '  |  open ${_mins(t['age_sec'])}' : ''}', size: 11.5),
+          _line(p, 'Kept open for ${_mins(t['max_hold_sec'])} at most${_n(t['typical_hold_sec']) != null ? ' (usually ${_mins(t['typical_hold_sec'])})' : ''}${open ? '  |  open for ${_mins(t['age_sec'])}' : ''}', size: 11.5),
         if (open && sniperLearnLine(t['learn_time']).isNotEmpty) _line(p, sniperLearnLine(t['learn_time']), size: 11.5),
         if (!open) ...[
           _line(p, 'Result ${_usd(pnl)}  |  held ${_mins(t['held_sec'])}  |  exit ${t['exit_reason'] ?? '-'}', c: c, bold: true),

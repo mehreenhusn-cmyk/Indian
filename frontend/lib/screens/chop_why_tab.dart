@@ -314,21 +314,32 @@ class _ChopWhyTabState extends State<ChopWhyTab> {
             Text('$trades trades, $win won', style: context.type.metadata),
           ]),
         );
+    final bTradesToday = _n(t['closed']).toInt(), bTradesAll = _n(all['closed']).toInt();
     final bp = _n(t['profit_usdt']), cp = _n(day['pnl']);
     final ba = _n(all['profit_usdt']), cm = _n(_cur['month_pnl']);
     return OWLCard(
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        if (bTradesAll == 0)
+          Padding(
+            padding: const EdgeInsets.only(bottom: AppSpacing.s),
+            child: Text('b3 has not taken any trade yet, so there is nothing to compare. A 0.00 for b3 is not a loss, it only means no trade was taken. The current bot numbers below are for reference.', style: context.type.primary),
+          )
+        else if (bTradesToday == 0)
+          Padding(
+            padding: const EdgeInsets.only(bottom: AppSpacing.s),
+            child: Text('b3 took no trade today. 0.00 means no trade, not a loss.', style: context.type.caption),
+          ),
         Text('Today', style: context.type.label),
         const SizedBox(height: 4),
         Row(children: [
-          col('b3 (5m)', '${_usdt(bp)} USDT', '${_n(t['closed']).toInt()}', wp(_n(t['wins']), _n(t['closed'])), bp >= 0 ? p.profit : p.loss),
+          col('b3 (5m)', bTradesToday == 0 ? 'No trade' : '${_usdt(bp)} USDT', '$bTradesToday', wp(_n(t['wins']), _n(t['closed'])), bTradesToday == 0 ? p.textMuted : (bp >= 0 ? p.profit : p.loss)),
           col('Current bot', '${_usdt(cp)} USDT', '${_n(day['trades']).toInt()}', wp(_n(day['wins']), _n(day['trades'])), cp >= 0 ? p.profit : p.loss),
         ]),
         Divider(height: AppSpacing.l, color: p.border),
         Text('All b3 data vs this month of the current bot', style: context.type.label),
         const SizedBox(height: 4),
         Row(children: [
-          col('b3 (all)', '${_usdt(ba)} USDT', '${_n(all['closed']).toInt()}', wp(_n(all['wins']), _n(all['closed'])), ba >= 0 ? p.profit : p.loss),
+          col('b3 (all)', bTradesAll == 0 ? 'No trade' : '${_usdt(ba)} USDT', '$bTradesAll', wp(_n(all['wins']), _n(all['closed'])), bTradesAll == 0 ? p.textMuted : (ba >= 0 ? p.profit : p.loss)),
           col('Current (${_s(_cur['month'])})', '${_usdt(cm)} USDT', '${_n(_cur['month_trades']).toInt()}', wp(_n(_cur['month_wins']), _n(_cur['month_trades'])), cm >= 0 ? p.profit : p.loss),
         ]),
         const SizedBox(height: AppSpacing.s),
