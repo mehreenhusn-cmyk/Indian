@@ -26,7 +26,7 @@ class SniperGates extends StatelessWidget {
   Widget _lane(AppPalette p, String name, Map<String, dynamic> x) => Padding(
         padding: const EdgeInsets.only(top: 6),
         child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          SizedBox(width: 92, child: Align(alignment: Alignment.centerLeft, child: _chip('$name: ${x['state'] ?? '?'}', _c(p, x['state'])))),
+          SizedBox(width: 150, child: Align(alignment: Alignment.centerLeft, child: _chip('$name: ${x['state'] ?? '?'}', _c(p, x['state'])))),
           const SizedBox(width: 8),
           Expanded(child: Text('${x['text'] ?? ''}', style: TextStyle(fontSize: 11.5, color: p.textMuted))),
         ]),
@@ -40,8 +40,8 @@ class SniperGates extends StatelessWidget {
     return OWLCard(
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text('${x['reason'] ?? ''}', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: p.textPrimary)),
-        _lane(p, 'EXPLORE', _m(x['explore'])),
-        _lane(p, 'REAL', _m(x['real'])),
+        _lane(p, 'PRACTICE', _m(x['explore'])),
+        _lane(p, 'REAL MONEY', _m(x['real'])),
         const SizedBox(height: 8),
         for (final e in _l(x['gates']))
           Padding(
@@ -50,7 +50,7 @@ class SniperGates extends StatelessWidget {
               SizedBox(width: 44, child: Text('${_m(e)['state']}', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: _c(p, _m(e)['state'])))),
               Expanded(
                 child: Text.rich(TextSpan(children: [
-                  TextSpan(text: '${_m(e)['name']}${_m(e)['lane'] == 'REAL' ? ' (REAL only)' : ''}: ', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: p.textPrimary)),
+                  TextSpan(text: '${_m(e)['name']}${_m(e)['lane'] == 'REAL' ? ' (real money only)' : ''}: ', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: p.textPrimary)),
                   TextSpan(text: '${_m(e)['text']}', style: TextStyle(fontSize: 12, color: p.textSecondary)),
                 ])),
               ),

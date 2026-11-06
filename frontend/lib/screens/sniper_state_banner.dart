@@ -45,14 +45,14 @@ class _SniperStateBannerState extends State<SniperStateBanner> {
       case 'LEARNED':
         return 'LEARNED';
       case 'EXPLORE':
-        return 'EXPLORE';
+        return 'PRACTISING';
       case 'off':
         return 'OFF';
     }
-    return 'NOT LEARNED YET';
+    return 'STILL LEARNING';
   }
 
-  Color _color(AppPalette p, String word) => word == 'LEARNED' ? p.profit : (word == 'EXPLORE' ? p.warning : p.textMuted);
+  Color _color(AppPalette p, String word) => word == 'LEARNED' ? p.profit : (word == 'PRACTISING' ? p.warning : p.textMuted);
 
   String _learnLine(Map<String, dynamic>? l) {
     if (l == null) return 'LEARN paper trades: loading...';

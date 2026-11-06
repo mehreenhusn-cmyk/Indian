@@ -238,8 +238,16 @@ class _ChopScreenState extends State<ChopScreen> {
     final p = context.palette;
     final t = _m(_main['today']);
     final profit = _n(t['profit_usdt']);
+    final dTaken = _n(t['taken']).toInt(), dSkipped = _n(t['skipped']).toInt();
+    final dSaved = _n(t['loss_avoided_usdt']).abs(), dMissed = _n(t['rally_missed_usdt']).abs();
+    final dNet = dSaved - dMissed;
+    final dayLine = dTaken + dSkipped == 0
+        ? 'Today: no signals judged yet.'
+        : 'Today: ${dTaken + dSkipped} signals, $dTaken taken, $dSkipped skipped. The filter avoided ${dSaved.toStringAsFixed(2)} USDT of losses and missed ${dMissed.toStringAsFixed(2)} USDT of gains, so it ${dNet >= 0 ? 'helped by' : 'cost'} ${dNet.abs().toStringAsFixed(2)} USDT (skipped trades are not real).';
     return OWLCard(
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(dayLine, style: context.type.primary.copyWith(fontWeight: FontWeight.w700)),
+        const SizedBox(height: AppSpacing.s),
         Text('5m  -  b3 live', style: context.type.label.copyWith(fontWeight: FontWeight.w700)),
         const SizedBox(height: 4),
         Row(crossAxisAlignment: CrossAxisAlignment.end, children: [

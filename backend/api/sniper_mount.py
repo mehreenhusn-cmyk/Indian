@@ -56,6 +56,7 @@ ROUTES = (
     ("api.sniper_watch", "sniper watch"),
     ("api.sniper_eva", "sniper eva"),
     ("api.sniper_opp", "sniper opp"),
+    ("api.sniper_winners", "sniper winners"),
     ("api.v2_grad_dual", "dual graduation"),
     ("api.v2_data_health", "data health"),
     ("api.route_timing", "slow calls"),

@@ -13,6 +13,7 @@ import '../widgets/owl_row.dart';
 import '../widgets/owl_sub_page.dart';
 import '../widgets/skeleton_retry.dart';
 import '../widgets/sniper_eva_card.dart';
+import '../widgets/sniper_winners_card.dart';
 import '../widgets/sniper_positions.dart';
 import '../widgets/signal_card.dart';
 import '../widgets/sniper_watch_card.dart';
@@ -199,6 +200,7 @@ class _SniperScreenState extends State<SniperScreen> {
         OwlFold(title: 'MARKET CONTEXT', headline: _ctx == null ? 'BTC move, trend and session the Sniper learns from' : 'BTC ${_ctx!['ctx'] is Map ? (_ctx!['ctx'] as Map)['btc_3'] ?? '--' : '--'}% (3 candles), ${_ctx!['session'] ?? '--'}', bare: true, children: [SniperCtxCard(g: _ctx)]),
         SniperRiskBoxFold(r: r), // R17: Risk Box moved up, shows only when an order card exists
         SniperLearnSection(refresh: _tick),
+        OwlFold(title: 'WHAT SNIPER LEARNED AND READY FOR REAL MONEY?', headline: 'Winners vs losers, and the readiness checklist in plain words', bare: true, children: const [SniperWinnersCard()]),
         OwlFold(title: 'MISTAKES LEARNED', headline: 'Every closed trade tagged, losing combos rest', bare: true, children: [SniperMistakes(g: _gates)]),
         // R17a: the older panels sit behind ONE fold so the page answers first (R17b adds the four learning cards and moves the Risk Box up).
         OwlFold(title: 'MORE SNIPER PANELS', headline: 'Terminal insight, vs Main Bot, capital, equity, floor, report', bare: true, children: [

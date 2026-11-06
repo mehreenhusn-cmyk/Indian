@@ -38,6 +38,9 @@ extension AppProviderSniper on AppProvider {
   /// Part 17c: GET /api/v2/sniper_bridge = {state, by_source {dual, brain, main: {records, rows, labels, examples}}, learn {...}, lines[]}: how much the Sniper learns from the trades of the other bots. Read only (the backend caches it 10 minutes).
   Future<Map<String, dynamic>> fetchSniperBridge() => _sniperGet('/api/v2/sniper_bridge');
 
+  /// E4: GET /api/v2/sniper_winners = {state OK / TOO_EARLY / busy / off / error, n, wins, losses, win_rate, mean_r, features[{name, text, verdict, gap_sd}], lines[]}: what the winning past trades had in common. Read only.
+  Future<Map<String, dynamic>> fetchSniperWinners() => _sniperGet('/api/v2/sniper_winners');
+
   /// Part 17c: Dual Bot side data, read only: GET /api/layers/pa and /api/layers/vol = {running, report, last, error}, GET /api/dual_universe = {days[], saved_days, cap, err}, GET /api/archive_check = {state match / differ / error / none, json_closed, db_closed, missing, text}.
   Future<Map<String, dynamic>> fetchLayerPa() => _sniperGet('/api/layers/pa');
   Future<Map<String, dynamic>> fetchLayerVol() => _sniperGet('/api/layers/vol');
