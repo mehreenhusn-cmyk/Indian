@@ -143,3 +143,13 @@ Each later Part adds its commands here. The owner runs them once at the end.
 - chop_why_tab.dart: Missed Rally alarm and Rule report use the same friendly names (Skipped: ... / Taken: ...).
 - Still to do: E2 (b3 vs current bot card says "b3 took no trade yet" and shows the current bot on the same signals), E3 (Sniper cards in plain words: owl_sniper_opp.py text + sniper_trade_card.dart).
 - NOT COMPILED, NOT RUN.
+
+## 18. Parts E2, E3, E4 and the day line (6 Nov 2026)
+- E2 (chop_why_tab.dart): the "b3 vs current bot" card says "b3 has not taken any trade yet" and shows "No trade" instead of +0.00. NOT done: "current bot on the same signals" (needs signal-by-signal matching, not in the backend); the card shows the current bot's normal numbers and points to the replay for a fair test.
+- E3 (Sniper, plain English): backend/owl_sniper_opp.py and api/sniper_opp.py now write plain lines ("Nothing to do. Right now it is down 0.92 USDT...", "Wait...", "Good time to take the profit...", "Consider switching..."), no R / KEEP / STAY / ROTATE words. Decision codes in the JSON are unchanged. This file WAS run with sample numbers. Cards: widgets/sniper_positions.dart, screens/sniper_trade_card.dart, screens/sniper_position_chart.dart (Stop / Target words, "open for X, closed after Y at most", USDT instead of R).
+- E4 NEW backend/owl_sniper_winners.py + api/sniper_winners.py (GET /api/v2/sniper_winners, read only, cached 10 min, mounted by api/sniper_mount.py): how the WINNING past trades (Dual / Brain / main bot, learn-bridge examples) differed from the losers on the 4 numbers the win-chance model reads. Needs 30+ trades and 8+ of each side, else state TOO_EARLY. Run with made-up examples and with an empty data folder only; NOT run on real trades yet.
+- E4 NEW widgets/sniper_winners_card.dart, placed in sniper_screen.dart as the fold "WHAT SNIPER LEARNED AND READY FOR REAL MONEY?": the 7-check graduation list (existing /api/v2/sniper_grad) as OK / NO / WAIT plus the winners-vs-losers lines. It never says "safe" and never promises profit. Provider: fetchSniperWinners in app_provider_sniper.dart.
+- Day line: chop_screen.dart shows "Today: N signals, T taken, S skipped. The filter avoided A USDT of losses and missed B USDT of gains..." above the day card.
+- Words: sniper_state_banner.dart EXPLORE -> PRACTISING, NOT LEARNED YET -> STILL LEARNING; sniper_gates.dart lanes PRACTICE / REAL MONEY.
+- After pushing: restart the backend once (bash ~/owl_auto.sh restart) so the new route and the new Sniper texts load.
+- NOT COMPILED (Dart), so the first compile is the APK build.
