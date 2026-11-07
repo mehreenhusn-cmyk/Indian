@@ -917,3 +917,62 @@ Proposed by Claude from reading sections 3, 4, 4a, 4b, 4c, 5, 7, 8, 9. Old histo
 | U1-U5 archive, universe, desk, reports (DONE) | related but different | stay DONE | n/a | the 7-day universe stays and is shown as RETROSPECTIVE PROXY (V2-S7) |
 | Section 7 decisions on hold (Dual explore mode, no Dual SQLite, gold / multi-asset / live last) | not phases | stay as decisions | n/a | V2 collectors use their own new DB |
 Status: documentation mapping for navigation. The 24-Part master roadmap at the top controls order and progress; historical rows remain references and do not create extra work. This mapping does not authorize changes to live-trading behaviour.
+
+
+---
+## VPS move - commands (added 7 Nov 2026, Cloud On Fire VPS 2 vCPU / 2 GB / 30 GB)
+Plain words: the VPS runs the backend 24/7. Data lives in `/home/owl/owl_data` on the VPS (never inside the code folder).
+Syncthing copies `owl_data/backups` to the phone by itself (backend refreshes it every 30 min). GitHub push -> VPS picks it up in about 2 min (timer `owl-update.timer`).
+Files: `deploy/setup_vps.sh`, `deploy/auto_update.sh`, `deploy/owl-backend.service`, `deploy/owl-ping.service`, `deploy/owl-update.service`, `deploy/owl-update.timer`; code change: `backend/api_server.py` (`_sync_snapshot`).
+
+RULE: only ONE backend may run at a time. If the phone and the VPS both run, both can place orders. Stop the phone first (Step 2).
+
+### Step 0 - at checkout
+Choose Ubuntu 24.04 (or 22.04). Client Area shows the VPS IP and root password.
+
+### Step 1 - unzip the deploy pack on the phone (Termux, one block)
+```
+pkg install -y openssh rsync unzip
+cd ~ && rm -rf vps_pack && mkdir vps_pack && cd vps_pack
+unzip ~/storage/downloads/owl_VPS_deploy.zip
+git -C ~/Indian-cleanup remote get-url origin
+git -C ~/Indian-cleanup branch --show-current
+```
+Write down the repo URL and the branch name (usually main).
+
+### Step 2 - stop the phone backend, copy data to the VPS (Termux, one block)
+Change `VPS_IP` first. If the repo is private use the `git@github.com:USER/REPO.git` form of the URL.
+```
+VPS_IP=PUT_VPS_IP_HERE
+pkill -f owl_auto.sh; pkill -f start_forever.sh; pkill -f start.py; pkill -f ping_worker.py
+rm -f ~/.termux/boot/owl_boot.sh
+scp -r ~/vps_pack/Indian-main/deploy root@$VPS_IP:/root/
+ssh root@$VPS_IP "bash /root/deploy/setup_vps.sh REPO_URL BRANCH"
+```
+(replace REPO_URL and BRANCH; for a private repo the script prints a key, add it in GitHub > repo > Settings > Deploy keys, then press Enter.)
+Then copy the data (the phone folder is `~/storage/shared/owl_data` if it exists, else `~/owl_data`):
+```
+D=~/storage/shared/owl_data; [ -d "$D" ] || D=~/owl_data
+rsync -avz "$D"/ root@$VPS_IP:/home/owl/owl_data/
+ssh root@$VPS_IP "chown -R owl:owl /home/owl/owl_data && systemctl restart owl-backend owl-ping && tailscale up"
+```
+`tailscale up` prints a link. Open it and log in. Keep the old phone data folder as it is (extra backup).
+
+### Step 3 - private link phone <-> VPS
+Install the Tailscale app on the phone, log in with the same account. On the VPS run `tailscale ip -4` (looks like 100.x.x.x). The app backend address becomes `http://100.x.x.x:8000`. Port 8000 is closed to the internet on purpose (firewall).
+
+### Step 4 - Syncthing (once)
+Phone: install Syncthing-Fork. In Termux: `ssh -L 8384:localhost:8384 root@$VPS_IP` and leave it open, then open `http://localhost:8384` in the phone browser. Set a GUI password. Add the phone as a remote device (phone Syncthing shows its Device ID). Add folder path `/home/owl/owl_data/backups`, type Send Only, share with the phone. On the phone accept it, type Receive Only, path `/storage/emulated/0/owl_data_vps`.
+
+### Check
+```
+ssh root@$VPS_IP "systemctl status owl-backend --no-pager | head -5; tail -5 /home/owl/owl_update.log"
+```
+Updates: just push to GitHub as usual. Log: `/home/owl/owl_update.log`. A python compile error is rolled back by itself.
+
+### RULE for any Claude: guide the owner through the VPS setup, step by step (owner ask, 7 Nov 2026)
+- The owner is not technical. Explain in very simple English, short plain words, like WhatsApp.
+- Give ONE step at a time. Wait for his reply or screenshot before the next step. Ask only ONE question at a time.
+- Order: (1) VPS login details from the provider, (2) first login from Termux, (3) run `deploy/setup_vps.sh`, (4) copy the CURRENT phone data to the VPS FIRST (stop the phone backend before this), (5) check the VPS backend is running with that data, (6) Tailscale link and the app address, (7) Syncthing so the phone gets the daily data back.
+- Every Termux command goes in ONE easy-to-copy block. When he sends a screenshot of an error, read it, find the cause, fix it, and tell him in short.
+- Never run the phone backend and the VPS backend at the same time (double orders).

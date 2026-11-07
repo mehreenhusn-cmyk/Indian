@@ -170,6 +170,45 @@ def _daily_backup():
     except Exception as e:
         print(f"[backup] skipped: {e}")
 
+def _sync_snapshot():
+    """VPS -> phone sync helper. Every 30 min, put a SAFE copy of the history into
+    DATA_DIR/backups/latest/ (json files copied, sqlite DBs copied with the sqlite backup
+    API so they are never half-written). Syncthing sends ONLY the backups/ folder to the phone.
+    Best-effort - never raises, never touches live files."""
+    import shutil, sqlite3, threading, time as _t
+
+    def _once():
+        dest = os.path.join(DATA_DIR, "backups", "latest")
+        tmp = dest + ".tmp"
+        shutil.rmtree(tmp, ignore_errors=True)
+        os.makedirs(tmp, exist_ok=True)
+        for name in os.listdir(DATA_DIR):
+            src = os.path.join(DATA_DIR, name)
+            try:
+                if not os.path.isfile(src) or os.path.getsize(src) > 300 * 1024 * 1024:
+                    continue
+                if name.endswith((".json", ".jsonl", ".txt")):
+                    shutil.copy2(src, os.path.join(tmp, name))
+                elif name.endswith(".db"):
+                    a = sqlite3.connect("file:" + src + "?mode=ro", uri=True, timeout=5)
+                    b = sqlite3.connect(os.path.join(tmp, name))
+                    a.backup(b); b.close(); a.close()
+            except Exception as e:
+                print(f"[sync-snapshot] skipped {name}: {e}")
+        shutil.rmtree(dest, ignore_errors=True)
+        os.replace(tmp, dest)
+
+    def _loop():
+        while True:
+            try:
+                _once()
+            except Exception as e:
+                print(f"[sync-snapshot] failed: {e}")
+            _t.sleep(1800)
+
+    threading.Thread(target=_loop, daemon=True).start()
+
+
 # PRODUCTION HARDENING - Bearer token guard for sensitive trading routes.
 # Deliberately OFF by default: if API_TOKEN is not set in the environment,
 # every request behaves exactly like before this round (no header
@@ -364,6 +403,7 @@ async def on_startup():
         ai_chat_store.init(os.path.join(DATA_DIR, "ai_chat_history.json"))
         status.init_alerts(os.path.join(DATA_DIR, "alerts.json"))
         _daily_backup()
+        _sync_snapshot()
         status.update(**trade_store.get_today_stats())
         threading.Thread(target=_run_bot, daemon=True).start()
         _bot_thread_started = True
