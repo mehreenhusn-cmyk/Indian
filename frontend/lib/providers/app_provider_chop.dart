@@ -19,6 +19,9 @@ extension AppProviderChop on AppProvider {
   /// C4b: the current bot (b1) day table, read only: GET /api/calendar?bot=b1 = {month, today, month_pnl, month_trades, month_wins, days[{date, pnl, trades, wins}]}. Day = 5:30 AM IST boundary. paper_trader is not touched.
   Future<Map<String, dynamic>> fetchChopCurrentBot() => _sniperGet('/api/calendar?bot=b1');
 
+  /// E11: GET /api/v2/chop_same = {state OK / NO_B3 / error, today{}, all{}, lines[]}: what the Current bot (b1) did on the same coin + side within 15 minutes of a b3 signal. Read only.
+  Future<Map<String, dynamic>> fetchChopSame() => _sniperGet('/api/v2/chop_same');
+
   /// POST /api/v2/chop_switch {"on": bool}: turns b3 ON or OFF (default OFF). Answers {on} or {error / state}. Never throws.
   Future<Map<String, dynamic>> postChopSwitch(bool on) => _chopPost('/api/v2/chop_switch', {'on': on});
 

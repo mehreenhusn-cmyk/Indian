@@ -8,6 +8,8 @@ import '../providers/app_provider.dart';
 import '../theme/app_theme.dart';
 import 'special_master.dart';
 import 'special_master_settings.dart';
+import 'zema_settings.dart';
+import 'overlay_settings.dart';
 
 const _accent = AppColors.accent;
 const _green = AppColors.profit;
@@ -357,6 +359,24 @@ class CandleChart extends StatelessWidget {
 /// `rightBlank` = number of EMPTY slots between the newest candle and the
 /// right edge. Positive = empty "future" space on the right (the chart draws
 /// future time labels there); negative = scrolled back into history.
+/// Draws [path] solid (dash 0), dashed (1) or dotted (2) - TradingView line styles.
+void _drawStyledPath(Canvas canvas, Path path, Paint paint, int dash) {
+  if (dash == 0) {
+    canvas.drawPath(path, paint);
+    return;
+  }
+  final on = dash == 1 ? 7.0 : 1.2;
+  final off = dash == 1 ? 5.0 : 4.5;
+  for (final m in path.computeMetrics()) {
+    double d = 0;
+    while (d < m.length) {
+      final e = math.min(d + on, m.length);
+      canvas.drawPath(m.extractPath(d, e), paint);
+      d += on + off;
+    }
+  }
+}
+
 class _ChartPainter extends CustomPainter {
   final _Series s;
   final bool ema30;
@@ -400,6 +420,13 @@ class _ChartPainter extends CustomPainter {
   /// backend/recovered_bot/strategy.py's _rolling_mean_std() exactly so
   /// these lines match the actual TP1-4 levels the strategy computes.
   final bool sdBands;
+
+  /// ZEMA: the Z-Score candle's EMA 30/50 converted to price (see zema_settings.dart). null = not drawn.
+  final ZemaLines? zema;
+  final ZemaSettings? zemaSt;
+
+  /// Gear settings of EMA 30/50 and the SD Bands (colour, width, dash, which levels). null = defaults.
+  final OverlaySettings? ovSt;
 
   /// Dual Bot charts: hide the small SD band labels on the left edge (the lines stay).
   final bool hideSdLabels;
@@ -446,6 +473,9 @@ class _ChartPainter extends CustomPainter {
     this.priceShiftFrac,
     this.barTint,
     this.sdBands = false,
+    this.zema,
+    this.zemaSt,
+    this.ovSt,
     this.hideSdLabels = false,
     this.light = false,
   });
@@ -499,6 +529,17 @@ class _ChartPainter extends CustomPainter {
       if (ema50) {
         lo = math.min(lo, s.e50[i]);
         hi = math.max(hi, s.e50[i]);
+      }
+      final zl0 = zema, zs0 = zemaSt;
+      if (zl0 != null && zs0 != null && zs0.on && i < zl0.fast.length) {
+        if (zs0.showFast && !zl0.fast[i].isNaN) {
+          lo = math.min(lo, zl0.fast[i]);
+          hi = math.max(hi, zl0.fast[i]);
+        }
+        if (zs0.showSlow && !zl0.slow[i].isNaN) {
+          lo = math.min(lo, zl0.slow[i]);
+          hi = math.max(hi, zl0.slow[i]);
+        }
       }
     }
     // Fold the nearer SD bands (zero/±1) into the auto-fit price range so
@@ -573,7 +614,7 @@ class _ChartPainter extends CustomPainter {
     // ---- Cloud fills (drawn BEHIND candles/lines, TradingView style) ----
     // SD clouds: +-1..+-2 light green, +-2..+-3 light yellow. They follow the
     // SD Bands toggle, so no separate switch is needed.
-    if (sdBands) {
+    if (sdBands && (ovSt?.b('sdClouds') ?? true)) {
       void sdBand(double Function(SdLevels) a, double Function(SdLevels) b, Color color) {
         final upper = <Offset>[];
         final lower = <Offset>[];
@@ -689,7 +730,7 @@ class _ChartPainter extends CustomPainter {
     }
 
     // EMA lines (display only).
-    void drawEma(List<double> v, Color color) {
+    void drawEma(List<double> v, Color color, double lw, int dash) {
       final path = Path();
       var started = false;
       for (int i = first; i <= last; i++) {
@@ -705,19 +746,75 @@ class _ChartPainter extends CustomPainter {
         }
       }
       if (started) {
-        canvas.drawPath(
+        _drawStyledPath(
+          canvas,
           path,
           Paint()
             ..color = color
             ..style = PaintingStyle.stroke
-            ..strokeWidth = 1.0
+            ..strokeWidth = lw
             ..strokeJoin = StrokeJoin.round,
+          dash,
         );
       }
     }
 
-    if (ema30) drawEma(s.e30, _e30);
-    if (ema50) drawEma(s.e50, _e50);
+    final ov = ovSt;
+    if (ema30) drawEma(s.e30, ov?.colorOf('c30') ?? _e30, (ov?.i('w30') ?? 1).toDouble(), ov?.i('d30') ?? 0);
+    if (ema50) drawEma(s.e50, ov?.colorOf('c50') ?? _e50, (ov?.i('w50') ?? 1).toDouble(), ov?.i('d50') ?? 0);
+
+    // ZEMA - Z-Score EMA 30/50 on the main chart (display only). NaN = warm-up, skipped.
+    final zl = zema, zs = zemaSt;
+    if (zl != null && zs != null && zs.on && zl.fast.length == n && zl.slow.length == n) {
+      if (zs.cloud && zs.showFast && zs.showSlow) {
+        for (int i = math.max(first, 1); i <= last; i++) {
+          final f0 = zl.fast[i - 1], f1 = zl.fast[i], s0 = zl.slow[i - 1], s1 = zl.slow[i];
+          if (f0.isNaN || f1.isNaN || s0.isNaN || s1.isNaN || gaps.contains(i)) continue;
+          final bull = f1 >= s1;
+          final base = Color(bull ? zs.cloudBullColor : zs.cloudBearColor);
+          final quad = Path()
+            ..moveTo(xOf(i - 1), yOf(f0))
+            ..lineTo(xOf(i), yOf(f1))
+            ..lineTo(xOf(i), yOf(s1))
+            ..lineTo(xOf(i - 1), yOf(s0))
+            ..close();
+          canvas.drawPath(quad, Paint()..color = base.withOpacity((100 - zs.cloudTransp) / 100.0));
+        }
+      }
+      void zLine(List<double> v, int argb, double lw, int dash) {
+        final path = Path();
+        var started = false;
+        for (int i = first; i <= last; i++) {
+          if (i < 0 || i >= n || v[i].isNaN) {
+            started = false;
+            continue;
+          }
+          if (gaps.contains(i)) started = false;
+          final x = xOf(i);
+          final y = yOf(v[i]);
+          if (!started) {
+            path.moveTo(x, y);
+            started = true;
+          } else {
+            path.lineTo(x, y);
+          }
+        }
+        _drawStyledPath(
+          canvas,
+          path,
+          Paint()
+            ..color = Color(argb)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = lw
+            ..strokeJoin = StrokeJoin.round
+            ..strokeCap = StrokeCap.round,
+          dash,
+        );
+      }
+
+      if (zs.showSlow) zLine(zl.slow, zs.slowColor, zs.slowWidth, zs.slowDash);
+      if (zs.showFast) zLine(zl.fast, zs.fastColor, zs.width, zs.dash);
+    }
 
     // Standard Deviation Bands overlay - mean/zero + ±1/2/3 SD, exactly the
     // levels strategy.py's ABCDStrategy picks TP1-4 from. Drawn faint and
@@ -754,7 +851,7 @@ class _ChartPainter extends CustomPainter {
           Paint()
             ..color = _sdLevelColor(label, light).withOpacity((opacity + 0.25).clamp(0.0, 1.0))
             ..style = PaintingStyle.stroke
-            ..strokeWidth = compact ? 0.8 : 1.0
+            ..strokeWidth = compact ? 0.8 : (ovSt?.i('sdW') ?? 1).toDouble()
             ..strokeJoin = StrokeJoin.round,
         );
         final ly = labelY;
@@ -763,13 +860,14 @@ class _ChartPainter extends CustomPainter {
         }
       }
 
-      sdCurve((d) => d.p3, '+3SD', 0.28);
-      sdCurve((d) => d.p2, '+2SD', 0.42);
-      sdCurve((d) => d.p1, '+1SD', 0.62);
-      sdCurve((d) => d.mean, 'SD 0', 0.85);
-      sdCurve((d) => d.n1, '-1SD', 0.62);
-      sdCurve((d) => d.n2, '-2SD', 0.42);
-      sdCurve((d) => d.n3, '-3SD', 0.28);
+      bool lv(String k) => ovSt?.b(k) ?? true;
+      if (lv('sd3')) sdCurve((d) => d.p3, '+3SD', 0.28);
+      if (lv('sd2')) sdCurve((d) => d.p2, '+2SD', 0.42);
+      if (lv('sd1')) sdCurve((d) => d.p1, '+1SD', 0.62);
+      if (lv('sdMean')) sdCurve((d) => d.mean, 'SD 0', 0.85);
+      if (lv('sd1')) sdCurve((d) => d.n1, '-1SD', 0.62);
+      if (lv('sd2')) sdCurve((d) => d.n2, '-2SD', 0.42);
+      if (lv('sd3')) sdCurve((d) => d.n3, '-3SD', 0.28);
     }
 
     // Lines START at the signal candle (the candle whose close produced the
@@ -946,7 +1044,7 @@ class _ChartPainter extends CustomPainter {
     // ---- outside the clip: labels, axis, crosshair, legend ----
     // SD Bands left-edge labels - small, unobtrusive, no background chip
     // (kept visually secondary to the Entry/SL/TP chips on the right).
-    if (!compact && !hideSdLabels) {
+    if (!compact && !hideSdLabels && (ovSt?.b('sdLabels') ?? true)) {
       for (final e in sdRefsDrawn) {
         final tp = _text(e.value, AppTypography.metadata.copyWith(color: _sdLevelColor(e.value, light).withOpacity(0.95), fontSize: 8, fontWeight: FontWeight.w600));
         tp.paint(canvas, Offset(6, e.key - tp.height / 2));
@@ -1255,6 +1353,9 @@ class _ChartPainter extends CustomPainter {
         old.priceZoom != priceZoom ||
         old.priceShiftFrac != priceShiftFrac ||
         old.sdBands != sdBands ||
+        !identical(old.zema, zema) ||
+        !identical(old.zemaSt, zemaSt) ||
+        !identical(old.ovSt, ovSt) ||
         old.hideSdLabels != hideSdLabels ||
         !identical(old.barTint, barTint) ||
         old.liveClose != liveClose ||
@@ -1403,6 +1504,13 @@ class _CandleChartSheetContentState extends State<_CandleChartSheetContent>
   bool _ema30 = true;
   bool _ema50 = true;
   bool _sdBands = true;
+  OverlaySettings _ov = OverlaySettings.defaults(); // gear settings of EMA 30/50 + SD Bands (saved on the phone)
+
+  // ZEMA (Z-Score EMA 30/50 on the main chart) - eye chip + gear settings, saved on the phone.
+  ZemaSettings _zs = ZemaSettings.defaults();
+  ZemaLines? _zl;
+  _Series? _zlFor;
+  String? _zlKey;
 
   // Special Master panes (TSI on top, Z-score below) under the candles - same x-axis as the chart.
   bool _sm = true;
@@ -1410,7 +1518,8 @@ class _CandleChartSheetContentState extends State<_CandleChartSheetContent>
   _Series? _smFor;
   String? _smForKey;
   SpecialMasterData? _smData;
-  static const _smPaneH = 150.0;
+  double _smPaneH = 150.0; // height of the Special Master panes - drag the grip above them (saved)
+  static const _paneHKey = 'sm_pane_h_v1';
 
   // ---- Y-axis (price) zoom/pan - dual-axis gesture support alongside the
   // existing X-axis (time) slot/rightBlank pair above. A two-finger pinch
@@ -1506,6 +1615,9 @@ class _CandleChartSheetContentState extends State<_CandleChartSheetContent>
     _provider.addListener(_onProviderTick);
     if (widget.initialTf != null && _tfChoices.contains(widget.initialTf)) _tfOverride = widget.initialTf;
     _loadSmSettings();
+    _loadZemaSettings();
+    _loadOverlaySettings();
+    _loadPaneH();
     _loadInitial();
     _countdownTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted) setState(() {});
@@ -1752,10 +1864,23 @@ class _CandleChartSheetContentState extends State<_CandleChartSheetContent>
                 _emaChip('EMA 30', _chartLight(context) ? _ema30Light : _ema30Color, _ema30, (v) => setState(() => _ema30 = v)),
                 const SizedBox(width: 8),
                 _emaChip('EMA 50', _chartLight(context) ? _ema50Light : _ema50Color, _ema50, (v) => setState(() => _ema50 = v)),
+                const SizedBox(width: 6),
+                _gearChip(_openEmaSettings),
                 const SizedBox(width: 8),
                 _emaChip('SD Bands', _sdColor, _sdBands, (v) => setState(() => _sdBands = v)),
+                const SizedBox(width: 6),
+                _gearChip(_openSdSettings),
+                const SizedBox(width: 8),
+                _emaChip('ZEMA', Color(_zs.fastColor), _zs.on, (v) {
+                  setState(() => _zs = _zs.copyWith(on: v));
+                  _saveZemaSettings();
+                }),
+                const SizedBox(width: 6),
+                _gearChip(_openZemaSettings),
                 const SizedBox(width: 8),
                 _emaChip('Special Master', const Color(0xFFB388FF), _sm, (v) => setState(() => _sm = v)),
+                const SizedBox(width: 6),
+                _gearChip(_openSmSettings),
                 const SizedBox(width: 8),
                 _emaChip('Measure', const Color(0xFF2962FF), _measureOn, (v) {
                   setState(() {
@@ -1764,30 +1889,121 @@ class _CandleChartSheetContentState extends State<_CandleChartSheetContent>
                     _mB = null;
                     _cross = null;
                   });
-                }),
+                }, eye: false),
                 if (_sm) ...[
                   const SizedBox(width: 8),
                   _emaChip('TSI ${_smSet.speed.name}', const Color(0xFF80CBC4), true, (_) {
                     setState(() => _smSet = _smSet.set('fast', !_smSet.fast));
                     _saveSmSettings();
-                  }),
-                  const SizedBox(width: 8),
-                  ActionChip(
-                    avatar: const Icon(Icons.tune, size: 16),
-                    label: const Text('SM settings'),
-                    onPressed: _openSmSettings,
-                  ),
+                  }, eye: false),
                 ],
               ],
             ),
             ),
             const SizedBox(height: 4),
             Expanded(child: _chartArea()),
-            if (_sm && !_loading && _series != null && _series!.n > 60) _smPanes(),
+            if (_smShown && !_loading && _series != null && _series!.n > 60) _smPanes(),
           ],
         ),
       ),
     );
+  }
+
+  Future<void> _loadPaneH() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final h = prefs.getDouble(_paneHKey);
+      if (h != null && mounted) setState(() => _smPaneH = h.clamp(90.0, 420.0).toDouble());
+    } catch (_) {}
+  }
+
+  Future<void> _savePaneH() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setDouble(_paneHKey, _smPaneH);
+    } catch (_) {}
+  }
+
+  Future<void> _loadOverlaySettings() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final loaded = OverlaySettings.fromJson(prefs.getString(OverlaySettings.prefsKey));
+      if (mounted) setState(() => _ov = loaded);
+    } catch (_) {/* defaults stay */}
+  }
+
+  Future<void> _saveOverlaySettings() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(OverlaySettings.prefsKey, _ov.toJson());
+    } catch (_) {}
+  }
+
+  Future<void> _openEmaSettings() async {
+    final light = _chartLight(context);
+    final res = await showEmaSettingsSheet(
+      context,
+      _ov.set('on30', _ema30).set('on50', _ema50),
+      def30: (light ? _ema30Light : _ema30Color).value,
+      def50: (light ? _ema50Light : _ema50Color).value,
+    );
+    if (res != null && mounted) {
+      setState(() {
+        _ov = res;
+        _ema30 = res.b('on30');
+        _ema50 = res.b('on50');
+      });
+      _saveOverlaySettings();
+    }
+  }
+
+  Future<void> _openSdSettings() async {
+    final res = await showSdSettingsSheet(context, _ov.set('sdOn', _sdBands));
+    if (res != null && mounted) {
+      setState(() {
+        _ov = res;
+        _sdBands = res.b('sdOn');
+      });
+      _saveOverlaySettings();
+    }
+  }
+
+  /// Special Master is drawn only when its chip is on AND it is not hidden on this timeframe (Visibility tab).
+  bool get _smShown => _sm && _smSet.visibleOn(_tf);
+
+  Future<void> _loadZemaSettings() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final loaded = ZemaSettings.fromJson(prefs.getString(ZemaSettings.prefsKey));
+      if (mounted) setState(() => _zs = loaded);
+    } catch (_) {/* defaults stay */}
+  }
+
+  Future<void> _saveZemaSettings() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(ZemaSettings.prefsKey, _zs.toJson());
+    } catch (_) {}
+  }
+
+  Future<void> _openZemaSettings() async {
+    final res = await showZemaSettingsSheet(context, _zs);
+    if (res != null && mounted) {
+      setState(() => _zs = res);
+      _saveZemaSettings();
+    }
+  }
+
+  /// (Re)compute the ZEMA lines only when the candles or a number-changing ZEMA setting changed.
+  ZemaLines? _ensureZema(_Series sr) {
+    if (!_zs.on) return null;
+    final key = _zs.computeKey;
+    if (!identical(_zlFor, sr) || _zlKey != key || _zl == null) {
+      _zl = ZemaLines.compute(sr.c, _zs);
+      _zlFor = sr;
+      _zlKey = key;
+    }
+    return _zl;
   }
 
   Future<void> _loadSmSettings() async {
@@ -1818,7 +2034,7 @@ class _CandleChartSheetContentState extends State<_CandleChartSheetContent>
 
   /// (Re)compute the indicator numbers only when the candles or a number-changing setting changed.
   SpecialMasterData? _ensureSm(_Series sr) {
-    if (!_sm || sr.n < 60) return null;
+    if (!_smShown || sr.n < 60) return null;
     final key = _smSet.computeKey;
     if (!identical(_smFor, sr) || _smForKey != key || _smData == null) {
       _smData = SpecialMasterData.compute(sr.c, st: _smSet, o: sr.o, h: sr.h, l: sr.l);
@@ -1831,6 +2047,34 @@ class _CandleChartSheetContentState extends State<_CandleChartSheetContent>
   /// TSI + Z-score panes (Special Master). Shares _slot / _rightBlank / _plotW with the candle chart so
   /// candles and both indicators line up; a horizontal drag here pans the same view.
   Widget _smPanes() {
+    if (!_smSet.tsiOn && !_smSet.zOn) return const SizedBox.shrink();
+    final light = _chartLight(context);
+    // Grip: drag up = taller panes, drag down = shorter (like dragging the divider in TradingView).
+    return Column(mainAxisSize: MainAxisSize.min, children: [
+      GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onVerticalDragUpdate: (d) => setState(() => _smPaneH = (_smPaneH - d.delta.dy).clamp(90.0, 420.0).toDouble()),
+        onVerticalDragEnd: (_) => _savePaneH(),
+        child: SizedBox(
+          height: 18,
+          width: double.infinity,
+          child: Center(
+            child: Container(
+              width: 44,
+              height: 4,
+              decoration: BoxDecoration(
+                color: light ? const Color(0xFFB8BDC7) : Colors.white24,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+        ),
+      ),
+      _smPanesBody(),
+    ]);
+  }
+
+  Widget _smPanesBody() {
     final sr = _series!;
     final data = _ensureSm(sr);
     if (data == null || (!_smSet.tsiOn && !_smSet.zOn)) return const SizedBox.shrink();
@@ -1980,8 +2224,26 @@ class _CandleChartSheetContentState extends State<_CandleChartSheetContent>
     );
   }
 
-  Widget _emaChip(String label, Color color, bool selected, ValueChanged<bool> onChanged) {
+  /// Small gear next to an indicator chip (TradingView style) - opens that indicator's settings sheet.
+  Widget _gearChip(VoidCallback onTap) {
+    final light = _chartLight(context);
+    return InkWell(
+      borderRadius: BorderRadius.circular(20),
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(6),
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(color: light ? const Color(0xFFD5DAE3) : Colors.white12),
+        ),
+        child: Icon(Icons.settings, size: 16, color: light ? const Color(0xFF10141C) : Colors.white70),
+      ),
+    );
+  }
+
+  Widget _emaChip(String label, Color color, bool selected, ValueChanged<bool> onChanged, {bool eye = true}) {
     return FilterChip(
+      avatar: eye ? Icon(selected ? Icons.visibility : Icons.visibility_off, size: 16, color: selected ? color : Colors.grey) : null,
       label: Text(label),
       selected: selected,
       onSelected: onChanged,
@@ -2120,8 +2382,8 @@ class _CandleChartSheetContentState extends State<_CandleChartSheetContent>
                   size: Size(cons.maxWidth, cons.maxHeight),
                   painter: _ChartPainter(
                     sr,
-                    ema30: _ema30,
-                    ema50: _ema50,
+                    ema30: _ema30 && _ov.emaVisible(_tf),
+                    ema50: _ema50 && _ov.emaVisible(_tf),
                     entry: widget.entry,
                     sl: widget.sl,
                     tp: widget.tpLevels,
@@ -2142,9 +2404,12 @@ class _CandleChartSheetContentState extends State<_CandleChartSheetContent>
                     timeframeMs: _timeframeMs(),
                     priceZoom: _priceZoom,
                     priceShiftFrac: _priceShiftFrac,
-                    sdBands: _sdBands,
+                    sdBands: _sdBands && _ov.sdVisible(_tf),
+                    zema: _zs.visibleOn(_tf) ? _ensureZema(sr) : null,
+                    zemaSt: _zs,
+                    ovSt: _ov,
                     hideSdLabels: widget.dualStyle,
-                    barTint: (_sm && _smSet.tsiOn && _smSet.b('curlBars')) ? _ensureSm(sr)?.barTint : null,
+                    barTint: (_smShown && _smSet.tsiOn && _smSet.b('curlBars')) ? _ensureSm(sr)?.barTint : null,
                     light: _chartLight(context),
                   ),
                 ),

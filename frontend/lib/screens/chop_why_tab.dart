@@ -43,6 +43,7 @@ class _ChopWhyTabState extends State<ChopWhyTab> {
   Map<String, dynamic> _rep = Map<String, dynamic>.from(_cacheRep);
   Map<String, dynamic> _cur = Map<String, dynamic>.from(_cacheCur);
   Map<String, dynamic> _lab = {};
+  Map<String, dynamic> _same = {};
   String _iv = '5m', _per = 'month';
   bool _polling = false, _applying = false, _starting = false, _loaded = false;
   String _err = '';
@@ -73,6 +74,7 @@ class _ChopWhyTabState extends State<ChopWhyTab> {
       final doLab = lab || running || _tick % 6 == 0;
       final rep = await pr.fetchChopReport();
       final cur = _tick % 3 == 0 ? await pr.fetchChopCurrentBot() : null;
+      final same = _tick % 3 == 0 ? await pr.fetchChopSame() : null;
       final lb = doLab ? await pr.fetchChopLab(_iv, _per) : null;
       _tick++;
       if (!mounted) return;
@@ -90,6 +92,7 @@ class _ChopWhyTabState extends State<ChopWhyTab> {
           _cacheCur = cur;
         }
         if (lb != null && !_bad(lb)) _lab = lb;
+        if (same != null && !_bad(same)) _same = same;
       });
     } finally {
       _polling = false;
@@ -344,6 +347,13 @@ class _ChopWhyTabState extends State<ChopWhyTab> {
         ]),
         const SizedBox(height: AppSpacing.s),
         Text('Not the same clock or size: b3 day = UTC day, 10 / 5 USDT trades; the current bot day starts 5:30 AM IST. For a fair test use the replay below.', style: context.type.caption),
+        if (_same['lines'] is List && (_same['lines'] as List).isNotEmpty) ...[
+          const SizedBox(height: AppSpacing.s),
+          Text('On the same signals', style: context.type.label.copyWith(fontWeight: FontWeight.w800)),
+          for (final l in (_same['lines'] as List)) Padding(padding: const EdgeInsets.only(top: 4), child: Text('$l', style: context.type.secondary)),
+          const SizedBox(height: 4),
+          Text('Matched by coin + side + opened within 15 minutes of the b3 signal. Only closed Current-bot trades. Sniper trades are left out.', style: context.type.caption),
+        ],
       ]),
     );
   }

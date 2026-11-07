@@ -32,6 +32,19 @@ class _MarketScreenState extends State<MarketScreen> {
     super.dispose();
   }
 
+  /// Typed text -> Binance futures symbol ("sol" -> SOLUSDT, "BTCUSDT" stays). Lets the owner open the chart
+  /// of ANY coin, even one that is not on the watchlist (the backend serves candles for any symbol).
+  String _symbolFromQuery(String q) {
+    final s = q.toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]'), '');
+    if (s.isEmpty) return '';
+    return s.endsWith('USDT') ? s : '${s}USDT';
+  }
+
+  void _openTyped() {
+    final sym = _symbolFromQuery(_query);
+    if (sym.isNotEmpty) showCandleChartSheet(context, sym);
+  }
+
   @override
   Widget build(BuildContext context) {
     final p = context.palette;
@@ -89,6 +102,7 @@ class _MarketScreenState extends State<MarketScreen> {
                   controller: _search,
                   onChanged: (v) => setState(() => _query = v.trim().toUpperCase()),
                   textInputAction: TextInputAction.search,
+                  onSubmitted: (_) => _openTyped(),
                   textCapitalization: TextCapitalization.characters,
                   style: const TextStyle(fontSize: 13),
                   decoration: InputDecoration(
@@ -116,6 +130,32 @@ class _MarketScreenState extends State<MarketScreen> {
                 ),
               ),
             ),
+            // Any coin (even if it is not on the watchlist): open its full chart straight from the typed text.
+            if (_symbolFromQuery(_query).isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(AppSpacing.l, 0, AppSpacing.l, AppSpacing.s),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusPill),
+                  onTap: _openTyped,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                    decoration: BoxDecoration(
+                      color: p.accent.withOpacity(0.10),
+                      borderRadius: BorderRadius.circular(AppSpacing.radiusPill),
+                      border: Border.all(color: p.accent.withOpacity(0.5)),
+                    ),
+                    child: Row(children: [
+                      Icon(Icons.candlestick_chart_rounded, size: 18, color: p.accent),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text('Open chart: ${_symbolFromQuery(_query)}',
+                            style: TextStyle(color: p.accent, fontSize: 13, fontWeight: FontWeight.w700)),
+                      ),
+                      Icon(Icons.chevron_right_rounded, size: 18, color: p.accent),
+                    ]),
+                  ),
+                ),
+              ),
             // Table header
             Container(
               padding: const EdgeInsets.symmetric(horizontal: AppSpacing.l, vertical: AppSpacing.s),

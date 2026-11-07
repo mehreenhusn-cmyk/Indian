@@ -56,6 +56,8 @@ class SmSettings {
     'cEmaBull': 0xFF4CAF50, 'cEmaBear': 0xFFFF5252, 'emaCloudTransp': 70.0,
     'zSig': false, 'zSigLbl': true, 'zSigRule': 'Candle Close crosses Slow EMA',
     'cZBuy': 0xFF4CAF50, 'cZSell': 0xFFFF5252,
+    // Visibility tab: timeframes where Special Master is hidden (comma list like "1m,3m"), empty = show on all
+    'hidTf': '',
   };
 
   final Map<String, dynamic> _m;
@@ -94,6 +96,9 @@ class SmSettings {
   int i(String k) => (_m[k] as num).round();
   String s(String k) => _m[k] as String;
   Color c(String k) => Color((_m[k] as num).toInt());
+
+  Set<String> get hiddenTfs => s('hidTf').split(',').where((x) => x.isNotEmpty).toSet();
+  bool visibleOn(String tf) => !hiddenTfs.contains(tf);
 
   bool get tsiOn => b('tsiOn');
   bool get zOn => b('zOn');

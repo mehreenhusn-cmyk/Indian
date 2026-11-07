@@ -32,8 +32,8 @@ class AppSpacing {
 
   // P-A / P-B: the floating bottom bar (one place to tune it)
   static const double radiusBar = 26.0; // bar corners
-  static const double barHeight = 62.0; // the bar itself
-  static const double barLift = 16.0; // how far the lit bubble rises above the bar
+  static const double barHeight = 58.0; // the bar itself (E9: a bit lower)
+  static const double barLift = 0.0; // E9: no lifted bubble any more (it cost 16 px of space on every screen)
   static const double barBubble = 46.0; // lit bubble size
   static const double barSide = 12.0; // gap left and right of the bar
 }

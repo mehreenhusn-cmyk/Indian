@@ -34,6 +34,7 @@ import 'services/websocket_service.dart';
 import 'services/foreground_service.dart';
 import 'theme/app_font.dart';
 import 'theme/app_theme.dart';
+import 'theme/owl_look_mode.dart';
 import 'theme/app_scale.dart';
 
 void main() async {
@@ -71,6 +72,7 @@ void main() async {
   final lastBootFailed = prefs.getBool(bootKey) ?? false;
   MarketMode.load(prefs); // reopen in the market you used last
   AppFont.load(prefs); // Part 11b: new (IBM Plex) or old (Inter) font, saved choice
+  OwlLookMode.load(prefs); // E11: Classic / Glass / Gradient card look, saved choice
   if (lastBootFailed) MarketMode.mode.value = 'crypto';
   await prefs.setBool(bootKey, true);
   Timer(const Duration(seconds: 6), () => prefs.setBool(bootKey, false));

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
+import '../theme/owl_look_mode.dart';
 import 'owl_pressable.dart';
 
 /// Standard OWL surface: solid card, thin border, optional profit/loss glow.
@@ -33,10 +34,12 @@ class OWLCard extends StatelessWidget {
         ? p.positive
         : (hasNegativeGlow ? p.negative : null);
 
-    return Container(
+    return ValueListenableBuilder<int>(
+      valueListenable: OwlLookMode.mode,
+      builder: (context, lookMode, _) => Container(
       width: width,
       padding: padding ?? const EdgeInsets.all(AppSpacing.l),
-      decoration: BoxDecoration(
+      decoration: OwlLookMode.decoration(p, lookMode, radius: AppSpacing.radiusLarge, edge: edge, glow: glow) ?? BoxDecoration(
         color: p.surfaceElevated,
         gradient: dark
             ? LinearGradient(
@@ -67,7 +70,7 @@ class OWLCard extends StatelessWidget {
                   ]),
       ),
       child: child,
-    );
+    ));
   }
 }
 

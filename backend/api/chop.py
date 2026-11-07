@@ -19,11 +19,13 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import chop_bot as B
 import chop_filter_lab as LAB
 import chop_ledger as L
+import chop_same as SAME
 from api.sniper import api_enabled
 
 VERSION = "api/chop 1 (Part C3)"
 PATH_MAIN, PATH_LOG, PATH_REPORT = "/api/v2/chop", "/api/v2/chop_log", "/api/v2/chop_report"
 PATH_SWITCH, PATH_APPLY, PATH_LAB = "/api/v2/chop_switch", "/api/v2/chop_apply", "/api/v2/chop_lab"
+PATH_SAME = "/api/v2/chop_same"   # E11: what the Current bot did on the same signals as b3 (read only)
 LOOP_SEC = 30
 _state = {"started": False, "last": None, "turns": 0}
 _lock = threading.Lock()
@@ -107,6 +109,11 @@ def _loop(data_dir):
             pass
 
 
+def same_answer(data_dir):
+    """E11: b3 decisions vs the Current bot's closed trades, matched by coin + side + time window. Read only."""
+    return _run(data_dir, lambda db: SAME.build(db, data_dir))
+
+
 def start_loop(data_dir):
     with _lock:
         if _state["started"]:
@@ -124,6 +131,11 @@ def make_router(require_api_token, data_dir):
     @r.get(PATH_MAIN, dependencies=[Depends(require_api_token)])
     async def v2_chop():
         st, body = await asyncio.to_thread(main_answer, data_dir)
+        return JSONResponse(body, status_code=st)
+
+    @r.get(PATH_SAME, dependencies=[Depends(require_api_token)])
+    async def v2_chop_same():
+        st, body = await asyncio.to_thread(same_answer, data_dir)
         return JSONResponse(body, status_code=st)
 
     @r.get(PATH_LOG, dependencies=[Depends(require_api_token)])

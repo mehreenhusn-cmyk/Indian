@@ -5,13 +5,14 @@ import '../theme/app_theme.dart';
 import '../utils/format.dart';
 import 'ai_advice_badge.dart';
 import 'owl_pressable.dart';
+import '../theme/owl_look_mode.dart';
 import '../screens/position_detail_screen.dart';
 import 'position_card.dart';
 
 /// Part 4: the row now has 5 fixed lines (see the comment in build). R22b: price line fits (no '...'), % in one pill. Round 15: ONE compact row per open position (UI rules 1, 2, 7). Profit is the big number, the percent sits under it.
 ///   left   coin, LONG / SHORT chip, "NO STOP" warning when the exchange has no resting stop, then "open 12 min" and entry -> now
 ///   right  profit in USDT (big, green / red), ROI percent under it
-/// Tap the row = it opens the FULL old PositionCard right under it (chart, entry / SL / TP ladder, move SL, set TP, close) plus the AI advice badge.
+/// Tap the row = it opens the FULL old PositionCard right under it (chart, entry / SL / TP ladder, move SL, set TP, close) plus the AI advice badge. E9: the row is now a 3-line card and the opened card has no second header.
 /// So nothing was removed: every action is still one tap away, the list is just short enough to read all trades at once.
 /// Like PositionCard, the row re-reads ITS OWN position from AppProvider.positions by id and rebuilds only when that position changes.
 /// A missing number prints "--", never "None".
@@ -70,88 +71,88 @@ class _PositionRowState extends State<PositionRow> {
     final canBar = sl != null && tp1 != null && ltp != null && tp1 != sl;
     double frac(double v) => ((v - sl!) / (tp1! - sl)).clamp(0.0, 1.0).toDouble();
 
+    final src = (pos['source'] ?? '').toString();
+    final srcText = src.isEmpty ? '' : (src == 'sniper_learn' ? 'SNIPER LEARN' : src.toUpperCase());
+
+    // E9: ONE compact card of 3 lines + the thin bar (was 5 lines): coin / side / P&L, then age + source + ROI + Details, then entry -> now.
+    // Size / margin / liq moved into the opened part. "Trade details" sits INSIDE the card. Tap = the whole trade opens (chart, ladder, close) in one go.
     final row = OWLPressable(
       pressedScale: 0.99,
       onTap: () => setState(() => _open = !_open),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.cardPad, vertical: AppSpacing.m),
-        decoration: BoxDecoration(
+      child: ValueListenableBuilder<int>(
+        valueListenable: OwlLookMode.mode,
+        builder: (context, lookMode, _) => Container(
+        padding: const EdgeInsets.fromLTRB(AppSpacing.m, AppSpacing.s, AppSpacing.cardPad, AppSpacing.s),
+        decoration: OwlLookMode.decoration(p, lookMode, radius: AppSpacing.radiusMedium, edge: unprotected ? p.loss : null) ?? BoxDecoration(
           color: p.surface,
           borderRadius: BorderRadius.circular(AppSpacing.radiusMedium),
           border: Border.all(color: unprotected ? p.loss : p.border),
         ),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          Row(children: [
-            Flexible(child: Text(symbol, maxLines: 1, overflow: TextOverflow.ellipsis, style: context.type.primary.copyWith(fontWeight: FontWeight.w800))),
-            const SizedBox(width: 6),
-            _chip(context, isLong ? 'LONG' : 'SHORT', sideColor),
-            if (unprotected) ...[const SizedBox(width: 6), _chip(context, 'NO STOP', p.loss)],
-            const Spacer(),
-            Text(pnl == null ? '--' : fmtSigned(pnl), maxLines: 1, style: context.type.number.copyWith(fontSize: 20, fontWeight: FontWeight.w800, color: pnlColor)),
-            Icon(_open ? Icons.expand_less_rounded : Icons.expand_more_rounded, size: 20, color: p.textMuted),
-          ]),
-          const SizedBox(height: 3),
-          Row(children: [
-            Expanded(child: Text(age.isEmpty ? '' : age, maxLines: 1, overflow: TextOverflow.ellipsis, style: context.type.metadata)),
-            // ONE solid pill for the change % (UI spec: pill = change %, never decoration)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1.5),
-              decoration: BoxDecoration(color: pnlColor.withOpacity(0.12), borderRadius: BorderRadius.circular(AppSpacing.radiusPill)),
-              child: Text(roi == null ? '--' : '${fmtSigned(roi, 1)}%', style: context.type.metadata.copyWith(fontSize: 12, fontWeight: FontWeight.w700, color: pnlColor)),
+        child: IntrinsicHeight(
+          child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            Container(width: 3, margin: const EdgeInsets.only(right: 10), decoration: BoxDecoration(color: pnlColor.withOpacity(0.9), borderRadius: BorderRadius.circular(2))),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                Row(children: [
+                  Flexible(child: Text(symbol, maxLines: 1, overflow: TextOverflow.ellipsis, style: context.type.primary.copyWith(fontWeight: FontWeight.w800))),
+                  const SizedBox(width: 6),
+                  _chip(context, isLong ? 'LONG' : 'SHORT', sideColor),
+                  if (unprotected) ...[const SizedBox(width: 6), _chip(context, 'NO STOP', p.loss)],
+                  const Spacer(),
+                  Text(pnl == null ? '--' : fmtSigned(pnl), maxLines: 1, style: context.type.number.copyWith(fontSize: 19, fontWeight: FontWeight.w800, color: pnlColor)),
+                  Icon(_open ? Icons.expand_less_rounded : Icons.expand_more_rounded, size: 20, color: p.textMuted),
+                ]),
+                const SizedBox(height: 3),
+                Row(children: [
+                  Expanded(child: Text(age.isEmpty ? srcText : (srcText.isEmpty ? age : '$age  |  $srcText'), maxLines: 1, overflow: TextOverflow.ellipsis, style: context.type.metadata)),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1.5),
+                    decoration: BoxDecoration(color: pnlColor.withOpacity(0.12), borderRadius: BorderRadius.circular(AppSpacing.radiusPill)),
+                    child: Text(roi == null ? '--' : '${fmtSigned(roi, 1)}%', style: context.type.metadata.copyWith(fontSize: 12, fontWeight: FontWeight.w700, color: pnlColor)),
+                  ),
+                  const SizedBox(width: 6),
+                  InkWell(
+                    borderRadius: BorderRadius.circular(8),
+                    onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => PositionDetailScreen(pos: pos))),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        Icon(Icons.insights_rounded, size: 15, color: p.accent),
+                        const SizedBox(width: 3),
+                        Text('Details', style: context.type.metadata.copyWith(color: p.accent, fontWeight: FontWeight.w700)),
+                      ]),
+                    ),
+                  ),
+                ]),
+                const SizedBox(height: 3),
+                Text('Entry ${entry == null ? '--' : fmtPrice(entry)}  >  Now ${ltp == null ? '--' : fmtPrice(ltp)}', maxLines: 1, overflow: TextOverflow.ellipsis, style: context.type.metadata),
+                if (canBar) ...[
+                  const SizedBox(height: 6),
+                  _bar(p, frac(ltp!), entry == null ? null : frac(entry), pnlColor),
+                ],
+              ]),
             ),
-            const SizedBox(width: 20),
           ]),
-          if (canBar) ...[
-            const SizedBox(height: 8),
-            _bar(p, frac(ltp!), entry == null ? null : frac(entry), pnlColor),
-            const SizedBox(height: 3),
-            Row(children: [
-              Text('SL ${fmtPrice(sl)}', style: context.type.metadata.copyWith(fontSize: 10.5)),
-              const Spacer(),
-              Text('TP1 ${fmtPrice(tp1)}', style: context.type.metadata.copyWith(fontSize: 10.5)),
-            ]),
-          ],
-          const SizedBox(height: 8),
-          Row(children: [_cell(context, 'ENTRY', entry == null ? '--' : fmtPrice(entry), 0), _cell(context, 'MARK', ltp == null ? '--' : fmtPrice(ltp), 2)]),
-          const SizedBox(height: 6),
-          Row(children: [_cell(context, 'SIZE', sizeText, 0), _cell(context, 'MARGIN', marginText, 1), _cell(context, 'LIQ', liq == null ? '--' : fmtPrice(liq), 2)]),
-        ]),
-      ),
+        ),
+      )),
     );
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.cardGap),
+      padding: const EdgeInsets.only(bottom: AppSpacing.s),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         row,
         if (_open) ...[
-          const SizedBox(height: AppSpacing.s),
-          AiAdviceBadge(tradeId: pos['id']),
-          // Round 16: the detail page (best point, worst dip, give-back, indicator health)
-          Align(
-            alignment: Alignment.centerRight,
-            child: TextButton.icon(
-              onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => PositionDetailScreen(pos: pos))),
-              icon: const Icon(Icons.insights_rounded, size: 18),
-              label: const Text('Trade details'),
-            ),
+          const SizedBox(height: AppSpacing.xs),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Text('Size $sizeText  |  Margin $marginText  |  Liq ${liq == null ? '--' : fmtPrice(liq)}', style: context.type.metadata),
           ),
-          PositionCard(pos: pos, startOpen: true),
+          AiAdviceBadge(tradeId: pos['id']),
+          PositionCard(pos: pos, startOpen: true, embedded: true),
         ],
       ]),
     );
   }
-
-  /// Part 4: small label over a value; [align] 0 = left, 1 = centre, 2 = right, so the columns line up row after row.
-  Widget _cell(BuildContext context, String label, String value, int align) => Expanded(
-        child: Column(
-          crossAxisAlignment: align == 0 ? CrossAxisAlignment.start : (align == 1 ? CrossAxisAlignment.center : CrossAxisAlignment.end),
-          children: [
-            Text(label, maxLines: 1, style: context.type.label.copyWith(fontSize: 10.5, letterSpacing: 0.6)),
-            const SizedBox(height: 1),
-            Text(value, maxLines: 1, softWrap: false, overflow: TextOverflow.fade, style: context.type.primary.copyWith(fontSize: 13, fontWeight: FontWeight.w600)),
-          ],
-        ),
-      );
 
   /// Part 4: thin bar from SL (left) to TP1 (right); the fill is where the price is now, the small tick is the entry. Drawn only when SL, TP1 and the price are real.
   Widget _bar(AppPalette p, double now, double? entryAt, Color fill) => SizedBox(

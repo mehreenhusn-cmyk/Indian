@@ -333,8 +333,7 @@ class PositionsLiveView extends StatelessWidget {
                 ],
               ),
               const Align(alignment: Alignment.centerLeft, child: PositionsTopBar(inline: true)),
-              const SizedBox(height: 6),
-              const PositionsSearchBar(),
+              const SizedBox(height: 4),
               // Part 17: ONE place for Close All Profit / Close All Loss, in the layout right above the list (it used to float over the list and hide cards).
               Expanded(
                 child: OWLRefresh(

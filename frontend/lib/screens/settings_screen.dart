@@ -11,6 +11,7 @@ import '../widgets/settings_group.dart';
 import '../widgets/settings_input_field.dart';
 import 'ai_assistant_screen.dart';
 import '../theme/app_theme.dart';
+import '../theme/owl_look_mode.dart';
 
 // ------------------------------------------------------------- field registry ----
 
@@ -612,6 +613,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
         ),
+        const SizedBox(height: AppSpacing.s),
+        Text('Card look', style: context.type.label.copyWith(fontWeight: FontWeight.w800)),
+        const SizedBox(height: 4),
+        ValueListenableBuilder<int>(
+          valueListenable: OwlLookMode.mode,
+          builder: (context, lookMode, _) => SizedBox(
+            width: double.infinity,
+            child: SegmentedButton<int>(
+              segments: const [
+                ButtonSegment(value: OwlLookMode.classic, label: Text('Classic'), icon: Icon(Icons.crop_square_rounded)),
+                ButtonSegment(value: OwlLookMode.glass, label: Text('Glass'), icon: Icon(Icons.blur_on_rounded)),
+                ButtonSegment(value: OwlLookMode.gradient, label: Text('Gradient'), icon: Icon(Icons.gradient_rounded)),
+              ],
+              selected: {lookMode},
+              onSelectionChanged: (sel) => OwlLookMode.set(sel.first),
+              style: SegmentedButton.styleFrom(
+                selectedBackgroundColor: p.accent.withOpacity(0.18),
+                selectedForegroundColor: p.accent,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text('Changes the cards (Positions, Sniper, Dashboard and most screens) at once. Saved on this phone.', style: context.type.caption),
       ],
     );
   }

@@ -40,9 +40,11 @@ const _breakevenTolerancePct = 0.15;
 /// the exchange).
 class PositionCard extends StatefulWidget {
   final Map<String, dynamic> pos;
-  /// E7: true = the card starts OPEN (used inside PositionRow, so one tap on the row shows the chart and ladder at once, not 3 taps).
+  /// E7: true = the card starts OPEN.
   final bool startOpen;
-  const PositionCard({super.key, required this.pos, this.startOpen = false});
+  /// E9: true = no header and no summary lines (the PositionRow above already shows them): only the chart, the ladder and the buttons.
+  final bool embedded;
+  const PositionCard({super.key, required this.pos, this.startOpen = false, this.embedded = false});
 
   @override
   State<PositionCard> createState() => _PositionCardState();
@@ -366,7 +368,7 @@ class _PositionCardState extends State<PositionCard> {
           child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-              GestureDetector(
+              if (!widget.embedded) GestureDetector(
                 behavior: HitTestBehavior.opaque,
                 onTap: () => _toggleExpanded(),
                 child: Column(
@@ -473,13 +475,6 @@ class _PositionCardState extends State<PositionCard> {
                   _statCell(context, 'OPEN', '', alignEnd: true, liveOpenedAt: pos['opened_at_ts'] as num?),
                 ],
               ),
-              if (livePct != null && tpPct[effectiveTarget] != null && tpPct[effectiveTarget]! > 0)
-                _ProgressToTarget(
-                  livePct: livePct,
-                  targetPct: tpPct[effectiveTarget]!,
-                  slPct: (sl != null && entry != null && entry != 0) ? pctOf(sl) : null,
-                  targetLabel: 'TP$effectiveTarget',
-                ),
               const SizedBox(height: 6),
               Row(
                 children: [
@@ -1018,38 +1013,3 @@ class _LadderRow extends StatelessWidget {
   }
 }
 
-/// Thin bar under the compact line: green = how far price went from entry toward the target, red = how far toward the stop.
-/// Read-only, it has no tap of its own (the card header keeps its tap, the TP ladder keeps its tap to set a target).
-class _ProgressToTarget extends StatelessWidget {
-  final double livePct, targetPct;
-  final double? slPct;
-  final String targetLabel;
-  const _ProgressToTarget({required this.livePct, required this.targetPct, required this.slPct, required this.targetLabel});
-
-  @override
-  Widget build(BuildContext context) {
-    final p = context.palette;
-    final up = livePct >= 0;
-    final double f = up
-        ? (livePct / targetPct).clamp(0.0, 1.0)
-        : ((slPct != null && slPct! < 0) ? (livePct / slPct!).clamp(0.0, 1.0) : 0.0);
-    final c = up ? _green : _red;
-    return Padding(
-      padding: const EdgeInsets.only(top: 6),
-      child: Row(children: [
-        Expanded(
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(3),
-            child: Stack(children: [
-              Container(height: 5, color: p.border.withOpacity(0.5)),
-              FractionallySizedBox(widthFactor: f, child: Container(height: 5, color: c)),
-            ]),
-          ),
-        ),
-        const SizedBox(width: 8),
-        Text(up ? '${(f * 100).round()}% to $targetLabel' : '${(f * 100).round()}% to stop',
-            style: context.type.metadata.copyWith(fontSize: 10.5, color: c, fontWeight: FontWeight.w700)),
-      ]),
-    );
-  }
-}
