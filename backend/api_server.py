@@ -283,7 +283,8 @@ async def on_startup():
             from recovered_bot import ai_backup
             ai_backup.apply_pending(os.path.join(DATA_DIR, "ai"))
             ai_backup.init(os.path.join(DATA_DIR, "ai"))
-            ai_backup.start()              # one zip of the AI data per IST day, newest 7 kept (own thread)
+            if not settings_store.get("ai_master_off", True):
+                ai_backup.start()          # one zip of the AI data per IST day, newest 7 kept (own thread). Not started while ai_master_off
         except Exception as e:
             print(f"[AIBackup] start-up: {e}")
         # Only the Vision AI runs. One-time switch: older builds may have saved legacy_ai_enabled=True.
@@ -300,6 +301,13 @@ async def on_startup():
                 print("[startup] old_labs_locked: legacy_ai_enabled forced off")
         except Exception as e:
             print(f"[startup] old_labs_locked check skipped: {e}")
+        # AI MASTER OFF (every start): while ai_master_off is on, all AI switches are forced off, so nothing AI starts below.
+        try:
+            if settings_store.get("ai_master_off", True):
+                settings_store.update(legacy_ai_enabled=False, vision_enabled=False, ai_enabled=False)
+                print("[startup] ai_master_off: legacy AI, Vision AI and AI Assistant forced off")
+        except Exception as e:
+            print(f"[startup] ai_master_off check skipped: {e}")
         try:                               # STAGE 2: the AI's own real account (older AI: only when legacy_ai_enabled)
             if not settings_store.get("legacy_ai_enabled", False):
                 raise RuntimeError("older AI is off - AI real-account worker not started")

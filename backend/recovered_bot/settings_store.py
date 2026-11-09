@@ -140,6 +140,9 @@ _defaults = {
     "ai8_model": "",
     # ---- the older AI modules (Coach, Pick, Desk, Shadow Lab, trackers ...). OFF = no background threads, no heavy work.
     "legacy_ai_enabled": False,
+    # ---- AI MASTER OFF (Part 0, 9 Nov 2026): True = every AI switch is forced OFF at each backend start
+    # (legacy_ai_enabled, vision_enabled, ai_enabled) and the daily AI backup zip does not start. Set False to allow AI again.
+    "ai_master_off": True,
 }
 _settings = dict(_defaults)
 
