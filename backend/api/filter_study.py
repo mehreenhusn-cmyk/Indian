@@ -23,7 +23,7 @@ VERSION = "api/filter_study 1 (Part 8A)"
 PATH_MAIN, PATH_PART, PATH_RULES = "/api/v2/filter", "/api/v2/filter_part", "/api/v2/filter_rules"
 PATH_RUN, PATH_GATE = "/api/v2/filter_run", "/api/v2/filter_gate"
 MODES = ("off", "log", "block")
-LOOP_SEC, FIRST_WAIT_SEC, AUTO_EVERY_SEC = 600, 300, 24 * 3600
+LOOP_SEC, FIRST_WAIT_SEC, AUTO_EVERY_SEC = 600, 900, 24 * 3600
 OFF_ANSWER = {"enabled": False, "note": "the V2 data API is off"}
 _state = {"started": False}
 _lock = threading.Lock()
@@ -125,12 +125,20 @@ def gate_answer(data_dir, mode):
     return 200, {"mode": mode, "note": {"off": "Gate is OFF.", "log": "Gate only writes what it would block.", "block": "Gate skips the entry when a rule hits."}[mode]}
 
 
+def _quiet():
+    """Auto run only while the VPS is calm: 1-minute load below 60% of the CPU cores. A busy server is left alone (the live bot comes first)."""
+    try:
+        return os.getloadavg()[0] < max(0.8, (os.cpu_count() or 1) * 0.6)
+    except Exception:
+        return True
+
+
 def _loop(data_dir):
     time.sleep(FIRST_WAIT_SEC)
     while True:
         try:
             root = _root(data_dir)
-            if api_enabled(data_dir) and _auto_on() and not R.is_running(root):
+            if api_enabled(data_dir) and _auto_on() and _quiet() and not R.is_running(root):
                 last = R.read_state(root).get("finished_ts")
                 if not last or time.time() - last > AUTO_EVERY_SEC:
                     R.start(root)

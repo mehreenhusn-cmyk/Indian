@@ -10,6 +10,7 @@ Day = 00:00 UTC = 5:30 AM IST. Durations over 60 min are written as hours + minu
 import argparse
 import json
 import os
+import shutil
 import subprocess
 import sys
 import time
@@ -21,6 +22,7 @@ PARTS = (("f1", "v2_f1_counts.py", "Part 1 counts"), ("f1b", "v2_f1b_learn.py", 
          ("f3a", "v2_f3a_moves.py", "Part 3A rallies and dumps"), ("f3b", "v2_f3b_catch.py", "Part 3B caught / missed"), ("f4", "v2_f4_filters.py", "Part 4 filter lab"),
          ("f5a", "v2_f5a_exits.py", "Part 5A exit lab 1"), ("f5b", "v2_f5b_exits.py", "Part 5B exit lab 2"), ("f6", "v2_f6_decisions.py", "Part 6 four words"))
 PART_IDS = tuple(p[0] for p in PARTS)
+IDLE_IO = ["ionice", "-c3"] if shutil.which("ionice") else []   # disk only when nobody else needs it (the study reads a 1.3 million row candle store)
 PART_TIMEOUT = 45 * 60          # one Part may run 45 min at most
 DEAD_SEC = 60 * 60              # a run whose state file is older than this is treated as dead
 
@@ -28,7 +30,7 @@ DEAD_SEC = 60 * 60              # a run whose state file is older than this is t
 def _low():
     """Runs in the child before it starts: lower priority (posix only)."""
     try:
-        os.nice(10)
+        os.nice(19)   # lowest CPU priority (was 10: the live bot still felt the study run, 9 Nov)
     except Exception:
         pass
 
@@ -92,7 +94,7 @@ def run_all(root):
         out = os.path.join(root, SUM_FILE % pid)
         t0 = time.time()
         try:
-            res = subprocess.run([sys.executable, os.path.join(HERE, script), "--data", root, "--out", out + ".tmp"], stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
+            res = subprocess.run(IDLE_IO + [sys.executable, os.path.join(HERE, script), "--data", root, "--out", out + ".tmp"], stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
                                  timeout=PART_TIMEOUT, preexec_fn=_low, text=True)
             if res.returncode == 0 and os.path.isfile(out + ".tmp"):
                 os.replace(out + ".tmp", out)
