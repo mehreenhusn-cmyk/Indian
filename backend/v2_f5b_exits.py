@@ -217,7 +217,7 @@ def build_report(root, fee_roi=1.0):
     root = os.path.realpath(root)
     rep = {"tool": VERSION, "made_utc": P.fmt_ts(time.time()), "read_only": True, "day_start": "00:00 UTC = 5:30 AM IST", "min_changed_trades_per_half": A.MIN_CHANGED,
            "horizons": "H0 = until the real trade closed, H1 = %d candles longer (2 h on 5m, 6 h on 15m)" % A.EXTRA_BARS,
-           "curve_definition": "slope = price move of the last %d candles with the trade side (% per candle). CURVE_FLAT: slope <= FLAT_EPS for %d candles; CURVE_TURN: slope below zero and shrinking for %d candles; both only after the profit covered the fee." % (SLOPE_N, FLAT_K, TURN_K)}
+           "curve_definition": "slope = price move of the last %d candles with the trade side (%% per candle). CURVE_FLAT: slope <= FLAT_EPS for %d candles; CURVE_TURN: slope below zero and shrinking for %d candles; both only after the profit covered the fee." % (SLOPE_N, FLAT_K, TURN_K)}
     if not os.path.isdir(root):
         rep["error"] = "data folder not found"
         return rep
