@@ -1141,6 +1141,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                         const SizedBox(height: AppSpacing.s),
                         const SettingsHeading('Alerts & AI'),
+                        // Part 8A-2: hidden while ai_master_off is on (only an explicit false from the backend shows it).
+                        if (context.select<AppProvider, bool>((pr) => pr.settings['ai_master_off'] == false))
                         SettingsGroup(
                           icon: Icons.smart_toy_outlined,
                           title: 'AI assistant',

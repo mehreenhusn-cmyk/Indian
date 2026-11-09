@@ -14,6 +14,7 @@ part 'app_provider_positions.dart';
 part 'app_provider_brain.dart';
 part 'app_provider_sniper.dart';
 part 'app_provider_chop.dart';
+part 'app_provider_filter.dart';
 part 'app_provider_settings.dart';
 part 'app_provider_sound.dart';
 
@@ -413,17 +414,47 @@ class AppProvider extends ChangeNotifier with SoundAlerts {
 
   Future<void> init() async {
     baseUrl = (kIsWeb ? null : prefs.getString(_backendUrlKey)) ?? _startUrl;
+    _restoreLastStatus(); // fast start: the last status is on screen at once, the real one replaces it when it arrives
+    // Only what the first screen needs is awaited. Equity curve and calendar load in the background (they used to hold the start back).
+    fetchEquity();
+    fetchCalendar();
     await Future.wait([
       fetchStatus(),
       fetchSignals(),
       fetchSettings(),
-      fetchEquity(),
-      fetchCalendar(),
     ]);
-    initLoaded = true; // the welcome loading bar reads this: status, signals, settings, equity and calendar are all fetched
+    initLoaded = true; // the welcome loading bar reads this: status, signals and settings are fetched (equity and calendar follow by themselves)
     notifyListeners();
     _restorePrefsIfFresh().then((_) => pushPrefsBackup()); // not awaited
     warmAi(); // not awaited: runs quietly behind the first screen
+  }
+
+  // Fast start: the newest /api/status body is kept on the phone (written at most every 10 s) and shown at app start as a snapshot,
+  // so the dashboard skeleton does not wait for a slow backend. A real answer always replaces it.
+  static const _lastStatusKey = 'owl_last_status';
+  DateTime? _lastStatusSaved;
+
+  void _restoreLastStatus() {
+    try {
+      if (status.isNotEmpty) return;
+      final raw = prefs.getString(_lastStatusKey);
+      if (raw == null || raw.isEmpty) return;
+      final m = jsonDecode(raw);
+      if (m is Map<String, dynamic> && m.isNotEmpty) {
+        _applyStatus(m, snapshot: true);
+        notifyListeners();
+      }
+    } catch (_) {}
+  }
+
+  void _saveLastStatus(String body) {
+    final now = DateTime.now();
+    if (_lastStatusSaved != null && now.difference(_lastStatusSaved!).inSeconds < 10) return;
+    _lastStatusSaved = now;
+    if (body.length > 400000) return; // never keep a huge body on the phone
+    try {
+      prefs.setString(_lastStatusKey, body);
+    } catch (_) {}
   }
 
   /// True once init() has finished its first fetches (welcome loading bar uses it as a REAL milestone).
@@ -530,6 +561,7 @@ class AppProvider extends ChangeNotifier with SoundAlerts {
       final res = await _getResilient(_u('/api/status'));
       if (res.statusCode == 200) {
         _applyStatus(jsonDecode(res.body) as Map<String, dynamic>);
+        _saveLastStatus(res.body);
         error = null;
       } else {
         error = 'Backend returned ${res.statusCode}';

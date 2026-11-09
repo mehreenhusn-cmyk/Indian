@@ -61,6 +61,7 @@ ROUTES = (
     ("api.v2_data_health", "data health"),
     ("api.route_timing", "slow calls"),
     ("api.chop", "chop b3"),
+    ("api.filter_study", "filter study"),   # Part 8A (README_FILTER)
 )
 STATUS = {"version": VERSION, "mounted": [], "skipped": []}
 

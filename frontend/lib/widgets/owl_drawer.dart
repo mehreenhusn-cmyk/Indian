@@ -38,6 +38,8 @@ class OwlDrawer extends StatelessWidget {
             final latency = provider.wsLatencyMs;
             final p = context.palette;
             final t = context.type;
+            // Part 8A-2: the AI Assistant tile is hidden while ai_master_off is on (only an explicit false from the backend shows it).
+            final aiOff = provider.settings['ai_master_off'] != false;
             final statusColor = connected ? p.profit : p.loss;
 
             return Column(
@@ -168,6 +170,7 @@ class OwlDrawer extends StatelessWidget {
 
                 // ---- Quick navigation ----
                 Divider(color: p.border, height: 1),
+                if (!aiOff)
                 ListTile(
                   leading: Icon(Icons.smart_toy_outlined, color: p.accent),
                   title: Text('AI Assistant', style: t.primary),

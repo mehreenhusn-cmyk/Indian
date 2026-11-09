@@ -58,6 +58,8 @@ class MoreScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = context.type;
     final go = context.read<AppProvider>().goToRoute;
+    // Part 8A-2: while ai_master_off is on (the backend default) the AI row is hidden. Only an explicit false from the backend shows it.
+    final aiOff = context.select<AppProvider, bool>((pr) => pr.settings['ai_master_off'] != false);
     // P-E: every row has an icon TILE (tinted square). One tint per group: Trading tools = accent, Results = purple, System and Settings = grey. A different icon per row.
     final pal = context.palette;
     Widget Function(IconData, String, String, VoidCallback) tile(Color c) => (icon, title, sub, onTap) => OwlRow(title: title, sub: sub, leading: OwlIconTile(icon, c), onTap: onTap);
@@ -79,7 +81,7 @@ class MoreScreen extends StatelessWidget {
               rT(Icons.smart_toy_rounded, 'Dual Bot', 'The Dual Bot paper book', () => go(AppRoute.dualBot)),
               rT(Icons.query_stats_outlined, 'Market', 'Prices, movers and market state', () => go(AppRoute.market)),
               rT(Icons.sensors_rounded, 'Signals', 'The signals the bots are looking at', () => go(AppRoute.signals)),
-              rT(Icons.memory_rounded, 'AI', 'The AI helper page', () => go(AppRoute.ai)),
+              if (!aiOff) rT(Icons.memory_rounded, 'AI', 'The AI helper page', () => go(AppRoute.ai)),
               rT(Icons.chat_bubble_outline, 'Ask the Brain', 'Ask a question in plain words', () => _open(context, 'Ask the Brain', const BrainChatScreen())),
               rT(Icons.health_and_safety_outlined, 'Data Health', 'Candles, missing data, is the Sniper learning', () => _open(context, 'Data Health', const DataHealthScreen())),
               rT(Icons.hub_outlined, 'Data and Learning', 'Who teaches the Sniper, live-test gate, auto runs', () => _open(context, 'Data and Learning', const DataSourcesScreen())),

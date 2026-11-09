@@ -143,6 +143,8 @@ _defaults = {
     # ---- AI MASTER OFF (Part 0, 9 Nov 2026): True = every AI switch is forced OFF at each backend start
     # (legacy_ai_enabled, vision_enabled, ai_enabled) and the daily AI backup zip does not start. Set False to allow AI again.
     "ai_master_off": True,
+    # ---- Part 7 gates (README_FILTER): "off" | "log" (only writes what it would block) | "block" (skips the entry). Current bot, 5m only.
+    "f7_gates_mode": "off",
 }
 _settings = dict(_defaults)
 

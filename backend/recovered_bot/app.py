@@ -470,7 +470,7 @@ def _sd0_last_cross(symbol, look=150):
     return "below" if c[-1] < mean_at(len(c) - 1) else "above"
 
 
-def _extra_entry_block(signal, symbol):
+def _extra_entry_block(signal, symbol, bot_id="b1"):
     """Reason text if a NEW entry must be skipped by the daily schedule, the max-open-trades
     limit or the gainer/loser SD0 rules - else None. Called inside _open_lock, so the open-trade
     count cannot race."""
@@ -486,6 +486,15 @@ def _extra_entry_block(signal, symbol):
         _sb = smart_brain.gate_reason(symbol, signal.action)
         if _sb:
             return _sb
+    except Exception:
+        pass
+    try:
+        # Part 7 (README_FILTER): gates made from the filter study. Default OFF (setting f7_gates_mode). Current bot only. Any problem = take the trade.
+        if bot_id == "b1":
+            import v2_f7_gates
+            _g7 = v2_f7_gates.gate_reason(signal, symbol, list(history_cache.get(symbol) or []))
+            if _g7:
+                return _g7
     except Exception:
         pass
     try:
@@ -547,7 +556,7 @@ def _open_signal(signal, symbol, source="watchlist", bot_id="b1"):
     # and manual position closes are NOT gated by this - only new signals
     # reaching this function are.
     trading_paused = not execution_router.is_trading_enabled()
-    _extra_block = _extra_entry_block(signal, symbol)
+    _extra_block = _extra_entry_block(signal, symbol, bot_id)
     target_hit = _daily_target_hit(bot_id)
     loss_hit = _daily_loss_limit_hit(bot_id)
     if _is_btc(symbol) and _btc_fixed():
