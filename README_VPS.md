@@ -34,3 +34,10 @@ The owner is not technical. Reply in very simple English, short. ONE step at a t
 - Syncthing: daily data copy VPS -> phone (send-only on VPS, receive-only on phone). Not set up yet.
 - `API_TOKEN` is still OFF (the app does not send a token). Keep port 8000 closed; use Tailscale only.
 - Later: make the repo Private and use a read-only deploy key on the VPS. `backend/.env` is tracked in the repo.
+
+## App says "Connection refused 127.0.0.1" (9 Nov 2026)
+- Cause: the CI builds the APK with a NEW debug signing key every time, so Android may force an uninstall before the update. Uninstall wipes the saved Backend URL and the app fell back to 127.0.0.1 (the phone itself).
+- Fix in code: the default Backend URL is now `http://100.85.188.83:8000` (the VPS over Tailscale). A fresh install connects by itself when Tailscale is ON.
+- The grey skeleton for up to 45 s = the VPS did not answer (Tailscale off / asleep, or the backend down). After 5 s the app now prints which URL it waits for.
+- Quick check in Termux: `curl -m 5 http://100.85.188.83:8000/health` (any answer = reachable) and `ssh root@222.167.207.31 "systemctl is-active owl-backend owl-ping"`.
+- Open: a fixed signing key (so updates install over the old app and keep settings) needs a GitHub secret; not done yet.

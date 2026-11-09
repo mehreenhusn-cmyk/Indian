@@ -76,7 +76,9 @@ class AppProvider extends ChangeNotifier with SoundAlerts {
   // on-device (Termux backend + this Flutter app, same phone) without
   // relying on any hosts-file/DNS entry existing for 'localhost'. Candle
   // fetch (and every other /api/* call) now targets this by default.
-  static const _defaultBaseUrl = 'http://127.0.0.1:8000';
+  // Nov 2026: the backend runs on the VPS only (README_VPS), reached over Tailscale. A fresh install (or cleared app data) has no saved
+  // Backend URL, and the old default 127.0.0.1 (the phone itself) never connects -> "Connection refused". The default is now the VPS.
+  static const _defaultBaseUrl = 'http://100.85.188.83:8000';
   // Browser version: talk to the same server the page was opened from.
   static String get _startUrl => kIsWeb ? Uri.base.origin : _defaultBaseUrl;
 
@@ -299,6 +301,8 @@ class AppProvider extends ChangeNotifier with SoundAlerts {
   Future<http.Response> _withWakeHint(Future<http.Response> Function() send) async {
     final hint = Timer(_quickTimeout, () {
       isWakingUp = true;
+      // Nothing on screen yet and no answer after 5 s: say where the app is waiting (the grey skeleton alone looked like a frozen app).
+      if (status.isEmpty && error == null) error = 'No answer from $baseUrl yet. Is Tailscale ON? The app keeps trying for up to 45 s.';
       notifyListeners();
     });
     try {
@@ -569,7 +573,7 @@ class AppProvider extends ChangeNotifier with SoundAlerts {
     } on TimeoutException {
       error = 'Backend busy - waiting for it (data will refresh by itself)';
     } catch (e) {
-      error = 'Cannot reach backend: $e';
+      error = 'Cannot reach backend ($baseUrl): $e${baseUrl.contains('127.0.0.1') ? '\nThis URL is the phone itself. Settings > Backend URL should be http://100.85.188.83:8000' : ''}';
     }
     notifyListeners();
   }
