@@ -8,6 +8,7 @@ import '../theme/app_theme.dart';
 import '../widgets/owl_card.dart';
 import '../widgets/owl_status_pill.dart';
 import '../widgets/owl_text_tabs.dart';
+import '../widgets/report_download_card.dart';
 import 'filter_decisions_tab.dart';
 import 'filter_exits_tab.dart';
 import 'filter_fakes_tab.dart';
@@ -123,6 +124,14 @@ class _FilterLabScreenState extends State<FilterLabScreen> {
             const FilterExitsTab()
           else
             const FilterDecisionsTab(),
+          const SizedBox(height: AppSpacing.l),
+          const ReportDownloadCard(
+            title: 'Filter Lab report',
+            description: 'One text file with every saved Part (fakes, moves, filters, exits, decisions). Use Share or Copy and send it to any AI.',
+            textPath: '/api/v2/filter_report',
+            savePath: '/api/v2/filter_report_save',
+            fileName: 'owl_filter_report.txt',
+          ),
         ],
       ),
     );

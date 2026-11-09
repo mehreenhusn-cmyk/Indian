@@ -22,6 +22,8 @@ from api.sniper import api_enabled
 VERSION = "api/filter_study 1 (Part 8A)"
 PATH_MAIN, PATH_PART, PATH_RULES = "/api/v2/filter", "/api/v2/filter_part", "/api/v2/filter_rules"
 PATH_RUN, PATH_GATE = "/api/v2/filter_run", "/api/v2/filter_gate"
+PATH_REPORT, PATH_REPORT_SAVE = "/api/v2/filter_report", "/api/v2/filter_report_save"
+PART_CAP = 60000  # max characters per Part in the report text
 MODES = ("off", "log", "block")
 LOOP_SEC, FIRST_WAIT_SEC, AUTO_EVERY_SEC = 600, 900, 24 * 3600
 OFF_ANSWER = {"enabled": False, "note": "the V2 data API is off"}
@@ -104,6 +106,23 @@ def rules_answer(data_dir):
     return 200, rep
 
 
+def report_text(data_dir):
+    """One text file with all saved Part summaries (for the app Share / Copy button). Read only."""
+    if not api_enabled(data_dir):
+        return None
+    root = _root(data_dir)
+    out = ["OWL FILTER LAB REPORT", "time: " + time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime()), ""]
+    for pid, _s, label in R.PARTS:
+        data = _read_json(os.path.join(root, R.SUM_FILE % pid))
+        out.append("=== %s - %s ===" % (pid, label))
+        if data is None:
+            out += ["no saved summary yet", ""]
+            continue
+        txt = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
+        out += [txt[:PART_CAP] + (" ...cut" if len(txt) > PART_CAP else ""), ""]
+    return "\n".join(out)
+
+
 def run_answer(data_dir):
     if not api_enabled(data_dir):
         return 404, OFF_ANSWER
@@ -158,8 +177,20 @@ def start_loop(data_dir):
 
 def make_router(require_api_token, data_dir):
     from fastapi import APIRouter, Depends
-    from fastapi.responses import JSONResponse
+    from fastapi.responses import JSONResponse, PlainTextResponse
     r = APIRouter()
+
+    # Same as /api/report/app: no token, because the app's report card sends none. Read only.
+    @r.get(PATH_REPORT)
+    async def v2_filter_report():
+        txt = await asyncio.to_thread(report_text, data_dir)
+        if txt is None:
+            return PlainTextResponse("The V2 data API is off.", status_code=404)
+        return PlainTextResponse(txt)
+
+    @r.get(PATH_REPORT_SAVE)
+    async def v2_filter_report_save():
+        return JSONResponse({"ok": False, "hint": "The backend runs on the VPS, so it cannot save into the phone. Use Share or Copy."})
 
     @r.get(PATH_MAIN, dependencies=[Depends(require_api_token)])
     async def v2_filter():
