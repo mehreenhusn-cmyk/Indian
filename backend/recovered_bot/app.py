@@ -498,6 +498,15 @@ def _extra_entry_block(signal, symbol, bot_id="b1"):
     except Exception:
         pass
     try:
+        # Part 4 bot side (README_OWNER): US-session gate. Setting f9_session_mode, default "log" = only writes a line, stops nothing. Any problem = take the trade.
+        if bot_id == "b1":
+            import v2_f9_session
+            _g9 = v2_f9_session.gate_reason(signal, symbol)
+            if _g9:
+                return _g9
+    except Exception:
+        pass
+    try:
         mx = int(settings_store.get("max_open_trades", 0) or 0)
         if mx > 0 and not _is_btc(symbol):      # BTC has its own slot: never blocked by, never counted in, the alt limit
             if settings_store.get("live_trading_enabled", False):

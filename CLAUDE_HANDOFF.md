@@ -59,3 +59,16 @@ AMD = 3-candle pattern (Accumulation, Manipulation, Distribution). Bullish: cand
 
 ## Source notes the owner gave
 - Z-Score Probability video notes (Roman English .md), AMD pattern notes (.md), TradingView Z-Score & Stats page. The Shorts video the indicator came from could not be opened (YouTube blocked); owner should write its steps as a .md.
+
+## Build progress (green circle = done)
+| Part | What | Status |
+|---|---|---|
+| F5c | split booking study (30% at TP1 + trail 25%) | 🟢 done |
+| 6B | entry lab (lookback, B3/C12/D3 entries, rally phase) | 🟢 done, ran 10 Nov. Its entry result (+17,000 USDT) looks too good = replay bias, do NOT trust it |
+| Bot Part 4 | US-session gate, backend/v2_f9_session.py, setting f9_session_mode (default log = writes only, stops nothing), hours f9_session_utc "16-24" UTC = 21:30-05:30 IST. Hook in recovered_bot/app.py | 🟢 done (10 Nov), log mode |
+| Bot Part 5 | split booking INSIDE the paper bot (paper_trader.py pays 100% at one target today, no partials; needs careful PnL change, default OFF) | ⚪ next |
+| Bot Part 6 | daily bot report: trades, win %, net, new vs old | ⚪ planned |
+| Bot Part 7 | 7 days paper, change nothing | ⚪ planned |
+| Bot Part 8 | AMD / video rules test (only if still minus after 7 days) | ⚪ optional |
+
+Owner wants (10 Nov): bot runs continuously, skips useless trades, takes good ones and books profit. Fake entries and no profit booking are the problems. Build in Parts. After each Part list the next 4-5 Parts (files + lines).
