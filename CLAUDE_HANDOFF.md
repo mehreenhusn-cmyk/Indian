@@ -66,9 +66,14 @@ AMD = 3-candle pattern (Accumulation, Manipulation, Distribution). Bullish: cand
 | F5c | split booking study (30% at TP1 + trail 25%) | 🟢 done |
 | 6B | entry lab (lookback, B3/C12/D3 entries, rally phase) | 🟢 done, ran 10 Nov. Its entry result (+17,000 USDT) looks too good = replay bias, do NOT trust it |
 | Bot Part 4 | US-session gate, backend/v2_f9_session.py, setting f9_session_mode (default log = writes only, stops nothing), hours f9_session_utc "16-24" UTC = 21:30-05:30 IST. Hook in recovered_bot/app.py | 🟢 done (10 Nov), log mode |
-| Bot Part 5 | split booking INSIDE the paper bot (paper_trader.py pays 100% at one target today, no partials; needs careful PnL change, default OFF) | ⚪ next |
-| Bot Part 6 | daily bot report: trades, win %, net, new vs old | ⚪ planned |
-| Bot Part 7 | 7 days paper, change nothing | ⚪ planned |
-| Bot Part 8 | AMD / video rules test (only if still minus after 7 days) | ⚪ optional |
+| Bot Part 5A | split booking inside the paper bot (backend/recovered_bot/paper_trader.py): when TP1 is first touched, 30% of the trade is banked at the TP1 price (fee taken on that part), the rest runs as before (SL moves to entry after TP1, target TP4). Setting f10_book_pct, default 30, 0 = OFF. Paper bot b1 only, never LIVE- trades. Trades that banked carry split_booked=true, booked_frac, booked_pnl (studies must treat them separately from old trades) | 🟢 done (10 Nov) |
+| Bot Part 5B | trail on the rest after the TP1 booking (paper_trader.py): the rest has NO TP4 target any more; it leaves when price gives back 25% of the peak profit since the booking (armed once profit covers the fee, like study rule TRAIL_25); SL stays at entry (breakeven after TP1). Close reason TRAIL. Setting f10_trail_pct, default 25, 0 = OFF (rest runs to target as before). Paper b1 only | 🟢 done (10 Nov). App on/off switch not built (settings only) |
+| Bot Part 6 | AMD test (3-candle + EMA50 pullback, new report in the study) | ⚪ planned |
+| Bot Part 7 | owner states: from old trades find what state each profitable trade had (no chart photos needed) | ⚪ planned |
+| Bot Part 8 | daily bot report (new vs old), then 7 days paper, change nothing | ⚪ planned |
 
 Owner wants (10 Nov): bot runs continuously, skips useless trades, takes good ones and books profit. Fake entries and no profit booking are the problems. Build in Parts. After each Part list the next 4-5 Parts (files + lines).
+
+Owner runs the bot on 5m or 15m only. Real account is mostly $10 trades: real money only after paper proof (3-4 weeks steady profit). Nothing extra runs on the VPS now except the backend (start.py) and the auto-update timer.
+
+Owner (10 Nov): improve the CURRENT bot itself; crypto rallies are big and partial booking is rare, so book some, hold some, and let the rest run as free profit. Everything in ONE cumulative zip (he has not downloaded the earlier zips). Study result behind the numbers: Part 5C, 30% at TP1 + TRAIL_25 best on all MAIN trades (net -2963 -> -1928); on 5m alone the best was 30% at TP1 + exit on OPPOSITE signal with stop at entry (net -1299 -> -666, small sample 144 trades).

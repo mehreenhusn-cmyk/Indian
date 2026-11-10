@@ -506,6 +506,86 @@ def _open_fee_roi_pct(pos):
         return _fee_roi_pct()
 
 
+def _book_frac():
+    """Split booking (Filter Part 5A): share of the trade banked when TP1 is first touched. Setting f10_book_pct, default 30, 0 = OFF. Paper bot b1 only."""
+    try:
+        v = float(settings_store.get("f10_book_pct", 30) or 0)
+    except Exception:
+        return 0.0
+    return v / 100.0 if 0 < v <= 90 else 0.0
+
+
+def _split_pnl(pos, roi, pnl):
+    """P&L of a position that already banked a part at TP1: banked part + the rest at the given roi. No booking = pnl unchanged."""
+    try:
+        bf = float(pos.get("booked_frac") or 0.0)
+        if bf > 0:
+            return float(pos.get("booked_pnl") or 0.0) + pos["invest_usdt"] * (1.0 - bf) * (roi / 100.0)
+    except Exception:
+        pass
+    return pnl
+
+
+def _book_at_tp1(tid, tps, newly_hit):
+    """Bank part of the trade the moment TP1 is FIRST touched (price = the TP1 level, fee taken on that part). Once per trade, paper b1 only, never a LIVE- position."""
+    frac = _book_frac()
+    if frac <= 0 or 1 not in (newly_hit or []):
+        return
+    with _lock:
+        pos = _positions.get(tid)
+        if not pos or pos.get("booked_frac"):
+            return
+        if str(pos.get("trade_id") or pos.get("id") or "").startswith("LIVE-") or (pos.get("bot") or "b1") != "b1":
+            return
+        tp1 = tps.get(1)
+        if tp1 is None:
+            return
+        fee = pos.get("fee_roi_pct")
+        fee = _fee_roi_pct() if fee is None else float(fee or 0.0)
+        roi1 = _calc_roi(pos, tp1)
+        pnl1 = pos["invest_usdt"] * frac * ((roi1 - fee) / 100.0)
+        pos.update(booked_frac=frac, booked_pnl=pnl1, booked_price=tp1, booked_ts=time.time(), split_booked=True)
+    try:
+        status.add_alert_paper("auto", f"Booked {int(round(frac * 100))}% at TP1: #{tid} {pos['symbol']} ({pnl1:+.2f} USDT banked)", bot=pos.get("bot") or "b1", trade_id=tid)
+    except Exception:
+        pass
+
+
+def _trail_frac():
+    """Split booking (Filter Part 5B): after the TP1 booking the rest exits when price gives back this share of the profit made so far. Setting f10_trail_pct, default 25, 0 = OFF (the rest then runs to the target as before)."""
+    try:
+        v = float(settings_store.get("f10_trail_pct", 25) or 0)
+    except Exception:
+        return 0.0
+    return v / 100.0 if 5 <= v <= 90 else 0.0
+
+
+def _trail_runs(pos):
+    return bool(pos.get("booked_frac")) and _trail_frac() > 0 and not pos.get("user_target_tp")
+
+
+def _trail_hit(pos, ltp, is_long):
+    """True when the booked trade's rest must leave: price fell back 25% of the peak profit (peak = best price since the booking). Armed only once the profit covers the round-trip fee, like the study rule TRAIL_25."""
+    try:
+        if not _trail_runs(pos):
+            return False
+        entry = float(pos["entry_price"])
+        peak = pos.get("trail_peak")
+        peak = float(peak) if peak else float(pos.get("booked_price") or ltp)
+        peak = max(peak, ltp) if is_long else min(peak, ltp)
+        pos["trail_peak"] = peak
+        fee = pos.get("fee_roi_pct")
+        fee = _fee_roi_pct() if fee is None else float(fee or 0.0)
+        lev = float(pos.get("leverage") or 1.0) or 1.0
+        gain_px_pct = ((peak - entry) / entry * 100.0) if is_long else ((entry - peak) / entry * 100.0)
+        if gain_px_pct * lev <= fee:
+            return False                                      # not armed yet
+        stop = peak - _trail_frac() * (peak - entry) if is_long else peak + _trail_frac() * (entry - peak)
+        return (ltp <= stop) if is_long else (ltp >= stop)
+    except Exception:
+        return False
+
+
 def _close_position(trade_id, reason, ltp, note=None, recovered=False):
     """Fully close the position - one trade, full invest amount, full P&L.
     No partial-booking chunks anymore, so there's nothing to double-count."""
@@ -521,6 +601,9 @@ def _close_position(trade_id, reason, ltp, note=None, recovered=False):
     fee = _fee_roi_pct() if fee is None else float(fee or 0.0)
     roi = gross_roi - fee
     pnl = pos["invest_usdt"] * (roi / 100.0)
+    if pos.get("booked_frac"):          # Part 5A: a part was banked at TP1 - total = banked + the rest
+        pnl = _split_pnl(pos, roi, pnl)
+        roi = pnl / pos["invest_usdt"] * 100.0 if pos["invest_usdt"] else roi
     pos.update(gross_roi_pct=gross_roi, fee_roi_pct=fee, fee_usdt=pos["invest_usdt"] * fee / 100.0,
                fee_applied=True)
     now_ts = time.time()
@@ -566,7 +649,7 @@ def _close_position(trade_id, reason, ltp, note=None, recovered=False):
     # get the "tp" alert color too.
     if reason == "SCALP_TARGET":
         alert_type = "tp"
-    elif reason.startswith("TP"):
+    elif reason.startswith("TP") or reason == "TRAIL":
         alert_type = "tp"
     elif reason == "SL":
         alert_type = "sl"
@@ -818,7 +901,7 @@ def _fresh_snapshot(bot=None):
         # trades the screen shows as green/red, and the confirm total matches.
         gross_roi = _calc_roi(pos, ltp)
         roi = gross_roi - _open_fee_roi_pct(pos)
-        pnl = pos["invest_usdt"] * (roi / 100.0)
+        pnl = _split_pnl(pos, roi, pos["invest_usdt"] * (roi / 100.0))
         out.append({
             "id": pos["id"],
             "symbol": symbol,
@@ -1285,7 +1368,7 @@ def paper_trade_monitor_loop():
                         continue
                 ltp = price
                 roi = _calc_roi(pos, ltp)
-                pnl = pos["invest_usdt"] * (roi / 100.0)
+                pnl = _split_pnl(pos, roi, pos["invest_usdt"] * (roi / 100.0))
                 with _lock:
                     if tid in _positions:
                         p = _positions[tid]
@@ -1324,6 +1407,10 @@ def paper_trade_monitor_loop():
                             for _lvl in newly_hit:
                                 if not _positions[tid].get(f"tp{_lvl}_ts"):
                                     _positions[tid][f"tp{_lvl}_ts"] = time.time()
+                try:
+                    _book_at_tp1(tid, tps, newly_hit)       # Part 5A split booking (setting f10_book_pct, 0 = off)
+                except Exception:
+                    pass
                 # TP EXECUTION MODE: "Strategy TP" auto breakeven-shift.
                 # Universal ROI % mode (scalp_target > 0) closes the
                 # whole position flat the moment its target ROI is hit,
@@ -1382,10 +1469,12 @@ def paper_trade_monitor_loop():
                     hit_sl = (ltp <= sig_sl) if is_long else (ltp >= sig_sl)
                     if hit_sl:
                         _close_position(tid, "SL", ltp); continue
+                    if _trail_hit(pos, ltp, is_long):             # Part 5B: the booked rest leaves on a 25% give-back of its peak profit
+                        _close_position(tid, "TRAIL", ltp); continue
                     default_target = max(lvl for lvl, price in tps.items() if price is not None)
                     target_level = pos.get("user_target_tp") or default_target
                     target_price = tps.get(target_level)
-                    if target_price is not None:
+                    if target_price is not None and not _trail_runs(pos):      # the booked rest has no TP target: the trail decides
                         hit_tp = (ltp >= target_price) if is_long else (ltp <= target_price)
                         if hit_tp:
                             if pos.get("user_target_tp") and _stale_target_level(tps, target_level, ltp, is_long):
