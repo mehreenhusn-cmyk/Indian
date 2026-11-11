@@ -1,8 +1,9 @@
-"""v2_f10_daily.py - FILTER STUDY Part 8C (bot Part 8): DAILY REPORT, new bot vs old bot (read-only, light: no candles, no network).
+"""v2_f10_daily.py - FILTER STUDY Part 8C + Part 10 (bot Part 8 / 10): DAILY REPORT, new bot vs old bot (read-only, light: no candles, no network).
 Reads the closed paper trades of the current bot (box paper_b1, source not live) and the US-session log of bot Part 4 (v2_f9_session_log.jsonl).
 Day = 00:00 UTC = 5:30 AM IST. Per day (last 14 days): trades, win %, net USDT, how they closed (TP / SL / other), trades that BANKED at TP1 (Part 5A) vs trades that did not,
 and the trades opened inside the US window (default 16-24 UTC = 21:30-05:30 IST) with their real net = what the session gate would have saved.
 NEW vs OLD: NEW = trades opened at or after the first booking (the first trade that carries booked_ts), OLD = trades opened in the 7 days before that. Compared per day (trades/day, win %, net/day).
+PART 10: REAL-DATA SPIKE CHECK. Each closed paper trade is matched to its Part 9 / 10 snapshot (same coin, side and timeframe, snapshot written up to 10 min before the trade opened). Net is then shown by Z spike bucket (0-6 / 7-24 / 25-48 candles ago / none) and, per timeframe, spike vs no-spike. Trades with no snapshot, or a snapshot that saw fewer than 49 candles of Z, are counted as 'unknown' and never mixed in. Read-only, log only, no trade is stopped.
 HONEST LIMITS: booking changes the P&L of a trade, so NEW and OLD are not the same kind of number. A few days is luck, not proof: look at 7 days at least, better 3-4 weeks. Paper money only.
 The file prints a short text (key 'text') you can read in the app Share report. Run by hand:  python3 v2_f10_daily.py --data /home/owl/owl_data --text"""
 import argparse
@@ -17,7 +18,7 @@ import v2_inventory as I
 import v2_money_hour as M
 import v2_pnl as P
 
-VERSION = "v2_f10_daily 1 (Filter Part 8C)"
+VERSION = "v2_f10_daily 2 (Filter Part 10)"
 DAYS = 14
 DAY = 86400
 SESSION_LOG = "v2_f9_session_log.jsonl"
@@ -80,6 +81,55 @@ def session_log(root, since, name=SESSION_LOG):
     return out
 
 
+def load_snaps(root, since):
+    """Snapshots since a time -> {(sym, side text, tf): [(t, snap), ...]} sorted by time."""
+    out = {}
+    try:
+        with open(os.path.join(root, SNAP_LOG), "r", encoding="utf-8") as f:
+            for line in f:
+                try:
+                    x = json.loads(line)
+                except ValueError:
+                    continue
+                if x.get("t") and x["t"] >= since:
+                    out.setdefault((x.get("sym"), x.get("side"), x.get("tf")), []).append((x["t"], x))
+    except OSError:
+        pass
+    for v in out.values():
+        v.sort(key=lambda a: a[0])
+    return out
+
+
+def spike_bucket(snap):
+    """'0-6' / '7-24' / '25-48' / 'none' / 'unknown' (no snapshot, or Z seen on fewer than 49 candles)."""
+    if not snap or (snap.get("spike_bars") or 0) < 49:
+        return "unknown"
+    k = snap.get("spike_ago")
+    return "none" if k is None else ("0-6" if k <= 6 else "7-24" if k <= 24 else "25-48")
+
+
+def spike_report(rows, snaps):
+    """Real-data check: net of closed paper trades by Z spike bucket (from the snapshot taken when the signal fired)."""
+    first = min((v[0][0] for v in snaps.values()), default=None)
+    got, by, by_tf = 0, {}, {}
+    for r in rows:
+        if first is None or r["ent"] < first:
+            continue
+        best = None
+        for t, sn in snaps.get((r["sym"], "LONG" if r["side"] == 1 else "SHORT", r["tf"]), ()):
+            if -120 <= r["ent"] - t <= 600 and (best is None or abs(r["ent"] - t) < abs(r["ent"] - best[0])):
+                best = (t, sn)
+        b = spike_bucket(best[1] if best else None)
+        got += b != "unknown"
+        by.setdefault(b, []).append(r)
+        if b != "unknown":
+            by_tf.setdefault(r["tf"], {}).setdefault("none" if b == "none" else "spike", []).append(r)
+    out = {"snapshots_first_utc": P.fmt_ts(first) if first else None, "trades_with_snapshot": got, "by_spike": {k: box(v) for k, v in sorted(by.items())},
+           "by_timeframe": {tf: {k: box(v) for k, v in d.items()} for tf, d in sorted(by_tf.items())},
+           "note": "Real entry, real booking. 'unknown' = no snapshot matched. Under 30 trades in a group = luck, not proof. Log only."}
+    return out
+
+
 def build_report(root, fee_roi=1.0):
     root = os.path.realpath(root)
     rep = {"tool": VERSION, "made_utc": P.fmt_ts(time.time()), "read_only": True, "day_start": "00:00 UTC = 5:30 AM IST"}
@@ -95,7 +145,7 @@ def build_report(root, fee_roi=1.0):
         ent, from_close = M.entry_ts(t)
         if net is None or not ent or from_close:
             continue
-        rows.append({"ent": ent, "net": net, "exit_b": X.exit_kind(t.get("status")), "booked": bool(t.get("split_booked") or t.get("booked_frac")), "booked_ts": P.num(t, "booked_ts")})
+        rows.append({"ent": ent, "net": net, "exit_b": X.exit_kind(t.get("status")), "booked": bool(t.get("split_booked") or t.get("booked_frac")), "booked_ts": P.num(t, "booked_ts"), "sym": t.get("symbol"), "side": X.side_of(t), "tf": X.tf_of(t)})
     if not rows:
         rep["text"] = "No closed paper trades found."
         return rep
@@ -127,6 +177,8 @@ def build_report(root, fee_roi=1.0):
         rep["new_vs_old"] = {"note": "no trade with booking yet"}
     us_all = [r for r in rows if r["ent"] >= first_day * DAY and in_window(time.gmtime(r["ent"]).tm_hour, a, b)]
     rep["us_window_last_%d_days" % DAYS] = dict(box(us_all), note="net of these = what the session gate would have saved (it only logs now)")
+    sp = spike_report([r for r in rows if r["ent"] >= first_day * DAY], load_snaps(root, first_day * DAY))
+    rep["spike_real"] = sp
     lines.append("DAILY REPORT (paper b1, day starts 5:30 IST)")
     for t in table[-7:]:
         al = t["all"]
@@ -136,6 +188,8 @@ def build_report(root, fee_roi=1.0):
         n_, o_ = nv["NEW_since_booking"], nv["OLD_7_days_before"]
         lines.append("NEW: %s trades/day, win %s%%, net/day %s (%s days)" % (n_["trades_per_day"], n_["win_pct"], n_["net_per_day"], n_["days"]))
         lines.append("OLD: %s trades/day, win %s%%, net/day %s (%s days)" % (o_["trades_per_day"], o_["win_pct"], o_["net_per_day"], o_["days"]))
+    sb = sp["by_spike"]
+    lines.append("Z SPIKE on REAL trades (matched %d): " % sp["trades_with_snapshot"] + ("; ".join("%s: %d trades net %+.1f" % (k, v["trades"], v["net_usdt"]) for k, v in sb.items()) if sb else "no match yet") + (" | under 30 per group = luck" if sp["trades_with_snapshot"] < 60 else ""))
     lines.append("Part 9 snapshots (signals with state numbers) in the last %d days: %d" % (DAYS, sum(snaps.values())))
     lines.append("Few days = luck. Look at 7+ days. Paper money only.")
     rep["text"] = "\n".join(lines)
