@@ -561,19 +561,31 @@ class AppProvider extends ChangeNotifier with SoundAlerts {
   Future<void> fetchStatus() => _single('status', _fetchStatus);
 
   Future<void> _fetchStatus() async {
-    try {
-      final res = await _getResilient(_u('/api/status'));
-      if (res.statusCode == 200) {
-        _applyStatus(jsonDecode(res.body) as Map<String, dynamic>);
-        _saveLastStatus(res.body);
-        error = null;
-      } else {
-        error = 'Backend returned ${res.statusCode}';
+    // G1: a dropped connection (errno 103 / reset) often works on the very next try, so retry ONCE quietly before any error is shown.
+    for (var attempt = 0; attempt < 2; attempt++) {
+      try {
+        final res = await _getResilient(_u('/api/status'));
+        if (res.statusCode == 200) {
+          _applyStatus(jsonDecode(res.body) as Map<String, dynamic>);
+          _saveLastStatus(res.body);
+          error = null;
+        } else {
+          error = 'Backend returned ${res.statusCode}';
+        }
+        break;
+      } on TimeoutException {
+        error = 'Backend busy - waiting for it (data will refresh by itself)';
+        break;
+      } catch (e) {
+        if (attempt == 0) {
+          await Future.delayed(const Duration(milliseconds: 1500));
+          continue;
+        }
+        // G1: with data already on screen, a short calm line instead of the raw socket error.
+        error = status.isNotEmpty
+            ? 'Connection dropped - showing the last data, reconnecting by itself'
+            : 'Cannot reach backend ($baseUrl): $e${baseUrl.contains('127.0.0.1') ? '\nThis URL is the phone itself. Settings > Backend URL should be http://100.85.188.83:8000' : ''}';
       }
-    } on TimeoutException {
-      error = 'Backend busy - waiting for it (data will refresh by itself)';
-    } catch (e) {
-      error = 'Cannot reach backend ($baseUrl): $e${baseUrl.contains('127.0.0.1') ? '\nThis URL is the phone itself. Settings > Backend URL should be http://100.85.188.83:8000' : ''}';
     }
     notifyListeners();
   }
@@ -1272,10 +1284,19 @@ class AppProvider extends ChangeNotifier with SoundAlerts {
   bool get hasMainSplit => splitGroup('main').isNotEmpty;
   double _mainNum(String k, double fallback) => hasMainSplit ? ((splitGroup('main')[k] as num?)?.toDouble() ?? 0.0) : fallback;
   double get mainToday => _mainNum('today_pnl', closedPnl);
-  double get mainOpenPnl => _mainNum('pnl', openPnl);
+  /// G1: when the split block is missing (slow or old status) Sniper must not leak into the Main numbers: drop the Sniper rows from the open positions list instead.
+  bool _isSniperPos(dynamic p) => p is Map && (p['source'] ?? '').toString().toLowerCase().startsWith('sniper');
+  bool get _hasSniperPos => positions.any(_isSniperPos);
+  double get mainOpenPnl => hasMainSplit
+      ? _mainNum('pnl', openPnl)
+      : (_hasSniperPos
+          ? positions.where((p) => !_isSniperPos(p)).fold<double>(0.0, (a, p) => a + (((p is Map ? p['pnl_usdt'] : null) as num?)?.toDouble() ?? 0.0))
+          : openPnl);
   double get main7d => _mainNum('d7_pnl', pnl7d);
   double get main30d => _mainNum('d30_pnl', pnl30d);
-  int get mainOpenCount => hasMainSplit ? ((splitGroup('main')['n'] as num?)?.toInt() ?? 0) : ((status['open_count'] as num?)?.toInt() ?? 0);
+  int get mainOpenCount => hasMainSplit
+      ? ((splitGroup('main')['n'] as num?)?.toInt() ?? 0)
+      : (_hasSniperPos ? positions.where((p) => !_isSniperPos(p)).length : ((status['open_count'] as num?)?.toInt() ?? 0));
   int get mainTrades7d => hasMainSplit ? ((splitGroup('main')['d7_trades'] as num?)?.toInt() ?? 0) : trades7d;
   int get mainTrades30d => hasMainSplit ? ((splitGroup('main')['d30_trades'] as num?)?.toInt() ?? 0) : trades30d;
   bool get main7dPartial => hasMainSplit && splitBlock?['d7_partial'] == true;
