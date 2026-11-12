@@ -7,7 +7,7 @@ One line per signal in v2_f11_snap.jsonl (data folder), written once per (coin, 
   amd_basic / amd_reclaim / amd_video (same definition as study Part 6C), dropped_forming (true when the newest candle was still forming and was left out)
 PART 10 adds: spike_ago (candles ago that Z200 went beyond +3 in the trade direction, 0-48, None = none), spike_max (highest trade-direction Z200 in the last 49 candles), spike_bars (how many of those 49 candles had a Z; only trust spike_ago when it is 49),
   zsma (average of the last Z200 values in the trade direction = the video's Z-SMA), zsma_n (how many Z values it used; 200 = the real Z-SMA 200, less = the bot holds fewer candles), z_vs_sma (z200 minus zsma, trade direction: above 0 = the histogram is above the Z-SMA for a long / below it for a short), sig_id (signal id if the bot has one).
-Numbers come only from the candles the bot already holds in memory: no network, no database, no engine. Setting f11_snap_mode: "on" (default) or "off". Any problem = nothing is written (fail-open).
+PART 17B adds the two-EMA50 sides (owner idea 12 Nov): p_ok (price close on the right side of its EMA50: long above, short below) and the LOWER-pane candle = Z-score candle: l_zc (Z200 of the close, raw), l_ema (EMA50 of the Z-close series), l_ok (trade side * (l_zc - l_ema) > 0, None when fewer than 100 Z values), l_n (Z values used). Same maths as study Part 17A (v2_f15_ema2.py). ASSUMPTION: the lower pane is the Z-score.\nNumbers come only from the candles the bot already holds in memory: no network, no database, no engine. Setting f11_snap_mode: "on" (default) or "off". Any problem = nothing is written (fail-open).
 File is cut at 5 MB (the old part is kept as .old). Read the counts by hand:  python3 v2_f11_snap.py"""
 import json
 import math
@@ -17,7 +17,7 @@ import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-VERSION = "v2_f11_snap 2 (Filter Part 10 bot side)"
+VERSION = "v2_f11_snap 3 (Filter Part 17B bot side)"
 LOG_FILE, LOG_MAX = "v2_f11_snap.jsonl", 5 * 1024 * 1024
 NEED = 210                      # candles needed (Z lookback 200 + a few)
 TF_NAME = {180: "3m", 300: "5m", 900: "15m"}    # candle step in seconds -> timeframe name
@@ -76,6 +76,22 @@ def _ema(c, n):
     return out
 
 
+def _lower_ema(c, i, side, ema_n=50, warm=150, zmin=100):
+    """Part 17B: the lower-pane candle (Z200 of the close) against the EMA50 of the Z-close series, same as study Part 17A.
+    -> (l_zc, l_ema, l_ok, l_n). l_ok is None when fewer than zmin Z values exist."""
+    j0 = max(199, i - warm + 1)
+    a, ema, zc, n = 2.0 / (ema_n + 1), None, None, 0
+    for j in range(j0, i + 1):
+        z = _z(c, j, 200, 1)
+        zc = z
+        if z is not None:
+            n += 1
+            ema = z if ema is None else ema + a * (z - ema)
+    if n < zmin or zc is None or ema is None:
+        return None, None, None, n
+    return round(zc, 3), round(ema, 3), side * (zc - ema) > 0, n
+
+
 def _amd(o, h, l, c, i, side):
     a, b = i - 2, i - 1
     if side == 1:
@@ -110,6 +126,7 @@ def numbers(signal, symbol, cache, now=None):
     sd = math.sqrt(max(sum(x * x for x in w) / 100.0 - m * m, 0.0))
     amd = _amd(o, h, l, c, i, side)
     sp = _spike_sma(c, i, side)
+    lw = _lower_ema(c, i, side)
     z200 = _z(c, i, 200, side)
     try:
         import v2_money_hour as M
@@ -124,6 +141,7 @@ def numbers(signal, symbol, cache, now=None):
             "width": round(sd / m * 100.0, 4) if m else None, "amd_basic": amd[0], "amd_reclaim": amd[1], "amd_video": amd[2], "dropped_forming": dropped,
             "spike_ago": sp[0], "spike_max": sp[1], "spike_bars": sp[2], "zsma": sp[3], "zsma_n": sp[4],
             "z_vs_sma": round(z200 - sp[3], 3) if z200 is not None and sp[3] is not None else None,
+            "p_ok": side * (c[i] - e50[i]) > 0, "l_zc": lw[0], "l_ema": lw[1], "l_ok": lw[2], "l_n": lw[3],
             "sig_id": getattr(signal, "id", None) or getattr(signal, "signal_id", None)}
 
 

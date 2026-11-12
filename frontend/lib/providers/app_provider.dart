@@ -1259,6 +1259,14 @@ class AppProvider extends ChangeNotifier with SoundAlerts {
   double get pnl30d => (periodPnl?['d30_pnl'] as num?)?.toDouble() ?? 0.0;
   int get trades7d => (periodPnl?['d7_trades'] as num?)?.toInt() ?? 0;
   int get trades30d => (periodPnl?['d30_trades'] as num?)?.toInt() ?? 0;
+
+  /// Part 18: MAIN bot and SNIPER numbers kept apart (backend book_split.py, block status['split']). Null in live mode or when the backend has no such block.
+  Map<String, dynamic>? get splitBlock => status['split'] is Map ? Map<String, dynamic>.from(status['split'] as Map) : null;
+  Map<String, dynamic> splitGroup(String g) {
+    final s = splitBlock;
+    final v = s == null ? null : s[g];
+    return v is Map ? Map<String, dynamic>.from(v) : <String, dynamic>{};
+  }
   double get openMarginUsed => (status['open_margin_used'] as num?)?.toDouble() ?? 0.0;
 
   /// Real Binance USDT futures wallet (LIVE mode only, null in paper mode). Keys: ok, wallet, available,

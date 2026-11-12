@@ -440,6 +440,11 @@ async def on_startup():
             load_report.start(DATA_DIR)  # 30 s samples -> /api/load_report (1h / 4h / 24h report + daily summary)
         except Exception as e:
             print(f"[startup] loop_watch skipped: {e}")
+        try:
+            import memwatch
+            memwatch.start(DATA_DIR)       # Part 19: RSS + container sizes every 10 min -> memwatch.jsonl (measure only, setting memwatch_mode 'off' stops it)
+        except Exception as e:
+            print(f"[startup] memwatch skipped: {e}")
         asyncio.create_task(_status_broadcaster())
         asyncio.create_task(_swr_warmer())
         asyncio.create_task(_swr_prewarm())
@@ -702,6 +707,15 @@ def _display_status(skip=()):
                 data["period_pnl"] = trade_store.get_period_stats()   # Today / 7D / 30D, closed only
             except Exception:
                 data["period_pnl"] = None
+            # Part 18 (additive, display only): the same numbers split into MAIN and SNIPER. The old fields above are NOT changed. Any error = no 'split' key.
+            try:
+                import book_split
+                data["split"] = book_split.split_status(
+                    positions, trade_store.get_recent_closed(limit=trade_store.MAX_HISTORY, bot="b1"),
+                    trade_store._trading_day_start_ts(), trade_store.MAX_HISTORY,
+                    skip=lambda t: trade_store._is_btc_trade(t, "b1"))
+            except Exception:
+                data["split"] = None
         else:
             data["closed_pnl_usdt"] = None
             data["today_total_usdt"] = None

@@ -37,7 +37,7 @@ class DashboardCockpit extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Selector<AppProvider, String>(
-      selector: (_, p) => '${(p.openPnl * 100).round()}|${(p.pnl7d * 100).round()}|${(p.pnl30d * 100).round()}',
+      selector: (_, p) => '${(p.openPnl * 100).round()}|${(p.pnl7d * 100).round()}|${(p.pnl30d * 100).round()}|${(((p.splitGroup('main')['pnl'] as num?) ?? 0) * 100).round()}|${(((p.splitGroup('sniper')['pnl'] as num?) ?? 0) * 100).round()}|${p.splitBlock == null ? 0 : 1}',
       builder: (context, _, __) {
         final prov = context.read<AppProvider>();
         final openPnl = prov.openPnl;
@@ -75,6 +75,24 @@ class DashboardCockpit extends StatelessWidget {
             ),
           );
         }
+
+        // Part 18: one small table, MAIN and SNIPER on their own rows. Never added together.
+        double nv(Map<String, dynamic> m, String k) => (m[k] as num?)?.toDouble() ?? 0.0;
+        Widget scell(String t, {Color? color, bool bold = false, int flex = 1}) => Expanded(
+              flex: flex,
+              child: Text(t, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: flex == 2 ? TextAlign.left : TextAlign.right, style: context.type.metadata.copyWith(color: color ?? p.textSecondary, fontWeight: bold ? FontWeight.w700 : FontWeight.w500)),
+            );
+        Widget splitRow(String name, Map<String, dynamic> m) => Padding(
+              padding: const EdgeInsets.symmetric(vertical: 3),
+              child: Row(children: [
+                scell(name, bold: true, flex: 2, color: p.textPrimary),
+                scell('${(m['n'] as num?)?.toInt() ?? 0} · ${sg(nv(m, 'pnl'))}', color: pc(nv(m, 'pnl'))),
+                scell(sg(nv(m, 'today_pnl')), color: pc(nv(m, 'today_pnl'))),
+                scell(sg(nv(m, 'd7_pnl')), color: pc(nv(m, 'd7_pnl'))),
+                scell(sg(nv(m, 'd30_pnl')), color: pc(nv(m, 'd30_pnl'))),
+              ]),
+            );
+        final splitAll = isLive ? null : prov.splitBlock;
 
         // SR1b: the same calm card as the rest of the app (OWLCard); a thin green / red rim follows the sign of the hero number.
         return OWLCard(
@@ -131,6 +149,25 @@ class DashboardCockpit extends StatelessWidget {
                     tile('7 DAYS · ${prov.trades7d} TRADES', sg(prov.pnl7d), pc(prov.pnl7d)),
                     tile('30 DAYS · ${prov.trades30d} TRADES', sg(prov.pnl30d), pc(prov.pnl30d)),
                   ]),
+                ],
+                if (splitAll != null) ...[
+                  Divider(height: 24, thickness: 1, color: p.border),
+                  Text('MAIN BOT vs SNIPER (apart, never added)', style: AppTypography.eyebrow.copyWith(color: p.textMuted, fontSize: 9.5)),
+                  const SizedBox(height: 6),
+                  Row(children: [
+                    scell('', flex: 2),
+                    scell('OPEN', color: p.textMuted),
+                    scell('TODAY', color: p.textMuted),
+                    scell('7D', color: p.textMuted),
+                    scell('30D', color: p.textMuted),
+                  ]),
+                  splitRow('MAIN', prov.splitGroup('main')),
+                  splitRow('SNIPER', prov.splitGroup('sniper')),
+                  if (splitAll['d7_partial'] == true || splitAll['d30_partial'] == true)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text('7D / 30D are partial: the book keeps only the last 1500 trades.', style: context.type.metadata.copyWith(color: p.textMuted)),
+                    ),
                 ],
               ],
             ),

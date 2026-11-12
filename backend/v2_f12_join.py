@@ -17,12 +17,12 @@ import v2_inventory as I
 import v2_money_hour as M
 import v2_pnl as P
 
-VERSION = "v2_f12_join 1 (Filter Part 11)"
+VERSION = "v2_f12_join 2 (Filter Part 17B)"
 JOIN_FILE = "v2_f12_join.jsonl"
 SNAP_FILES = ("v2_f11_snap.jsonl.old", "v2_f11_snap.jsonl")       # old part first
 DAY = 86400
 KEEP = ("sig_id", "bar_t", "entry_price", "tp1", "tp4", "hour_utc", "session", "cross", "z100", "z200", "zsma", "zsma_n", "z_vs_sma", "run", "dist", "slope", "width",
-        "amd_basic", "amd_reclaim", "amd_video", "spike_ago", "spike_max", "spike_bars", "dropped_forming")
+        "amd_basic", "amd_reclaim", "amd_video", "spike_ago", "spike_max", "spike_bars", "dropped_forming", "p_ok", "l_ok", "l_zc", "l_ema", "l_n")
 
 
 def load_snaps(root):
@@ -74,6 +74,27 @@ def closed_rows(root, fee_roi, with_sniper=False):
     return rows
 
 
+def list_tags(rows, root):
+    """Part 17B: gainer / loser tag per trade = the daily 00:00 UTC list (top 5 gainers + top 5 losers, cohort_official) of the trade day. Adds list_b ('WITH list' / 'AGAINST list' / 'not in top-10'), list_kind, list_rank.
+    Read-only, fail-open: no market db = no tag (list_b None), the join still works."""
+    con = None
+    try:
+        import v2_f5a_exits as A
+        con = A.F.open_ro(root)
+        cohort = X.load_cohort(con) if con is not None else {}
+        for r in rows:
+            r.update({k: v for k, v in X.cohort_numbers(r, cohort).items() if k in ("list_b", "list_kind", "list_rank")} if con is not None else {"list_b": None})
+    except Exception:
+        for r in rows:
+            r.setdefault("list_b", None)
+    finally:
+        try:
+            if con is not None:
+                con.close()
+        except Exception:
+            pass
+
+
 def saved_keys(root):
     """Keys already in the join file + line count. Unreadable lines are skipped, never fixed or deleted."""
     keys, n = set(), 0
@@ -117,9 +138,9 @@ def update(root, fee_roi=1.0, write=True):
         return 0, 0
     have, _n = saved_keys(root)
     new, hit = [], 0
-    for r in sorted(closed_rows(root, fee_roi), key=lambda a: a["ent"]):
-        if r["key"] in have or r["ent"] < first:
-            continue
+    todo = [r for r in sorted(closed_rows(root, fee_roi), key=lambda a: a["ent"]) if r["key"] not in have and r["ent"] >= first]
+    list_tags(todo, root)
+    for r in todo:
         sn = match(snaps, r["sym"], r["side"], r["tf"], r["ent"])
         line = dict(r, snap=bool(sn), day=int(r["ent"] // DAY), joined=int(time.time()))
         if sn:
