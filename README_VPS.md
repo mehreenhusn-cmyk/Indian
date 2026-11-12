@@ -41,3 +41,9 @@ The owner is not technical. Reply in very simple English, short. ONE step at a t
 - The grey skeleton for up to 45 s = the VPS did not answer (Tailscale off / asleep, or the backend down). After 5 s the app now prints which URL it waits for.
 - Quick check in Termux: `curl -m 5 http://100.85.188.83:8000/health` (any answer = reachable) and `ssh root@222.167.207.31 "systemctl is-active owl-backend owl-ping"`.
 - Open: a fixed signing key (so updates install over the old app and keep settings) needs a GitHub secret; not done yet.
+
+
+## Memory fix (13 Nov 2026): MALLOC_ARENA_MAX=2
+Why: memwatch showed the bot RAM is fragmentation (trim gives back 144 to 418 MB), not one leaking container. Run once from Termux (adds a drop-in, does not restart):
+`ssh root@222.167.207.31 'mkdir -p /etc/systemd/system/owl-backend.service.d && printf "[Service]\nEnvironment=MALLOC_ARENA_MAX=2\n" > /etc/systemd/system/owl-backend.service.d/malloc.conf && systemctl daemon-reload && systemctl cat owl-backend | grep -i -A1 "malloc"'`
+Then one restart of owl-backend (the next deploy does it). Undo: remove /etc/systemd/system/owl-backend.service.d/malloc.conf, `systemctl daemon-reload`, restart.

@@ -2816,3 +2816,13 @@ Status: documentation mapping for navigation. The 24-Part master roadmap at the 
 - 🟢 screens/indicator_lab_screen.dart: tap a tile = the list filters to that verdict (TESTED = all tested). Counts still come from ALL tests, the filter never changes them.
 - 🟢 Test rows: the 4 px coloured left bar now shows for EDGE (green) and LOSING (red); title bold 800. Rows stay flat.
 - Dart NOT compiled (APK build is the proof). No backend change.
+
+## REPORTS THE OWNER SHARES: what each one is, where it is in the app, how ANY Claude must use it (13 Nov 2026, owner asked: "any Claude should ask for it")
+At the START of a new chat, a Claude that picks this repo up must ASK the owner (short, Roman Hinglish, tappable list if possible) which of these he can send, and read them BEFORE guessing. Do not work from old numbers in this file when a fresh report exists.
+| Report | Where in the app | File name | What it answers |
+|---|---|---|---|
+| Filter Lab report | Study Lab > Filter Lab tab, card at the bottom (Share / Copy) | owl_filter_report.txt | Every saved Filter Part (1 to 17A) AND Part 15 (f13w, real joined trades, EMA gates) in one file |
+| Study Lab results report (NEW, Part 20) | Study Lab > Results tab, card at the bottom (Share / Copy) | owl_study_results_report.txt | Every test of the Results board (Z-SMA, SD bands, pairs, combos, Brain, exit, Dual, skipped, wick, regime, scalp, money lost): verdict, n, win %, R each, lift, train / test halves, coins. Grouped EDGE / CANDIDATE / LOSING / NO_EDGE / NOT_ENOUGH_DATA |
+| Memory watch | Termux: ssh root@222.167.207.31 "cd /home/owl/Indian-main/backend && python3 memwatch.py --data /home/owl/owl_data" | text output | RSS over time, biggest containers, trim test (fragmentation or real leak) |
+| Part 15 week read | inside the Filter Lab report, section f13w | | winners vs losers on REAL trades, gates P / L / P+L / EMA50+ZSMA_LONG; first real read 16-17 Nov |
+HOW TO READ THE RESULTS BOARD (owner asked what EDGE means): EDGE = 30+ cases AND the same sign in BOTH halves (train / test). R = one unit of risk (1R = stop loss). 'n 661 of 30' = 661 cases found, 30 needed. 'lift' = better than the average without the setting. 'halves +0.19 / +0.04' = first / second half. '65% of coins' = share of coins where it also held. It is a PAPER REPLAY of saved candles (+2R / -1R, 30 candles, fees in), gains are small (+0.1 to +0.2 R, fees can eat it), most EDGE cards are LONG. EDGE = a LEAD for a LOG test and for Part 15 on real trades, NOT a rule and NOT an order; nothing on the board changes a trade.

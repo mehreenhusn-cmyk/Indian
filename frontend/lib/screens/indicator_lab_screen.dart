@@ -12,6 +12,7 @@ import '../widgets/owl_pressable.dart';
 import '../widgets/owl_refresh.dart';
 import '../widgets/owl_route.dart';
 import '../widgets/purpose_strip.dart';
+import '../widgets/report_download_card.dart';
 import 'lab_test_detail_screen.dart';
 
 /// R13: the STUDY LAB RESULTS BOARD. One card per test (all studies of the V2 Lab backend: indicators, Brain, exit, Dual split, skipped signals, wick, volatility, scalp, money lost), EDGE first.
@@ -153,7 +154,18 @@ class _IndicatorLabScreenState extends State<IndicatorLabScreen> {
       content = ListView(
         physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
         padding: const EdgeInsets.fromLTRB(AppSpacing.screenPad, AppSpacing.s, AppSpacing.screenPad, AppSpacing.huge),
-        children: _body(LabTest.listFrom(r['results'])),
+        children: [
+          ..._body(LabTest.listFrom(r['results'])),
+          const SizedBox(height: AppSpacing.l),
+          // Part 20: ONE text report of every test on this board (verdict, n, win %, R each, lift, halves). Share or Copy it to any AI.
+          const ReportDownloadCard(
+            title: 'Study Lab results report',
+            description: 'One text file with every test on this board: what was tested, EDGE / candidate / need data / no edge / losing, with the numbers. Use Share or Copy and send it to any AI.',
+            textPath: '/api/v2/lab_report',
+            savePath: '/api/v2/lab_report_save',
+            fileName: 'owl_study_results_report.txt',
+          ),
+        ],
       );
     }
     if (widget.embedded) return OWLRefresh(onRefresh: _load, child: content);
