@@ -137,13 +137,16 @@ def build_report(root, fee_roi=1.0):
         rep["error"] = "data folder not found"
         return rep
     raw, _st = X.load_trades(root)
-    rows = []
+    rows, sn_rows = [], []
     for t in raw:
         if t.get("_box") != "paper_b1" or str(t.get("id") or "").startswith("LIVE-"):
             continue
         net = M.net_fee_correct(t, fee_roi)
         ent, from_close = M.entry_ts(t)
         if net is None or not ent or from_close:
+            continue
+        if X.group_of(t) == "SNIPER":                 # Sniper trades sit in the same b1 book: counted SEPARATELY, never inside the Main numbers
+            sn_rows.append((ent, net))
             continue
         rows.append({"ent": ent, "net": net, "exit_b": X.exit_kind(t.get("status")), "booked": bool(t.get("split_booked") or t.get("booked_frac")), "booked_ts": P.num(t, "booked_ts"), "sym": t.get("symbol"), "side": X.side_of(t), "tf": X.tf_of(t)})
     if not rows:
@@ -179,7 +182,9 @@ def build_report(root, fee_roi=1.0):
     rep["us_window_last_%d_days" % DAYS] = dict(box(us_all), note="net of these = what the session gate would have saved (it only logs now)")
     sp = spike_report([r for r in rows if r["ent"] >= first_day * DAY], load_snaps(root, first_day * DAY))
     rep["spike_real"] = sp
-    lines.append("DAILY REPORT (paper b1, day starts 5:30 IST)")
+    sn_d = [(e, n) for e, n in sn_rows if e >= first_day * DAY]
+    rep["sniper_separate"] = {"trades": len(sn_d), "net_usdt": round(sum(n for _e, n in sn_d), 2), "days": DAYS, "note": "Sniper trades (source sniper / sniper_learn) are NOT inside any Main number of this report."}
+    lines.append("DAILY REPORT (MAIN bot only, paper b1, day starts 5:30 IST)")
     for t in table[-7:]:
         al = t["all"]
         lines.append("%s: %d trades, win %s%%, net %+.1f | banked %d | US window %d trades, net %+.1f" % (t["day"], al["trades"], al["win_pct"], al["net_usdt"], t["banked_at_tp1"]["trades"], t["us_window"]["trades"], t["us_window"]["net_usdt"]))
@@ -191,6 +196,7 @@ def build_report(root, fee_roi=1.0):
     sb = sp["by_spike"]
     lines.append("Z SPIKE on REAL trades (matched %d): " % sp["trades_with_snapshot"] + ("; ".join("%s: %d trades net %+.1f" % (k, v["trades"], v["net_usdt"]) for k, v in sb.items()) if sb else "no match yet") + (" | under 30 per group = luck" if sp["trades_with_snapshot"] < 60 else ""))
     lines.append("Part 9 snapshots (signals with state numbers) in the last %d days: %d" % (DAYS, sum(snaps.values())))
+    lines.append("SNIPER (separate, not in the numbers above), last %d days: %d trades, net %+.1f" % (DAYS, len(sn_d), rep["sniper_separate"]["net_usdt"]))
     lines.append("Few days = luck. Look at 7+ days. Paper money only.")
     rep["text"] = "\n".join(lines)
     return rep

@@ -71,20 +71,29 @@ def build(days=7):
         now = time.time()
         today0 = now - (now % DAY_S)
         start = today0 - (int(days) - 1) * DAY_S
-        rows = [t for t in trade_store.get_all_closed(5000, net=True, live_view=True) if _f(t.get("closed_at_ts")) >= start]
-        by = {}
+        allrows = [t for t in trade_store.get_all_closed(5000, net=True, live_view=True) if _f(t.get("closed_at_ts")) >= start]
+        # Main bot and Sniper trades sit in the SAME paper book. They are split here so the daily P&L is never a mix (owner, 12 Nov): top numbers = MAIN only, "sniper" = its own block.
+        sn_rows = [t for t in allrows if str(t.get("source") or "").lower().startswith("sniper")]
+        rows = [t for t in allrows if not str(t.get("source") or "").lower().startswith("sniper")]
+        by, sby = {}, {}
         for t in rows:
             by.setdefault(int((_f(t.get("closed_at_ts")) - start) // DAY_S), []).append(t)
-        hist = []
+        for t in sn_rows:
+            sby.setdefault(int((_f(t.get("closed_at_ts")) - start) // DAY_S), []).append(t)
+        hist, shist = [], []
         for i in range(int(days) - 1, -1, -1):          # newest day first
             day0 = start + i * DAY_S
+            sd = _day(sby.get(i, []))
+            sd["date"] = time.strftime("%Y-%m-%d", time.gmtime(day0))
+            shist.append(sd)
             d = _day(by.get(i, []))
             d["date"] = time.strftime("%Y-%m-%d", time.gmtime(day0))
             d["title"] = "Today" if i == int(days) - 1 else "Yesterday" if i == int(days) - 2 else time.strftime("%d %b", time.gmtime(day0))
             hist.append(d)
         today, yest = hist[0], hist[1] if len(hist) > 1 else None
         week = round(sum(h["net"] for h in hist), 2)
-        return {"ts": now, "today": today, "yesterday": yest, "days": hist, "week_net": week,
+        return {"ts": now, "scope": "MAIN bot only (Sniper trades are in the 'sniper' block)", "today": today, "yesterday": yest, "days": hist, "week_net": week,
+                "sniper": {"today": shist[0], "yesterday": shist[1] if len(shist) > 1 else None, "days": shist, "week_net": round(sum(h["net"] for h in shist), 2)},
                 "headline": (_words("Yesterday", yest) if yest else ""), "today_line": _words("Today so far", today),
                 "note": "Built from the permanent trade archive, so it stays here even when alerts scroll away. "
                         "The trading day starts at 5:30 AM IST."}

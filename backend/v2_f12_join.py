@@ -54,7 +54,7 @@ def match(snaps, sym, side, tf, ent):
     return best[1] if best else None
 
 
-def closed_rows(root, fee_roi):
+def closed_rows(root, fee_roi, with_sniper=False):
     """Closed paper trades of b1 (same filter as the daily report) -> list of dicts."""
     raw, _st = X.load_trades(root)
     rows = []
@@ -65,7 +65,10 @@ def closed_rows(root, fee_roi):
         ent, from_close = M.entry_ts(t)
         if net is None or not ent or from_close:
             continue
-        rows.append({"key": P.tkey(t), "id": t.get("id"), "sym": t.get("symbol"), "side": X.side_of(t), "tf": X.tf_of(t), "ent": ent, "close": P.num(t, "closed_at_ts"), "net": round(net, 4),
+        g = X.group_of(t)
+        if g == "SNIPER" and not with_sniper:         # the snapshot logger sees MAIN signals only; Sniper trades share the b1 book but never go into the join file
+            continue
+        rows.append({"key": P.tkey(t), "id": t.get("id"), "g": g, "sym": t.get("symbol"), "side": X.side_of(t), "tf": X.tf_of(t), "ent": ent, "close": P.num(t, "closed_at_ts"), "net": round(net, 4),
                      "exit": X.exit_kind(t.get("status")), "status": t.get("status"), "booked": bool(t.get("split_booked") or t.get("booked_frac")), "booked_frac": P.num(t, "booked_frac"),
                      "booked_pnl": P.num(t, "booked_pnl"), "booked_ts": P.num(t, "booked_ts"), "peak_roi": P.num(t, "max_roi_pct"), "invest": P.num(t, "invest_usdt")})
     return rows
