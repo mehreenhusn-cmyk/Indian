@@ -62,6 +62,7 @@ ROUTES = (
     ("api.route_timing", "slow calls"),
     ("api.chop", "chop b3"),
     ("api.filter_study", "filter study"),   # Part 8A (README_FILTER)
+    ("api.trade_timeline", "trade timeline"),   # Part 12A
 )
 STATUS = {"version": VERSION, "mounted": [], "skipped": []}
 

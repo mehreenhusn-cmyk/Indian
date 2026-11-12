@@ -14,6 +14,9 @@ extension AppProviderFilter on AppProvider {
   /// GET /api/v2/filter_rules = {status, made_utc, rules[{id, name, kind, luck_random_as_good_pct, train, test}], combined {train, test}} or {state: "none"}.
   Future<Map<String, dynamic>> fetchFilterRules() => _sniperGet('/api/v2/filter_rules');
 
+  /// Part 12A/12B: GET /api/v2/trades = {made_utc, open[], closed[], signals[{t, sym, side, tf}], note}. Each trade = {id, sym, side, tf, state, signal_ts, open_ts, booked_ts, booked_pnl, close_ts, exit, net, events[{t, label, note}]}. Read only.
+  Future<Map<String, dynamic>> fetchTrades() => _sniperGet('/api/v2/trades');
+
   /// POST /api/v2/filter_run: starts ONE study run in the background (409 if one is going on). Answers {started, note, run}. Never throws.
   Future<Map<String, dynamic>> postFilterRun() => _filterPost('/api/v2/filter_run', null);
 

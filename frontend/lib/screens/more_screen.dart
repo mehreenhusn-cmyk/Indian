@@ -28,6 +28,7 @@ import 'reports_screen.dart';
 import 'settings_screen.dart';
 import 'strategy_doctor_screen.dart';
 import 'timeline_screen.dart';
+import 'trade_timeline_screen.dart';
 
 /// R20: grouped in 5 headings + App Problems on top, ONE line per row (icon + name, no grey sub text), rows 56 high, title 20, heading 13, row 15 (text scale of 06_FRONTEND_SPEC).
 /// The power / pause button is NOT on this page: it sits in the top ticker bar, far from the gear (Part 14). English only.
@@ -90,6 +91,7 @@ class MoreScreen extends StatelessWidget {
             const OwlSectionLabel('Results and reports'),
             OwlListCard(children: [
               rR(Icons.today_outlined, 'Brain Today', 'Today in a few lines', () => _open(context, 'Brain Today', const BrainTodayScreen())),
+              rR(Icons.route_outlined, 'Trades', 'Each trade: signal, open, TP1, close, net', () => _open(context, 'Trades', const TradeTimelineScreen())),
               rR(Icons.timeline, 'Brain and Activity', 'A timeline of what the Brain did', () => _open(context, 'Brain and Activity', const TimelineScreen())),
               rR(Icons.grid_view_rounded, 'Month Calendar', 'Profit and loss for each day', () => _open(context, 'Month Calendar', const MonthGridScreen())),
               rR(Icons.emoji_events_outlined, 'Simple Results', 'Net, win rate and trades in plain words', () => _open(context, 'Simple Results', const SimpleResultsScreen())),

@@ -2,7 +2,7 @@
 Why: the study files print their summary on the screen only. The app's Lab tab needs them as files, and the owner does not want to run anything by hand (README_FILTER.md).
 READ-ONLY study: this file starts the Part scripts as separate low-priority processes (nice 10). It changes no setting, no trade, no order. Nothing here touches the bot.
 Files in the data folder:
-  v2_filter_sum_<id>.json   the summary of one Part (id = f1, f1b, f2, f3a, f3b, f4, f5a, f5b, f6, f5c, f6b, f6c, f7c, f10d, f12j). Written to a .tmp file first, then renamed, so the app never reads half a file.
+  v2_filter_sum_<id>.json   the summary of one Part (id = f1, f1b, f2, f3a, f3b, f4, f5a, f5b, f6, f5c, f6b, f6c, f6d, f7c, f10d, f12j, f13w). Written to a .tmp file first, then renamed, so the app never reads half a file.
   v2_f8_run.json            the run state: running, current Part, done (with seconds), failed (with the reason), started / finished time.
 Start from code:  import v2_f8_runner as R;  R.start(root)  -> (True / False, text).  The runner never runs twice at once (a state file that was not updated for 60 min counts as dead).
 By hand (normally not needed):  python3 v2_f8_runner.py --data /home/owl/owl_data
@@ -21,7 +21,7 @@ STATE_FILE, SUM_FILE = "v2_f8_run.json", "v2_filter_sum_%s.json"
 PARTS = (("f1", "v2_f1_counts.py", "Part 1 counts"), ("f1b", "v2_f1b_learn.py", "Part 1B Sniper LEARN + b3"), ("f2", "v2_f2_fakes.py", "Part 2 fake signals"),
          ("f3a", "v2_f3a_moves.py", "Part 3A rallies and dumps"), ("f3b", "v2_f3b_catch.py", "Part 3B caught / missed"), ("f4", "v2_f4_filters.py", "Part 4 filter lab"),
          ("f5a", "v2_f5a_exits.py", "Part 5A exit lab 1"), ("f5b", "v2_f5b_exits.py", "Part 5B exit lab 2"), ("f6", "v2_f6_decisions.py", "Part 6 four words"),
-         ("f5c", "v2_f5c_booking.py", "Part 5C split booking"), ("f6b", "v2_f6b_entry.py", "Part 6B entry lab"), ("f6c", "v2_f6c_amd.py", "Part 6C AMD + entry bias check"), ("f7c", "v2_f7c_winners.py", "Part 7C winner profile + block candidates"), ("f10d", "v2_f10_daily.py", "Part 8C daily report new vs old (light, runs last)"), ("f12j", "v2_f12_join.py", "Part 11 daily join snapshot + trade result (light, saves data)"))
+         ("f5c", "v2_f5c_booking.py", "Part 5C split booking"), ("f6b", "v2_f6b_entry.py", "Part 6B entry lab"), ("f6c", "v2_f6c_amd.py", "Part 6C AMD + entry bias check"), ("f6d", "v2_f6d_amd_low.py", "Part 13 video checklist on price + Z candles"), ("f7c", "v2_f7c_winners.py", "Part 7C winner profile + block candidates"), ("f10d", "v2_f10_daily.py", "Part 8C daily report new vs old (light, runs last)"), ("f12j", "v2_f12_join.py", "Part 11 daily join snapshot + trade result (light, saves data)"), ("f13w", "v2_f13_week.py", "Part 15 week test on real joined data"))
 PART_IDS = tuple(p[0] for p in PARTS)
 IDLE_IO = ["ionice", "-c3"] if shutil.which("ionice") else []   # disk only when nobody else needs it (the study reads a 1.3 million row candle store)
 PART_TIMEOUT = 45 * 60          # one Part may run 45 min at most
