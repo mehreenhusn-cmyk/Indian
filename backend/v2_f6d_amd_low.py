@@ -42,7 +42,7 @@ _pre = {}
 def _prefix(S):
     """Prefix sums of the closes of one candle series (cached), for the O(1) rolling mean / SD."""
     k = id(S)
-    if k not in _pre:
+    if k not in _pre or _pre[k][0] is not S:     # the cache keeps S itself, so a freed series can never hand its id() (and its old sums) to a new one
         p1, p2, a, b = [0.0], [0.0], 0.0, 0.0
         for x in S["c"]:
             a += x
@@ -50,15 +50,17 @@ def _prefix(S):
             p1.append(a)
             p2.append(b)
         _pre.clear()
-        _pre[k] = (p1, p2)
-    return _pre[k]
+        _pre[k] = (S, p1, p2)
+    return _pre[k][1], _pre[k][2]
 
 
 def zcandle(S, j, n=ZN):
     """Z of open / high / low / close of bar j against the mean and SD of the last n closes up to bar j. -> (zo, zh, zl, zc) or None."""
-    if j + 1 < n:
+    if j < 0 or j + 1 < n:
         return None
     p1, p2 = _prefix(S)
+    if j + 1 >= len(p1):                           # bar j is not in this series
+        return None
     m = (p1[j + 1] - p1[j + 1 - n]) / n
     sd = math.sqrt(max((p2[j + 1] - p2[j + 1 - n]) / n - m * m, 0.0))
     if sd <= 0:
