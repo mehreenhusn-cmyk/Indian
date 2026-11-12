@@ -1267,6 +1267,19 @@ class AppProvider extends ChangeNotifier with SoundAlerts {
     final v = s == null ? null : s[g];
     return v is Map ? Map<String, dynamic>.from(v) : <String, dynamic>{};
   }
+  /// Part 18B: MAIN-only numbers for the Dashboard hero, target ring, Open P&L tile, Positions count and 7D / 30D.
+  /// They come from the split block (backend book_split.py). No split block (live mode, old backend, any error) = the old all-in-one numbers, so nothing breaks.
+  bool get hasMainSplit => splitGroup('main').isNotEmpty;
+  double _mainNum(String k, double fallback) => hasMainSplit ? ((splitGroup('main')[k] as num?)?.toDouble() ?? 0.0) : fallback;
+  double get mainToday => _mainNum('today_pnl', closedPnl);
+  double get mainOpenPnl => _mainNum('pnl', openPnl);
+  double get main7d => _mainNum('d7_pnl', pnl7d);
+  double get main30d => _mainNum('d30_pnl', pnl30d);
+  int get mainOpenCount => hasMainSplit ? ((splitGroup('main')['n'] as num?)?.toInt() ?? 0) : ((status['open_count'] as num?)?.toInt() ?? 0);
+  int get mainTrades7d => hasMainSplit ? ((splitGroup('main')['d7_trades'] as num?)?.toInt() ?? 0) : trades7d;
+  int get mainTrades30d => hasMainSplit ? ((splitGroup('main')['d30_trades'] as num?)?.toInt() ?? 0) : trades30d;
+  bool get main7dPartial => hasMainSplit && splitBlock?['d7_partial'] == true;
+  bool get main30dPartial => hasMainSplit && splitBlock?['d30_partial'] == true;
   double get openMarginUsed => (status['open_margin_used'] as num?)?.toDouble() ?? 0.0;
 
   /// Real Binance USDT futures wallet (LIVE mode only, null in paper mode). Keys: ok, wallet, available,

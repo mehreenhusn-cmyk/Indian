@@ -16,6 +16,7 @@ import '../widgets/dashboard_pairs.dart';
 import '../widgets/diag_load_row.dart';
 import '../widgets/diag_section.dart';
 import '../widgets/live_wallet_card.dart';
+import '../widgets/main_sniper_table.dart';
 import '../widgets/owl_card.dart' hide OwlStat; // Part 17f: owl_number.dart has the OwlStat data class used here; owl_card.dart has a widget with the same name
 import '../widgets/owl_pressable.dart';
 import '../widgets/owl_refresh.dart';
@@ -36,6 +37,8 @@ int _dashBodySig(AppProvider p) {
     s['symbols_tracked'], s['last_reconcile']?.toString(), p.settings['daily_target_usdt'],
     p.settings['daily_loss_limit_usdt'], p.settings['inr_rate'], p.settings['trading_enabled'], (p.openMarginUsed * 100).round(),
     (p.pnl7d * 100).round(), (p.pnl30d * 100).round(), p.trades30d, p.liveWallet?['ok'],
+    (p.mainToday * 100).round(), p.mainOpenCount, (p.main7d * 100).round(), (p.main30d * 100).round(), p.main7dPartial, p.main30dPartial, // Part 18B: Main-only numbers
+    p.splitBlock?['generated'],
     identityHashCode(p.equityCurve), p.equityTf, identityHashCode(p.calendarData), p.signalsRev,
   ]);
 }
@@ -61,13 +64,16 @@ class DashboardScreen extends StatelessWidget {
             if (status.isEmpty && provider.error == null) return const DashboardSkeleton();
             // STRICT STATE ISOLATION (unchanged): in LIVE mode the paper-only numbers come back null, so the hero shows real open P&L.
             final isLive = provider.statsMode == 'live';
-            final todayPnl = ((status['today_pnl_usdt'] ?? 0.0) as num).toDouble();
+            // Part 18B: the BIG number and the target ring are MAIN only. The 'paused' banners below keep the all-in-one book number, because that is the number the bot itself uses to pause (backend unchanged).
+            final bookPnl = ((status['today_pnl_usdt'] ?? 0.0) as num).toDouble();
+            final todayPnl = isLive ? bookPnl : provider.mainToday;
+            final mainOpenCount = provider.mainOpenCount;
             final target = (provider.settings['daily_target_usdt'] as num?)?.toDouble() ?? 0.0;
             final lossLimit = (provider.settings['daily_loss_limit_usdt'] as num?)?.toDouble() ?? 0.0;
             // Plan A: the fixed setting inr_rate (not a live rate). 0 = not set = no INR line.
             final inrRate = (provider.settings['inr_rate'] as num?)?.toDouble() ?? 0.0;
-            final targetHit = !isLive && target > 0 && todayPnl >= target;
-            final lossHit = !isLive && lossLimit > 0 && todayPnl <= -lossLimit;
+            final targetHit = !isLive && target > 0 && bookPnl >= target;
+            final lossHit = !isLive && lossLimit > 0 && bookPnl <= -lossLimit;
             final connError = provider.error;
             final botError = status['last_error'];
             return Column(children: [
@@ -88,16 +94,16 @@ class DashboardScreen extends StatelessWidget {
                       // Part 7: the status header above is the always-visible health line: BE, WS, ms, LIVE age, coins, LEARN n/30 (tap = details). Order below = see Part 3.
                       // Plan B (picture ref3), top to bottom: 1 hero TODAY P&L (+ INR small, target ring only if a target is set)  2 four-column strip (Open P&L, BTC, Open positions, Signals; taps)
                       // 3 calendar  4 7 / 30 days  5 Diagnostics + System Load side by side  6 Dual / Brain / Sniper rows  7 Recent Activity  8 Equity curve  9 MORE fold (nothing deleted).
-                      _ResultHero(isLive: isLive, todayPnl: todayPnl, openCount: ((status['open_count'] ?? 0) as num).toInt(), target: target, inrRate: inrRate, stale: connError != null),
+                      _ResultHero(isLive: isLive, todayPnl: todayPnl, openCount: mainOpenCount, target: target, inrRate: inrRate, stale: connError != null),
                       if (isLive) ...[const SizedBox(height: AppSpacing.cardGap), const LiveWalletCard()],
                       const SizedBox(height: AppSpacing.m),
-                      _ResultStrip(isLive: isLive, openCount: ((status['open_count'] ?? 0) as num).toInt()),
-                      if (!isLive) Padding(padding: const EdgeInsets.only(top: 6), child: Text('This is the main paper book. Sniper trades are inside this number too, because they use the same book. Dual and Brain are separate, listed below.', style: context.type.metadata.copyWith(color: context.palette.textMuted))),
+                      _ResultStrip(isLive: isLive, openCount: mainOpenCount),
+                      if (!isLive) Padding(padding: const EdgeInsets.only(top: 6), child: Text('These numbers are the MAIN bot only. Sniper trades share the same book but are shown apart in the table below. Dual and Brain are separate. The pause on daily target / loss limit still uses the whole book (Main + Sniper).', style: context.type.metadata.copyWith(color: context.palette.textMuted))),
                       // Part 3 order (owner: calendar lower): result > 7 / 30 days > Diagnostics + load > the three books > Recent Activity > Equity > P&L calendar > MORE.
                       const SizedBox(height: AppSpacing.l),
                       // E6: the bots one by one come FIRST (owner: no scrolling to find them), then 7 / 30 days. Diagnostics + load moved into MORE.
                       if (!isLive) ...[const BrainStrip(), const SizedBox(height: AppSpacing.l)],
-                      if (!isLive) ...[const _PeriodRow(), const SizedBox(height: AppSpacing.l)],
+                      if (!isLive) ...[const _PeriodRow(), const SizedBox(height: AppSpacing.l), const MainSniperTable(), const SizedBox(height: AppSpacing.l)],
                       const RecentActivity(),
                       const SizedBox(height: AppSpacing.cardGap),
                       DashboardEquityChart(provider.equityCurve, provider.equityTf, (tf) => provider.fetchEquity(tf: tf)),
@@ -154,7 +160,7 @@ class _ResultHero extends StatelessWidget {
     final prov = context.read<AppProvider>();
     final p = context.palette;
     return Selector<AppProvider, int>(
-      selector: (_, x) => (x.openPnl * 100).round(),
+      selector: (_, x) => Object.hash((x.openPnl * 100).round(), (x.mainToday * 100).round()),
       builder: (context, _, __) {
         final head = isLive ? prov.openPnl : todayPnl;
         final label = isLive ? 'Open P&L now (live account)' : 'Today P&L - Main bot';
@@ -248,9 +254,9 @@ class _ResultStripState extends State<_ResultStrip> {
     void toPositions() => prov.goToRoute(AppRoute.positions);
     final openCount = widget.openCount;
     return Selector<AppProvider, String>(
-      selector: (_, x) => '${(x.openPnl * 100).round()}|${x.signals.length}|${(x.openMarginUsed * 100).round()}',
+      selector: (_, x) => '${(x.mainOpenPnl * 100).round()}|${x.mainOpenCount}|${x.signals.length}|${(x.openMarginUsed * 100).round()}',
       builder: (context, _, __) {
-        final open = prov.openPnl;
+        final open = prov.mainOpenPnl;
         final stats = widget.isLive
             ? [
                 OwlStat(prov.openMarginUsed.toStringAsFixed(2), 'Margin used'),
@@ -277,7 +283,7 @@ class _PeriodRow extends StatelessWidget {
     final prov = context.read<AppProvider>();
     final p = context.palette;
     return Selector<AppProvider, String>(
-      selector: (_, x) => '${(x.pnl7d * 100).round()}|${(x.pnl30d * 100).round()}',
+      selector: (_, x) => '${(x.main7d * 100).round()}|${(x.main30d * 100).round()}|${x.main7dPartial}|${x.main30dPartial}',
       builder: (context, _, __) {
         // Part 3: label on top, the FULL number under it (no "USDT" word beside it, so it is never cut to "+225.91 US...").
         Widget one(String label, double v) => Expanded(
@@ -290,7 +296,7 @@ class _PeriodRow extends StatelessWidget {
         return Container(
           padding: const EdgeInsets.only(bottom: AppSpacing.m),
           decoration: BoxDecoration(border: Border(bottom: BorderSide(color: p.border))),
-          child: Row(children: [one('7 days', prov.pnl7d), const SizedBox(width: AppSpacing.m), one('30 days', prov.pnl30d)]),
+          child: Row(children: [one(prov.main7dPartial ? '7 days Main, partial' : '7 days Main', prov.main7d), const SizedBox(width: AppSpacing.m), one(prov.main30dPartial ? '30 days Main, partial' : '30 days Main', prov.main30d)]),
         );
       },
     );

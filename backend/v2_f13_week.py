@@ -2,7 +2,7 @@
 Reads v2_f12_join.jsonl (Part 11: every closed paper trade of the current bot WITH the state numbers the bot saw at the signal and the real net WITH the TP1 booking). No candle replay: the numbers are what the bot really saw, the result is what really happened.
 Only trades with a snapshot are used. TRAIN = first 60% by time, TEST = last 40%. Scopes: all timeframes, then 3m / 5m / 15m alone, then LONG / SHORT alone.
 WINNERS vs LOSERS: median of every state number for trades that ended plus vs minus (and for the big winners = top quarter by net).
-PART 17C adds: price on the right side of EMA50 (p_ok), lower-pane Z candle on the right side of ITS EMA50 (l_ok), both (p_ok and l_ok), the gainer / loser list tag (WITH / AGAINST / not in top-10), and an EMA GATE VIEW (per gate: trades per day kept, net kept, blocked, loss avoided, profit missed, net gain, train and test) on REAL data.\nBUCKETS (real net per bucket, TRAIN and TEST): z100 / z200 / z_vs_sma / run / dist / slope / width in thirds (cuts made on TRAIN only), Z SPIKE (none, 0-6, 7-24, 25-48 bars ago), AMD basic / reclaim / video, session, side, timeframe.
+PART 17C adds: price on the right side of EMA50 (p_ok), lower-pane Z candle on the right side of ITS EMA50 (l_ok), both (p_ok and l_ok), the gainer / loser list tag (WITH / AGAINST / not in top-10), PART 17D adds the gate EMA50+ZSMA_LONG (LONG only: price above EMA50 and Z above Z-SMA) to the gate view and to the tables, and an EMA GATE VIEW (per gate: trades per day kept, net kept, blocked, loss avoided, profit missed, net gain, train and test) on REAL data.\nBUCKETS (real net per bucket, TRAIN and TEST): z100 / z200 / z_vs_sma / run / dist / slope / width in thirds (cuts made on TRAIN only), Z SPIKE (none, 0-6, 7-24, 25-48 bars ago), AMD basic / reclaim / video, session, side, timeframe.
 FLAG = LOSER / WINNER only when the net has the same sign in BOTH halves and both halves have 30+ trades (same rule as Part 6B). MIXED = signs differ. TOO_FEW = under 30 in a half.
 LUCK CHECK: with many buckets some flags appear by pure chance (both halves same sign is a coin flip). The report counts the eligible buckets and the flags found; flags found close to half of the eligible buckets = nothing proven.
 DAYS: under 7 days saved = EARLY_LOOK (a look, not a test). Under 60 trades = NOT ENOUGH DATA. Part 9 / 10 / 11 must have run for the numbers to exist (snapshot + join).
@@ -20,7 +20,7 @@ import v2_f12_join as J
 
 I, P = A.I, A.P
 
-VERSION = "v2_f13_week 2 (Filter Part 15 + 17C)"
+VERSION = "v2_f13_week 3 (Filter Part 15 + 17C + 17D)"
 MIN_ROWS, MIN_DAYS = 60, 7
 NUM = ("z100", "z200", "z_vs_sma", "run", "dist", "slope", "width")
 SPIKE_B = ("none", "0-6", "7-24", "25-48")
@@ -70,6 +70,16 @@ def both_ok(r):
     return "n/a" if p is None or l is None else ("yes" if p and l else "no")
 
 
+def ema_zsma_long(r):
+    """Part 17D: the rule that held in BOTH halves in the Part 13 replay: LONG only, price above its EMA50 (p_ok) AND Z200 above its Z-SMA (z_vs_sma > 0, needs 100+ Z values like Part 13). SHORT and unknown trades = n/a (not judged, neither kept nor blocked)."""
+    if r.get("side") != 1:
+        return "n/a"
+    z, n = num(r.get("z_vs_sma")), num(r.get("zsma_n"))
+    if r.get("p_ok") is None or z is None or n is None or n < 100:
+        return "n/a"
+    return "yes" if (r.get("p_ok") and z > 0) else "no"
+
+
 def gate_view(rs, tr, te):
     """Part 17C: the owner's questions for each EMA50 gate on REAL trades: kept per day, kept net, blocked, loss avoided (blocked losers), profit missed (blocked winners), net gain = avoided - missed. Gate fails when the value is False (no)."""
     def one(g, fn):
@@ -83,10 +93,12 @@ def gate_view(rs, tr, te):
         return {"kept": len(kept), "kept_per_day": round(len(kept) / days, 1), "kept_net": round(sum(r["net"] for r in kept), 2), "blocked": len(blk), "blocked_net": round(sum(r["net"] for r in blk), 2),
                 "loss_avoided": round(avoided, 2), "profit_missed": round(missed, 2), "net_gain": round(avoided - missed, 2)}
     out = {}
-    for name, fn in (("P_price", yn("p_ok")), ("L_lower", yn("l_ok")), ("P+L_both", both_ok)):
+    for name, fn in (("P_price", yn("p_ok")), ("L_lower", yn("l_ok")), ("P+L_both", both_ok), ("EMA50+ZSMA_LONG", ema_zsma_long)):
         v = {"all": one(rs, fn), "train": one(tr, fn), "test": one(te, fn)}
         ok = all(v[k].get("blocked", 0) >= 30 and v[k].get("kept", 0) >= 30 and v[k].get("net_gain", 0) > 0 for k in ("train", "test"))
         v["verdict"] = "CANDIDATE_FOR_LOG_TEST" if ok else "NOT_PROVEN"
+        if fn is ema_zsma_long:
+            v["note"] = "LONG trades only (SHORT = n/a, not judged). Price above EMA50 AND Z above Z-SMA, same rule as Part 13. Part 13 replay: +0.78 per trade train, +0.20 test (old trades, not proof). This table is the REAL data check."
         out[name] = v
     return out
 
@@ -105,6 +117,7 @@ def scope_report(rs):
     tables["price_ok_EMA50"] = B.bucket_table(tr, te, yn("p_ok"), ("yes", "no", "n/a"))
     tables["lower_ok_EMA50"] = B.bucket_table(tr, te, yn("l_ok"), ("yes", "no", "n/a"))
     tables["both_ok_EMA50"] = B.bucket_table(tr, te, both_ok, ("yes", "no", "n/a"))
+    tables["ema50_zsma_LONG"] = B.bucket_table(tr, te, ema_zsma_long, ("yes", "no", "n/a"))
     tables["gainer_loser_list"] = B.bucket_table(tr, te, lambda r: str(r.get("list_b") or "n/a"), LIST_B)
     tables["session"] = B.bucket_table(tr, te, lambda r: str(r.get("session")), sorted({str(r.get("session")) for r in rs}))
     tables["side"] = B.bucket_table(tr, te, lambda r: str(r.get("side")), ("1", "-1"))
