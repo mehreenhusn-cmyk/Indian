@@ -221,10 +221,7 @@ class AppProvider extends ChangeNotifier with SoundAlerts {
   /// but quiet (or no data yet), 'offline' = socket down. The backend pushes every 250 ms (1 s in live-trading mode),
   /// so 3 s of silence is a real delay. Read-only: nothing here changes any data.
   String get liveState {
-    if (!wsConnected) {
-      final r = _lastRestOkAt;
-      return (r != null && DateTime.now().difference(r) < const Duration(seconds: 20)) ? 'delayed' : 'offline';
-    }
+    if (!wsConnected) return 'offline';
     final t = _lastWsDataAt;
     if (t == null) return 'delayed';
     return DateTime.now().difference(t) > const Duration(seconds: 3) ? 'delayed' : 'live';
@@ -232,9 +229,7 @@ class AppProvider extends ChangeNotifier with SoundAlerts {
 
   /// Seconds since the last WebSocket data (null until the first message). The chip shows it as 'LIVE . 1 s'.
   num? get liveAgeSec {
-    var t = _lastWsDataAt;
-    final r = _lastRestOkAt;
-    if (!wsConnected && r != null && (t == null || r.isAfter(t))) t = r;
+    final t = _lastWsDataAt;
     if (t == null) return null;
     return DateTime.now().difference(t).inMilliseconds / 1000.0;
   }
@@ -442,7 +437,6 @@ class AppProvider extends ChangeNotifier with SoundAlerts {
   // so the dashboard skeleton does not wait for a slow backend. A real answer always replaces it.
   static const _lastStatusKey = 'owl_last_status';
   DateTime? _lastStatusSaved;
-  DateTime? _lastRestOkAt; // G2: last time /api/status answered 200 (so a dead socket with a working REST is DELAYED, not OFFLINE)
 
   void _restoreLastStatus() {
     try {
@@ -574,7 +568,6 @@ class AppProvider extends ChangeNotifier with SoundAlerts {
         if (res.statusCode == 200) {
           _applyStatus(jsonDecode(res.body) as Map<String, dynamic>);
           _saveLastStatus(res.body);
-          _lastRestOkAt = DateTime.now();
           error = null;
         } else {
           error = 'Backend returned ${res.statusCode}';
