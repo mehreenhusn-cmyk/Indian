@@ -80,3 +80,37 @@ Total about 3,000 lines in 11 parts (without the owner-OK parts).
 | providers/app_provider_brain.dart (+3), screens/more_screen.dart (+3) | | S6 | fetchSniper + the More row |
 How it starts without Termux: the page calls the route, the route calls kick(), kick() starts `owl_sniper_feed.py refresh` as its own low-priority process. Switch off: make the file v2_sniper_off in the data folder (delete it to switch on).
 STILL OPEN for OwlSniper: (1) owner says "mount ok" -> 4 lines in api_server.py (they are in the header of backend/api/sniper.py); (2) NOTHING of S4 / S5 / S6 was ever run (owner rule: no test run), so the first real run is on the phone: check Flutter CI of the commit 'auto: owl_PartS7.zip' and send the error text if it is red; (3) the first calibration needs 6+ whole days of 5m candles and takes minutes on a phone; (4) on real candles the 85% floor may stay NOT PROVEN for a long time: that is the honest answer, the floor is never lowered; (5) OwlSniper never trades: it has no order code at all.
+
+## PHONE LITE (25 Nov 2026) - backend back on the phone, only the current bot, everything else OFF
+Owner (Hussain) wish, his words short: (1) shift the backend from the VPS to his phone Termux, faster and light; (2) keep ONLY the current bot (crypto + India market data as it is) and OwlSniper; (3) disable Vision AI, Dual Bot, Smart Brain, Price Action, Volume layer, V2 collectors (ticker every 5 min + candle stream), Ping Lab and the memory/load meters; also the B3 / fake-signal (chop) tests; (4) signals only in the APP, NOT on Telegram; (5) hide the extra screens (the app has about 80), no background data; (6) his Download must auto-update the repo again like before (owl_auto.sh), and the app must stop talking to the VPS.
+STATUS: PLAN ONLY. README written 25 Nov 2026, NO code built yet. Build starts only after the owner says "ok". Nothing was run (Python / Dart not compiled).
+
+### What the repo does today (found in Indian-main (41).zip)
+- backend/api_server.py on_startup launches: Vision AI (setting vision_enabled, default True), dual_lab.ensure_running (8 s), smart_brain (15 s), pa_layer (25 s), vol_layer (35 s), v2_runner.start_watchdog (45 s; ticker every 5 min, candles + websocket, paper Brain tick, labs every 6 h), loop_watch + load_report + memwatch (meters). ping_worker.py is a SEPARATE process started by tools/owl_auto.sh. Worker switch files exist (dual_lab_ctl.json, smart_brain_ctl.json, v2 switch files) but nothing sets them all off at once.
+- Telegram senders: recovered_bot/telegram.py, india_telegram.py (own watcher thread started by india_runtime.py), india_shot.py. backend/main.py is the OLD Kivy app (not the live backend) but it holds a Telegram bot token in plain text in a PUBLIC repo: owner must revoke it in BotFather and make a new one; Round 1 moves it out.
+- App: frontend/lib/navigation/app_routes.dart (11 screens in main.dart _screens list, bar = Home, Positions, Sniper, Study Lab, More), screens/ has about 80 files / 30k lines, 66 Timer.periodic in lib. frontend/lib/config_flags.dart already has one flag (kShowStrategyDoctor). providers/app_provider.dart line 81 default Backend URL = http://100.85.188.83:8000 (the VPS over Tailscale).
+- backend/start.py binds 0.0.0.0:8000 (on Wi-Fi other devices could reach the bot API; API_TOKEN is off). On the phone the app uses 127.0.0.1, so LITE binds 127.0.0.1.
+- PUSH ALLOWLIST TRAP: tools/owl_auto.sh does NOT list README_VPS.md and owl_push_only.sh does NOT list README_PHONE.md, so a new top-level README is silently skipped. That is why the phone docs live in README4 / README5 / README_VPS.md / CLAUDE_HANDOFF.md only. Round 3 also adds README_VPS.md to the owl_auto.sh list.
+
+### Plan (3 rounds, ONE cumulative zip, about 445 lines; every NEW file under 350 lines)
+| Round | File | Lines | Job |
+|---|---|---|---|
+| 1 Backend | backend/lite.py (NEW) | ~70 | one switch lite_mode (default ON, env OWL_LITE=0 turns it off) + helper skip(name) |
+| 1 | backend/api_server.py | ~60 | skip Vision AI, dual_lab, smart_brain, pa_layer, vol_layer, v2_runner, memwatch, load_report, loop_watch when lite |
+| 1 | backend/ping_worker.py | ~15 | exits at once when lite |
+| 1 | recovered_bot/telegram.py, india_telegram.py, india_shot.py | ~40 | no Telegram send when lite (signal still goes to the app feed); token read from env, not from code |
+| 1 | backend/start.py | ~6 | host 127.0.0.1 when lite |
+| 2 App | frontend/lib/config_flags.dart | ~30 | kLiteMode flag |
+| 2 | navigation/app_routes.dart + main.dart | ~80 | bar = Home, Positions, Sniper, More (4 tabs); Brain, Dual, AI, Study Lab, Diagnostics hidden |
+| 2 | screens/more_screen.dart | ~60 | remove rows of hidden features |
+| 2 | providers/app_provider.dart | ~40 | default URL http://127.0.0.1:8000, stop timers/polls of hidden screens |
+| 3 Phone | tools/owl_auto.sh | ~45 | BUILD 49 (self-update), do not start ping, OWL_LITE=1, MALLOC_ARENA_MAX=2, README_VPS.md on the push list |
+| 3 | README4 / README5 / README_VPS / CLAUDE_HANDOFF | docs | commands: README4 > MERGE-TIME COMMANDS > PHONE MOVE (already written 25 Nov) |
+
+### Rules for the build
+- Do NOT delete files or trade data; LITE only switches things off (the owner can turn them back with OWL_LITE=0 and kLiteMode=false).
+- The crypto bot, paper_trader / binance_trader, India runtime and OwlSniper stay unchanged.
+- Order at merge time: stop VPS -> copy data -> start phone (PHONE MOVE block). Never both backends together.
+- After the move owl_auto.sh replaces owl_push_only.sh (do not run both: double push).
+- Honest limit: the phone got hot before; LITE should cut a lot but the bot + India feed still run.
+- Owner rules still apply: simple English, ONE question at a time, plan with files + lines first, commands only in the README (README4 MERGE-TIME COMMANDS).
