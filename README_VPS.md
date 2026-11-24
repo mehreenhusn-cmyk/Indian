@@ -1,3 +1,5 @@
+> **UPDATE 25 Nov 2026 - the backend is MOVING BACK TO THE PHONE (Termux).** Owner wants only the current bot, signals in the app only, no Telegram, no VPS. Plan: README5 section "PHONE LITE". Commands: README4 > MERGE-TIME COMMANDS > "PHONE MOVE". Until that block was run, the text below is still true (backend on the VPS). After it: VPS stopped, owl_auto.sh (not owl_push_only.sh) pushes Download zips to GitHub, app Backend URL = http://127.0.0.1:8000, Tailscale not needed.
+
 # README_VPS - phone, GitHub and VPS (7 Nov 2026)
 
 ## RULE for any Claude
