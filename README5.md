@@ -82,8 +82,8 @@ How it starts without Termux: the page calls the route, the route calls kick(), 
 STILL OPEN for OwlSniper: (1) owner says "mount ok" -> 4 lines in api_server.py (they are in the header of backend/api/sniper.py); (2) NOTHING of S4 / S5 / S6 was ever run (owner rule: no test run), so the first real run is on the phone: check Flutter CI of the commit 'auto: owl_PartS7.zip' and send the error text if it is red; (3) the first calibration needs 6+ whole days of 5m candles and takes minutes on a phone; (4) on real candles the 85% floor may stay NOT PROVEN for a long time: that is the honest answer, the floor is never lowered; (5) OwlSniper never trades: it has no order code at all.
 
 ## PHONE LITE (25 Nov 2026) - backend back on the phone, only the current bot, everything else OFF
-Owner (Hussain) wish, his words short: (1) shift the backend from the VPS to his phone Termux, faster and light; (2) keep ONLY the current bot (crypto + India market data as it is) and OwlSniper; (3) disable Vision AI, Dual Bot, Smart Brain, Price Action, Volume layer, V2 collectors (ticker every 5 min + candle stream), Ping Lab and the memory/load meters; also the B3 / fake-signal (chop) tests; (4) signals only in the APP, NOT on Telegram; (5) hide the extra screens (the app has about 80), no background data; (6) his Download must auto-update the repo again like before (owl_auto.sh), and the app must stop talking to the VPS.
-STATUS: PLAN ONLY. README written 25 Nov 2026, NO code built yet. Build starts only after the owner says "ok". Nothing was run (Python / Dart not compiled).
+Owner (Hussain) wish, his words short: (1) shift the backend from the VPS to his phone Termux, faster and light; (2) keep ONLY the current bot (crypto + India market data as it is) and its scanner (OwlSniper is OFF too since 25 Nov 01:50, see 'UPDATE' below); (3) disable Vision AI, Dual Bot, Smart Brain, Price Action, Volume layer, V2 collectors (ticker every 5 min + candle stream), Ping Lab and the memory/load meters; also the B3 / fake-signal (chop) tests; (4) signals only in the APP, NOT on Telegram; (5) hide the extra screens (the app has about 80), no background data; (6) his Download must auto-update the repo again like before (owl_auto.sh), and the app must stop talking to the VPS.
+STATUS (read the UPDATE section at the end of this part first, it replaces the plan table above): PLAN ONLY. README written 25 Nov 2026, NO code built yet. Build starts only after the owner says "ok". Nothing was run (Python / Dart not compiled).
 
 ### What the repo does today (found in Indian-main (41).zip)
 - backend/api_server.py on_startup launches: Vision AI (setting vision_enabled, default True), dual_lab.ensure_running (8 s), smart_brain (15 s), pa_layer (25 s), vol_layer (35 s), v2_runner.start_watchdog (45 s; ticker every 5 min, candles + websocket, paper Brain tick, labs every 6 h), loop_watch + load_report + memwatch (meters). ping_worker.py is a SEPARATE process started by tools/owl_auto.sh. Worker switch files exist (dual_lab_ctl.json, smart_brain_ctl.json, v2 switch files) but nothing sets them all off at once.
@@ -114,3 +114,44 @@ STATUS: PLAN ONLY. README written 25 Nov 2026, NO code built yet. Build starts o
 - After the move owl_auto.sh replaces owl_push_only.sh (do not run both: double push).
 - Honest limit: the phone got hot before; LITE should cut a lot but the bot + India feed still run.
 - Owner rules still apply: simple English, ONE question at a time, plan with files + lines first, commands only in the README (README4 MERGE-TIME COMMANDS).
+
+### UPDATE 25 Nov 2026 (01:50 IST) - owner decisions that REPLACE the plan table above
+1. The VPS is OFFLINE and the owner said: leave it, forget the old VPS-only trades. No copy / merge is planned. Live data = the phone folder ~/storage/shared/owl_data. (Details: README4 > MERGE-TIME COMMANDS > PHONE MOVE.)
+2. Sniper (OwlSniper: routes, autopilot, paper / LEARN loop, feed) is ALSO OFF now. KEEP only: the current crypto bot (bot + its scanner, paper_trader / binance_trader, signals, positions, Today P&L) and the Indian market runtime (india_runtime and friends). "UI later": no UI redesign in this work.
+3. Signals only in the app. No Telegram.
+4. Readers: the dashboard rows Dual Bot / Brain / Sniper (LEARN) and their numbers disappear with LITE. The daily target / loss pause then counts the main bot book only (Sniper trades no longer exist).
+
+### REVISED PLAN (3 rounds, ONE cumulative zip, about 570 lines; every NEW file under 350 lines). Nothing is built yet: wait for the owner's "ok".
+| Round | File | Lines | Job |
+|---|---|---|---|
+| 1 Backend | backend/lite.py (NEW) | ~70 | one switch lite_mode (default ON, env OWL_LITE=0 turns it off) + helper skip(name) |
+| 1 | backend/api_server.py | ~90 | skip at boot: Vision AI, dual_lab, smart_brain, pa_layer, vol_layer, v2_runner, memwatch, load_report, loop_watch, AND the Sniper mount block (lines ~800-820: api.sniper, sniper_paper, sniper_mount = routes + autopilot + paper loop) |
+| 1 | backend/ping_worker.py | ~15 | exits at once when lite |
+| 1 | recovered_bot/telegram.py, india_telegram.py, india_shot.py | ~40 | no Telegram send when lite (signal stays in the app feed); bot token read from env, not from code |
+| 1 | backend/start.py | ~6 | host 127.0.0.1 when lite |
+| 2 App | frontend/lib/config_flags.dart | ~30 | kLiteMode flag |
+| 2 | navigation/app_routes.dart + main.dart | ~90 | bar = Home, Positions, Signals, More; Sniper, Study Lab, Brain, Dual, AI, Diagnostics hidden |
+| 2 | screens/dashboard_screen.dart | ~60 | remove the Dual / Brain / Sniper rows, Diagnostics section, books strip |
+| 2 | screens/more_screen.dart | ~70 | remove rows of hidden features |
+| 2 | providers/app_provider.dart | ~50 | default URL http://127.0.0.1:8000; stop timers / polls of hidden screens |
+| 3 Phone | tools/owl_auto.sh | ~50 | BUILD 49 (self-update), do not start ping, OWL_LITE=1, MALLOC_ARENA_MAX=2, fix the harmless 'line 816 /proc/<pid>/cmdline' message, README_VPS.md on the push list |
+| 3 | README4 / README5 / README_VPS / CLAUDE_HANDOFF | docs | already written 25 Nov (this section + PHONE MOVE block) |
+Total about 570 lines, 3 rounds. After the build the Python and Dart are NOT compiled / run here: first real test = the phone.
+
+### DISABLED - DO NOT TOUCH (any Claude: read this before you change anything)
+Everything in this table is switched OFF on purpose by LITE mode (backend/lite.py + kLiteMode in frontend/lib/config_flags.dart). The code stays in the repo, nothing was deleted, no trade data was deleted.
+| Feature | Starts from | LITE switches it off by | Rule |
+|---|---|---|---|
+| Vision AI | api_server on_startup (setting vision_enabled) | skip at boot | do not re-enable |
+| Dual Bot | dual_lab.ensure_running (dual_lab_ctl.json) | skip at boot | do not re-enable |
+| Smart Brain (+ B3 / G1 / G2, Brain screens, Brain chat) | smart_brain.ensure_running | skip at boot | do not re-enable |
+| Price Action layer | pa_layer.ensure_running | skip at boot | do not re-enable |
+| Volume layer | vol_layer.ensure_running | skip at boot | do not re-enable |
+| V2 collectors (ticker every 5 min, candles + websocket, paper Brain tick, labs every 6 h) | v2_runner.start_watchdog | skip at boot | do not re-enable |
+| Ping Lab | tools/owl_auto.sh start_ping + backend/ping_worker.py | no start + worker exits | do not re-enable |
+| Memory / load meters | memwatch, load_report, loop_watch | skip at boot | do not re-enable |
+| OwlSniper (feed, paper / LEARN loop, autopilot, routes) | api_server Sniper mount block | block skipped | do not re-enable |
+| Study Lab, Radar, Ledger, Scalp Lab, Filter / Chop (fake-signal) labs, Data Explorer, Diagnostics screens | App screens + read-only routes | hidden in the app, no timers | do not unhide |
+| Telegram sending (bot + India signals) | recovered_bot/telegram.py, india_telegram.py, india_shot.py | no send | signals are shown in the app only |
+KEPT and running: the current crypto bot with its scanner (paper_trader / binance_trader, signals, positions, Today P&L), the Indian market runtime, Settings. App tabs: Home, Positions, Signals, More.
+RULES: (1) Do NOT re-enable, unhide, repair or extend a disabled feature unless the owner says so in plain words. (2) Do NOT delete files or data; only the small LITE guards may be added to the disabled files. (3) A new feature must NOT add a background thread, process, timer or poll without the owner's ok (the phone got hot and the app heavy before). (4) If something in a hidden area looks broken, leave it. (5) To turn LITE off for a test: env OWL_LITE=0 and kLiteMode=false, never by deleting guards. (6) Owner rules still apply: simple English, ONE question at a time, plan with files + lines first, commands only in README4 MERGE-TIME COMMANDS.

@@ -1,6 +1,6 @@
 # README_OWNER - owner problem + what is done (10 Nov 2026)
 
-> **25 Nov 2026 NEWEST: PHONE LITE.** Owner moves the backend VPS -> phone Termux and keeps only the current bot + OwlSniper (Vision AI, Dual Bot, Smart Brain, Price Action, Volume layer, V2 collectors, Ping Lab, meters, Telegram all OFF; extra screens hidden). PLAN ONLY, no code yet, wait for his "ok". Read README5 "PHONE LITE" and README4 "MERGE-TIME COMMANDS > PHONE MOVE".
+> **25 Nov 2026 NEWEST: PHONE LITE (read this before touching anything).** VPS is offline and left alone; backend goes back to the owner's phone (Termux). KEEP ONLY the current crypto bot + its scanner + Indian market. OFF on purpose: Vision AI, Dual Bot, Smart Brain, Sniper, Price Action, Volume layer, V2 collectors, Ping Lab, meters, Telegram; extra screens hidden. DO NOT re-enable or repair them; do not delete files or data. PLAN ONLY, no code yet, wait for his "ok". See README5 "PHONE LITE" > UPDATE > "DISABLED - DO NOT TOUCH" and README4 "MERGE-TIME COMMANDS > PHONE MOVE".
 For any Claude that picks this up. Read this first. Owner = Hussain. Language: simple Roman-script English / Hinglish, WhatsApp style, short.
 
 ## Owner rules (also keep in README4)
