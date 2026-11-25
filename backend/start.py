@@ -2,6 +2,11 @@ import logging
 
 import uvicorn
 
+try:
+    import lite
+except ImportError:
+    lite = None
+
 
 class _QuietWsDrop(logging.Filter):
     """Replace the multi-line "ConnectionClosedError ... keepalive ping
@@ -31,7 +36,7 @@ if __name__ == "__main__":
     print("🦉 OWL Terminal Backend Starting...")
     uvicorn.run(
         "api_server:app",
-        host="0.0.0.0",
+        host=("127.0.0.1" if (lite and lite.is_lite()) else "0.0.0.0"),   # LITE: only this phone can reach the bot API
         port=8000,
         reload=False,
         # uvicorn's own WebSocket keepalive defaults to ping every 20s and

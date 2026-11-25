@@ -155,3 +155,17 @@ Everything in this table is switched OFF on purpose by LITE mode (backend/lite.p
 | Telegram sending (bot + India signals) | recovered_bot/telegram.py, india_telegram.py, india_shot.py | no send | signals are shown in the app only |
 KEPT and running: the current crypto bot with its scanner (paper_trader / binance_trader, signals, positions, Today P&L), the Indian market runtime, Settings. App tabs: Home, Positions, Signals, More.
 RULES: (1) Do NOT re-enable, unhide, repair or extend a disabled feature unless the owner says so in plain words. (2) Do NOT delete files or data; only the small LITE guards may be added to the disabled files. (3) A new feature must NOT add a background thread, process, timer or poll without the owner's ok (the phone got hot and the app heavy before). (4) If something in a hidden area looks broken, leave it. (5) To turn LITE off for a test: env OWL_LITE=0 and kLiteMode=false, never by deleting guards. (6) Owner rules still apply: simple English, ONE question at a time, plan with files + lines first, commands only in README4 MERGE-TIME COMMANDS.
+
+### BUILD LOG - PHONE LITE (newest at the bottom)
+**Round 1 (backend) BUILT 25 Nov 2026 - owner said "round 1 kr".** Round 2 (app) and Round 3 (phone script) are NOT built yet (wait for "round 2 kr" / "round 3 kr").
+| File | Changed / new lines | What |
+|---|---|---|
+| backend/lite.py (NEW) | 41 | the ONE switch: lite.is_lite() (default ON, env OWL_LITE=0 turns it off), lite.off(name) (True = do NOT start, one log line per name), lite.summary() |
+| backend/api_server.py | ~116 (most are the Sniper block indented under one guard) | `import lite`; guards: vision_ai, dual_lab, smart_brain, pa_layer, vol_layer, v2_runner, load_meters (loop_watch + load_report), memwatch, swr_prewarm (AI-tab pre-build), and ONE guard "sniper" around the whole OwlSniper / lab / chop mount block (routes AND their background loops, which start when a router is made); new read-only route GET /api/lite |
+| backend/ping_worker.py | 7 | main() returns at once in LITE |
+| backend/start.py | 7 | host 127.0.0.1 in LITE (only this phone can reach the bot API; Wi-Fi / Tailscale access to port 8000 is gone) |
+| backend/recovered_bot/telegram.py | 9 | _creds() returns empty in LITE, so every send returns early; the status card says "Telegram is OFF (LITE mode)" |
+| backend/recovered_bot/india_telegram.py | 10 | no watcher thread in LITE + _creds() empty. india_shot.py needs NO change (only called after a card was sent). India signals in the app come from india_runtime, not from this Telegram class |
+Tested here: py_compile of all 6 files OK; lite switch + TelegramNotifier._creds() run OK (LITE on -> empty, OWL_LITE=0 -> normal). NOT tested here: the backend itself was NOT started (fastapi is not installed in the build sandbox). First real test = the phone: `owlcheck`, then open `http://127.0.0.1:8000/api/lite` (must show "lite": true and a kept_off list).
+Known effects until Round 2: the app's Dual / Brain / Sniper / Study Lab / AI screens call routes that now answer 404 or are empty; Round 2 hides those screens and rows. The Telegram bot token in the OLD Kivy file backend/main.py is still there (it is NOT used by the live backend): the owner must revoke it in BotFather; removing it from the file is a separate small job.
+Not changed on purpose: the crypto bot, paper_trader / binance_trader, its scanner, india_runtime, status / settings routes, telemetry, the status broadcaster.

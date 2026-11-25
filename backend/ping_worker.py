@@ -196,6 +196,13 @@ class Worker:
 
 
 def main():
+    try:
+        import lite
+        if lite.off("ping_worker"):       # LITE mode: Ping Lab stays OFF (OWL_LITE=0 turns it on)
+            print("[ping_worker] LITE mode - not started")
+            return
+    except ImportError:
+        pass
     # Same DNS fallback the main backend uses (some ISPs block Binance DNS).
     try:
         from recovered_bot.dns_fallback import ensure_dns_fallback

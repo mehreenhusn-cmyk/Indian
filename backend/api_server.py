@@ -23,6 +23,7 @@ import traceback
 from fastapi import Depends, FastAPI, Header, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
+import lite   # LITE mode switch (Round 1): the extra workers below only start when lite.off(...) is False
 from recovered_bot import settings_store, trade_store, paper_trader, status, db, ai_data_logger, ai_assistant, ai_chat_store, exchange, timeframe_manager, ai_stats, ai_book, telemetry, day_gate
 from recovered_bot.execution_router import ExecutionRouter
 from recovered_bot.app import main as bot_main
@@ -255,6 +256,12 @@ def _run_bot():
         status.update(last_error=f"BOT CRASHED:\n{tb}")
 
 
+@app.get("/api/lite")
+async def lite_info():
+    """What LITE keeps off (read only, no token needed, same as /health)."""
+    return lite.summary()
+
+
 @app.on_event("startup")
 async def on_startup():
     global _bot_thread_started
@@ -331,7 +338,7 @@ async def on_startup():
                 ai_post_exit.init(os.path.join(DATA_DIR, "ai"))
             except Exception as e:
                 print(f"[startup] ai_post_exit init skipped: {e}")
-        if settings_store.get("vision_enabled", True):   # OFF = Vision AI not started at boot (nothing else uses it)
+        if settings_store.get("vision_enabled", True) and not lite.off("vision_ai"):   # OFF = Vision AI not started at boot (nothing else uses it)
             try:                           # the Vision AI: chart picture on every bot signal, own virtual account (own thread)
                 from recovered_bot import ai_vision
                 ai_vision.init(os.path.join(DATA_DIR, "ai"))
@@ -339,36 +346,41 @@ async def on_startup():
             except Exception as e:
                 print(f"[Vision] start-up: {e}")
         try:                               # Dual Bot (paper only, own low-priority process, no AI key): start its worker 8 s after boot
-            import dual_lab
-            _t = threading.Timer(8.0, dual_lab.ensure_running)
-            _t.daemon = True
-            _t.start()
+            if not lite.off("dual_lab"):
+                import dual_lab
+                _t = threading.Timer(8.0, dual_lab.ensure_running)
+                _t.daemon = True
+                _t.start()
         except Exception as e:
             print(f"[startup] dual_lab skipped: {e}")
         try:                               # Smart Brain (Dual Bot v2 side layer): read-only on Dual Bot data, paper only, own process
-            import smart_brain
-            _t2 = threading.Timer(15.0, smart_brain.ensure_running)
-            _t2.daemon = True
-            _t2.start()
+            if not lite.off("smart_brain"):
+                import smart_brain
+                _t2 = threading.Timer(15.0, smart_brain.ensure_running)
+                _t2.daemon = True
+                _t2.start()
         except Exception as e:
             print(f"[startup] smart_brain skipped: {e}")
         try:                               # Price Action Light (version-2 observation layer): only watches and logs, own process, never trades
-            import pa_layer
-            _t3 = threading.Timer(25.0, pa_layer.ensure_running)
-            _t3.daemon = True
-            _t3.start()
+            if not lite.off("pa_layer"):
+                import pa_layer
+                _t3 = threading.Timer(25.0, pa_layer.ensure_running)
+                _t3.daemon = True
+                _t3.start()
         except Exception as e:
             print(f"[startup] pa_layer skipped: {e}")
         try:                               # Volume Context (version-2 observation layer): only watches and logs, own process, never trades
-            import vol_layer
-            _t4 = threading.Timer(35.0, vol_layer.ensure_running)
-            _t4.daemon = True
-            _t4.start()
+            if not lite.off("vol_layer"):
+                import vol_layer
+                _t4 = threading.Timer(35.0, vol_layer.ensure_running)
+                _t4.daemon = True
+                _t4.start()
         except Exception as e:
             print(f"[startup] vol_layer skipped: {e}")
         try:                               # V2 collectors (Part 72): public GET only, write only v2_market.db, own process; owner switch files stay in charge
-            import v2_runner
-            v2_runner.start_watchdog(DATA_DIR, 45.0)
+            if not lite.off("v2_runner"):
+                import v2_runner
+                v2_runner.start_watchdog(DATA_DIR, 45.0)
         except Exception as e:
             print(f"[startup] v2 collector runner skipped: {e}")
         # The older AI modules (trackers, shadow lab, desk, coach, pick, ...) only start when legacy_ai_enabled is on.
@@ -434,20 +446,23 @@ async def on_startup():
             print(f"[startup] live_snapshot skipped: {e}")
         telemetry.start()
         try:
-            from recovered_bot import loop_watch
-            loop_watch.start()         # records WHERE the event loop froze (System Load card + log)
-            from recovered_bot import load_report
-            load_report.start(DATA_DIR)  # 30 s samples -> /api/load_report (1h / 4h / 24h report + daily summary)
+            if not lite.off("load_meters"):
+                from recovered_bot import loop_watch
+                loop_watch.start()         # records WHERE the event loop froze (System Load card + log)
+                from recovered_bot import load_report
+                load_report.start(DATA_DIR)  # 30 s samples -> /api/load_report (1h / 4h / 24h report + daily summary)
         except Exception as e:
             print(f"[startup] loop_watch skipped: {e}")
         try:
-            import memwatch
-            memwatch.start(DATA_DIR)       # Part 19: RSS + container sizes every 10 min -> memwatch.jsonl (measure only, setting memwatch_mode 'off' stops it)
+            if not lite.off("memwatch"):
+                import memwatch
+                memwatch.start(DATA_DIR)       # Part 19: RSS + container sizes every 10 min -> memwatch.jsonl (measure only, setting memwatch_mode 'off' stops it)
         except Exception as e:
             print(f"[startup] memwatch skipped: {e}")
         asyncio.create_task(_status_broadcaster())
         asyncio.create_task(_swr_warmer())
-        asyncio.create_task(_swr_prewarm())
+        if not lite.off("swr_prewarm"):       # builds every AI-tab answer once in the background (AI tab is hidden in LITE)
+            asyncio.create_task(_swr_prewarm())
 
 
 # ---------------------------------------------------------------- basic ----
@@ -795,29 +810,32 @@ try:
     app.include_router(_v2_reports_router(require_api_token, DATA_DIR))
 except Exception as _e:
     print(f"[startup] v2 fees+tax route skipped: {_e}")
-# OwlSniper routes (Round 24, read-only, same v2_api_enabled switch; owner ok "mount ok" given). Each block is wrapped: a bad file never stops the backend.
-try:
-    from api.sniper import make_router as _sniper_router
-    app.include_router(_sniper_router(require_api_token, DATA_DIR))
-except Exception as _e:
-    print(f"[startup] sniper routes skipped: {_e}")
-try:
-    from api.health_v2 import make_router as _sniper_health_router
-    app.include_router(_sniper_health_router(require_api_token, DATA_DIR))
-except Exception as _e:
-    print(f"[startup] sniper health route skipped: {_e}")
-# OwlSniper PAPER ENTER route + paper loop (Round 30, paper only, owner ok "mount ok" for all). Wrapped: a bad file never stops the backend.
-try:
-    from api.sniper_paper import make_router as _sniper_paper_router
-    app.include_router(_sniper_paper_router(require_api_token, DATA_DIR))
-except Exception as _e:
-    print(f"[startup] sniper paper route skipped: {_e}")
-# OwlSniper read-only routes of Parts 9-44 (bridge, risk box, capital, study list, self log). Owner said "mount ok" on 3 Nov 2026. One helper, each route wrapped inside it.
-try:
-    from api.sniper_mount import mount_all as _sniper_mount_all
-    _sniper_mount_all(app, require_api_token, DATA_DIR)
-except Exception as _e:
-    print(f"[startup] sniper mount helper skipped: {_e}")
+# LITE mode (25 Nov 2026): the whole OwlSniper / lab / chop block below (routes + their background loops, which start when a router is made) stays OFF.
+# To test it set OWL_LITE=0. Do not delete this guard.
+if not lite.off("sniper"):
+    # OwlSniper routes (Round 24, read-only, same v2_api_enabled switch; owner ok "mount ok" given). Each block is wrapped: a bad file never stops the backend.
+    try:
+        from api.sniper import make_router as _sniper_router
+        app.include_router(_sniper_router(require_api_token, DATA_DIR))
+    except Exception as _e:
+        print(f"[startup] sniper routes skipped: {_e}")
+    try:
+        from api.health_v2 import make_router as _sniper_health_router
+        app.include_router(_sniper_health_router(require_api_token, DATA_DIR))
+    except Exception as _e:
+        print(f"[startup] sniper health route skipped: {_e}")
+    # OwlSniper PAPER ENTER route + paper loop (Round 30, paper only, owner ok "mount ok" for all). Wrapped: a bad file never stops the backend.
+    try:
+        from api.sniper_paper import make_router as _sniper_paper_router
+        app.include_router(_sniper_paper_router(require_api_token, DATA_DIR))
+    except Exception as _e:
+        print(f"[startup] sniper paper route skipped: {_e}")
+    # OwlSniper read-only routes of Parts 9-44 (bridge, risk box, capital, study list, self log). Owner said "mount ok" on 3 Nov 2026. One helper, each route wrapped inside it.
+    try:
+        from api.sniper_mount import mount_all as _sniper_mount_all
+        _sniper_mount_all(app, require_api_token, DATA_DIR)
+    except Exception as _e:
+        print(f"[startup] sniper mount helper skipped: {_e}")
 # Ledger routes (Part 41, read-only, same v2_api_enabled switch). Owner ok "mount ok" for Part 42.
 try:
     from api.v2_ledger_route import make_router as _v2_ledger_router

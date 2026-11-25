@@ -19,6 +19,11 @@ from datetime import datetime, timedelta
 import requests
 
 try:
+    import lite          # LITE mode (25 Nov 2026)
+except ImportError:
+    lite = None
+
+try:
     from .strategy import ABCDStrategy
     from .india_bridge import to_strategy_candles
     from .india_data import IST
@@ -129,7 +134,8 @@ class IndiaTelegram:
         except Exception:
             pass
         self.thread = threading.Thread(target=self._loop, daemon=True, name="india_telegram")
-        self.thread.start()
+        if not (lite is not None and lite.off("india_telegram")):   # LITE: no Telegram watcher thread, India signals stay in the app
+            self.thread.start()
 
     # ------------------------------------------------------------ settings ---
     @property
@@ -142,6 +148,8 @@ class IndiaTelegram:
         return v if v in TG_TFS else 15
 
     def _creds(self):
+        if lite is not None and lite.off("india_telegram"):
+            return "", ""
         c = self.creds.get(CRED_NAME)
         return str(c.get("bot_token", "")).strip(), str(c.get("chat_id", "")).strip()
 
