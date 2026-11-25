@@ -1,5 +1,7 @@
 #!/data/data/com.termux/files/usr/bin/bash
 # OWL auto-deploy v5h (2026-10-31) for Termux.
+# v5n (26 Nov 2026, PHONE LITE Round 3): LITE is ON by default (export OWL_LITE=1 for the backend). In LITE the Ping Lab worker is NEVER started (start_ping returns at once,
+#   also for the `ping` / `ping-reset` commands), the stray-worker sweep still runs, and `status` says "OFF (LITE)". Run with OWL_LITE=0 only for a test. Read README5 "PHONE LITE".
 # v5m (6 Nov 2026, BUILD 48): GitHub sync now also takes README_CHOP.md (the both-indicator Chop bot b3 notes). Nothing else changed.
 # v5j (2 Nov, Round 30): GitHub sync now also takes README6.md, PLAN_400.md, FILE_INDEX.md, CLAUDE_HANDOFF.md, AI_HANDOFF_BRIEF.md (the OwlSniper docs). Nothing else changed.
 # v5l (5 Nov 2026, BUILD 47): HOLD IS OFF FOR GOOD. Every downloaded Indian-main/ zip is deployed AND pushed to GitHub; an old ~/.owl_hold_push file is removed by the watcher.
@@ -80,7 +82,7 @@
 # Settings / trades live outside the code folder, so a new zip never touches them.
 # Needs once:  termux-setup-storage
 
-BUILD=48    # self-update number: a zip replaces this script only if its BUILD is a bigger whole number (v5c=2, v5d=3, v5e=40, v5f=41, v5g=42, v5h=43, v5i=44, v5j=45, v5k=46, v5l=47)
+BUILD=49    # self-update number: a zip replaces this script only if its BUILD is a bigger whole number (v5c=2, v5d=3, v5e=40, v5f=41, v5g=42, v5h=43, v5i=44, v5j=45, v5k=46, v5l=47, v5n=49)
 VERSION="v5k 2026-11-06"
 DL_LIST() {   # every Download folder that exists (no duplicates)
   for d in "$OWL_DL" "$HOME/storage/downloads" "$HOME/storage/shared/Download" "/sdcard/Download" "/storage/emulated/0/Download"; do
@@ -149,6 +151,9 @@ newest_full_zip() {   # newest Indian-main*.zip over all Download folders, by mo
   done | sort -t'|' -k1,1 -rn | head -n 1 | cut -d'|' -f2-
 }
 
+export OWL_LITE="${OWL_LITE:-1}"   # PHONE LITE: the backend (start_forever.sh -> start.py) inherits this; 0 / false / off / no turns LITE off (test only)
+lite_on() { case "$(printf %s "$OWL_LITE" | tr 'A-Z' 'a-z')" in 0|false|off|no) return 1 ;; *) return 0 ;; esac; }
+
 ping_running() { pgrep -f "ping_worker.py" >/dev/null 2>&1; }
 
 kill_ping() {
@@ -159,6 +164,7 @@ kill_ping() {
 }
 
 start_ping() {   # Ping Lab worker: paper only, own process, never touches the bot
+  if lite_on; then ping_running && kill_ping; return 0; fi   # PHONE LITE: Ping Lab stays OFF (and a left-over worker is stopped)
   [ -f "$LIVE/backend/ping_worker.py" ] || return 0          # this zip has no ping files
   local dd now last; dd="$(pick_data_dir)"; now="$(date +%s)"; last="$(cat "$PINGT" 2>/dev/null || echo 0)"
   [ $((now - last)) -ge 30 ] || return 0                        # started less than 30 s ago
@@ -687,11 +693,14 @@ status_report() {
     echo "github/browser log:"; grep -E 'github sync|browser (app|update)' "$LOG" 2>/dev/null | tail -n 4 | sed 's/^/   /'
     echo
     echo "--- backend ---"
+    echo "lite mode      : $(lite_on && echo 'ON (only the bot + India data run)' || echo 'OFF (test mode, heavy)')"
     echo "port $PORT      : $(port_open && echo OPEN || echo CLOSED)"
     echo "http answer    : $(http_code)"
     echo
     echo "--- Ping Lab worker ---"
-    if [ -f "$LIVE/backend/ping_worker.py" ]; then
+    if lite_on; then
+      echo "ping worker    : OFF (LITE mode, on purpose) | $(ping_running && echo 'WARNING: a ping worker is still running' || echo 'none running')"
+    elif [ -f "$LIVE/backend/ping_worker.py" ]; then
       echo "ping worker    : $(ping_running && echo RUNNING || echo NOT running)"
       local pst; pst="$(pick_data_dir)/ai/ping_state.json"
       if [ -f "$pst" ]; then echo "ping snapshot  : updated $(( $(date +%s) - $(stat -c %Y "$pst") )) s ago (should be under 10)"; else echo "ping snapshot  : none yet (wait ~1 min after start)"; fi
@@ -888,7 +897,7 @@ while true; do
     fi
   fi
   # ping worker died (or was never started)? start it again (only while the backend is up)
-  if [ -f "$LIVE/backend/ping_worker.py" ] && pgrep -f "start_forever.sh" >/dev/null 2>&1 && ! ping_running; then
+  if ! lite_on && [ -f "$LIVE/backend/ping_worker.py" ] && pgrep -f "start_forever.sh" >/dev/null 2>&1 && ! ping_running; then
     log "ping worker was not running - starting it"
     start_ping
   fi

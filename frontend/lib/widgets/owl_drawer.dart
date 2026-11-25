@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../config_flags.dart';
 import '../providers/app_provider.dart';
 import '../theme/app_theme.dart';
 import 'backend_status_panel.dart';
@@ -39,7 +40,7 @@ class OwlDrawer extends StatelessWidget {
             final p = context.palette;
             final t = context.type;
             // Part 8A-2: the AI Assistant tile is hidden while ai_master_off is on (only an explicit false from the backend shows it).
-            final aiOff = provider.settings['ai_master_off'] != false;
+            final aiOff = kLite || provider.settings['ai_master_off'] != false; // PHONE LITE: the AI tile is always hidden
             final statusColor = connected ? p.profit : p.loss;
 
             return Column(

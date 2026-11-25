@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../theme/app_active.dart';
 import '../models/verdict_card.dart';
+import '../config_flags.dart';
 import '../navigation/app_routes.dart';
 import '../providers/app_provider.dart';
 import '../theme/app_theme.dart';
@@ -98,12 +99,12 @@ class DashboardScreen extends StatelessWidget {
                       if (isLive) ...[const SizedBox(height: AppSpacing.cardGap), const LiveWalletCard()],
                       const SizedBox(height: AppSpacing.m),
                       _ResultStrip(isLive: isLive, openCount: mainOpenCount),
-                      if (!isLive) Padding(padding: const EdgeInsets.only(top: 6), child: Text('These numbers are the MAIN bot only. Sniper trades share the same book but are shown apart in the table below. Dual and Brain are separate. The pause on daily target / loss limit still uses the whole book (Main + Sniper).', style: context.type.metadata.copyWith(color: context.palette.textMuted))),
+                      if (!isLive && !kLite) Padding(padding: const EdgeInsets.only(top: 6), child: Text('These numbers are the MAIN bot only. Sniper trades share the same book but are shown apart in the table below. Dual and Brain are separate. The pause on daily target / loss limit still uses the whole book (Main + Sniper).', style: context.type.metadata.copyWith(color: context.palette.textMuted))),
                       // Part 3 order (owner: calendar lower): result > 7 / 30 days > Diagnostics + load > the three books > Recent Activity > Equity > P&L calendar > MORE.
                       const SizedBox(height: AppSpacing.l),
                       // E6: the bots one by one come FIRST (owner: no scrolling to find them), then 7 / 30 days. Diagnostics + load moved into MORE.
-                      if (!isLive) ...[const BrainStrip(), const SizedBox(height: AppSpacing.l)],
-                      if (!isLive) ...[const _PeriodRow(), const SizedBox(height: AppSpacing.l), const MainSniperTable(), const SizedBox(height: AppSpacing.l)],
+                      if (!isLive && !kLite) ...[const BrainStrip(), const SizedBox(height: AppSpacing.l)], // PHONE LITE: no Brain / Dual / Sniper rows
+                      if (!isLive) ...[const _PeriodRow(), const SizedBox(height: AppSpacing.l), if (!kLite) const MainSniperTable(), if (!kLite) const SizedBox(height: AppSpacing.l)],
                       const RecentActivity(),
                       const SizedBox(height: AppSpacing.cardGap),
                       DashboardEquityChart(provider.equityCurve, provider.equityTf, (tf) => provider.fetchEquity(tf: tf)),
@@ -113,21 +114,17 @@ class DashboardScreen extends StatelessWidget {
                       // UI rule 7: everything that moved out of the main order sits behind ONE tap (nothing deleted).
                       OwlFold(
                         title: 'MORE',
-                        headline: 'Backend health and load, BTC chart, open pairs, Study Lab verdict, top movers, Tag Lab',
+                        headline: kLite ? 'BTC chart, open pairs, top movers' : 'Backend health and load, BTC chart, open pairs, Study Lab verdict, top movers, Tag Lab',
                         bare: true,
                         children: [
-                          const DiagLoadRow(),
-                          const SizedBox(height: AppSpacing.cardGap),
-                          const _ResultsVerdictLine(),
-                          const SizedBox(height: AppSpacing.cardGap),
+                          if (!kLite) ...[const DiagLoadRow(), const SizedBox(height: AppSpacing.cardGap), const _ResultsVerdictLine(), const SizedBox(height: AppSpacing.cardGap)],
                           const DashboardPairs(),
                           const BtcLiveTile(),
                           const SizedBox(height: AppSpacing.cardGap),
                           const TopMoversCard(),
-                          const TagLabTile(),
-                          const SizedBox(height: AppSpacing.cardGap),
+                          if (!kLite) ...[const TagLabTile(), const SizedBox(height: AppSpacing.cardGap)],
                           // R28c (Part 10): the organized Diagnostics section (connections, leaks, this app, Sniper) with the old engineering cards in its DETAILS fold.
-                          const DiagSection(),
+                          if (!kLite) const DiagSection(),
                         ],
                       ),
                     ]),

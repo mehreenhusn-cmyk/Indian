@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../config_flags.dart';
 
 /// Part P-B: ONE own icon per bottom-bar tab, so the owner knows the tab from the picture alone.
 ///   0 Home = house, 1 Positions = candles, 2 Sniper = target rings, 3 Study Lab = flask, 4 More = four dots (drawn here: a 2 x 2 grid of dots).
@@ -14,15 +15,15 @@ class OwlNavIcon extends StatelessWidget {
   static const List<IconData> _off = [
     Icons.home_outlined,
     Icons.candlestick_chart_outlined,
-    Icons.track_changes_outlined,
-    Icons.science_outlined,
+    kLite ? Icons.sensors_rounded : Icons.track_changes_outlined, // PHONE LITE: tab 3 = Signals
+    if (!kLite) Icons.science_outlined,
   ];
 
   static const List<IconData> _on = [
     Icons.home_rounded,
     Icons.candlestick_chart_rounded,
-    Icons.track_changes_rounded,
-    Icons.science_rounded,
+    Icons.sensors_rounded,
+    if (!kLite) Icons.science_rounded,
   ];
 
   @override

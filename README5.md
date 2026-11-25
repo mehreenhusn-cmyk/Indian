@@ -157,7 +157,7 @@ KEPT and running: the current crypto bot with its scanner (paper_trader / binanc
 RULES: (1) Do NOT re-enable, unhide, repair or extend a disabled feature unless the owner says so in plain words. (2) Do NOT delete files or data; only the small LITE guards may be added to the disabled files. (3) A new feature must NOT add a background thread, process, timer or poll without the owner's ok (the phone got hot and the app heavy before). (4) If something in a hidden area looks broken, leave it. (5) To turn LITE off for a test: env OWL_LITE=0 and kLiteMode=false, never by deleting guards. (6) Owner rules still apply: simple English, ONE question at a time, plan with files + lines first, commands only in README4 MERGE-TIME COMMANDS.
 
 ### BUILD LOG - PHONE LITE (newest at the bottom)
-**Round 1 (backend) BUILT 25 Nov 2026 - owner said "round 1 kr".** Round 2 (app) and Round 3 (phone script) are NOT built yet (wait for "round 2 kr" / "round 3 kr").
+**Round 1 (backend) BUILT 25 Nov 2026 - owner said "round 1 kr".** Round 2 (app) BUILT 26 Nov 2026 (see below). Round 3 (tools/owl_auto.sh, BUILD 49) BUILT 26 Nov 2026 (see below).
 | File | Changed / new lines | What |
 |---|---|---|
 | backend/lite.py (NEW) | 41 | the ONE switch: lite.is_lite() (default ON, env OWL_LITE=0 turns it off), lite.off(name) (True = do NOT start, one log line per name), lite.summary() |
@@ -169,3 +169,16 @@ RULES: (1) Do NOT re-enable, unhide, repair or extend a disabled feature unless 
 Tested here: py_compile of all 6 files OK; lite switch + TelegramNotifier._creds() run OK (LITE on -> empty, OWL_LITE=0 -> normal). NOT tested here: the backend itself was NOT started (fastapi is not installed in the build sandbox). First real test = the phone: `owlcheck`, then open `http://127.0.0.1:8000/api/lite` (must show "lite": true and a kept_off list).
 Known effects until Round 2: the app's Dual / Brain / Sniper / Study Lab / AI screens call routes that now answer 404 or are empty; Round 2 hides those screens and rows. The Telegram bot token in the OLD Kivy file backend/main.py is still there (it is NOT used by the live backend): the owner must revoke it in BotFather; removing it from the file is a separate small job.
 Not changed on purpose: the crypto bot, paper_trader / binance_trader, its scanner, india_runtime, status / settings routes, telemetry, the status broadcaster.
+
+**Round 2 (app) BUILT 26 Nov 2026 - owner said "Karo".** ONE flag does it all: `kLite = true` in frontend/lib/config_flags.dart (set false = old app back; the backend then needs OWL_LITE=0 too). Dart was NOT compiled here (no Flutter in the build sandbox): bracket balance checked only. The GitHub APK build is the first real compile; if it fails, read the build log and fix the named line only.
+| File | What |
+|---|---|
+| frontend/lib/config_flags.dart | `kLite` (true) and `kLiteBackendUrl` = http://127.0.0.1:8000 |
+| navigation/app_routes.dart | bar = Home, Positions, Signals, More. New `AppRoutes.hidden` (dualBot, ai, brain, sniper, studyLab, diagnostics) + `isHidden()`. gearPages / underGear = Market only. orderProblems() skips hidden pages. The enum and screen numbers are NOT changed, so main.dart's _screens list is untouched |
+| widgets/bottom_nav_bar.dart, owl_nav_icons.dart | 4 labels (Home, Positions, Signals, More); tab 3 icon = sensors; More = dots |
+| providers/app_provider.dart | default URL = 127.0.0.1:8000; a saved 100.x (Tailscale / VPS) URL is replaced by it at start; goToTab() ignores hidden pages; warmAi() and fetchAiAdvice() do nothing; error text points to `owlon` |
+| screens/dashboard_screen.dart | no Brain strip, no Sniper table, no Study Lab verdict line, no load row, no Tag Lab, no Diagnostics section, no "Sniper / Dual / Brain are separate" note |
+| screens/more_screen.dart | tiles removed: Chop Bot, Brain Dashboard, Brain, Dual Bot, Signals (it is a tab now), AI, Ask the Brain, Data Health, Data and Learning, Screenshot Check, Brain Today, Brain and Activity, Dual Bot report, Diagnostics, Ping Lab. Kept: Market, Trades, Month Calendar, Simple Results, AI Report, Fees and tax, App report, Trades CSV, App Problems, Settings |
+| widgets/owl_drawer.dart | AI Assistant tile always hidden |
+Hidden screens are never built, so their timers and fetches do not run. No file was deleted. Not changed on purpose: positions, signals, India screens, settings, websocket service.
+Still to do: Round 3 (tools/owl_auto.sh starts only the backend, lite on) and the first phone test: `owlon`, then http://127.0.0.1:8000/api/lite must say "lite": true, then install the new APK and check the 4 tabs.

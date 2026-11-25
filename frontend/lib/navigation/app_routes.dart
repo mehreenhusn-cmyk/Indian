@@ -1,3 +1,5 @@
+import '../config_flags.dart';
+
 // Central route map (Part 27). ONE place that says which screen number is which page.
 // Before: numbers like goToTab(3) were written in many files; if a tab moved, they silently opened the wrong page.
 // Now: every caller says a NAME (AppRoute.signals) and only this file knows the number.
@@ -39,13 +41,22 @@ class AppRoutes {
 
   // Part 41 (FILE 50): the FIXED section order of the app, left to right in the bottom bar. This list is the single source of truth:
   // the swipe order below is built from it, so the bar and the swipe can never disagree. Every section opens with its summary / comparison first (see the frontend plan).
-  static const List<AppRoute> sections = [
+  static const List<AppRoute> _fullSections = [
     AppRoute.dashboard,
     AppRoute.positions,
     AppRoute.sniper,
     AppRoute.studyLab,
     AppRoute.more, // Part 13: Settings and tools is now the 5th tab of the bar (the top-bar gear is gone, it was the same page twice)
   ];
+  // PHONE LITE (Round 2): the bar is Home, Positions, Signals, More.
+  static const List<AppRoute> _liteSections = [AppRoute.dashboard, AppRoute.positions, AppRoute.signals, AppRoute.more];
+  static const List<AppRoute> sections = kLite ? _liteSections : _fullSections;
+
+  /// PHONE LITE: pages that are switched OFF (no button, no swipe, no link). goToRoute() ignores them. Empty when kLite is false.
+  static const Set<AppRoute> hidden = kLite
+      ? {AppRoute.dualBot, AppRoute.ai, AppRoute.brain, AppRoute.sniper, AppRoute.studyLab, AppRoute.diagnostics}
+      : <AppRoute>{};
+  static bool isHidden(AppRoute r) => hidden.contains(r);
 
   // Round 11: the 5 buttons of the bottom bar, left to right. Market and Brain left the bar (they open from the gear page).
   static const List<AppRoute> bottomBar = sections;
@@ -54,7 +65,7 @@ class AppRoutes {
   static const AppRoute settingsRoute = AppRoute.more;
 
   // The pages behind the gear, in the order the swipe visits them after the 5 sections. Settings and tools is always the LAST one.
-  static const List<AppRoute> gearPages = [
+  static const List<AppRoute> _fullGear = [
     AppRoute.market,
     AppRoute.brain,
     AppRoute.signals,
@@ -62,12 +73,15 @@ class AppRoutes {
     AppRoute.ai,
     AppRoute.diagnostics, // R28c: Diagnostics left the bar; its summary is on the Dashboard, the full page opens from More
   ];
+  static const List<AppRoute> gearPages = kLite ? [AppRoute.market] : _fullGear; // PHONE LITE: only Market is left behind the gear
 
   // Swipe order: the 5 sections first, then the gear pages (built from the two lists above, not typed twice).
   static const List<AppRoute> swipeOrder = [...sections, ...gearPages];
 
   // Pages that have no button in the bar: they open from the top-bar gear / the Settings and tools page and keep the GEAR lit.
-  static const Set<AppRoute> underGear = {AppRoute.market, AppRoute.brain, AppRoute.signals, AppRoute.dualBot, AppRoute.ai, AppRoute.diagnostics};
+  static const Set<AppRoute> underGear = kLite
+      ? {AppRoute.market}
+      : {AppRoute.market, AppRoute.brain, AppRoute.signals, AppRoute.dualBot, AppRoute.ai, AppRoute.diagnostics};
 
   /// True for the 5 fixed sections; false for a gear page.
   static bool isSection(AppRoute r) => sections.contains(r);
@@ -86,6 +100,7 @@ class AppRoutes {
   static List<String> orderProblems() {
     final out = <String>[];
     for (final r in AppRoute.values) {
+      if (hidden.contains(r)) continue; // PHONE LITE: a hidden page is meant to be missing from the swipe
       final n = swipeOrder.where((x) => x == r).length;
       if (n == 0) out.add('${label(r)} is missing from the swipe order.');
       if (n > 1) out.add('${label(r)} is in the swipe order $n times.');

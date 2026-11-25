@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../config_flags.dart';
 import '../navigation/app_routes.dart';
 import '../theme/app_motion2.dart';
 import '../theme/app_theme.dart';
@@ -28,7 +29,7 @@ class _BottomNavBarState extends State<BottomNavBar> {
   // The visible tab -> the screen index it opens (7 = Brain screen, 6 = More).
   static final List<int> _screens = AppRoutes.barScreens; // Part 27: from the route map
 
-  static const List<String> _labels = ['Home', 'Positions', 'Sniper', 'Study Lab', 'More'];
+  static const List<String> _labels = kLite ? ['Home', 'Positions', 'Signals', 'More'] : ['Home', 'Positions', 'Sniper', 'Study Lab', 'More']; // PHONE LITE: 4 tabs
 
   int _last = 0; // the bubble stays where it was while no tab is lit
 

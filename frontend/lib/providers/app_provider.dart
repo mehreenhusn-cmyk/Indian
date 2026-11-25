@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import '../config_flags.dart';
 import '../navigation/app_routes.dart';
 import '../services/sound_service.dart';
 
@@ -78,7 +79,8 @@ class AppProvider extends ChangeNotifier with SoundAlerts {
   // fetch (and every other /api/* call) now targets this by default.
   // Nov 2026: the backend runs on the VPS only (README_VPS), reached over Tailscale. A fresh install (or cleared app data) has no saved
   // Backend URL, and the old default 127.0.0.1 (the phone itself) never connects -> "Connection refused". The default is now the VPS.
-  static const _defaultBaseUrl = 'http://100.85.188.83:8000';
+  // PHONE LITE (Round 2, 26 Nov 2026): the backend runs on THIS phone (Termux), so the default is 127.0.0.1. Set kLite=false in config_flags.dart to get the VPS address back.
+  static const _defaultBaseUrl = kLite ? kLiteBackendUrl : 'http://100.85.188.83:8000';
   // Browser version: talk to the same server the page was opened from.
   static String get _startUrl => kIsWeb ? Uri.base.origin : _defaultBaseUrl;
 
@@ -163,6 +165,8 @@ class AppProvider extends ChangeNotifier with SoundAlerts {
   int navigateToTabRequest = -1;
 
   void goToTab(int index) {
+    final r = AppRoutes.fromScreenIndex(index);
+    if (r != null && AppRoutes.isHidden(r)) return; // PHONE LITE: a switched-off page cannot be opened
     navigateToTabRequest = index;
     notifyListeners();
   }
@@ -423,6 +427,11 @@ class AppProvider extends ChangeNotifier with SoundAlerts {
 
   Future<void> init() async {
     baseUrl = (kIsWeb ? null : prefs.getString(_backendUrlKey)) ?? _startUrl;
+    // PHONE LITE: an old saved VPS / Tailscale address must not win over this phone (the VPS is offline). Any saved 100.x address becomes 127.0.0.1.
+    if (kLite && !kIsWeb && baseUrl.contains('://100.')) {
+      baseUrl = _defaultBaseUrl;
+      prefs.setString(_backendUrlKey, baseUrl);
+    }
     _restoreLastStatus(); // fast start: the last status is on screen at once, the real one replaces it when it arrives
     // Only what the first screen needs is awaited. Equity curve and calendar load in the background (they used to hold the start back).
     fetchEquity();
@@ -435,7 +444,7 @@ class AppProvider extends ChangeNotifier with SoundAlerts {
     initLoaded = true; // the welcome loading bar reads this: status, signals and settings are fetched (equity and calendar follow by themselves)
     notifyListeners();
     _restorePrefsIfFresh().then((_) => pushPrefsBackup()); // not awaited
-    warmAi(); // not awaited: runs quietly behind the first screen
+    if (!kLite) warmAi(); // not awaited: runs quietly behind the first screen. PHONE LITE: the AI warm-up fetches stay off
   }
 
   // Fast start: the newest /api/status body is kept on the phone (written at most every 10 s) and shown at app start as a snapshot,
@@ -591,7 +600,7 @@ class AppProvider extends ChangeNotifier with SoundAlerts {
         // G1: with data already on screen, a short calm line instead of the raw socket error.
         error = status.isNotEmpty
             ? 'Connection dropped - showing the last data, reconnecting by itself'
-            : 'Cannot reach backend ($baseUrl): $e${baseUrl.contains('127.0.0.1') ? '\nThis URL is the phone itself. Settings > Backend URL should be http://100.85.188.83:8000' : ''}';
+            : 'Cannot reach backend ($baseUrl): $e${baseUrl.contains('127.0.0.1') ? '\nThis URL is the phone itself. Settings > Backend URL should be ${kLite ? kLiteBackendUrl : 'http://100.85.188.83:8000'} (owlon starts the backend)' : ''}';
       }
     }
     notifyListeners();
@@ -957,7 +966,7 @@ class AppProvider extends ChangeNotifier with SoundAlerts {
   Future<Map<String, dynamic>?> fetchAiLevels() => _getAiMap('/api/ai/levels', '');
 
   /// Phase 4: display-only advice badges per open position (GET /api/ai/advice).
-  Future<Map<String, dynamic>?> fetchAiAdvice() => _getAiMap('/api/ai/advice', '');
+  Future<Map<String, dynamic>?> fetchAiAdvice() async => kLite ? null : _getAiMap('/api/ai/advice', ''); // PHONE LITE: no AI advice fetch (AI is off)
 
   Future<Map<String, dynamic>?> _getAiMap(String path, String tf) =>
       _aiGet(_u(path).replace(queryParameters: tf.isEmpty ? null : {'tf': tf}));
