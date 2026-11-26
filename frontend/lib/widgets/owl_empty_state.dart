@@ -33,14 +33,14 @@ class OWLEmptyState extends StatelessWidget {
               width: 64,
               height: 64,
               decoration: BoxDecoration(
-                color: p.surface,
+                gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [p.accent.withOpacity(0.18), p.surface]), // Round F2
                 shape: BoxShape.circle,
-                border: Border.all(color: p.border, width: 1),
+                border: Border.all(color: p.accent.withOpacity(0.35), width: 1),
                 boxShadow: p.brightness == Brightness.light
                     ? [BoxShadow(color: const Color(0xFF101828).withOpacity(0.05), blurRadius: 16, offset: const Offset(0, 4))]
                     : null,
               ),
-              child: Icon(icon, size: 28, color: p.textMuted),
+              child: Icon(icon, size: 28, color: p.accent),
             ),
             const SizedBox(height: AppSpacing.l),
             Text(title, style: t.section.copyWith(fontSize: 16, fontWeight: FontWeight.w800)),

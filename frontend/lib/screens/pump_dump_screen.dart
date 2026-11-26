@@ -146,10 +146,19 @@ class _PumpDumpScreenState extends State<PumpDumpScreen> {
       line = 'Live  ·  checked ${pdNum(age).toStringAsFixed(0)}s ago  ·  ${l['tracked']} coins watched';
       dot = p.profit;
     }
-    return _card(
-      p,
+    final np = l['pump'] is List ? (l['pump'] as List).length : 0;
+    final nd = l['dump'] is List ? (l['dump'] as List).length : 0;
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration( // Round F2: status header with a soft tint of the scanner state
+        gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [dot.withOpacity(0.16), p.surface]),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusMedium),
+        border: Border.all(color: dot.withOpacity(0.4)),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.14), blurRadius: 8, offset: const Offset(0, 3))],
+      ),
+      child: Column(children: [
       Row(children: [
-        Container(width: 9, height: 9, decoration: BoxDecoration(color: dot, shape: BoxShape.circle)),
+        Container(width: 9, height: 9, decoration: BoxDecoration(color: dot, shape: BoxShape.circle, boxShadow: [BoxShadow(color: dot.withOpacity(0.7), blurRadius: 6)])),
         const SizedBox(width: 10),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -160,8 +169,32 @@ class _PumpDumpScreenState extends State<PumpDumpScreen> {
         ),
         Switch(value: enabled, onChanged: _switch),
       ]),
+      if (enabled) ...[
+        const SizedBox(height: 8),
+        Row(children: [
+          _countChip(p, 'Pump', np, p.profit, Icons.trending_up_rounded),
+          const SizedBox(width: 8),
+          _countChip(p, 'Dump', nd, p.loss, Icons.trending_down_rounded),
+        ]),
+      ],
+      ]),
     );
   }
+
+  /// Round F2: a small pill with the number of coins in play on one side.
+  Widget _countChip(AppPalette p, String label, int n, Color c, IconData icon) => Expanded(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(color: c.withOpacity(0.12), borderRadius: BorderRadius.circular(AppSpacing.radiusSmall)),
+          child: Row(children: [
+            Icon(icon, size: 16, color: c),
+            const SizedBox(width: 6),
+            Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: c)),
+            const Spacer(),
+            Text('$n', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: p.textPrimary)),
+          ]),
+        ),
+      );
 
   List<Widget> _liveTiles(List<dynamic> rows, bool pump) => [
         for (final r in rows) if (r is Map<String, dynamic>) PdLiveTile(row: r, pump: pump),
