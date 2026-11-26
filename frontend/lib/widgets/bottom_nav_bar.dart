@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/app_provider.dart';
 import '../config_flags.dart';
 import '../navigation/app_routes.dart';
 import '../theme/app_motion2.dart';
@@ -29,7 +31,7 @@ class _BottomNavBarState extends State<BottomNavBar> {
   // The visible tab -> the screen index it opens (7 = Brain screen, 6 = More).
   static final List<int> _screens = AppRoutes.barScreens; // Part 27: from the route map
 
-  static const List<String> _labels = kLite ? ['Home', 'Positions', 'Signals', 'More'] : ['Home', 'Positions', 'Sniper', 'Study Lab', 'More']; // PHONE LITE: 4 tabs
+  static const List<String> _labels = kLite ? ['Home', 'Positions', 'Signals', 'Pump/Dump', 'More'] : ['Home', 'Positions', 'Sniper', 'Study Lab', 'More']; // PHONE LITE: 5 tabs (Pump/Dump added 26 Nov 2026)
 
   int _last = 0; // the bubble stays where it was while no tab is lit
 
@@ -61,6 +63,17 @@ class _BottomNavBarState extends State<BottomNavBar> {
     );
   }
 
+  /// A small dot on the Pump/Dump tab when a new START alert came while another tab was open (the count is cleared when that tab opens).
+  Widget _pdBadge(int index, bool selected, AppPalette p, Widget icon) {
+    if (!kLite || _screens[index] != AppRoutes.screenIndex(AppRoute.pumpDump) || selected) return icon;
+    final n = context.select<AppProvider, int>((v) => v.pdNewCount);
+    if (n <= 0) return icon;
+    return Stack(clipBehavior: Clip.none, children: [
+      icon,
+      Positioned(right: -3, top: -3, child: Container(width: 9, height: 9, decoration: BoxDecoration(color: p.loss, shape: BoxShape.circle, border: Border.all(color: p.surfaceElevated, width: 1.5)))),
+    ]);
+  }
+
   Widget _tab(AppPalette p, int index, bool selected) {
     return Semantics(
       button: true,
@@ -79,7 +92,7 @@ class _BottomNavBarState extends State<BottomNavBar> {
           ),
           child: Center(
             child: Row(mainAxisSize: MainAxisSize.min, children: [
-              OwlNavIcon(index: index, lit: selected, color: selected ? Colors.white : p.textMuted, size: 22),
+              _pdBadge(index, selected, p, OwlNavIcon(index: index, lit: selected, color: selected ? Colors.white : p.textMuted, size: 22)),
               if (selected) ...[
                 const SizedBox(width: 5),
                 Flexible(child: Text(_labels[index], maxLines: 1, overflow: TextOverflow.clip, style: AppTypography.metadata.copyWith(fontSize: 11.5, color: Colors.white, fontWeight: FontWeight.w800))),

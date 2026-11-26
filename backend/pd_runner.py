@@ -1,0 +1,136 @@
+"""pd_runner.py - ONE background thread that runs the Pump / Dump scanner (PD). Started once by api_server.py after boot.
+Loop every poll_sec: feed.poll() -> features of the coins that moved -> tracker (stage events) -> learner (outcomes, missed, daily tuner).
+Switch: <data>/pumpdump/enabled.json {"enabled": true/false} (the app has the switch). Off = the thread sleeps, makes NO network call and frees the history.
+A network error never stops it: it backs off (20 s ... 120 s) and says so in the app. Read README5 "PUMP DUMP SCANNER"."""
+import os
+import threading
+import time
+
+import pd_config as C
+import pd_feed
+import pd_learn
+import pd_scorer as S
+import pd_store as ST
+import pd_tracker
+
+_R = {"thread": None, "stop": False, "feed": None, "tracker": None, "learn": None, "lock": threading.RLock(),
+      "state": {"running": False, "enabled": True, "last_poll": 0.0, "last_error": "", "errors": 0, "polls": 0, "tracked": 0, "started": 0.0, "events_today": 0}}
+
+
+def enabled():
+    return bool(ST.read_json("enabled.json", {"enabled": True}).get("enabled", True))
+
+
+def set_enabled(on):
+    ST.write_json("enabled.json", {"enabled": bool(on), "changed": int(time.time())})
+    _R["state"]["enabled"] = bool(on)
+
+
+def _emit(ev):
+    ST.append("events", ev["day"], ev)
+    _R["state"]["events_today"] = _R["state"].get("events_today", 0) + 1
+    if ev["stage"] == "START" and _R["learn"] is not None:
+        _R["learn"].add_start(ev)
+    print("[pd] %s %s %s %+.1f%% vol %.1fx score %s" % (ev["stage"], ev["side"], ev["symbol"], ev["r5"], ev["vr5"], ev["score"]))
+
+
+def step(feed, tracker, learn, now):
+    """ONE poll cycle (also used by the test). Returns the number of coins tracked."""
+    n = feed.poll(now)
+    poll = C.get("poll_sec")
+    prices = {}
+    warm = feed.warm_left_min(now) <= 0
+    for sym, h in feed.hist.items():
+        if not h.t or h.t[-1] != now:
+            continue
+        prices[sym] = h.p[-1]
+        qv24 = feed.meta[sym]["qv24"]
+        # cheap pre-filter: only a coin that moved at least 0.3% in 5 min, or is already tracked, gets the full numbers
+        quiet = len(h.t) > 20 and abs(h.p[-1] / h.p[max(0, len(h.p) - 16)] - 1.0) * 100.0 < 0.3
+        if quiet and not tracker.is_active(sym, "pump") and not tracker.is_active(sym, "dump"):
+            continue
+        f = S.features(h, now, qv24, poll)
+        if f is None:
+            continue
+        if warm:
+            tracker.eval_symbol(sym, f, now, qv24)
+            learn.check_missed(sym, f, now, tracker, qv24)
+    learn.track(prices, now)
+    if warm:
+        learn.tune_if_due(now, tracker)
+    return n
+
+
+def _loop(data_dir):
+    st = _R["state"]
+    feed, tracker, learn = _R["feed"], _R["tracker"], _R["learn"]
+    backoff = 0
+    st.update(running=True, started=time.time())
+    while not _R["stop"]:
+        try:
+            on = enabled()
+            st["enabled"] = on
+            if not on:
+                if feed.hist:
+                    feed.clear()
+                    tracker.states.clear()
+                time.sleep(5)
+                continue
+            now = time.time()
+            n = step(feed, tracker, learn, now)
+            st.update(last_poll=now, tracked=n, polls=feed.polls, last_error="")
+            backoff = 0
+            time.sleep(max(1.0, C.get("poll_sec") - (time.time() - now)))
+        except Exception as e:
+            backoff = min(120, (backoff or 10) * 2)
+            st["errors"] += 1
+            st["last_error"] = "%s: %s" % (type(e).__name__, str(e)[:120])
+            print(f"[pd] poll failed ({st['last_error']}), retry in {backoff}s")
+            time.sleep(backoff)
+    st["running"] = False
+
+
+def start(data_dir):
+    """Called once at boot. Safe to call twice."""
+    with _R["lock"]:
+        if _R["thread"] is not None and _R["thread"].is_alive():
+            return False
+        C.init(data_dir)
+        _R["feed"] = pd_feed.Feed()
+        _R["learn"] = pd_learn.Learner()
+        _R["tracker"] = pd_tracker.Tracker(_emit)
+        _R["tracker"].adj = dict(_R["learn"].tuner.get("coin_adj", {}))
+        _R["stop"] = False
+        _R["state"]["enabled"] = enabled()
+        t = threading.Thread(target=_loop, args=(data_dir,), daemon=True, name="pd_scanner")
+        _R["thread"] = t
+        t.start()
+        print(f"[pd] Pump / Dump scanner started ({C.VERSION}), data folder: {C.root()}")
+        return True
+
+
+def stop():
+    _R["stop"] = True
+
+
+def live(now=None):
+    """What the app's top part shows: status + the coins in play on each side + the last START events."""
+    now = time.time() if now is None else now
+    st = dict(_R["state"])
+    feed, tracker = _R["feed"], _R["tracker"]
+    snap = tracker.snapshot() if tracker is not None else {"pump": [], "dump": []}
+    for side in snap:
+        for r in snap[side]:
+            r["age_min"] = round((now - r["since"]) / 60.0, 1)
+    return {"version": C.VERSION, "enabled": st["enabled"], "running": st["running"], "last_poll_age": round(now - st["last_poll"], 1) if st["last_poll"] else None,
+            "last_error": st["last_error"], "errors": st["errors"], "polls": st["polls"], "tracked": st["tracked"],
+            "warm_left_min": round(feed.warm_left_min(now), 1) if feed is not None else None, "poll_sec": C.get("poll_sec"),
+            "pump": snap["pump"], "dump": snap["dump"], "latest_starts": list(tracker.recent[:10]) if tracker is not None else [],
+            "auto_tune": (_R["learn"].tuner.get("auto_tune", True) if _R["learn"] is not None else True)}
+
+
+def set_auto_tune(on):
+    if _R["learn"] is not None:
+        _R["learn"].set_auto_tune(on)
+        return True
+    return False

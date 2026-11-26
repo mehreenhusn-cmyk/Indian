@@ -16,14 +16,14 @@ class OwlNavIcon extends StatelessWidget {
     Icons.home_outlined,
     Icons.candlestick_chart_outlined,
     kLite ? Icons.sensors_rounded : Icons.track_changes_outlined, // PHONE LITE: tab 3 = Signals
-    if (!kLite) Icons.science_outlined,
+    if (kLite) Icons.bolt_outlined else Icons.science_outlined, // PHONE LITE: tab 4 = Pump/Dump
   ];
 
   static const List<IconData> _on = [
     Icons.home_rounded,
     Icons.candlestick_chart_rounded,
     Icons.sensors_rounded,
-    if (!kLite) Icons.science_rounded,
+    if (kLite) Icons.bolt_rounded else Icons.science_rounded,
   ];
 
   @override

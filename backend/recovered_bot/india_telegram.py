@@ -18,10 +18,7 @@ from datetime import datetime, timedelta
 
 import requests
 
-try:
-    import lite          # LITE mode (25 Nov 2026)
-except ImportError:
-    lite = None
+# 26 Nov 2026: India Telegram is back to normal too (the LITE guard of Round 1 was removed at the owner's request).
 
 try:
     from .strategy import ABCDStrategy
@@ -134,8 +131,7 @@ class IndiaTelegram:
         except Exception:
             pass
         self.thread = threading.Thread(target=self._loop, daemon=True, name="india_telegram")
-        if not (lite is not None and lite.off("india_telegram")):   # LITE: no Telegram watcher thread, India signals stay in the app
-            self.thread.start()
+        self.thread.start()
 
     # ------------------------------------------------------------ settings ---
     @property
@@ -148,8 +144,6 @@ class IndiaTelegram:
         return v if v in TG_TFS else 15
 
     def _creds(self):
-        if lite is not None and lite.off("india_telegram"):
-            return "", ""
         c = self.creds.get(CRED_NAME)
         return str(c.get("bot_token", "")).strip(), str(c.get("chat_id", "")).strip()
 

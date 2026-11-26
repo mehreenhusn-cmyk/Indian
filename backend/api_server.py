@@ -243,6 +243,19 @@ try:
 except Exception as _e:
     print(f"[startup] ping routes skipped: {_e}")
 
+# Pump / Dump scanner (PD, 26 Nov 2026): the ONE new background job the owner asked for in LITE. Signals show ONLY in the app (tab "Pump/Dump").
+# Own files in <data>/pumpdump/. OWL_PUMPDUMP=0 keeps it off. Wrapped so a broken scanner can never stop the main backend from starting.
+_PD_ON = os.environ.get("OWL_PUMPDUMP", "1").strip().lower() not in ("0", "false", "off", "no")
+try:
+    if _PD_ON:
+        import pd_config as _pd_config
+        _pd_config.init(DATA_DIR)
+        from api.pd_route import make_router as _pd_make_router
+        app.include_router(_pd_make_router(require_api_token, DATA_DIR))
+except Exception as _e:
+    _PD_ON = False
+    print(f"[startup] pump/dump routes skipped: {_e}")
+
 
 _bot_thread_started = False
 _bot_thread_lock = threading.Lock()
@@ -459,6 +472,12 @@ async def on_startup():
                 memwatch.start(DATA_DIR)       # Part 19: RSS + container sizes every 10 min -> memwatch.jsonl (measure only, setting memwatch_mode 'off' stops it)
         except Exception as e:
             print(f"[startup] memwatch skipped: {e}")
+        try:
+            if _PD_ON:
+                import pd_runner
+                pd_runner.start(DATA_DIR)      # Pump / Dump scanner: ONE thread, one Binance call every 20 s, switch in the app
+        except Exception as e:
+            print(f"[startup] pump/dump scanner skipped: {e}")
         asyncio.create_task(_status_broadcaster())
         asyncio.create_task(_swr_warmer())
         if not lite.off("swr_prewarm"):       # builds every AI-tab answer once in the background (AI tab is hidden in LITE)

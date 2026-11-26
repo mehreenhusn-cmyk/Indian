@@ -7,6 +7,7 @@ import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'navigation/app_routes.dart';
 import 'providers/app_provider.dart';
 import 'theme/app_active.dart';
+import 'screens/pump_dump_screen.dart';
 import 'screens/brain_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/market_screen.dart';
@@ -275,6 +276,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
       // safety net now: fire it just when the socket is down or silent.
       final provider = context.read<AppProvider>();
       if (AppActive.on && provider.wsStale) provider.fetchStatus();
+      if (AppActive.on) provider.pdPoll(); // Pump/Dump: ONE tiny local call on this same 15 s tick (no new timer): new START alert -> sound + dot on the tab
     });
     _keepAliveTimer?.cancel();
     _keepAliveTimer = Timer.periodic(const Duration(minutes: 4), (_) {
@@ -442,6 +444,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     const TabPage(title: 'Owl Sniper', child: SniperScreen()), // 8 (Round 11: bar tab 3)
     const StudyLabScreen(), // 9 (Part 13b: bar tab 4 = the Results Board; the old hub is behind 'Studies and tools')
     const TabPage(title: 'Diagnostics', child: SystemHealthScreen()), // 10 (Round 11: bar tab 5)
+    const PumpDumpScreen(), // 11 (26 Nov 2026: the Pump / Dump scanner tab)
   ];
 
   /// Round 11: ONE place that switches tab (bottom bar and top-bar gear both call it).

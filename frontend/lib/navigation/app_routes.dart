@@ -16,6 +16,7 @@ enum AppRoute {
   sniper, // screen 8 (Round 11: bar tab 3)
   studyLab, // screen 9 (Round 11: bar tab 4)
   diagnostics, // screen 10 (Round 11: bar tab 5)
+  pumpDump, // screen 11 (26 Nov 2026: the Pump / Dump scanner tab, PHONE LITE bar tab 4; behind the gear when kLite is false)
 }
 
 class AppRoutes {
@@ -34,6 +35,7 @@ class AppRoutes {
     AppRoute.sniper: 8,
     AppRoute.studyLab: 9,
     AppRoute.diagnostics: 10,
+    AppRoute.pumpDump: 11,
   };
 
   /// How many screens main.dart keeps (screen numbers 0 .. screenCount - 1, no gaps).
@@ -48,8 +50,8 @@ class AppRoutes {
     AppRoute.studyLab,
     AppRoute.more, // Part 13: Settings and tools is now the 5th tab of the bar (the top-bar gear is gone, it was the same page twice)
   ];
-  // PHONE LITE (Round 2): the bar is Home, Positions, Signals, More.
-  static const List<AppRoute> _liteSections = [AppRoute.dashboard, AppRoute.positions, AppRoute.signals, AppRoute.more];
+  // PHONE LITE (Round 2 + Pump/Dump tab): the bar is Home, Positions, Signals, Pump/Dump, More.
+  static const List<AppRoute> _liteSections = [AppRoute.dashboard, AppRoute.positions, AppRoute.signals, AppRoute.pumpDump, AppRoute.more];
   static const List<AppRoute> sections = kLite ? _liteSections : _fullSections;
 
   /// PHONE LITE: pages that are switched OFF (no button, no swipe, no link). goToRoute() ignores them. Empty when kLite is false.
@@ -72,6 +74,7 @@ class AppRoutes {
     AppRoute.dualBot,
     AppRoute.ai,
     AppRoute.diagnostics, // R28c: Diagnostics left the bar; its summary is on the Dashboard, the full page opens from More
+    AppRoute.pumpDump,
   ];
   static const List<AppRoute> gearPages = kLite ? [AppRoute.market] : _fullGear; // PHONE LITE: only Market is left behind the gear
 
@@ -81,7 +84,7 @@ class AppRoutes {
   // Pages that have no button in the bar: they open from the top-bar gear / the Settings and tools page and keep the GEAR lit.
   static const Set<AppRoute> underGear = kLite
       ? {AppRoute.market}
-      : {AppRoute.market, AppRoute.brain, AppRoute.signals, AppRoute.dualBot, AppRoute.ai, AppRoute.diagnostics};
+      : {AppRoute.market, AppRoute.brain, AppRoute.signals, AppRoute.dualBot, AppRoute.ai, AppRoute.diagnostics, AppRoute.pumpDump};
 
   /// True for the 5 fixed sections; false for a gear page.
   static bool isSection(AppRoute r) => sections.contains(r);
@@ -160,6 +163,8 @@ class AppRoutes {
         return 'Study Lab';
       case AppRoute.diagnostics:
         return 'Diagnostics';
+      case AppRoute.pumpDump:
+        return 'Pump / Dump';
     }
   }
 }

@@ -8,10 +8,7 @@ import requests
 from . import status
 from . import settings_store
 
-try:
-    import lite          # LITE mode (25 Nov 2026): no Telegram at all, signals stay in the app
-except ImportError:
-    lite = None
+# 26 Nov 2026: the owner wants the current bot's Telegram messages exactly as before, so the LITE guard of Round 1 was removed.
 
 BOT_NAME_DEFAULT = "HUSSAIN"  # overridable via settings key "bot_name"
 
@@ -28,8 +25,6 @@ class TelegramNotifier:
         print(f"[Telegram] Initialized (credentials are read from env/Settings at send time)")
 
     def _creds(self):
-        if lite is not None and lite.off("telegram"):
-            return "", ""          # every send below returns early when there is no token / chat
         token = (os.getenv("BOT_TOKEN") or settings_store.get("telegram_bot_token", "") or self.bot_token or "").strip()
         chat = (os.getenv("CHAT_ID") or settings_store.get("telegram_chat_id", "") or self.chat_id or "").strip()
         return token, chat
@@ -110,7 +105,7 @@ class TelegramNotifier:
         print(f"[Telegram] Sending signal: {symbol} - {action} @ {entry}")
         status.update(telegram_last_attempt_ts=time.time())
         if not token or not chat:
-            status.update(telegram_last_ok=False, telegram_last_error=("Telegram is OFF (LITE mode)" if (lite is not None and lite.is_lite()) else "Bot Token / Chat ID not set in Settings"))
+            status.update(telegram_last_ok=False, telegram_last_error="Bot Token / Chat ID not set in Settings")
             return
         try:
             url = f"https://api.telegram.org/bot{token}/sendMessage"

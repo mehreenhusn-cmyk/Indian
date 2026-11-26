@@ -18,6 +18,7 @@ part 'app_provider_chop.dart';
 part 'app_provider_filter.dart';
 part 'app_provider_settings.dart';
 part 'app_provider_sound.dart';
+part 'app_provider_pd.dart';
 
 /// The real state-management class the whole app depends on
 /// (main.dart does `ChangeNotifierProvider(create: (_) => AppProvider(prefs)..init())`
@@ -163,6 +164,14 @@ class AppProvider extends ChangeNotifier with SoundAlerts {
   /// consumeTabRequest() so the same request never re-fires on an unrelated
   /// rebuild.
   int navigateToTabRequest = -1;
+
+  // ---- Pump / Dump scanner (26 Nov 2026): alerts show ONLY in the app. pdPoll() runs on main.dart's existing 15 s tick (a tiny call to this phone).
+  int pdNewCount = 0;          // START alerts that came while the Pump/Dump tab was not open (the dot on the tab)
+  bool pdOnTab = false;        // the Pump/Dump screen is open now
+  String _pdSeenId = '';
+  bool _pdBaselined = false;   // the first answer only remembers what is already there: no sound for old alerts
+  bool _pdBusy = false;
+
 
   void goToTab(int index) {
     final r = AppRoutes.fromScreenIndex(index);
