@@ -125,7 +125,7 @@ class _MonthGridScreenState extends State<MonthGridScreen> {
       builder: (_) => Padding(
         padding: const EdgeInsets.all(AppSpacing.l),
         child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('${r['month']}-${'${d['day']}'.padLeft(2, '0')} (UTC)', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: p.textPrimary)),
+          Text('${r['month']}-${'${d['day']}'.padLeft(2, '0')} (from 5:30 AM IST)', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: p.textPrimary)),
           const SizedBox(height: 10),
           Text('Owl Brain: ${lpSg(d['brain_usdt'])} USDT in ${d['brain_trades']} closed trades', style: TextStyle(fontSize: 13, color: lpNet(p, d['brain_usdt']))),
           const SizedBox(height: 4),

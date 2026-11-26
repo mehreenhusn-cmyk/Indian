@@ -31,7 +31,7 @@ class ZemaSettings {
   final Set<String> hiddenTfs; // timeframes where the indicator is hidden (Visibility tab)
 
   const ZemaSettings({
-    this.on = true,
+    this.on = false, // Round D: hidden by default (owner 26 Nov 2026); the eye chip still turns it on
     this.showFast = true,
     this.showSlow = true,
     this.cloud = true,

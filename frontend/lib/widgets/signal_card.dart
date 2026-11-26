@@ -29,8 +29,8 @@ String _two(int n) => n < 10 ? '0$n' : '$n';
 
 String _utc(Object? t) {
   if (t is! num) return 'n/a';
-  final d = DateTime.fromMillisecondsSinceEpoch(t.toInt() * 1000, isUtc: true);
-  return '${_two(d.hour)}:${_two(d.minute)} UTC';
+  final d = DateTime.fromMillisecondsSinceEpoch(t.toInt() * 1000, isUtc: true).add(const Duration(hours: 5, minutes: 30));
+  return '${_two(d.hour)}:${_two(d.minute)} IST'; // Round D: India time
 }
 
 /// One evidence row: ok true = green, false = red, null = grey (not known).

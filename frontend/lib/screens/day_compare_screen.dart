@@ -109,7 +109,7 @@ class _DayCompareScreenState extends State<DayCompareScreen> {
       kids = [
         _sources(p),
         _calendar(p, r),
-        Text('Day ${r['day']} (UTC) - $_src', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: p.textSecondary)),
+        Text('Day ${r['day']} (from 5:30 AM IST) - $_src', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: p.textSecondary)),
         ...dayCompareCards(p, r),
       ];
     }

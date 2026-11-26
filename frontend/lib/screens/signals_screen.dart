@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../config_flags.dart';
 import '../providers/app_provider.dart';
 import '../widgets/signal_tile.dart';
 import '../widgets/owl_pressable.dart';
@@ -252,6 +253,12 @@ class _SignalsScreenState extends State<SignalsScreen> {
       curDay = day ?? curDay;
       final out = resolveSignalOutcome(sg, provider.alerts, provider.positions);
       items.add(_Item(sg, out, day, 'sig_${sg['signal_no']}_${sg['symbol']}_${sg['ist_time_str']}_$i'));
+    }
+
+    // Round D (LITE): today's signals only, plus anything still running from an older day.
+    if (kLite && !_btcOnly) {
+      final tk = _istDay(0);
+      items.retainWhere((it) => it.day == tk || it.out.kind == SignalOutcomeKind.open || it.out.kind == SignalOutcomeKind.opened || it.out.kind == SignalOutcomeKind.fresh);
     }
 
     // 2) Totals for the summary card and the filter chips.

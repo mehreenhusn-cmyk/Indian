@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/time_ist.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../theme/app_theme.dart';
@@ -63,7 +64,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
     } else if (d == null || d['boxes'] is! Map) {
       kids.add(_message(p, _problem(d?['state'])));
     } else {
-      kids.add(Text('Made ${d['made_utc'] ?? '--'} (UTC). Read-only: nothing is changed here. The 4 boxes are never added together.',
+      kids.add(Text('Made ${istFromUtcText(d['made_utc'])} IST. Read-only: nothing is changed here. The 4 boxes are never added together.',
           style: TextStyle(fontSize: 12, color: p.textMuted)));
       final boxes = d['boxes'] as Map;
       for (final k in _boxes.keys) {
@@ -128,7 +129,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
         if (est > 0) Text('Fee was estimated for $est old trades.', style: TextStyle(fontSize: 11, color: p.warning)),
         if (t['note'] != null) Text('${t['note']}', style: TextStyle(fontSize: 11, color: p.textMuted)),
         _periods(p, 'By financial year', b['by_financial_year']),
-        _periods(p, 'By month (UTC)', b['by_month_utc']),
+        _periods(p, 'By month (days from 5:30 AM IST)', b['by_month_utc']),
         if (b['tax'] is String) Text('Tax: ${b['tax']}', style: TextStyle(fontSize: 11, color: p.textMuted)),
       ]),
     );

@@ -24,8 +24,8 @@ class _Coin {
 String _two(int n) => n < 10 ? '0$n' : '$n';
 
 String _utc(num t) {
-  final d = DateTime.fromMillisecondsSinceEpoch(t.toInt() * 1000, isUtc: true);
-  return '${_two(d.month)}-${_two(d.day)} ${_two(d.hour)}:${_two(d.minute)} UTC';
+  final d = DateTime.fromMillisecondsSinceEpoch(t.toInt() * 1000, isUtc: true).add(const Duration(hours: 5, minutes: 30));
+  return '${_two(d.month)}-${_two(d.day)} ${_two(d.hour)}:${_two(d.minute)} IST';
 }
 
 class DataDoctorCard extends StatelessWidget {

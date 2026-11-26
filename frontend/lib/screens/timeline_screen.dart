@@ -84,7 +84,7 @@ class _TimelineScreenState extends State<TimelineScreen> {
             _load();
           },
         ),
-        Expanded(child: Text('${r['day']} (UTC)', textAlign: TextAlign.center, style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: p.textPrimary))),
+        Expanded(child: Text('${r['day']} (day from 5:30 AM IST)', textAlign: TextAlign.center, style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: p.textPrimary))),
         IconButton(
           icon: const Icon(Icons.chevron_right),
           onPressed: r['next'] == null
