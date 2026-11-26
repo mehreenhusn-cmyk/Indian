@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../config_flags.dart';
 import '../providers/app_provider.dart';
 import '../theme/app_motion2.dart';
 import '../theme/app_theme.dart';
@@ -26,7 +27,10 @@ class PositionsScreen extends StatefulWidget {
 }
 
 class _PositionsScreenState extends State<PositionsScreen> {
-  static const List<String> _names = ['Live', 'Sniper', 'Ledger', 'Results']; // R29b: Sniper = the open Sniper paper trades + chart
+  static const List<String> _allNames = ['Live', 'Sniper', 'Ledger', 'Results']; // R29b: Sniper = the open Sniper paper trades + chart
+  // PHONE LITE (Round A, 26 Nov 2026): only Live and Results are shown. Sniper and Ledger stay in the code (ids 1 and 2) but have no tab.
+  static const List<int> _ids = kLite ? [0, 3] : [0, 1, 2, 3];
+  static final List<String> _names = [for (final id in _ids) _allNames[id]];
 
   int _tab = 0;
   int _liveReq = -1; // Plan C: last seen AppProvider.positionsLiveReq
@@ -42,7 +46,7 @@ class _PositionsScreenState extends State<PositionsScreen> {
 
   Widget _page(int i) {
     if (!_seen.contains(i)) return const SizedBox.shrink();
-    switch (i) {
+    switch (_ids[i]) {
       case 0:
         return const PositionsLiveView();
       case 1:

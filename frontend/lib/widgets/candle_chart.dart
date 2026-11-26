@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import '../config_flags.dart';
 import '../utils/format.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -1871,17 +1872,20 @@ class _CandleChartSheetContentState extends State<_CandleChartSheetContent>
                 const SizedBox(width: 6),
                 _gearChip(_openSdSettings),
                 const SizedBox(width: 8),
-                _emaChip('ZEMA', Color(_zs.fastColor), _zs.on, (v) {
-                  setState(() => _zs = _zs.copyWith(on: v));
-                  _saveZemaSettings();
-                }),
-                const SizedBox(width: 6),
-                _gearChip(_openZemaSettings),
-                const SizedBox(width: 8),
-                _emaChip('Special Master', const Color(0xFFB388FF), _sm, (v) => setState(() => _sm = v)),
-                const SizedBox(width: 6),
-                _gearChip(_openSmSettings),
-                const SizedBox(width: 8),
+                // PHONE LITE (Round B, 26 Nov 2026): the chart shows the price with EMA 30 / EMA 50 only (+ SD Bands, Measure). ZEMA and Special Master stay in the code, hidden.
+                if (!kLite) ...[
+                  _emaChip('ZEMA', Color(_zs.fastColor), _zs.on, (v) {
+                    setState(() => _zs = _zs.copyWith(on: v));
+                    _saveZemaSettings();
+                  }),
+                  const SizedBox(width: 6),
+                  _gearChip(_openZemaSettings),
+                  const SizedBox(width: 8),
+                  _emaChip('Special Master', const Color(0xFFB388FF), _sm, (v) => setState(() => _sm = v)),
+                  const SizedBox(width: 6),
+                  _gearChip(_openSmSettings),
+                  const SizedBox(width: 8),
+                ],
                 _emaChip('Measure', const Color(0xFF2962FF), _measureOn, (v) {
                   setState(() {
                     _measureOn = v;
@@ -1890,7 +1894,7 @@ class _CandleChartSheetContentState extends State<_CandleChartSheetContent>
                     _cross = null;
                   });
                 }, eye: false),
-                if (_sm) ...[
+                if (_sm && !kLite) ...[
                   const SizedBox(width: 8),
                   _emaChip('TSI ${_smSet.speed.name}', const Color(0xFF80CBC4), true, (_) {
                     setState(() => _smSet = _smSet.set('fast', !_smSet.fast));
@@ -1969,7 +1973,7 @@ class _CandleChartSheetContentState extends State<_CandleChartSheetContent>
   }
 
   /// Special Master is drawn only when its chip is on AND it is not hidden on this timeframe (Visibility tab).
-  bool get _smShown => _sm && _smSet.visibleOn(_tf);
+  bool get _smShown => !kLite && _sm && _smSet.visibleOn(_tf); // PHONE LITE: never shown
 
   Future<void> _loadZemaSettings() async {
     try {
@@ -2405,7 +2409,7 @@ class _CandleChartSheetContentState extends State<_CandleChartSheetContent>
                     priceZoom: _priceZoom,
                     priceShiftFrac: _priceShiftFrac,
                     sdBands: _sdBands && _ov.sdVisible(_tf),
-                    zema: _zs.visibleOn(_tf) ? _ensureZema(sr) : null,
+                    zema: (!kLite && _zs.visibleOn(_tf)) ? _ensureZema(sr) : null, // PHONE LITE: no ZEMA line
                     zemaSt: _zs,
                     ovSt: _ov,
                     hideSdLabels: widget.dualStyle,

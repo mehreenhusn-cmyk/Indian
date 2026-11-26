@@ -29,7 +29,7 @@ class _PumpDumpScreenState extends State<PumpDumpScreen> {
   Map<String, dynamic>? _live = _lastLive;
   Map<String, dynamic>? _day = _lastDay;
   String _dayKey = _lastDayKey; // '' = today
-  bool _onlyStart = false;
+  bool _onlyStart = true; // Round C: by default only the moves that reached START (hints that faded are one tap away)
   bool _busy = false;
   int _tick = 0;
   Timer? _timer;
@@ -228,8 +228,8 @@ class _PumpDumpScreenState extends State<PumpDumpScreen> {
     final out = <Widget>[];
     for (final r in rows) {
       if (r is! Map<String, dynamic>) continue;
-      if (_onlyStart && r['stage'] != 'START') continue;
-      out.add(PdEventTile(e: r, pump: pump));
+      if (_onlyStart && r['started'] != true) continue;   // Round C: a card is one coin move; 'main alerts' = the moves that reached START
+      out.add(PdEpisodeTile(e: r, pump: pump));
       if (out.length >= 80) break;
     }
     return out;
@@ -277,7 +277,7 @@ class _PumpDumpScreenState extends State<PumpDumpScreen> {
           Expanded(child: PdSideColumn(pump: false, count: dumpRows.length, children: _liveTiles(dumpRows, false))),
         ]),
         const SizedBox(height: 18),
-        _heading(p, 'Day by day', 'IST, newest first'),
+        _heading(p, 'Day by day', 'IST, one card per coin move'),
         if (d == null)
           const Padding(padding: EdgeInsets.all(20), child: Center(child: CircularProgressIndicator()))
         else ...[
@@ -298,7 +298,7 @@ class _PumpDumpScreenState extends State<PumpDumpScreen> {
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: _onlyStart ? p.accent : p.border),
                 ),
-                child: Text('Main alerts only (START)', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: _onlyStart ? p.accent : p.textSecondary)),
+                child: Text(_onlyStart ? 'Main alerts only' : 'All incl. hints', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: _onlyStart ? p.accent : p.textSecondary)),
               ),
             ),
             const Spacer(),

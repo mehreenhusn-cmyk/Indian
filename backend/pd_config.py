@@ -21,11 +21,12 @@ DEFAULTS = {
     "hist_min": 95,          # minutes of price / volume history kept per coin
     "warm_min": 12,          # minutes of history needed before any alert (volume baseline)
     "watch_r5": 0.5, "watch_vol": 2.0, "watch_score": 30,
-    "start_r5": 1.0, "start_r1": 0.7, "start_vol": 5.0, "start_score": 55,
+    "start_r5": 1.0, "start_r1": 0.7, "start_vol": 5.0, "start_score": 65,   # Round C (26 Nov 2026): 55 -> 65, the first day gave 41 pump + 31 dump STARTs, only 30% / 24% real
     "run_gain": 3.0,         # % since START -> PUMP RUNNING / DUMP RUNNING, one update per further step of the same size
     "run_vol": 1.5,
     "weak_vol": 1.0, "weak_pullback": 1.2,
-    "cool_start_min": 30, "cool_watch_min": 30, "watch_ttl_min": 20, "end_after_weak_min": 10, "start_fail_min": 45,
+    "cool_start_min": 60, "cool_watch_min": 30,   # Round C: one START per coin per 60 min (was 30)
+    "watch_ttl_min": 20, "end_after_weak_min": 10, "start_fail_min": 45,
     "max_active_side": 5,    # at most 5 coins at a time on the pump side and 5 on the dump side
     "real_move": 2.0,        # an alert is REAL when the coin moved 2%+ the right way within 60 min
     "missed_move": 5.0,      # a move of 5%+ in 30 min with no alert = missed

@@ -57,7 +57,7 @@ class _BottomNavBarState extends State<BottomNavBar> {
           height: AppSpacing.barHeight,
           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 7),
           decoration: BoxDecoration(color: p.surfaceElevated, borderRadius: BorderRadius.circular(AppSpacing.radiusBar), border: Border.all(color: p.border, width: 1)),
-          child: Row(children: [for (var i = 0; i < _labels.length; i++) Expanded(flex: lit == i ? 5 : 3, child: _tab(p, i, lit == i))]),
+          child: Row(children: [for (var i = 0; i < _labels.length; i++) Expanded(flex: lit == i ? (kLite ? 7 : 5) : 3, child: _tab(p, i, lit == i))]),
         ),
       ),
     );

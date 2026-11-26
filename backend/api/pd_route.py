@@ -41,6 +41,51 @@ def days(now=None):
     return _DAYS["v"]
 
 
+def _compact(e):
+    return {"stage": e["stage"], "time": e["time"], "ts": e["ts"], "price": e["price"], "gain": e.get("gain", 0.0), "score": e.get("score", 0.0), "note": e.get("note", ""),
+            "r5": e.get("r5", 0.0), "vr5": e.get("vr5", 0.0)}
+
+
+def episodes(ev, side, res, pend):
+    """Groups the events of ONE coin move into ONE card (Round C, 26 Nov 2026). A new episode starts when the coin had ended its last one or was silent for 90 min.
+    The card keeps the fields the old per-event tile read (stage = the LAST stage, r5 / vr5 / score / price / time of the START), so an older app still shows it."""
+    eps, cur = [], {}
+    for e in ev:                                     # events are in time order
+        if e["side"] != side:
+            continue
+        s = e["symbol"]
+        ep = cur.get(s)
+        if ep is None or ep["ended"] or e["ts"] - ep["last_ts"] > 5400:
+            ep = {"id": e["id"], "symbol": s, "side": side, "day": e["day"], "ts": e["ts"], "time": e["time"], "stage": e["stage"], "started": False, "ended": False,
+                  "price": e["price"], "r5": e.get("r5", 0.0), "r1": e.get("r1", 0.0), "r15": e.get("r15", 0.0), "vr5": e.get("vr5", 0.0), "vr1": e.get("vr1", 0.0),
+                  "score": e.get("score", 0.0), "qv24": e.get("qv24", 0), "brk": e.get("brk", False), "flat": e.get("flat", False), "note": e.get("note", ""),
+                  "gain": 0.0, "peak_gain": 0.0, "last_ts": e["ts"], "last_time": e["time"], "stages": [], "events": []}
+            eps.append(ep)
+            cur[s] = ep
+        if e["stage"] == "START" and not ep["started"]:                  # the START numbers become the card's numbers
+            ep.update(started=True, id=e["id"], ts=e["ts"], time=e["time"], price=e["price"], r5=e.get("r5", 0.0), r1=e.get("r1", 0.0), r15=e.get("r15", 0.0),
+                      vr5=e.get("vr5", 0.0), vr1=e.get("vr1", 0.0), score=e.get("score", 0.0), qv24=e.get("qv24", 0), brk=e.get("brk", False), flat=e.get("flat", False),
+                      note=e.get("note", ""))
+        ep["stage"], ep["last_ts"], ep["last_time"] = e["stage"], e["ts"], e["time"]
+        ep["gain"] = e.get("gain", 0.0)
+        ep["peak_gain"] = max(ep["peak_gain"], e.get("gain", 0.0))
+        if not ep["stages"] or ep["stages"][-1] != e["stage"]:
+            ep["stages"].append(e["stage"])
+        if e["stage"] == "END":
+            ep["ended"] = True
+        ep["events"].append(_compact(e))
+    for ep in eps:
+        if ep["started"]:
+            o = res.get(ep["id"])
+            if o:
+                ep["result"] = {"state": "real" if o.get("real") else "fake", "pct15": o.get("pct15"), "pct30": o.get("pct30"), "pct60": o.get("pct60"), "mfe": o.get("mfe"), "mae": o.get("mae")}
+            elif ep["id"] in pend:
+                p = pend[ep["id"]]
+                ep["result"] = {"state": "wait", "mfe": round(p.get("mfe", 0.0), 2), "mae": round(p.get("mae", 0.0), 2), "pct15": p["pct"].get("15"), "pct30": p["pct"].get("30")}
+    eps.reverse()                                    # newest first
+    return eps[:150]
+
+
 def day_view(d=None, now=None):
     now = time.time() if now is None else now
     d = d or C.day_of(now)
@@ -55,17 +100,8 @@ def day_view(d=None, now=None):
             pend = {o["id"]: o for o in lr.pending}
     except Exception:
         pass
-    out = {"day": d, "today": C.day_of(now), "days": days(now), "pump": [], "dump": [], "missed": len(ST.read_day("missed", d))}
-    for e in reversed(ev):                       # newest first
-        if e["stage"] == "START":
-            o = res.get(e["id"])
-            if o:
-                e["result"] = {"state": "real" if o.get("real") else "fake", "pct15": o.get("pct15"), "pct30": o.get("pct30"), "pct60": o.get("pct60"), "mfe": o.get("mfe"), "mae": o.get("mae")}
-            elif e["id"] in pend:
-                p = pend[e["id"]]
-                e["result"] = {"state": "wait", "mfe": round(p.get("mfe", 0.0), 2), "mae": round(p.get("mae", 0.0), 2), "pct15": p["pct"].get("15"), "pct30": p["pct"].get("30")}
-        if len(out[e["side"]]) < 400:
-            out[e["side"]].append(e)
+    out = {"day": d, "today": C.day_of(now), "days": days(now), "pump": episodes(ev, "pump", res, pend), "dump": episodes(ev, "dump", res, pend),
+           "missed": len(ST.read_day("missed", d)), "events_n": len(ev), "view": "episodes"}
     return out
 
 

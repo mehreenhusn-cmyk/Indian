@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../config_flags.dart';
 import '../models/verdict_card.dart';
 import '../providers/app_provider.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_theme.dart';
+import '../utils/time_ist.dart';
 import '../widgets/load_state.dart';
 import '../widgets/owl_card.dart';
 import '../widgets/owl_pressable.dart';
@@ -63,7 +65,7 @@ class _ResultsScreenState extends State<ResultsScreen> {
       _r = r;
       _vc = vc;
       _busy = false;
-      final order = (r['order'] is List) ? List<String>.from((r['order'] as List).map((e) => '$e')) : <String>[];
+      final order = (r['order'] is List) ? List<String>.from((r['order'] as List).map((e) => '$e').where((e) => !(kLite && e == 'paper_b2'))) : <String>[]; // PHONE LITE: no PAPER Bot 2 chip
       if (_box == null || !order.contains(_box)) _box = order.isEmpty ? null : order.first;
     });
   }
@@ -167,7 +169,7 @@ class _ResultsScreenState extends State<ResultsScreen> {
 
   List<Widget> _body(AppPalette p, Map<String, dynamic> r) {
     final boxes = _m(r['boxes']);
-    final order = (r['order'] is List) ? List<String>.from((r['order'] as List).map((e) => '$e')) : <String>[];
+    final order = (r['order'] is List) ? List<String>.from((r['order'] as List).map((e) => '$e').where((e) => !(kLite && e == 'paper_b2'))) : <String>[]; // PHONE LITE: no PAPER Bot 2 chip
     final b = _m(boxes[_box]);
     final o = _m(b['overall']);
     final net = _d(o['net_usdt']);
@@ -199,7 +201,7 @@ class _ResultsScreenState extends State<ResultsScreen> {
           Expanded(child: StatTile(label: 'AVG PER TRADE', value: _usdt(avg), tone: avg > 0 ? 'good' : (avg < 0 ? 'bad' : ''))),
         ]),
         const SizedBox(height: 6),
-        Text('${b['first_close_utc']} to ${b['last_close_utc']} (UTC)', style: context.type.metadata),
+        Text('${istFromUtcText(b['first_close_utc'])} to ${istFromUtcText(b['last_close_utc'])} (IST)', style: context.type.metadata),
       ]),
       if (mk.isEmpty && ls.isEmpty)
         OWLCard(child: Text('No group known at entry is proven yet (30+ trades and the same sign in both halves). Nothing here is proven profit or proven loss.', style: context.type.secondary)),

@@ -77,6 +77,12 @@ def run():
     d = ROUTE.day_view(first["day"], now=t0 + 210 * 60)
     assert d["pump"] and d["dump"], "day view empty"
     assert any(e.get("result", {}).get("state") == "real" for e in d["pump"]), "day view has no result on the pump START"
+    # Round C: ONE card per coin move (the events WATCH / START / RUNNING / WEAK / END of one coin are one episode)
+    pe = [e for e in d["pump"] if e["symbol"] == "PUMPUSDT"]
+    assert len(pe) == 1, "the pump coin must be ONE episode card, got %d" % len(pe)
+    assert pe[0]["started"] and pe[0]["ended"] and pe[0]["stages"][0] in ("WATCH", "START") and "START" in pe[0]["stages"] and pe[0]["stages"][-1] == "END", pe[0]["stages"]
+    assert pe[0]["peak_gain"] > 3.0 and len(pe[0]["events"]) >= 4, "episode numbers look wrong"
+    assert all(k in pe[0] for k in ("stage", "r5", "vr5", "score", "price", "time", "id", "symbol")), "an older app needs these keys"
     rep = tr_learn.run_tuner(t0 + 210 * 60, tr)
     assert rep["outcomes_14d"]["n"] >= 2
     assert not rep["changes_today"], "the tuner must not change thresholds with so few outcomes"

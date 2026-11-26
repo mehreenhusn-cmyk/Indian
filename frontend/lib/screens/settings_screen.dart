@@ -2,6 +2,7 @@ import 'dart:ui' show ImageFilter;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import '../config_flags.dart';
 import '../providers/app_provider.dart';
 import '../services/sound_service.dart';
 import '../widgets/ai_keys_card.dart';
@@ -636,7 +637,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
         ),
         const SizedBox(height: 4),
-        Text('Changes the cards (Positions, Sniper, Dashboard and most screens) at once. Saved on this phone.', style: context.type.caption),
+        Text(kLite ? 'Changes the cards (Positions, Dashboard and most screens) at once. Saved on this phone.' : 'Changes the cards (Positions, Sniper, Dashboard and most screens) at once. Saved on this phone.', style: context.type.caption),
       ],
     );
   }
@@ -1140,9 +1141,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ],
                         ),
                         const SizedBox(height: AppSpacing.s),
-                        const SettingsHeading('Alerts & AI'),
+                        SettingsHeading(kLite ? 'Alerts' : 'Alerts & AI'), // PHONE LITE (Round A): the AI assistant is off, so no AI in the heading
                         // Part 8A-2: hidden while ai_master_off is on (only an explicit false from the backend shows it).
-                        if (context.select<AppProvider, bool>((pr) => pr.settings['ai_master_off'] == false))
+                        if (!kLite && context.select<AppProvider, bool>((pr) => pr.settings['ai_master_off'] == false)) // PHONE LITE (Round A): the AI group is never shown
                         SettingsGroup(
                           icon: Icons.smart_toy_outlined,
                           title: 'AI assistant',
@@ -1220,7 +1221,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    'Backend URL (e.g. http://95.135.254.130:8000)',
+                                    kLite ? 'Backend URL (this phone: $kLiteBackendUrl)' : 'Backend URL (e.g. http://95.135.254.130:8000)',
                                     style: t.secondary.copyWith(color: p.textSecondary),
                                   ),
                                   const SizedBox(height: 4),
