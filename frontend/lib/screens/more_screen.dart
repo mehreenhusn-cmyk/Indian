@@ -91,13 +91,13 @@ class MoreScreen extends StatelessWidget {
             const OwlSectionLabel('Results and reports'),
             OwlListCard(children: [
               if (!kLite) rR(Icons.today_outlined, 'Brain Today', 'Today in a few lines', () => _open(context, 'Brain Today', const BrainTodayScreen())),
-              rR(Icons.route_outlined, 'Trades', 'Each trade: signal, open, TP1, close, net', () => _open(context, 'Trades', const TradeTimelineScreen())),
+              if (!kLite) rR(Icons.route_outlined, 'Trades', 'Each trade: signal, open, TP1, close, net', () => _open(context, 'Trades', const TradeTimelineScreen())),
               if (!kLite) rR(Icons.timeline, 'Brain and Activity', 'A timeline of what the Brain did', () => _open(context, 'Brain and Activity', const TimelineScreen())),
               rR(Icons.grid_view_rounded, 'Month Calendar', 'Profit and loss for each day', () => _open(context, 'Month Calendar', const MonthGridScreen())),
-              rR(Icons.emoji_events_outlined, 'Simple Results', 'Net, win rate and trades in plain words', () => _open(context, 'Simple Results', const SimpleResultsScreen())),
-              rR(Icons.description_outlined, 'AI Report', 'A report to read or send to an AI', () => _open(context, 'AI Report', const AiReportScreen(), bare: true)),
+              if (!kLite) rR(Icons.emoji_events_outlined, 'Simple Results', 'Net, win rate and trades in plain words', () => _open(context, 'Simple Results', const SimpleResultsScreen())),
+              if (!kLite) rR(Icons.description_outlined, 'AI Report', 'A report to read or send to an AI', () => _open(context, 'AI Report', const AiReportScreen(), bare: true)),
               rR(Icons.receipt_long_outlined, 'Fees and tax report', 'Fees paid and a tax sheet', () => _open(context, 'Fees and tax report', const ReportsScreen())),
-              rR(Icons.article_outlined, 'App report', 'One text file about the whole app', () => _download(context, const ReportDownloadCard())),
+              if (!kLite) rR(Icons.article_outlined, 'App report', 'One text file about the whole app', () => _download(context, const ReportDownloadCard())),
               if (!kLite)
               rR(Icons.smart_toy_outlined, 'Dual Bot report', 'Every Dual Bot trade as one text file',
                   () => _download(
@@ -121,6 +121,7 @@ class MoreScreen extends StatelessWidget {
                         mimeType: 'text/csv',
                       ))),
             ]),
+            if (!kLite) ...[ // Round G: no App Problems / Diagnostics / Ping in LITE (their routes are off, they only showed 404)
             const OwlSectionLabel('System'),
             OwlListCard(children: [
               if (!kLite) rS(Icons.monitor_heart_outlined, 'Diagnostics', 'Connections, leaks and what is slow', () => go(AppRoute.diagnostics)),
@@ -129,6 +130,7 @@ class MoreScreen extends StatelessWidget {
               if (kShowStrategyDoctor)   // hidden by default (config_flags.dart): it opens Strategy Lab / Scan Lab and wakes their background work
                 rS(Icons.medical_services_outlined, 'Strategy Doctor', 'Checks the strategy settings', () => _open(context, 'Strategy Doctor', const StrategyDoctorScreen(), bare: true)),
             ]),
+            ],
             const OwlSectionLabel('Settings'),
             const FontSwitchRow(),
             OwlListCard(children: [

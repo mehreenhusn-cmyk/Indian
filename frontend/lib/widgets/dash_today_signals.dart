@@ -16,6 +16,12 @@ class DashTodaySignals extends StatelessWidget {
     return '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
   }
 
+  /// How many signals of the current trading day (00:00 UTC = 5:30 AM IST) the list holds.
+  static int countToday(List<dynamic> signals) {
+    final key = _today();
+    return signals.whereType<Map>().where((s) => '${s['date_str']}' == key).length;
+  }
+
   @override
   Widget build(BuildContext context) {
     final p = context.palette;
