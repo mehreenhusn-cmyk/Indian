@@ -200,22 +200,6 @@ class _ResultsScreenState extends State<ResultsScreen> {
           const SizedBox(width: 8),
           Expanded(child: StatTile(label: 'AVG PER TRADE', value: _usdt(avg), tone: avg > 0 ? 'good' : (avg < 0 ? 'bad' : ''))),
         ]),
-        if (_i(o['n']) > 0) ...[
-          const SizedBox(height: 10),
-          // Round F2: one thin bar, green = share of winning trades, red = the rest
-          ClipRRect(
-            borderRadius: BorderRadius.circular(6),
-            child: SizedBox(
-              height: 8,
-              child: Row(children: [
-                Expanded(flex: (_d(o['win_pct']).clamp(0.0, 100.0) * 10).round() + 1, child: Container(color: p.profit)),
-                Expanded(flex: ((100.0 - _d(o['win_pct']).clamp(0.0, 100.0)) * 10).round() + 1, child: Container(color: p.loss)),
-              ]),
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text('${_d(o['win_pct']).toStringAsFixed(0)}% won  ·  ${(100 - _d(o['win_pct'])).toStringAsFixed(0)}% lost', style: context.type.metadata.copyWith(color: p.textMuted)),
-        ],
         const SizedBox(height: 6),
         Text('${istFromUtcText(b['first_close_utc'])} to ${istFromUtcText(b['last_close_utc'])} (IST)', style: context.type.metadata),
       ]),

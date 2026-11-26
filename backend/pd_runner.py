@@ -14,9 +14,7 @@ import pd_store as ST
 import pd_tracker
 
 _R = {"thread": None, "stop": False, "feed": None, "tracker": None, "learn": None, "lock": threading.RLock(),
-      "state": {"running": False, "enabled": True, "last_poll": 0.0, "last_error": "", "errors": 0, "polls": 0, "tracked": 0, "started": 0.0, "events_today": 0, "restored": 0}}
-_SAVE_EVERY = 120  # seconds between history saves (Round E)
-_last_save = [0.0]
+      "state": {"running": False, "enabled": True, "last_poll": 0.0, "last_error": "", "errors": 0, "polls": 0, "tracked": 0, "started": 0.0, "events_today": 0}}
 
 
 def enabled():
@@ -81,12 +79,6 @@ def _loop(data_dir):
             now = time.time()
             n = step(feed, tracker, learn, now)
             st.update(last_poll=now, tracked=n, polls=feed.polls, last_error="")
-            if now - _last_save[0] >= _SAVE_EVERY and feed.warm_left_min(now) <= 0:
-                _last_save[0] = now
-                try:
-                    feed.save(C.path("feed_cache.json.gz"), now)
-                except Exception as e:
-                    print(f"[pd] history save failed ({type(e).__name__})")
             backoff = 0
             time.sleep(max(1.0, C.get("poll_sec") - (time.time() - now)))
         except Exception as e:
@@ -105,9 +97,6 @@ def start(data_dir):
             return False
         C.init(data_dir)
         _R["feed"] = pd_feed.Feed()
-        _R["state"]["restored"] = _R["feed"].load(C.path("feed_cache.json.gz"))  # Round E: no warm-up after a short restart
-        if _R["state"]["restored"]:
-            print(f"[pd] history restored for {_R['state']['restored']} coins, no warm-up")
         _R["learn"] = pd_learn.Learner()
         _R["tracker"] = pd_tracker.Tracker(_emit)
         _R["tracker"].adj = dict(_R["learn"].tuner.get("coin_adj", {}))
@@ -135,7 +124,7 @@ def live(now=None):
             r["age_min"] = round((now - r["since"]) / 60.0, 1)
     return {"version": C.VERSION, "enabled": st["enabled"], "running": st["running"], "last_poll_age": round(now - st["last_poll"], 1) if st["last_poll"] else None,
             "last_error": st["last_error"], "errors": st["errors"], "polls": st["polls"], "tracked": st["tracked"],
-            "warm_left_min": round(feed.warm_left_min(now), 1) if feed is not None else None, "restored": st.get("restored", 0), "poll_sec": C.get("poll_sec"),
+            "warm_left_min": round(feed.warm_left_min(now), 1) if feed is not None else None, "poll_sec": C.get("poll_sec"),
             "pump": snap["pump"], "dump": snap["dump"], "latest_starts": list(tracker.recent[:10]) if tracker is not None else [],
             "auto_tune": (_R["learn"].tuner.get("auto_tune", True) if _R["learn"] is not None else True)}
 

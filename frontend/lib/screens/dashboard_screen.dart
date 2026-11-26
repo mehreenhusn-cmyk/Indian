@@ -11,7 +11,6 @@ import '../utils/format.dart';
 import '../widgets/brain_strip.dart';
 import '../widgets/btc_live_tile.dart';
 import '../widgets/compare_books.dart';
-import '../widgets/dash_today_signals.dart';
 import '../widgets/dashboard_bits.dart';
 import '../widgets/dashboard_equity.dart';
 import '../widgets/dashboard_pairs.dart';
@@ -106,20 +105,19 @@ class DashboardScreen extends StatelessWidget {
                       // E6: the bots one by one come FIRST (owner: no scrolling to find them), then 7 / 30 days. Diagnostics + load moved into MORE.
                       if (!isLive && !kLite) ...[const BrainStrip(), const SizedBox(height: AppSpacing.l)], // PHONE LITE: no Brain / Dual / Sniper rows
                       if (!isLive) ...[const _PeriodRow(), const SizedBox(height: AppSpacing.l), if (!kLite) const MainSniperTable(), if (!kLite) const SizedBox(height: AppSpacing.l)],
-                      if (kLite) ...[const DashboardPairs(), const SizedBox(height: AppSpacing.l)], // Round G: open trades first
-                      if (kLite) const DashTodaySignals() else const RecentActivity(), // Round D: LITE shows today's signals only, not the old Brain timeline
+                      const RecentActivity(),
                       const SizedBox(height: AppSpacing.cardGap),
                       DashboardEquityChart(provider.equityCurve, provider.equityTf, (tf) => provider.fetchEquity(tf: tf)),
                       const SizedBox(height: AppSpacing.cardGap),
-                      if (!kLite) ...[PnlCalendar(data: provider.calendarData, onMonthChanged: (m) => provider.fetchCalendar(month: m)), const SizedBox(height: AppSpacing.cardGap)], // Round D: in LITE the calendar sits in the MORE fold
+                      PnlCalendar(data: provider.calendarData, onMonthChanged: (m) => provider.fetchCalendar(month: m)),
+                      const SizedBox(height: AppSpacing.cardGap),
                       // UI rule 7: everything that moved out of the main order sits behind ONE tap (nothing deleted).
-                      if (!kLite) OwlFold( // Round G: no MORE fold in LITE (calendar = More > Month Calendar, BTC is in the strip)
+                      OwlFold(
                         title: 'MORE',
-                        headline: kLite ? 'P&L calendar, BTC chart, open pairs, top movers' : 'Backend health and load, BTC chart, open pairs, Study Lab verdict, top movers, Tag Lab',
+                        headline: kLite ? 'BTC chart, open pairs, top movers' : 'Backend health and load, BTC chart, open pairs, Study Lab verdict, top movers, Tag Lab',
                         bare: true,
                         children: [
                           if (!kLite) ...[const DiagLoadRow(), const SizedBox(height: AppSpacing.cardGap), const _ResultsVerdictLine(), const SizedBox(height: AppSpacing.cardGap)],
-                          if (kLite) ...[PnlCalendar(data: provider.calendarData, onMonthChanged: (m) => provider.fetchCalendar(month: m)), const SizedBox(height: AppSpacing.cardGap)],
                           const DashboardPairs(),
                           const BtcLiveTile(),
                           const SizedBox(height: AppSpacing.cardGap),
@@ -166,15 +164,7 @@ class _ResultHero extends StatelessWidget {
         final sub = isLive ? '$openCount open positions' : 'Closed trades only. Today = since 5:30 AM IST.';
         final showRing = !isLive && target > 0;
         final pct = showRing ? todayPnl / target : 0.0;
-        return Container(
-          padding: const EdgeInsets.all(AppSpacing.l),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [p.accent.withOpacity(0.07), p.surface]), // Round E: hero card (Round G: calmer tint, the text stays readable)
-            borderRadius: BorderRadius.circular(AppSpacing.radiusLarge),
-            border: Border.all(color: p.accent.withOpacity(0.25)),
-            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 12, offset: const Offset(0, 4))],
-          ),
-          child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+        return Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(children: [
@@ -192,7 +182,7 @@ class _ResultHero extends StatelessWidget {
             const SizedBox(width: AppSpacing.m),
             OwlRing(fraction: pct, center: '${(pct * 100).round()}%', caption: 'target', tone: todayPnl >= target ? 'good' : '', size: 72),
           ],
-        ]));
+        ]);
       },
     );
   }
@@ -273,7 +263,7 @@ class _ResultStripState extends State<_ResultStrip> {
                 OwlStat(fmtSigned(open), 'Open P&L', tone: _tone(open), onTap: toPositions),
                 OwlStat(_btcText(), 'BTC', tone: _btc == null ? '' : (_up ? 'good' : 'bad'), onTap: prov.openBtcSignals),
                 OwlStat('$openCount', 'Positions', onTap: toPositions),
-                OwlStat('${kLite ? DashTodaySignals.countToday(prov.signals) : prov.signals.length}', kLite ? 'Signals today' : 'Signals', onTap: () => prov.goToRoute(AppRoute.signals)),
+                OwlStat('${prov.signals.length}', 'Signals', onTap: () => prov.goToRoute(AppRoute.signals)),
               ];
         return OwlStatStrip(stats);
       },

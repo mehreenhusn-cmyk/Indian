@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/app_provider.dart';
 import '../config_flags.dart';
 import '../navigation/app_routes.dart';
@@ -36,63 +35,6 @@ class _BottomNavBarState extends State<BottomNavBar> {
 
   int _last = 0; // the bubble stays where it was while no tab is lit
 
-  // Round F1 (26 Nov 2026): the owner can change the bar look. Long-press the bar -> choose Pill / Dock / Minimal. Saved on the phone.
-  static const String _prefKey = 'owl_bar_style';
-  String _style = 'dock';
-
-  @override
-  void initState() {
-    super.initState();
-    SharedPreferences.getInstance().then((pr) {
-      final v = pr.getString(_prefKey);
-      if (v != null && (v == 'pill' || v == 'dock' || v == 'minimal') && mounted) setState(() => _style = v);
-    }).catchError((_) {});
-  }
-
-  Future<void> _setStyle(String v) async {
-    setState(() => _style = v);
-    try {
-      final pr = await SharedPreferences.getInstance();
-      await pr.setString(_prefKey, v);
-    } catch (_) {}
-  }
-
-  void _customize() {
-    final p = context.palette;
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: p.surfaceElevated,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(18))),
-      builder: (ctx) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
-          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('Customize bottom bar', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: p.textPrimary)),
-            const SizedBox(height: 4),
-            Text('Pick how the bar looks. Saved on this phone.', style: TextStyle(fontSize: 12, color: p.textMuted)),
-            const SizedBox(height: 10),
-            for (final o in const [
-              ['dock', 'Dock', 'Icon and name on every tab, a glowing line on the open tab'],
-              ['pill', 'Pill', 'The open tab is a coloured pill with its name'],
-              ['minimal', 'Minimal', 'Icons only, a small dot under the open tab'],
-            ])
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                dense: true,
-                title: Text(o[1], style: TextStyle(fontWeight: FontWeight.w700, color: p.textPrimary)),
-                subtitle: Text(o[2], style: TextStyle(fontSize: 11.5, color: p.textMuted)),
-                trailing: Icon(_style == o[0] ? Icons.radio_button_checked : Icons.radio_button_off, color: _style == o[0] ? p.accent : p.textMuted),
-                onTap: () {
-                  _setStyle(o[0]);
-                  Navigator.of(ctx).pop();
-                },
-              ),
-          ]),
-        ),
-      ),
-    );
-  }
-
   // Which visible tab is lit (-1 = none).
   int get _lit {
     final i = _screens.indexOf(widget.currentIndex);
@@ -107,59 +49,16 @@ class _BottomNavBarState extends State<BottomNavBar> {
     final lit = _lit;
     if (lit >= 0) _last = lit;
     // E9: a FLAT bar. The lit tab is a gradient pill INSIDE the bar (icon + name), idle tabs are icons. Nothing rises above the bar, so no space is lost on any screen.
-    final dock = _style == 'dock';
     return SafeArea(
       top: false,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(AppSpacing.barSide, 0, AppSpacing.barSide, 8),
-        child: GestureDetector(
-          onLongPress: _customize,
-          child: Container(
-            height: dock ? 62.0 : AppSpacing.barHeight,
-            padding: EdgeInsets.symmetric(horizontal: 6, vertical: dock ? 5 : 7),
-            decoration: BoxDecoration(
-              color: p.surfaceElevated,
-              borderRadius: BorderRadius.circular(AppSpacing.radiusBar),
-              border: Border.all(color: p.border, width: 1),
-              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.22), blurRadius: 14, offset: const Offset(0, 4))],
-            ),
-            child: Row(children: [
-              for (var i = 0; i < _labels.length; i++)
-                Expanded(flex: _style == 'pill' && lit == i ? (kLite ? 7 : 5) : 3, child: _style == 'pill' ? _tab(p, i, lit == i) : _tabDock(p, i, lit == i, dock)),
-            ]),
-          ),
+        child: Container(
+          height: AppSpacing.barHeight,
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 7),
+          decoration: BoxDecoration(color: p.surfaceElevated, borderRadius: BorderRadius.circular(AppSpacing.radiusBar), border: Border.all(color: p.border, width: 1)),
+          child: Row(children: [for (var i = 0; i < _labels.length; i++) Expanded(flex: lit == i ? (kLite ? 7 : 5) : 3, child: _tab(p, i, lit == i))]),
         ),
-      ),
-    );
-  }
-
-  /// Dock and Minimal looks (Round F1). Dock: icon + name on every tab, the open tab in the accent colour with a glowing line on top.
-  /// Minimal: icons only, a small dot under the open tab.
-  Widget _tabDock(AppPalette p, int index, bool selected, bool withLabel) {
-    final c = selected ? p.accent : p.textMuted;
-    return Semantics(
-      button: true,
-      selected: selected,
-      label: _labels[index],
-      child: OWLPressable(
-        onTap: () => widget.onTap(_screens[index]),
-        child: Stack(alignment: Alignment.center, children: [
-          if (selected && withLabel)
-            Positioned(
-              top: 0,
-              child: Container(width: 22, height: 3, decoration: BoxDecoration(color: p.accent, borderRadius: BorderRadius.circular(3), boxShadow: [BoxShadow(color: p.accent.withOpacity(0.7), blurRadius: 8)])),
-            ),
-          Column(mainAxisSize: MainAxisSize.min, children: [
-            _pdBadge(index, selected, p, OwlNavIcon(index: index, lit: selected, color: c, size: 22)),
-            if (withLabel) ...[
-              const SizedBox(height: 2),
-              Text(_labels[index], maxLines: 1, overflow: TextOverflow.clip, style: TextStyle(fontSize: 10, height: 1.1, color: c, fontWeight: selected ? FontWeight.w800 : FontWeight.w600)),
-            ] else ...[
-              const SizedBox(height: 4),
-              AnimatedContainer(duration: OwlMotion.slide, width: selected ? 14 : 0, height: 3, decoration: BoxDecoration(color: p.accent, borderRadius: BorderRadius.circular(3))),
-            ],
-          ]),
-        ]),
       ),
     );
   }
