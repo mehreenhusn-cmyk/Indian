@@ -163,9 +163,10 @@ class PdLiveTile extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 6),
         padding: const EdgeInsets.all(9),
         decoration: BoxDecoration(
-          color: p.surface,
+          gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [pdStageColor(p, stage, pump).withOpacity(strong ? 0.14 : 0.06), p.surface]), // Round E: soft stage tint
           borderRadius: BorderRadius.circular(AppSpacing.radiusMedium),
           border: Border.all(color: strong ? pdStageColor(p, stage, pump).withOpacity(0.55) : p.border),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.12), blurRadius: 6, offset: const Offset(0, 2))],
         ),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
@@ -218,9 +219,10 @@ class PdEpisodeTile extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 6),
         padding: const EdgeInsets.all(9),
         decoration: BoxDecoration(
-          color: p.surface,
+          gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [c.withOpacity(started ? 0.14 : 0.05), p.surface]), // Round E: soft stage tint
           borderRadius: BorderRadius.circular(AppSpacing.radiusMedium),
           border: Border.all(color: started ? c.withOpacity(0.55) : p.border),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.12), blurRadius: 6, offset: const Offset(0, 2))],
         ),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [

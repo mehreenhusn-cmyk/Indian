@@ -3,6 +3,9 @@ ONE REST call every poll_sec seconds: GET /fapi/v1/ticker/24hr (all coins, gzip)
 per coin. The volume of a short window is the DIFFERENCE of the 24h turnover between two samples (approximate: the 24h window also drops old
 minutes, so it can only under-count; the spike ratio is always against the coin's own last hour, so it stays fair).
 No order, no key, no websocket. Memory: about 285 samples x 3 numbers per coin (about 15 MB for 500 coins)."""
+import gzip
+import json
+import os
 import time
 
 import pd_config as C
@@ -86,3 +89,46 @@ class Feed:
         self.hist.clear()
         self.meta.clear()
         self.first_ok = 0.0
+
+    # ---- Round E (26 Nov 2026): keep the last minutes of history in a file so a restart has NO 12 minute warm-up ----
+    SAVE_MIN = 30       # minutes of history written to the file
+    MAX_GAP_MIN = 30    # a file older than this is ignored (the gap would break the volume baseline)
+
+    def save(self, path, now=None):
+        """Write the last SAVE_MIN minutes of every coin to a small gzip file (temp file + rename). Returns the coins saved."""
+        now = time.time() if now is None else now
+        cut = now - self.SAVE_MIN * 60
+        coins = {}
+        for s, h in self.hist.items():
+            k = 0
+            while k < len(h.t) and h.t[k] < cut:
+                k += 1
+            if len(h.t) - k >= 2:
+                coins[s] = [[int(x) for x in h.t[k:]], [float("%.8g" % x) for x in h.p[k:]], [int(x) for x in h.q[k:]]]
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        tmp = path + ".tmp"
+        with gzip.open(tmp, "wt", encoding="utf-8") as f:
+            json.dump({"saved": now, "first_ok": self.first_ok, "coins": coins}, f, separators=(",", ":"))
+        os.replace(tmp, path)
+        return len(coins)
+
+    def load(self, path, now=None):
+        """Read the file at start. Returns the coins loaded (0 = no file, too old or unreadable: the normal warm-up then runs)."""
+        now = time.time() if now is None else now
+        try:
+            with gzip.open(path, "rt", encoding="utf-8") as f:
+                d = json.load(f)
+            if now - float(d["saved"]) > self.MAX_GAP_MIN * 60:
+                return 0
+            n = 0
+            for s, (t, p, q) in d["coins"].items():
+                h = Hist()
+                h.t, h.p, h.q = [float(x) for x in t], [float(x) for x in p], [float(x) for x in q]
+                self.hist[s] = h
+                n += 1
+            if n:
+                self.first_ok = float(d.get("first_ok") or 0.0) or (now - self.SAVE_MIN * 60)
+            return n
+        except Exception:
+            self.hist.clear()
+            return 0
