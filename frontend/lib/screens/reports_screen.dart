@@ -64,7 +64,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
     } else if (d == null || d['boxes'] is! Map) {
       kids.add(_message(p, _problem(d?['state'])));
     } else {
-      kids.add(Text('Made ${istFromUtcText(d['made_utc'])} IST. Read-only: nothing is changed here. The 4 boxes are never added together.',
+      kids.add(Text('Made ${istFromUtcText('${d['made_utc']}'.replaceAll('UTC', '').trim())} IST. Read-only: nothing is changed here. The 4 boxes are never added together.',
           style: TextStyle(fontSize: 12, color: p.textMuted)));
       final boxes = d['boxes'] as Map;
       for (final k in _boxes.keys) {
