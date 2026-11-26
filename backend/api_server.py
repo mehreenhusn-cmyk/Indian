@@ -256,6 +256,13 @@ except Exception as _e:
     _PD_ON = False
     print(f"[startup] pump/dump routes skipped: {_e}")
 
+# Round H (26 Nov 2026): the 7-day top-10 gainers / losers list (read only, built once a day by a short worker thread, no permanent job)
+try:
+    from api.top10_route import make_router as _t10_make_router
+    app.include_router(_t10_make_router(require_api_token, DATA_DIR))
+except Exception as _e:
+    print(f"[startup] top10_7d route skipped: {_e}")
+
 
 _bot_thread_started = False
 _bot_thread_lock = threading.Lock()

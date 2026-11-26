@@ -9,6 +9,7 @@ import '../widgets/owl_skeleton.dart';
 import '../widgets/candle_chart.dart';
 import '../widgets/owl_refresh.dart';
 import '../widgets/owl_card.dart';
+import '../widgets/top10_7d_list.dart';
 import '../theme/app_theme.dart';
 
 class MarketScreen extends StatefulWidget {
@@ -18,7 +19,7 @@ class MarketScreen extends StatefulWidget {
   State<MarketScreen> createState() => _MarketScreenState();
 }
 
-enum _MarketFilter { all, gainers, losers }
+enum _MarketFilter { all, gainers, losers, week }
 
 class _MarketScreenState extends State<MarketScreen> {
   _MarketFilter _filter = _MarketFilter.all;
@@ -82,6 +83,7 @@ class _MarketScreenState extends State<MarketScreen> {
                       ('all', 'All  ${c.$1 + c.$2}'),
                       ('gainers', 'Gainers  ${c.$1}'),
                       ('losers', 'Losers  ${c.$2}'),
+                      ('week', '7 Days'),
                     ],
                     active: _filter.name,
                     onPick: (k) {
@@ -156,6 +158,9 @@ class _MarketScreenState extends State<MarketScreen> {
                   ),
                 ),
               ),
+            if (_filter == _MarketFilter.week)
+              Expanded(child: Top10WeekList(query: _query))
+            else ...[
             // Table header
             Container(
               padding: const EdgeInsets.symmetric(horizontal: AppSpacing.l, vertical: AppSpacing.s),
@@ -208,6 +213,7 @@ class _MarketScreenState extends State<MarketScreen> {
                       case _MarketFilter.losers:
                         return change < 0;
                       case _MarketFilter.all:
+                      case _MarketFilter.week:
                         return true;
                     }
                   }).toList();
@@ -238,6 +244,7 @@ class _MarketScreenState extends State<MarketScreen> {
               ),
               ),
             ),
+            ],
           ],
         ),
       ),
@@ -267,6 +274,8 @@ class _MarketScreenState extends State<MarketScreen> {
         return 'Gainers';
       case _MarketFilter.losers:
         return 'Losers';
+      case _MarketFilter.week:
+        return '7 Days';
     }
   }
 }
