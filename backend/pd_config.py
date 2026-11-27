@@ -13,7 +13,7 @@ import os
 import threading
 import time
 
-VERSION = "pd 3 (28 Nov 2026, Round 2)"
+VERSION = "pd 4 (28 Nov 2026, Round 3A)"
 
 DEFAULTS = {
     "poll_sec": 20,          # one Binance 24h-ticker call (all coins) every 20 s
@@ -72,6 +72,25 @@ DEFAULTS = {
     "pre_real_move": 3.0,
     "pre_check_min": 120,
     "pw_tsi": 30, "pw_hist": 20, "pw_taker": 20, "pw_vol": 20, "pw_range": 10,
+    # ---- Round 3 part A (28 Nov 2026): Cooling Watch (pump, sideways, dump). One setting per line, never a # comment in the middle of a line.
+    "cool_step_sec": 60,
+    "cool_step_max": 8,
+    "cool_list_sec": 600,
+    "cool_keep_days": 10,
+    "cool_max": 20,
+    "cool_entry_gain": 15.0,
+    "cool_live_gain": 30.0,
+    "cool_pump_min": 20.0,
+    "cool_near_peak": 3.0,
+    "cool_peak_bars": 6,
+    "cool_range_max": 12.0,
+    "cool_vol_half": 0.5,
+    "cool_taker_lo": 0.45,
+    "cool_warn_min": 3,
+    "cool_break": 0.5,
+    "cool_fund_min": 30,
+    "cool_real_move": 10.0,
+    "cool_check_min": 2880,
 }
 # the only keys the tuner may change: (min, max, step)
 TUNABLE = {"start_vol": (3.0, 8.0, 0.5), "watch_vol": (1.5, 4.0, 0.5)}

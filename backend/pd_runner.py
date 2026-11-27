@@ -9,6 +9,7 @@ import time
 import pd_config as C
 import pd_feed
 import pd_chance
+import pd_cool
 import pd_learn
 import pd_pre
 import pd_rank
@@ -17,7 +18,7 @@ import pd_store as ST
 import pd_tracker
 import pd_tsi
 
-_R = {"thread": None, "stop": False, "feed": None, "tracker": None, "learn": None, "rank": None, "pre": None, "lock": threading.RLock(),
+_R = {"thread": None, "stop": False, "feed": None, "tracker": None, "learn": None, "rank": None, "pre": None, "cool": None, "lock": threading.RLock(),
       "state": {"running": False, "enabled": True, "last_poll": 0.0, "last_error": "", "errors": 0, "polls": 0, "tracked": 0, "started": 0.0, "events_today": 0, "restored": 0}}
 _SAVE_EVERY = 120  # seconds between history saves (Round E)
 _last_save = [0.0]
@@ -45,7 +46,7 @@ def _emit(ev):
     print("[pd] %s %s %s %+.1f%% vol %.1fx score %s" % (ev["stage"], ev["side"], ev["symbol"], ev["r5"], ev["vr5"], ev["score"]))
 
 
-def step(feed, tracker, learn, now, rank=None, pre=None):
+def step(feed, tracker, learn, now, rank=None, pre=None, cool=None):
     """ONE poll cycle (also used by the test). Returns the number of coins tracked."""
     n = feed.poll(now)
     poll = C.get("poll_sec")
@@ -83,12 +84,17 @@ def step(feed, tracker, learn, now, rank=None, pre=None):
                 pre.update(feed, tracker, now, skip)
             except Exception as e:
                 print(f"[pd] pre step failed: {type(e).__name__}: {e}")
+        if cool is not None:          # Round 3A: Cooling Watch (pumped coins of the last 10 days). Never stops the scanner.
+            try:
+                cool.update(feed, now)
+            except Exception as e:
+                print(f"[pd] cool step failed: {type(e).__name__}: {e}")
     return n
 
 
 def _loop(data_dir):
     st = _R["state"]
-    feed, tracker, learn, rank, pre = _R["feed"], _R["tracker"], _R["learn"], _R["rank"], _R["pre"]
+    feed, tracker, learn, rank, pre, cool = _R["feed"], _R["tracker"], _R["learn"], _R["rank"], _R["pre"], _R["cool"]
     backoff = 0
     st.update(running=True, started=time.time())
     while not _R["stop"]:
@@ -101,10 +107,11 @@ def _loop(data_dir):
                     tracker.states.clear()
                     rank.clear()
                     pre.clear()
+                    cool.clear()
                 time.sleep(5)
                 continue
             now = time.time()
-            n = step(feed, tracker, learn, now, rank, pre)
+            n = step(feed, tracker, learn, now, rank, pre, cool)
             st.update(last_poll=now, tracked=n, polls=feed.polls, last_error="")
             if now - _last_save[0] >= _SAVE_EVERY and feed.warm_left_min(now) <= 0:
                 _last_save[0] = now
@@ -137,6 +144,7 @@ def start(data_dir):
         _R["tracker"] = pd_tracker.Tracker(_emit)
         _R["tracker"].adj = dict(_R["learn"].tuner.get("coin_adj", {}))
         _R["rank"] = pd_rank.Rank(pd_tsi.Klines(), pd_chance.Chance())
+        _R["cool"] = pd_cool.Cool(_R["rank"].kl)    # Round 3A: same candle cap and back-off
         _R["pre"] = pd_pre.Pre(_R["rank"].kl)       # Round 2: shares the candle cache of Round 1 (one cap of calls per minute for both)
         _R["stop"] = False
         _R["state"]["enabled"] = enabled()
@@ -188,6 +196,17 @@ def pre_view(now=None):
     out = pr.snapshot(now)
     out["enabled"] = _R["state"]["enabled"]
     out["warm_left_min"] = round(_R["feed"].warm_left_min(now), 1) if _R["feed"] is not None else None
+    return out
+
+
+def cool_view(now=None):
+    """Round 3A: what the app's Cooling Watch section will show (GET /api/pd/cool)."""
+    now = time.time() if now is None else now
+    cl = _R["cool"]
+    if cl is None:
+        return {"state": "off", "ready": False, "cool": []}
+    out = cl.snapshot(now)
+    out["enabled"] = _R["state"]["enabled"]
     return out
 
 
