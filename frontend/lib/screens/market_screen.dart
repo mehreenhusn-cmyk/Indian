@@ -9,6 +9,7 @@ import '../widgets/owl_skeleton.dart';
 import '../widgets/candle_chart.dart';
 import '../widgets/owl_refresh.dart';
 import '../widgets/owl_card.dart';
+import '../widgets/owl_kit_extras.dart'; // Part 15: kit chips + shimmer (owl_kit_parts.dart is NOT imported here: owl_card.dart has its own OwlStatRow)
 import '../widgets/top10_7d_list.dart';
 import '../theme/app_theme.dart';
 
@@ -77,17 +78,13 @@ class _MarketScreenState extends State<MarketScreen> {
                 selector: (_, pr) => pr.moversRev,
                 builder: (context, _rev, child) {
                   final c = _counts(context.read<AppProvider>());
-                  // UI5: same segmented look as Signals / AI tabs.
-                  return OwlSegmented(
-                    items: [
-                      ('all', 'All  ${c.$1 + c.$2}'),
-                      ('gainers', 'Gainers  ${c.$1}'),
-                      ('losers', 'Losers  ${c.$2}'),
-                      ('week', '7 Days'),
-                    ],
-                    active: _filter.name,
-                    onPick: (k) {
-                      final f = _MarketFilter.values.firstWhere((e) => e.name == k);
+                  // Part 15: kit pick chips with the counts (the old OwlSegmented stays in owl_card.dart, nothing deleted).
+                  return OwlPickChipRow(
+                    labels: const ['All', 'Gainers', 'Losers', '7 Days'],
+                    counts: [c.$1 + c.$2, c.$1, c.$2, null],
+                    selected: _filter.index,
+                    onSelect: (i) {
+                      final f = _MarketFilter.values[i];
                       if (f != _filter) AppHaptics.light();
                       setState(() => _filter = f);
                     },
@@ -192,16 +189,17 @@ class _MarketScreenState extends State<MarketScreen> {
                     ));
                   }
                   if (all.isEmpty) {
+                    // Part 15: kit shimmer rows while the first movers load (OWLSkeleton class stays in the project).
                     return ListView(
                       physics: owlPullPhysics,
                       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.l, vertical: AppSpacing.m),
-                      children: List.generate(
-                        6,
-                        (_) => const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 6),
-                          child: OWLSkeleton(height: 44),
+                      children: [
+                        OwlShimmer(
+                          child: Column(children: [
+                            for (var i = 0; i < 7; i++) const Padding(padding: EdgeInsets.symmetric(vertical: 6), child: OwlShimmerBox(height: 44, radius: 10)),
+                          ]),
                         ),
-                      ),
+                      ],
                     );
                   }
                   final filtered = all.where((item) {

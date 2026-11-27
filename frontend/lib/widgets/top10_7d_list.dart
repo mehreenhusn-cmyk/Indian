@@ -8,6 +8,8 @@ import '../theme/app_active.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_theme.dart';
 import 'candle_chart.dart';
+import 'owl_kit_extras.dart'; // Part 15: shared UI kit (Parts 8 + 9)
+import 'owl_kit_parts.dart';
 
 /// Round H (26 Nov 2026): the "7 Days" tab of the Market screen. Every coin that was in Binance's TOP 10 GAINERS or TOP 10 LOSERS on any of the last
 /// 7 completed days (day = 5:30 AM IST to 5:30 AM IST), ONE list, no section split. One row per coin = its newest day in a top-10 list.
@@ -81,7 +83,8 @@ class _Top10WeekListState extends State<Top10WeekList> {
     final p = context.palette;
     final r = _r;
     if (r == null) {
-      return Center(child: Text(_failed ? 'Cannot reach the backend. Start it with owlon, then pull down.' : 'Loading...', style: TextStyle(color: p.textMuted)));
+      if (!_failed) return const OwlShimmerList(count: 4); // Part 15: kit shimmer instead of the word "Loading..."
+      return Center(child: Text('Cannot reach the backend. Start it with owlon, then pull down.', style: TextStyle(color: p.textMuted)));
     }
     final building = r['building'] == true;
     final prog = r['progress'] is List ? (r['progress'] as List) : const [0, 0];
@@ -89,8 +92,8 @@ class _Top10WeekListState extends State<Top10WeekList> {
     return RefreshIndicator(
       onRefresh: _load,
       child: ListView(physics: const AlwaysScrollableScrollPhysics(), padding: const EdgeInsets.fromLTRB(AppSpacing.l, AppSpacing.s, AppSpacing.l, AppSpacing.xl), children: [
-        Text('Binance top 10 gainers and top 10 losers of each of the last 7 days (a day = 5:30 AM IST to 5:30 AM IST). One row per coin, its newest day. Right side = how it is doing now.',
-            style: TextStyle(fontSize: 11.5, color: p.textMuted, height: 1.35)),
+        // Part 15: kit heading; the rule text is shortened (a day = 5:30 AM IST to 5:30 AM IST, one row per coin = its newest day, right side = how it is doing now).
+        const OwlSectionHeader(title: '7-day movers', sub: 'top 10 gainers + losers per day, right side = now'),
         if (building) ...[
           const SizedBox(height: 8),
           Container(
@@ -104,7 +107,7 @@ class _Top10WeekListState extends State<Top10WeekList> {
           Text('Problem: ${r['error']}', style: TextStyle(fontSize: 12, color: p.loss)),
         ],
         const SizedBox(height: 10),
-        if (rows.isEmpty && !building) Padding(padding: const EdgeInsets.all(20), child: Center(child: Text('No coin to show.', style: TextStyle(color: p.textMuted)))),
+        if (rows.isEmpty && !building) const OwlEmptyState(icon: Icons.show_chart_rounded, title: 'No coin to show', sub: 'A coin appears here when it was in a daily top 10 in the last 7 days.'),
         for (final e in rows) _row(p, e),
       ]),
     );
