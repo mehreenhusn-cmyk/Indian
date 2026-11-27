@@ -11,6 +11,7 @@ import '../widgets/pd_cool_widgets.dart';
 import '../widgets/pd_learning_card.dart';
 import '../widgets/pd_movers_widgets.dart';
 import '../widgets/pd_pre_widgets.dart';
+import '../widgets/pd_study_card.dart';
 import '../widgets/pd_widgets.dart';
 
 /// PUMP / DUMP tab (26 Nov 2026). Coins that start to pump (left, green) or dump (right, red), found by the scanner on this phone
@@ -376,6 +377,8 @@ class _PumpDumpScreenState extends State<PumpDumpScreen> {
         ],
         const SizedBox(height: 18),
         const PdLearningCard(),
+        const SizedBox(height: 10),
+        const PdStudyCard(), // Part 7: Indicator study (closed by default, loads when opened)
         const SizedBox(height: 10),
         Text('An alert is a heads-up to open the chart, not a buy or sell order. Some alerts will be fake. Alerts show only here, never on Telegram.', style: TextStyle(fontSize: 11, color: p.textMuted)),
       ]),

@@ -1,5 +1,6 @@
 #!/data/data/com.termux/files/usr/bin/bash
 # OWL auto-deploy v5h (2026-10-31) for Termux.
+# v5o (28 Nov 2026, BUILD 50): GitHub sync now also takes README_PUMPDUMP.md (the Pump/Dump upgrade plan). Before, it was skipped by the push filter, so it never reached GitHub. Nothing else changed.
 # v5n (26 Nov 2026, PHONE LITE Round 3): LITE is ON by default (export OWL_LITE=1 for the backend). In LITE the Ping Lab worker is NEVER started (start_ping returns at once,
 #   also for the `ping` / `ping-reset` commands), the stray-worker sweep still runs, and `status` says "OFF (LITE)". Run with OWL_LITE=0 only for a test. Read README5 "PHONE LITE".
 # v5m (6 Nov 2026, BUILD 48): GitHub sync now also takes README_CHOP.md (the both-indicator Chop bot b3 notes). Nothing else changed.
@@ -82,7 +83,7 @@
 # Settings / trades live outside the code folder, so a new zip never touches them.
 # Needs once:  termux-setup-storage
 
-BUILD=49    # self-update number: a zip replaces this script only if its BUILD is a bigger whole number (v5c=2, v5d=3, v5e=40, v5f=41, v5g=42, v5h=43, v5i=44, v5j=45, v5k=46, v5l=47, v5n=49)
+BUILD=50    # self-update number: a zip replaces this script only if its BUILD is a bigger whole number (v5c=2, v5d=3, v5e=40, v5f=41, v5g=42, v5h=43, v5i=44, v5j=45, v5k=46, v5l=47, v5n=49, v5o=50)
 VERSION="v5k 2026-11-06"
 DL_LIST() {   # every Download folder that exists (no duplicates)
   for d in "$OWL_DL" "$HOME/storage/downloads" "$HOME/storage/shared/Download" "/sdcard/Download" "/storage/emulated/0/Download"; do
@@ -566,7 +567,7 @@ if len(tops) == 1 and list(tops)[0] not in ("backend", "frontend", ".github", "t
     pre = list(tops)[0] + "/"          # one wrapper folder (like Indian-main/) -> strip it
 ALLOWED = {"backend", "frontend", "tools", "test", "scanner", "android", ".github", "README.md", "README2.md", "README4.md", "pubspec.yaml",
            "pubspec.lock", "analysis_options.yaml", "web_update.sh", ".gitignore", ".metadata", "README5.md", "docs",
-           "README_CHOP.md", "README6.md", "PLAN_400.md", "FILE_INDEX.md", "CLAUDE_HANDOFF.md", "AI_HANDOFF_BRIEF.md"}
+           "README_CHOP.md", "README_PUMPDUMP.md", "README6.md", "PLAN_400.md", "FILE_INDEX.md", "CLAUDE_HANDOFF.md", "AI_HANDOFF_BRIEF.md"}
 DOCS_OK = ("docs/mockups/",)
 DOCS_EXT = (".jpg", ".jpeg", ".png", ".md")
 skipped = []

@@ -61,6 +61,9 @@ extension AppProviderPd on AppProvider {
   /// Part 4 (28 Nov 2026): Cooling watch = coins that pumped in the last 10 days (backend/pd_cool.py). Never throws; {"state": old / error} on an old backend.
   Future<Map<String, dynamic>> fetchPdCool() => _brainGet('/api/pd/cool');
 
+  /// Part 7 (28 Nov 2026): the indicator study (backend/pd_study.py). Never throws; {"state": old / error} on an old backend, {"state": no_data} before the first study.
+  Future<Map<String, dynamic>> fetchPdStudy() => _brainGet('/api/pd/study');
+
   /// The two switches: the scanner on / off (off = no data is used) and the self-tuning on / off. true = the phone accepted it.
   Future<bool> setPdSwitch({bool? enabled, bool? autoTune}) async {
     try {

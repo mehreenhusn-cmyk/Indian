@@ -36,7 +36,7 @@ PY
 import os, sys, zipfile
 zp, repo = sys.argv[1:3]
 z = zipfile.ZipFile(zp)
-ALLOWED = {"backend","frontend","tools","test","scanner","android",".github","README.md","README2.md","README4.md","README5.md","README6.md","README_CHOP.md","README_VPS.md","pubspec.yaml","pubspec.lock","analysis_options.yaml","web_update.sh",".gitignore",".metadata","docs","PLAN_400.md","FILE_INDEX.md","CLAUDE_HANDOFF.md","AI_HANDOFF_BRIEF.md"}
+ALLOWED = {"backend","frontend","tools","test","scanner","android",".github","README.md","README2.md","README4.md","README5.md","README6.md","README_CHOP.md","README_PUMPDUMP.md","README_VPS.md","pubspec.yaml","pubspec.lock","analysis_options.yaml","web_update.sh",".gitignore",".metadata","docs","PLAN_400.md","FILE_INDEX.md","CLAUDE_HANDOFF.md","AI_HANDOFF_BRIEF.md"}
 BLOCKED = (".apk",".aab",".ipa",".zip",".so",".jks",".keystore")
 ok = 0; skipped = []
 for n in z.namelist():
