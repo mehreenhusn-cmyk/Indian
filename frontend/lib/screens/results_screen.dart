@@ -7,7 +7,10 @@ import '../theme/app_spacing.dart';
 import '../theme/app_theme.dart';
 import '../utils/time_ist.dart';
 import '../widgets/load_state.dart';
-import '../widgets/owl_card.dart';
+import '../widgets/owl_card.dart' hide OwlStatRow; // Part 13: OwlStatRow comes from the new kit (owl_kit_parts.dart)
+import '../widgets/owl_hero_card.dart'; // Part 13: shared UI kit (Parts 8 + 9)
+import '../widgets/owl_kit_extras.dart';
+import '../widgets/owl_kit_parts.dart';
 import '../widgets/owl_pressable.dart';
 import '../widgets/stat_tile.dart';
 import '../widgets/verdict_header_card.dart';
@@ -130,7 +133,7 @@ class _ResultsScreenState extends State<ResultsScreen> {
   Widget _proven(AppPalette p, String title, Color edge, List<Map<String, dynamic>> rows) => OWLCard(
         edge: edge,
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          _title(p, title, 'known at entry, 30+ trades, same sign in both halves'),
+          OwlSectionHeader(title: title, sub: 'known at entry, 30+ trades'), // Part 13: kit heading (the proof rule is unchanged: same sign in both halves)
           for (final g in rows) _row(p, g, dim: '${g['dim']}'),
         ]),
       );
@@ -181,46 +184,29 @@ class _ResultsScreenState extends State<ResultsScreen> {
     final diag = dims.where((d) => _diagKeys.contains('${d['key']}')).toList();
     return [
       if (order.length > 1)
-        Wrap(spacing: 6, runSpacing: 6, children: [
-          for (final k in order)
-            ChoiceChip(label: Text(_short(k), style: const TextStyle(fontSize: 12)), selected: k == _box, onSelected: (_) => setState(() => _box = k)),
-        ]),
+        // Part 13: kit pick chips (REAL / LIVE est. / PAPER); the boxes are still never added together.
+        OwlPickChipRow(labels: [for (final k in order) _short(k)], selected: order.indexOf(_box ?? '') < 0 ? 0 : order.indexOf(_box ?? ''), onSelect: (i) => setState(() => _box = order[i])),
       if (_vc != null) VerdictHeaderCard(card: _vc!),
+      // Part 13: ONE hero card = the net result big (green / red) with the win bar; two small tiles under it. The old four tiles + bar code is replaced (same numbers).
       Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('${b['title'] ?? ''}'.toUpperCase(), style: context.type.label.copyWith(color: p.textMuted, fontWeight: FontWeight.w700, letterSpacing: 0.6)),
-        const SizedBox(height: 6),
-        Row(children: [
-          Expanded(child: StatTile(label: 'NET AFTER FEE', value: _usdt(net), sub: 'USDT, whole period', tone: net > 0 ? 'good' : (net < 0 ? 'bad' : ''))),
-          const SizedBox(width: 8),
-          Expanded(child: StatTile(label: 'CLOSED TRADES', value: '${_i(o['n'])}')),
-        ]),
+        OwlHeroCard(
+          label: '${b['title'] ?? ''}'.toUpperCase(),
+          value: '${_usdt(net)} USDT',
+          sub: '${_i(o['n'])} closed trades, net after fee, whole period',
+          tone: net > 0 ? 'good' : (net < 0 ? 'bad' : ''),
+          share: _i(o['n']) > 0 ? _d(o['win_pct']).clamp(0.0, 100.0) / 100.0 : null,
+          shareCaption: '${_d(o['win_pct']).toStringAsFixed(0)}% won  ·  ${(100 - _d(o['win_pct'])).toStringAsFixed(0)}% lost',
+        ),
         const SizedBox(height: 8),
-        Row(children: [
-          Expanded(child: StatTile(label: 'WIN RATE', value: '${_d(o['win_pct']).toStringAsFixed(1)}%')),
-          const SizedBox(width: 8),
-          Expanded(child: StatTile(label: 'AVG PER TRADE', value: _usdt(avg), tone: avg > 0 ? 'good' : (avg < 0 ? 'bad' : ''))),
+        OwlStatRow(tiles: [
+          OwlStatTile(label: 'Win rate', value: '${_d(o['win_pct']).toStringAsFixed(1)}%'),
+          OwlStatTile(label: 'Avg per trade', value: _usdt(avg), tone: avg > 0 ? 'good' : (avg < 0 ? 'bad' : '')),
         ]),
-        if (_i(o['n']) > 0) ...[
-          const SizedBox(height: 10),
-          // Round F2: one thin bar, green = share of winning trades, red = the rest
-          ClipRRect(
-            borderRadius: BorderRadius.circular(6),
-            child: SizedBox(
-              height: 8,
-              child: Row(children: [
-                Expanded(flex: (_d(o['win_pct']).clamp(0.0, 100.0) * 10).round() + 1, child: Container(color: p.profit)),
-                Expanded(flex: ((100.0 - _d(o['win_pct']).clamp(0.0, 100.0)) * 10).round() + 1, child: Container(color: p.loss)),
-              ]),
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text('${_d(o['win_pct']).toStringAsFixed(0)}% won  ·  ${(100 - _d(o['win_pct'])).toStringAsFixed(0)}% lost', style: context.type.metadata.copyWith(color: p.textMuted)),
-        ],
         const SizedBox(height: 6),
         Text('${istFromUtcText(b['first_close_utc'])} to ${istFromUtcText(b['last_close_utc'])} (IST)', style: context.type.metadata),
       ]),
       if (mk.isEmpty && ls.isEmpty)
-        OWLCard(child: Text('No group known at entry is proven yet (30+ trades and the same sign in both halves). Nothing here is proven profit or proven loss.', style: context.type.secondary)),
+        const OwlEmptyState(icon: Icons.fact_check_outlined, title: 'Nothing is proven yet', sub: 'No group known at entry has 30+ trades and the same sign in both halves. Nothing here is proven profit or proven loss.'), // Part 13
       if (mk.isNotEmpty) _proven(p, 'Making money', p.profit, mk),
       if (ls.isNotEmpty) _proven(p, 'Losing money', p.loss, ls),
       if (mk.isEmpty && ls.isNotEmpty) Text('No entry group is steadily making money yet.', style: context.type.metadata),

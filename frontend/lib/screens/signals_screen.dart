@@ -9,6 +9,7 @@ import '../widgets/trade_row.dart';
 import '../widgets/trade_chart.dart';
 import '../widgets/coin_history_sheet.dart';
 import '../widgets/owl_card.dart';
+import '../widgets/owl_kit_extras.dart'; // Part 14: kit chips + shimmer (only this file: owl_card.dart already has its own OwlStatRow, used below)
 import '../utils/signal_status.dart';
 import '../utils/format.dart';
 import '../widgets/owl_empty_state.dart';
@@ -172,9 +173,9 @@ class _SignalsScreenState extends State<SignalsScreen> {
                   final provider = context.read<AppProvider>();
                   return Row(
                     children: [
-                      OwlFilterChip(label: 'All', on: !_btcOnly, onTap: () => _setBtc(false)),
+                      OwlPickChip(label: 'All', selected: !_btcOnly, onTap: () => _setBtc(false)), // Part 14: kit chip
                       const SizedBox(width: AppSpacing.s),
-                      OwlFilterChip(label: 'BTC', on: _btcOnly, onTap: () => _setBtc(true)),
+                      OwlPickChip(label: 'BTC', selected: _btcOnly, onTap: () => _setBtc(true)),
                       const Spacer(),
                       if (provider.signals.isNotEmpty) Text('${provider.signals.length} total', style: t.metadata),
                     ],
@@ -215,13 +216,7 @@ class _SignalsScreenState extends State<SignalsScreen> {
       // First load only: grey placeholder cards.
       return ListView(
         physics: owlPullPhysics,
-        children: List.generate(
-          4,
-          (_) => const Padding(
-            padding: EdgeInsets.only(bottom: AppSpacing.cardGap),
-            child: OWLSkeleton.card(height: 96),
-          ),
-        ),
+        children: const [OwlShimmerList(count: 4, padding: EdgeInsets.zero)], // Part 14: kit shimmer (OWLSkeleton class stays in the project)
       );
     }
     if (signals.isEmpty && _btcOnly && _btc.isNotEmpty) {
@@ -442,14 +437,14 @@ class _SignalsScreenState extends State<SignalsScreen> {
   }
 
   Widget _tabs(BuildContext context, Map<String, int> counts, String active) {
-    return OwlSegmented(
-      items: [
-        ('running', 'Running  ${counts['running'] ?? 0}'),
-        ('closed', 'Closed  ${counts['closed'] ?? 0}'),
-        ('skipped', 'Skipped  ${counts['skipped'] ?? 0}'),
-      ],
-      active: active,
-      onPick: (k) => setState(() => _filter = k),
+    // Part 14: kit pick chips with the counts (the old OwlSegmented stays in owl_card.dart, nothing deleted).
+    const keys = ['running', 'closed', 'skipped'];
+    final i = keys.indexOf(active);
+    return OwlPickChipRow(
+      labels: const ['Running', 'Closed', 'Skipped'],
+      counts: [counts['running'] ?? 0, counts['closed'] ?? 0, counts['skipped'] ?? 0],
+      selected: i < 0 ? 0 : i,
+      onSelect: (k) => setState(() => _filter = keys[k]),
     );
   }
 

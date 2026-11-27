@@ -4,6 +4,7 @@ import '../providers/app_provider.dart';
 import '../theme/app_theme.dart';
 import 'candle_chart.dart';
 import 'owl_card.dart';
+import 'owl_hero_card.dart'; // Part 14: OwlWinBar (shared UI kit)
 
 /// Round 26 (OwlSniper, read-only): the SIGNAL CARD = one order card with a mini chart, one decision line, Entry / Stop / Target / R:R,
 /// an evidence check (5 dots) and the buttons SKIP and WHY. Every number comes from the backend card (GET /api/v2/sniper or /api/v2/sniper_live); nothing is invented here.
@@ -114,12 +115,22 @@ class _SniperSignalCardState extends State<SniperSignalCard> {
     return why.isEmpty ? 'Blocked: a check failed.' : 'Blocked: $why';
   }
 
+  /// Part 14: each level is a small tinted tile (stop red, target green, the rest neutral) instead of loose text.
   Widget _level(AppPalette p, String label, String value, [Color? col]) => Expanded(
-        child: Column(children: [
-          Text(value, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: col ?? p.textPrimary)),
-          const SizedBox(height: 2),
-          Text(label, style: TextStyle(fontSize: 11, color: p.textMuted)),
-        ]),
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 2),
+          padding: const EdgeInsets.symmetric(vertical: 7),
+          decoration: BoxDecoration(
+            color: col == null ? p.surface : col.withOpacity(0.08),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: col == null ? p.border : col.withOpacity(0.25)),
+          ),
+          child: Column(children: [
+            Text(value, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w800, color: col ?? p.textPrimary)),
+            const SizedBox(height: 2),
+            Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 10.5, color: p.textMuted)),
+          ]),
+        ),
       );
 
   Widget _dots(AppPalette p) {
@@ -220,12 +231,14 @@ class _SniperSignalCardState extends State<SniperSignalCard> {
           _level(p, 'target', _px(_tp), p.profit),
           _level(p, 'reward : risk', _rr == null ? 'n/a' : '${_rr!.toStringAsFixed(1)} : 1'),
         ]),
-        const SizedBox(height: 4),
-        Text(
-          'Win chance ${conf == null ? 'n/a' : _pc(conf * 100)}'
-          '${_barOk ? '  |  stop ${_pc(_bar['sl_pct'], 2)}  |  target ${_pc(_bar['tp_pct'], 2)}  |  max $hold candles' : ''}',
-          style: TextStyle(fontSize: 11, color: p.textMuted),
-        ),
+        const SizedBox(height: 8),
+        // Part 14: the win chance is a thin bar (green share) with the number under it; stop / target size and the candle limit stay as one small line.
+        if (conf != null) OwlWinBar(share: conf, caption: 'Win chance ${_pc(conf * 100)}') else Text('Win chance n/a', style: TextStyle(fontSize: 11, color: p.textMuted)),
+        if (_barOk)
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text('stop ${_pc(_bar['sl_pct'], 2)}  |  target ${_pc(_bar['tp_pct'], 2)}  |  max $hold candles', style: TextStyle(fontSize: 11, color: p.textMuted)),
+          ),
         const SizedBox(height: 8),
         _dots(p),
         const SizedBox(height: 4),

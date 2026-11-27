@@ -127,21 +127,21 @@ class _PositionCardState extends State<PositionCard> {
       child: Column(
         crossAxisAlignment: alignEnd ? CrossAxisAlignment.end : CrossAxisAlignment.start,
         children: [
-          Text(label, style: context.type.label.copyWith(fontSize: 9.5, color: p.textMuted, letterSpacing: 0.6)),
+          Text(label, style: context.type.label.copyWith(fontSize: 10, color: p.textMuted, letterSpacing: 0.6)), // Part 13: 9.5 -> 10
           const SizedBox(height: 1),
           liveOpenedAt == null
               ? Text(value,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: context.type.secondary.copyWith(
-                      fontSize: 12.5, fontWeight: FontWeight.w600, color: p.textPrimary, fontFeatures: _tabular))
+                      fontSize: 13, fontWeight: FontWeight.w600, color: p.textPrimary, fontFeatures: _tabular))
               : ValueListenableBuilder<int>(
                   valueListenable: _DurationClock.tick,
                   builder: (_, __, ___) => Text(_duration(liveOpenedAt),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: context.type.secondary.copyWith(
-                          fontSize: 12.5, fontWeight: FontWeight.w600, color: p.textPrimary, fontFeatures: _tabular)),
+                          fontSize: 13, fontWeight: FontWeight.w600, color: p.textPrimary, fontFeatures: _tabular)),
                 ),
         ],
       ),
@@ -827,7 +827,8 @@ class _GlassmorphicSurface extends StatelessWidget {
   }
 }
 
-/// Profit block (top right of the card): only the USDT profit, big. Owner 31 Oct 2026: no percentage here.
+/// Profit block (top right of the card). Part 13 (28 Nov 2026, owner 31 Oct: "profit big on top, percent below"): the USDT profit is the BIG number,
+/// the percent (ROI) sits under it in a small tinted chip, the INR amount last, small and grey. Nothing is removed, only the order and size changed.
 class _ProfitBlock extends StatelessWidget {
   final double pnl;
   final bool isProfit;
@@ -840,20 +841,27 @@ class _ProfitBlock extends StatelessWidget {
     final p = context.palette;
     final color = isProfit ? _green : _red;
     final sign = isProfit ? '+' : '';
-    // Plan C hierarchy: the big number is the percent (ROI), then the USDT amount, then the INR amount small and grey.
     return Column(
       crossAxisAlignment: CrossAxisAlignment.end,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(roi == null ? '--' : '${roi! >= 0 ? '+' : ''}${roi!.toStringAsFixed(2)}%', maxLines: 1, style: AppTypography.primaryData.copyWith(color: roi == null ? p.textMuted : color, fontWeight: FontWeight.w800, fontSize: 20)),
         Text.rich(
           TextSpan(children: [
-            TextSpan(text: '$sign${pnl.toStringAsFixed(2)}', style: AppTypography.primaryData.copyWith(color: color, fontWeight: FontWeight.w700, fontSize: 13)),
+            TextSpan(text: '$sign${pnl.toStringAsFixed(2)}', style: AppTypography.primaryData.copyWith(color: color, fontWeight: FontWeight.w800, fontSize: 20)),
             TextSpan(text: ' USDT', style: TextStyle(color: p.textMuted, fontWeight: FontWeight.w600, fontSize: 10)),
           ]),
           maxLines: 1,
         ),
-        if (inr != null) Text('approx. $inr', maxLines: 1, style: TextStyle(color: p.textMuted, fontSize: 10)),
+        const SizedBox(height: 3),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+          decoration: BoxDecoration(
+            color: (roi == null ? p.textMuted : color).withOpacity(0.12),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Text(roi == null ? '--' : '${roi! >= 0 ? '+' : ''}${roi!.toStringAsFixed(2)}%', maxLines: 1, style: AppTypography.primaryData.copyWith(color: roi == null ? p.textMuted : color, fontWeight: FontWeight.w700, fontSize: 12)),
+        ),
+        if (inr != null) Padding(padding: const EdgeInsets.only(top: 2), child: Text('approx. $inr', maxLines: 1, style: TextStyle(color: p.textMuted, fontSize: 10))),
       ],
     );
   }
