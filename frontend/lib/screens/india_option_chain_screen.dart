@@ -6,6 +6,8 @@ import 'package:flutter/material.dart';
 import '../services/india_api.dart';
 import '../theme/app_theme.dart';
 import '../widgets/india_ui.dart';
+import '../widgets/owl_kit_extras.dart'; // Part 18: kit shimmer, empty state, pick chips
+import '../widgets/owl_kit_parts.dart';
 import 'india_chart_screen.dart';
 
 /// Option chain: CALL | strike | PUT, with ITM shading, ATM marker and tick-to-pin.
@@ -292,7 +294,7 @@ class _IndiaChainTabState extends State<IndiaChainTab> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const CircularProgressIndicator(),
+                      const OwlShimmerList(count: 2, padding: EdgeInsets.zero), // Part 18: kit shimmer instead of a spinner
                       const SizedBox(height: 12),
                       Text(
                         (_loadStarted != null && DateTime.now().difference(_loadStarted!).inSeconds >= 8)
@@ -363,26 +365,31 @@ class _IndiaChainTabState extends State<IndiaChainTab> {
         const SizedBox(height: 2),
       ],
       [
+        if (rows.isEmpty) const OwlEmptyState(icon: Icons.table_rows_outlined, title: 'No option prices yet', sub: 'The broker has not sent this chain. It retries on its own.'), // Part 18
         ...rows.map((r) => _row(p, t, r, false)),
         const SizedBox(height: AppSpacing.m),
       // default mode for next trades
       IHeading('NEXT TRADES BUY', trailing: dm == null ? null : TextButton(onPressed: () => _post('/day_mode', {'mode': null}), child: const Text('Reset'))),
-      IChoice<String>(
-        values: const ['ITM', 'ATM', 'OTM'],
-        current: curMode,
-        label: (v) => v,
-        onPick: (v) => _post('/day_mode', {'mode': v, 'depth': v == 'ATM' ? 1 : curDepth}),
+      // Part 18: kit pick chips (same three modes, same /day_mode call)
+      OwlPickChipRow(
+        labels: const ['ITM', 'ATM', 'OTM'],
+        selected: const ['ITM', 'ATM', 'OTM'].indexOf(curMode) < 0 ? 0 : const ['ITM', 'ATM', 'OTM'].indexOf(curMode),
+        onSelect: (i) {
+          final v = const ['ITM', 'ATM', 'OTM'][i];
+          _post('/day_mode', {'mode': v, 'depth': v == 'ATM' ? 1 : curDepth});
+        },
       ),
       if (curMode != 'ATM') ...[
         const SizedBox(height: 6),
         Row(children: [
           Text('Depth', style: IT.small(context)),
           const SizedBox(width: 8),
-          IChoice<int>(
-            values: const [1, 2, 3],
-            current: curDepth,
-            label: (v) => '$v',
-            onPick: (v) => _post('/day_mode', {'mode': curMode, 'depth': v}),
+          Expanded(
+            child: OwlPickChipRow(
+              labels: const ['1', '2', '3'],
+              selected: (curDepth >= 1 && curDepth <= 3) ? curDepth - 1 : 0,
+              onSelect: (i) => _post('/day_mode', {'mode': curMode, 'depth': i + 1}),
+            ),
           ),
         ]),
       ],

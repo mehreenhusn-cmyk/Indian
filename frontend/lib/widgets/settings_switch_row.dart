@@ -1,8 +1,8 @@
-import package:flutter/material.dart;
+import 'package:flutter/material.dart';
 
-import ../theme/app_motion.dart;
-import ../theme/app_spacing.dart;
-import ../theme/app_theme.dart;
+import '../theme/app_motion.dart';
+import '../theme/app_spacing.dart';
+import '../theme/app_theme.dart';
 
 /// Part 16 (D5a, 28 Nov 2026): one on / off row for a SettingsGroup: title, one muted line under it and a switch on the right.
 /// [onChanged] null = the row is greyed out and the switch cannot be tapped (for example a sound option while the master switch is off).

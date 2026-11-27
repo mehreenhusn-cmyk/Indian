@@ -1,3 +1,4 @@
+> **28 Nov 2026 LATEST: Parts 7 to 19 are ALL BUILT (19 = India stats + Trades report + broker card). The whole-app redesign is finished. NEXT = the owner pushes the ONE cumulative zip owl_Part19.zip, the GitHub build is the first Dart compile; fix only the line the build log names. Quote bug fixed in 4 widget files (Parts 11 + 16). Tests: Not Run (owner rule).**
 > **28 Nov 2026 LATER: Parts 7 to 16 are BUILT (Study page, UI kit A + B, Dashboard, bottom bar + More, Positions, Results + position card, Signals, Market, Settings first half). NEXT = Part 17 (Settings second half, ~300 lines), then 18 (India paper + option chain), 19 (broker card + stats + P&L report). 3 parts, about 1,100 lines left. Owner wants ONE cumulative zip and ONE push at the very end. Dart not compiled, GitHub build is the first compile.**
 
 # README_OWNER - owner problem + what is done (10 Nov 2026)

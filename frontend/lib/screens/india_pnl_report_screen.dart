@@ -4,7 +4,10 @@ import 'package:flutter/services.dart';
 import '../services/india_api.dart';
 import '../theme/app_theme.dart';
 import '../widgets/india_ui.dart';
-import '../widgets/owl_card.dart';
+import '../widgets/owl_card.dart' hide OwlStatRow; // Part 19: OwlStatRow comes from the new kit (owl_kit_parts.dart)
+import '../widgets/owl_hero_card.dart'; // Part 19: shared UI kit (Parts 8 + 9)
+import '../widgets/owl_kit_extras.dart';
+import '../widgets/owl_kit_parts.dart';
 
 /// Trades tab: P&L report with date range / index filter, totals, equity curve,
 /// day-wise table, top contracts and the full closed-trade list (+ copy CSV).
@@ -88,51 +91,62 @@ class _IndiaTradesTabState extends State<IndiaTradesTab> {
       child: ListView(
         padding: const EdgeInsets.all(AppSpacing.l),
         children: [
-          IChoice<String>(values: const ['Today', '7D', '30D', 'All'], current: _range, label: (v) => v == 'Today' ? 'Today' : (v == 'All' ? 'All time' : (v == '7D' ? '7 days' : '30 days')), onPick: (v) {
-            setState(() => _range = v);
-            _load();
-          }),
+          // Part 19: kit pick chips (same values, same /report query)
+          OwlPickChipRow(
+            labels: const ['Today', '7 days', '30 days', 'All time'],
+            selected: const ['Today', '7D', '30D', 'All'].indexOf(_range) < 0 ? 0 : const ['Today', '7D', '30D', 'All'].indexOf(_range),
+            onSelect: (i) {
+              setState(() => _range = const ['Today', '7D', '30D', 'All'][i]);
+              _load();
+            },
+          ),
           const SizedBox(height: 6),
-          IChoice<String>(values: const ['All', 'NIFTY', 'BANKNIFTY', 'FINNIFTY'], current: _under, label: (v) => v == 'All' ? 'All indices' : v, onPick: (v) {
-            setState(() => _under = v);
-            _load();
-          }),
+          OwlPickChipRow(
+            labels: const ['All indices', 'NIFTY', 'BANKNIFTY', 'FINNIFTY'],
+            selected: const ['All', 'NIFTY', 'BANKNIFTY', 'FINNIFTY'].indexOf(_under) < 0 ? 0 : const ['All', 'NIFTY', 'BANKNIFTY', 'FINNIFTY'].indexOf(_under),
+            onSelect: (i) {
+              setState(() => _under = const ['All', 'NIFTY', 'BANKNIFTY', 'FINNIFTY'][i]);
+              _load();
+            },
+          ),
           const SizedBox(height: AppSpacing.m),
           if (_error != null) Text(_error!, style: IT.small(context).copyWith(color: p.loss)),
-          if (rep == null && _error == null) const Center(child: Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator())),
+          if (rep == null && _error == null) const OwlShimmerList(count: 3, padding: EdgeInsets.zero), // Part 19: kit shimmer
           if (rep != null) ...[
-            ICard(
-              tint: net > 0 ? p.profit.withOpacity(0.5) : (net < 0 ? p.loss.withOpacity(0.5) : null),
-              padding: const EdgeInsets.all(14),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('Net realised P&L (after charges)', style: IT.small(context)),
-                FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text(inr(net, sign: true), style: IT.big(context).copyWith(fontSize: 26, color: pnlColor(p, net)))),
-                const SizedBox(height: AppSpacing.m),
-                Row(children: [
-                  IMetric('Gross', inr(nd(tot['gross']), sign: true), color: pnlColor(p, nd(tot['gross']))),
-                  IMetric('Charges', inr(nd(tot['fees']))),
-                  IMetric('Trades', '${tot['trades'] ?? 0}'),
-                ]),
-                const SizedBox(height: AppSpacing.m),
-                Row(children: [
-                  IMetric('Win rate', '${nd(tot['win_pct']).toStringAsFixed(1)}%'),
-                  IMetric('Best', inr(nd(tot['best']), sign: true), color: p.profit),
-                  IMetric('Worst', inr(nd(tot['worst']), sign: true), color: p.loss),
-                ]),
-                if (tot['profit_factor'] != null) ...[
-                  const SizedBox(height: AppSpacing.m),
-                  Row(children: [IMetric('Profit factor', '${tot['profit_factor']}'), const Spacer(), const Spacer()]),
-                ],
-              ]),
+            // Part 19: ONE hero card (net result big + win bar) and 3 rows of kit tiles. Same numbers as the old card, nothing dropped.
+            OwlHeroCard(
+              label: 'NET REALISED P&L (AFTER CHARGES)',
+              value: inr(net, sign: true),
+              sub: '${tot['trades'] ?? 0} closed trades  ·  win rate ${nd(tot['win_pct']).toStringAsFixed(1)}%',
+              tone: net > 0 ? 'good' : (net < 0 ? 'bad' : ''),
+              share: nd(tot['trades']) > 0 ? nd(tot['win_pct']).clamp(0.0, 100.0) / 100.0 : null,
+              shareCaption: '${nd(tot['win_pct']).toStringAsFixed(0)}% won  ·  ${(100 - nd(tot['win_pct'])).toStringAsFixed(0)}% lost',
             ),
+            const SizedBox(height: AppSpacing.s),
+            OwlStatRow(tiles: [
+              OwlStatTile(label: 'Gross', value: inr(nd(tot['gross']), sign: true), tone: nd(tot['gross']) > 0 ? 'good' : (nd(tot['gross']) < 0 ? 'bad' : '')),
+              OwlStatTile(label: 'Charges', value: inr(nd(tot['fees']))),
+            ]),
+            const SizedBox(height: AppSpacing.s),
+            OwlStatRow(tiles: [
+              OwlStatTile(label: 'Best', value: inr(nd(tot['best']), sign: true), tone: 'good'),
+              OwlStatTile(label: 'Worst', value: inr(nd(tot['worst']), sign: true), tone: 'bad'),
+            ]),
+            if (tot['profit_factor'] != null) ...[
+              const SizedBox(height: AppSpacing.s),
+              OwlStatRow(tiles: [
+                OwlStatTile(label: 'Profit factor', value: '${tot['profit_factor']}', sub: 'above 1 = profit'),
+                OwlStatTile(label: 'Trades', value: '${tot['trades'] ?? 0}'),
+              ]),
+            ],
             const SizedBox(height: AppSpacing.m),
             if (eq.length >= 2) ...[
-              const IHeading('EQUITY CURVE'),
+              const OwlSectionHeader(title: 'Equity curve'), // Part 19: kit heading
               ICard(padding: const EdgeInsets.all(12), child: SparkLine(eq, eq.last >= eq.first ? p.profit : p.loss)),
               const SizedBox(height: AppSpacing.l),
             ],
             if (daily.isNotEmpty) ...[
-              const IHeading('DAY-WISE'),
+              const OwlSectionHeader(title: 'Day-wise'), // Part 19: kit heading
               ...daily.reversed.map((d) => Padding(
                     padding: const EdgeInsets.only(bottom: 6),
                     child: Row(children: [
@@ -145,7 +159,7 @@ class _IndiaTradesTabState extends State<IndiaTradesTab> {
               const SizedBox(height: AppSpacing.l),
             ],
             if (brk.isNotEmpty) ...[
-              const IHeading('TOP CONTRACTS'),
+              const OwlSectionHeader(title: 'Top contracts'), // Part 19: kit heading
               ...brk.take(5).map((b) => Padding(
                     padding: const EdgeInsets.only(bottom: 6),
                     child: Row(children: [
@@ -157,8 +171,8 @@ class _IndiaTradesTabState extends State<IndiaTradesTab> {
                   )),
               const SizedBox(height: AppSpacing.l),
             ],
-            IHeading('CLOSED TRADES (${trades.length})', trailing: TextButton(onPressed: _copyCsv, child: const Text('Copy CSV'))),
-            if (trades.isEmpty) Text('No closed trades in this range.', style: IT.small(context)),
+            OwlSectionHeader(title: 'Closed trades', sub: '${trades.length} in this range', actionLabel: 'Copy CSV', onAction: _copyCsv), // Part 19: kit heading, same CSV copy
+            if (trades.isEmpty) const OwlEmptyState(icon: Icons.receipt_long_outlined, title: 'No closed trades in this range', sub: 'Pick a longer range or another index.'),
             ...trades.map((tr) => _tradeCard(p, t, tr)),
           ],
           if (_loading) const Padding(padding: EdgeInsets.only(top: 8), child: LinearProgressIndicator(minHeight: 2)),

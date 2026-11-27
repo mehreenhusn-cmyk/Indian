@@ -4,7 +4,10 @@ import 'package:flutter/services.dart';
 import '../services/india_api.dart';
 import '../theme/app_theme.dart';
 import '../widgets/india_ui.dart';
-import '../widgets/owl_card.dart';
+import '../widgets/owl_card.dart' hide OwlStatRow; // Part 19: OwlStatRow comes from the new kit (owl_kit_parts.dart)
+import '../widgets/owl_hero_card.dart'; // Part 19: shared UI kit (Parts 8 + 9)
+import '../widgets/owl_kit_extras.dart';
+import '../widgets/owl_kit_parts.dart';
 
 /// "Exchange connection" card (top of India Settings). Tap an exchange (Tradebulls / Fyers), enter the key,
 /// tap Connect - the balance and data of THAT exchange then show here. Passwords / 2FA / the daily Fyers
@@ -224,8 +227,13 @@ class _IndiaBrokerCardState extends State<IndiaBrokerCard> {
       final name = '${e.key}' == 'fyers' ? 'Fyers' : 'Tradebulls';
       final cash = a['net_available'] != null ? inr(nd(a['net_available'])) : '-';
       final err = '${a['balance_error'] ?? ''}';
-      rows.add(Text('$name  ${a['name'] ?? ''}   cash $cash', style: t.primary));
-      if (a['total'] != null) rows.add(Text('Total ${inr(nd(a['total']))}   Used ${a['used'] == null ? '-' : inr(nd(a['used']))}', style: t.secondary));
+      // Part 19: cash and total as two kit tiles (same numbers as the old text lines; used shows under Total)
+      rows.add(Text('$name  ${a['name'] ?? ''}', style: t.primary));
+      rows.add(const SizedBox(height: 6));
+      rows.add(OwlStatRow(tiles: [
+        OwlStatTile(label: 'Cash', value: cash),
+        OwlStatTile(label: 'Total', value: a['total'] == null ? '-' : inr(nd(a['total'])), sub: 'Used ${a['used'] == null ? '-' : inr(nd(a['used']))}'),
+      ]));
       if (err.isNotEmpty) rows.add(Text(friendlyError(err), style: t.metadata.copyWith(color: p.warning)));
     }
     if (rows.length == 1) return [];
@@ -266,12 +274,19 @@ class _IndiaBrokerCardState extends State<IndiaBrokerCard> {
     return [
       const SizedBox(height: 10),
       Text('WHAT IF YOUR REAL BALANCE WAS USED (last 30 days)', style: t.metadata.copyWith(fontWeight: FontWeight.w700, letterSpacing: 1.0)),
-      const SizedBox(height: 4),
-      Text('Paper P&L ${inr(nd(w['paper_pnl']))} on paper capital ${inr(nd(w['paper_capital']))}', style: t.secondary),
-      Text(known
-              ? 'With your Fyers cash ${inr(nd(w['balance']))}: ${nd(w['taken']).toInt()} of ${nd(w['trades']).toInt()} trades fit, P&L ${inr(pw)}'
-              : 'Fyers cash not read yet - connect and tap Refresh balance',
-          style: t.primary.copyWith(color: known ? (pw >= 0 ? p.profit : p.loss) : p.textSecondary)),
+      const SizedBox(height: 6),
+      // Part 19: two kit tiles, paper result next to the result with your real cash
+      OwlStatRow(tiles: [
+        OwlStatTile(label: 'Paper P&L', value: inr(nd(w['paper_pnl'])), sub: 'on paper capital ${inr(nd(w['paper_capital']))}'),
+        OwlStatTile(
+          label: 'With your cash',
+          value: known ? inr(pw) : '-',
+          sub: known ? '${nd(w['taken']).toInt()} of ${nd(w['trades']).toInt()} trades fit' : 'cash not read yet',
+          tone: known ? (pw > 0 ? 'good' : (pw < 0 ? 'bad' : '')) : '',
+        ),
+      ]),
+      if (!known) Padding(padding: const EdgeInsets.only(top: 4), child: Text('Fyers cash not read yet - connect and tap Refresh balance', style: t.primary.copyWith(color: p.textSecondary))),
+      if (known) Padding(padding: const EdgeInsets.only(top: 4), child: Text('Fyers cash ${inr(nd(w['balance']))}', style: t.metadata)),
       if (known && nd(w['skipped']).toInt() > 0)
         Text('${nd(w['skipped']).toInt()} trades would have been skipped (missed ${inr(nd(w['pnl_missed']))}). Cash needed to take every signal: ${inr(nd(w['needed_for_all']))}', style: t.metadata),
     ];
@@ -300,13 +315,15 @@ class _IndiaBrokerCardState extends State<IndiaBrokerCard> {
             status,
           ]),
           const SizedBox(height: 8),
-          Wrap(spacing: 8, children: [
-            for (final b in const ['tradebulls', 'fyers'])
-              IChip(b == 'fyers' ? 'Fyers' : 'Tradebulls', selected: _broker == b, onTap: () => setState(() {
-                _broker = b;
-                _error = '';
-              })),
-          ]),
+          // Part 19: kit pick chips (same two exchanges, same setState)
+          OwlPickChipRow(
+            labels: const ['Tradebulls', 'Fyers'],
+            selected: _broker == 'fyers' ? 1 : 0,
+            onSelect: (i) => setState(() {
+              _broker = i == 1 ? 'fyers' : 'tradebulls';
+              _error = '';
+            }),
+          ),
           ..._balances(t, p),
           if (_broker == 'fyers') ..._whatIfLines(t, p),
           ..._authLines(t, p),
@@ -329,11 +346,10 @@ class _IndiaBrokerCardState extends State<IndiaBrokerCard> {
             _field(_user, 'User ID', hint: saved['user_id'] != null ? 'saved: ${saved['user_id']}' : 'e.g. AB1234'),
             _field(_key, 'API key', hint: saved['api_key'] != null ? 'saved: ${saved['api_key']}' : ''),
             const SizedBox(height: 10),
-            IChoice<String>(
-              values: const ['PASSWORD', 'MPIN'],
-              current: _loginType,
-              label: (v) => v == 'PASSWORD' ? 'Password' : 'MPIN',
-              onPick: (v) => setState(() => _loginType = v),
+            OwlPickChipRow(
+              labels: const ['Password', 'MPIN'],
+              selected: _loginType == 'MPIN' ? 1 : 0,
+              onSelect: (i) => setState(() => _loginType = i == 1 ? 'MPIN' : 'PASSWORD'),
             ),
             _field(_pass, _loginType == 'MPIN' ? 'MPIN' : 'Password', secret: true),
             _field(_tfa, '2FA password (second_auth)', secret: true),

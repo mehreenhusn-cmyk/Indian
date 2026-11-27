@@ -13,7 +13,10 @@ import '../widgets/exit_confirm.dart';
 import '../widgets/live_ticker_bar.dart' show MarketModeSwitch;
 import '../services/market_mode.dart';
 import '../widgets/india_ui.dart';
-import '../widgets/owl_card.dart';
+import '../widgets/owl_card.dart' hide OwlStatRow; // Part 18: OwlStatRow comes from the new kit (owl_kit_parts.dart)
+import '../widgets/owl_hero_card.dart'; // Part 18: shared UI kit (Parts 8 + 9)
+import '../widgets/owl_kit_extras.dart';
+import '../widgets/owl_kit_parts.dart';
 import 'india_chart_screen.dart';
 import 'india_option_chain_screen.dart';
 import 'india_pnl_report_screen.dart';
@@ -206,7 +209,7 @@ class _IndiaPaperScreenState extends State<IndiaPaperScreen> {
   Widget _body(AppPalette p, AppText t) {
     final st = _st;
     if (st == null) {
-      return const Center(child: CircularProgressIndicator());
+      return const OwlShimmerList(count: 3); // Part 18: kit shimmer instead of a spinner
     }
     final settings = Map<String, dynamic>.from((st['settings'] as Map?) ?? {});
     switch (_tab) {
@@ -364,44 +367,36 @@ class _IndiaPaperScreenState extends State<IndiaPaperScreen> {
           const SizedBox(height: AppSpacing.m),
 
           // P&L card (Day / Realised / Unrealised / Charges, then account)
-          ICard(
-            tint: day > 0 ? p.profit.withOpacity(0.5) : (day < 0 ? p.loss.withOpacity(0.5) : null),
-            padding: const EdgeInsets.all(14),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text("Today's P&L", style: IT.small(context)),
-              const SizedBox(height: 2),
-              FittedBox(
-                fit: BoxFit.scaleDown,
-                alignment: Alignment.centerLeft,
-                child: Text(inr(day, sign: true), style: IT.big(context).copyWith(fontSize: 26, color: pnlColor(p, day))),
-              ),
-              const SizedBox(height: 10),
-              Row(children: [
-                IMetric('Realised', inr(nd(sm['realized_today']), sign: true), color: pnlColor(p, nd(sm['realized_today']))),
-                IMetric('Unrealised', inr(nd(sm['unrealized']), sign: true), color: pnlColor(p, nd(sm['unrealized']))),
-                IMetric('Charges', inr(nd(sm['fees_today']))),
-              ]),
-              const Divider(height: 22),
-              Row(children: [
-                IMetric('Equity', inr(nd(sm['equity']))),
-                IMetric('Cash', inr(nd(sm['cash']))),
-                IMetric('Since start', inr(nd(sm['total_pnl']), sign: true), color: pnlColor(p, nd(sm['total_pnl']))),
-              ]),
-            ]),
+          // Part 18: ONE hero card (today's result big) + 2 rows of kit tiles. Same numbers as the old P&L card, nothing dropped.
+          OwlHeroCard(
+            label: "TODAY'S P&L",
+            value: inr(day, sign: true),
+            sub: 'Since start ${inr(nd(sm['total_pnl']), sign: true)}  ·  Charges today ${inr(nd(sm['fees_today']))}',
+            tone: day > 0 ? 'good' : (day < 0 ? 'bad' : ''),
           ),
+          const SizedBox(height: AppSpacing.s),
+          OwlStatRow(tiles: [
+            OwlStatTile(label: 'Realised', value: inr(nd(sm['realized_today']), sign: true), tone: nd(sm['realized_today']) > 0 ? 'good' : (nd(sm['realized_today']) < 0 ? 'bad' : '')),
+            OwlStatTile(label: 'Unrealised', value: inr(nd(sm['unrealized']), sign: true), tone: nd(sm['unrealized']) > 0 ? 'good' : (nd(sm['unrealized']) < 0 ? 'bad' : '')),
+          ]),
+          const SizedBox(height: AppSpacing.s),
+          OwlStatRow(tiles: [
+            OwlStatTile(label: 'Equity', value: inr(nd(sm['equity']))),
+            OwlStatTile(label: 'Cash', value: inr(nd(sm['cash']))),
+          ]),
           const SizedBox(height: AppSpacing.m),
           _periods(p, st),
           const SizedBox(height: AppSpacing.l),
 
           // Open positions
-          IHeading('OPEN POSITIONS (${_positions.length})'),
-          if (_positions.isEmpty) Text('No open paper positions.', style: IT.small(context)),
+          OwlSectionHeader(title: 'Open positions', sub: '${_positions.length} open'), // Part 18: kit heading
+          if (_positions.isEmpty) const OwlEmptyState(icon: Icons.work_outline_rounded, title: 'No open paper positions', sub: 'A trade shows here the moment a signal opens one.'),
           ..._positions.map((e) => _positionCard(p, t, Map<String, dynamic>.from(e as Map))),
           const SizedBox(height: AppSpacing.l),
 
           // Signals - which trade came out and which did not
-          IHeading('SIGNALS - TRADE OPENED OR SKIPPED'),
-          if (events.isEmpty) Text('No signals yet. Start the engine and wait for a candle close.', style: IT.small(context)),
+          const OwlSectionHeader(title: 'Signals', sub: 'trade opened or skipped'), // Part 18: kit heading
+          if (events.isEmpty) const OwlEmptyState(icon: Icons.bolt_outlined, title: 'No signals yet', sub: 'Start the engine and wait for a candle close.'),
           ...events.take(10).map((e) {
             final m = Map<String, dynamic>.from(e as Map);
             final ok = m['ok'] == true;

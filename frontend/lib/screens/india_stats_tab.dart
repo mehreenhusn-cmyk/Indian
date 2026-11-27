@@ -7,6 +7,9 @@ import '../services/india_api.dart';
 import '../theme/app_theme.dart';
 import '../widgets/india_ui.dart';
 import '../widgets/owl_route.dart';
+import '../widgets/owl_hero_card.dart'; // Part 19: shared UI kit (Parts 8 + 9)
+import '../widgets/owl_kit_extras.dart';
+import '../widgets/owl_kit_parts.dart';
 import '../config_flags.dart';
 import 'strategy_doctor_screen.dart';
 
@@ -63,24 +66,18 @@ class _IndiaStatsTabState extends State<IndiaStatsTab> {
   Color _c(BuildContext c, double v) => v > 0 ? c.palette.profit : (v < 0 ? c.palette.loss : c.palette.textSecondary);
   String _rs(double v) => '${v < 0 ? '-' : (v > 0 ? '+' : '')}${inr(v.abs(), dp: 0)}';
 
-  Widget _big(BuildContext context, String label, String value, {Color? color, String? sub}) {
+  // Part 19: the old ICard tile is now the shared kit tile (tone: 'good' green, 'bad' red, '' neutral). The old colour argument is still accepted.
+  String _tone(double v) => v > 0 ? 'good' : (v < 0 ? 'bad' : '');
+
+  Widget _big(BuildContext context, String label, String value, {Color? color, String? tone, String? sub}) {
     final p = context.palette;
-    return Expanded(
-      child: ICard(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(label, style: IT.small(context).copyWith(letterSpacing: 0.3)),
-          const SizedBox(height: 4),
-          FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text(value, maxLines: 1, style: IT.big(context).copyWith(color: color ?? p.textPrimary))),
-          if (sub != null) ...[const SizedBox(height: 2), Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: IT.small(context).copyWith(fontSize: 10))],
-        ]),
-      ),
-    );
+    final tn = tone ?? (color == null ? '' : (color == p.profit ? 'good' : (color == p.loss ? 'bad' : '')));
+    return OwlStatTile(label: label, value: value, sub: sub ?? '', tone: tn);
   }
 
   Widget _row2(Widget a, Widget b) => Padding(
         padding: const EdgeInsets.only(bottom: 8),
-        child: Row(children: [a, const SizedBox(width: 8), b]),
+        child: OwlStatRow(tiles: [a, b]),
       );
 
   @override
@@ -88,7 +85,7 @@ class _IndiaStatsTabState extends State<IndiaStatsTab> {
     final p = context.palette;
     final s = _s;
     if (s == null) {
-      return Center(child: _err != null ? Text(_err!, style: IT.small(context).copyWith(color: p.loss)) : const CircularProgressIndicator());
+      return _err != null ? Center(child: Text(_err!, style: IT.small(context).copyWith(color: p.loss))) : const OwlShimmerList(count: 3); // Part 19: kit shimmer
     }
     final n = _i(s['trades']);
     final net = _d(s['net_pnl']);
@@ -100,16 +97,24 @@ class _IndiaStatsTabState extends State<IndiaStatsTab> {
         padding: const EdgeInsets.fromLTRB(AppSpacing.l, 4, AppSpacing.l, AppSpacing.huge),
         children: [
           if (n == 0)
-            ICard(child: Text('No closed trades yet. Numbers appear after the first trade closes.', style: IT.body(context))),
+            const OwlEmptyState(icon: Icons.query_stats_rounded, title: 'No closed trades yet', sub: 'Numbers appear after the first trade closes.'), // Part 19
           if (n > 0) ...[
             if (n < 30)
               Padding(
                 padding: const EdgeInsets.only(bottom: 8),
                 child: Text('Only $n trades so far - these numbers can still swing a lot. Judge after 30+.', style: IT.small(context).copyWith(color: p.warning)),
               ),
-            _row2(
-              _big(context, 'NET P&L (after charges)', _rs(net), color: _c(context, net), sub: 'charges paid ${inr(_d(s['fees']), dp: 0)}'),
-              _big(context, 'WIN RATE', '${_d(s['win_rate']).toStringAsFixed(0)}%', sub: '${_i(s['wins'])} won · ${_i(s['losses'])} lost'),
+            // Part 19: ONE hero card = net result big, with the win bar (win rate); same numbers as the two old tiles.
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: OwlHeroCard(
+                label: 'NET P&L (AFTER CHARGES)',
+                value: _rs(net),
+                sub: 'charges paid ${inr(_d(s['fees']), dp: 0)}  ·  win rate ${_d(s['win_rate']).toStringAsFixed(0)}%',
+                tone: _tone(net),
+                share: _d(s['win_rate']).clamp(0.0, 100.0) / 100.0,
+                shareCaption: '${_i(s['wins'])} won  ·  ${_i(s['losses'])} lost',
+              ),
             ),
             _row2(
               _big(context, 'R : R', rr == null ? '—' : '1 : ${_d(rr).toStringAsFixed(2)}', sub: 'avg win ${inr(_d(s['avg_win']), dp: 0)} / avg loss ${inr(_d(s['avg_loss']).abs(), dp: 0)}'),
@@ -120,14 +125,14 @@ class _IndiaStatsTabState extends State<IndiaStatsTab> {
               _big(context, 'PROFIT FACTOR', pf == null ? '—' : _d(pf).toStringAsFixed(2), sub: 'wins ÷ losses, above 1 = profit'),
             ),
             const SizedBox(height: 4),
-            const IHeading('Equity curve'),
+            const OwlSectionHeader(title: 'Equity curve'), // Part 19: kit heading
             ICard(padding: const EdgeInsets.fromLTRB(8, 14, 12, 8), child: SizedBox(height: 170, child: _curve(context, s))),
             const SizedBox(height: 8),
             _row2(
               _big(context, 'BEST TRADE', _rs(_d(s['best_trade'])), color: p.profit, sub: 'win streak ${_i(s['max_win_streak'])}'),
               _big(context, 'WORST TRADE', _rs(_d(s['worst_trade'])), color: p.loss, sub: 'loss streak ${_i(s['max_loss_streak'])}'),
             ),
-            const IHeading('Where it makes / loses money'),
+            const OwlSectionHeader(title: 'Where it makes / loses money'), // Part 19: kit heading
             _groupCard(context, 'By index', s['by_index']),
             const SizedBox(height: 8),
             _groupCard(context, 'Call (CE) vs Put (PE)', s['by_side']),
