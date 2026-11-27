@@ -19,7 +19,10 @@ import '../widgets/diag_load_row.dart';
 import '../widgets/diag_section.dart';
 import '../widgets/live_wallet_card.dart';
 import '../widgets/main_sniper_table.dart';
-import '../widgets/owl_card.dart' hide OwlStat; // Part 17f: owl_number.dart has the OwlStat data class used here; owl_card.dart has a widget with the same name
+import '../widgets/owl_card.dart' hide OwlStat, OwlStatRow; // Part 17f: owl_number.dart has the OwlStat data class used here; owl_card.dart has a widget with the same name. Part 10: OwlStatRow comes from the new kit (owl_kit_parts.dart), so the old one is hidden
+import '../widgets/owl_hero_card.dart'; // Part 10: shared UI kit (Parts 8 + 9)
+import '../widgets/owl_kit_extras.dart';
+import '../widgets/owl_kit_parts.dart';
 import '../widgets/owl_pressable.dart';
 import '../widgets/owl_refresh.dart';
 import '../widgets/owl_number.dart';
@@ -63,7 +66,7 @@ class DashboardScreen extends StatelessWidget {
           builder: (context, _, child) {
             final provider = context.read<AppProvider>();
             final status = provider.status;
-            if (status.isEmpty && provider.error == null) return const DashboardSkeleton();
+            if (status.isEmpty && provider.error == null) return const OwlShimmerList(count: 3); // Part 10: kit shimmer (the old DashboardSkeleton class stays in dashboard_bits.dart)
             // STRICT STATE ISOLATION (unchanged): in LIVE mode the paper-only numbers come back null, so the hero shows real open P&L.
             final isLive = provider.statsMode == 'live';
             // Part 18B: the BIG number and the target ring are MAIN only. The 'paused' banners below keep the all-in-one book number, because that is the number the bot itself uses to pause (backend unchanged).
@@ -96,7 +99,7 @@ class DashboardScreen extends StatelessWidget {
                       // Part 7: the status header above is the always-visible health line: BE, WS, ms, LIVE age, coins, LEARN n/30 (tap = details). Order below = see Part 3.
                       // Plan B (picture ref3), top to bottom: 1 hero TODAY P&L (+ INR small, target ring only if a target is set)  2 four-column strip (Open P&L, BTC, Open positions, Signals; taps)
                       // 3 calendar  4 7 / 30 days  5 Diagnostics + System Load side by side  6 Dual / Brain / Sniper rows  7 Recent Activity  8 Equity curve  9 MORE fold (nothing deleted).
-                      _ResultHero(isLive: isLive, todayPnl: todayPnl, openCount: mainOpenCount, target: target, inrRate: inrRate, stale: connError != null),
+                      _ResultHeroKit(isLive: isLive, todayPnl: todayPnl, openCount: mainOpenCount, target: target, inrRate: inrRate, stale: connError != null),
                       if (isLive) ...[const SizedBox(height: AppSpacing.cardGap), const LiveWalletCard()],
                       const SizedBox(height: AppSpacing.m),
                       _ResultStrip(isLive: isLive, openCount: mainOpenCount),
@@ -198,6 +201,72 @@ class _ResultHero extends StatelessWidget {
   }
 }
 
+/// Part 10 (D2a, 28 Nov 2026): the Dashboard hero on the shared kit (OwlHeroCard). Same numbers, same rules as the old _ResultHero below it
+/// (which stays in the file, unused, nothing deleted): Main bot TODAY, closed trades only; live mode shows the live open P&L; a target ring only when a target is set;
+/// a small "stale" pill if the last refresh failed; the approx. INR line under the number. The big number is tinted green / red by its sign.
+class _ResultHeroKit extends StatelessWidget {
+  final bool isLive;
+  final double todayPnl;
+  final int openCount;
+  final double target;
+  final double inrRate;
+  final bool stale;
+
+  const _ResultHeroKit({required this.isLive, required this.todayPnl, required this.openCount, required this.target, required this.inrRate, required this.stale});
+
+  @override
+  Widget build(BuildContext context) {
+    final prov = context.read<AppProvider>();
+    return Selector<AppProvider, int>(
+      selector: (_, x) => Object.hash((x.openPnl * 100).round(), (x.mainToday * 100).round()),
+      builder: (context, _, __) {
+        final head = isLive ? prov.openPnl : todayPnl;
+        final label = isLive ? 'Open P&L now (live account)' : 'Today P&L - Main bot';
+        var sub = isLive ? '$openCount open positions' : 'Closed trades only. Today = since 5:30 AM IST.';
+        final inr = fmtInr(head, inrRate);
+        if (inr != null) sub = 'approx. $inr  -  $sub';
+        final showRing = !isLive && target > 0;
+        final pct = showRing ? todayPnl / target : 0.0;
+        final tone = head > 0 ? 'good' : (head < 0 ? 'bad' : '');
+        Widget? trailing;
+        if (showRing || stale) {
+          trailing = Row(mainAxisSize: MainAxisSize.min, children: [
+            if (stale) const OwlPill('stale', tone: 'warn'),
+            if (showRing) ...[
+              if (stale) const SizedBox(width: 8),
+              OwlRing(fraction: pct, center: '${(pct * 100).round()}%', caption: '', tone: todayPnl >= target ? 'good' : '', size: 52),
+            ],
+          ]);
+        }
+        return OwlHeroCard(
+          label: label.toUpperCase(),
+          value: '${fmtSigned(head)} USDT',
+          sub: sub,
+          tone: tone,
+          trailing: trailing,
+        );
+      },
+    );
+  }
+}
+
+/// Part 10: turns a list of OwlStat (value, label, tone, tap) into kit tiles, two per row. A tile with a tap is wrapped so the whole tile is tappable.
+Widget _kitStatGrid(List<OwlStat> stats) {
+  Widget tile(OwlStat s) {
+    final t = OwlStatTile(label: s.label, value: s.value, sub: s.sub, tone: s.tone);
+    if (s.onTap == null) return t;
+    return GestureDetector(onTap: s.onTap, behavior: HitTestBehavior.opaque, child: t);
+  }
+
+  final rows = <Widget>[];
+  for (var i = 0; i < stats.length; i += 2) {
+    if (i > 0) rows.add(const SizedBox(height: AppSpacing.s));
+    final pair = [tile(stats[i]), if (i + 1 < stats.length) tile(stats[i + 1])];
+    rows.add(OwlStatRow(tiles: pair));
+  }
+  return Column(children: rows);
+}
+
 /// Plan B: the 4-column strip under the hero: OPEN P&L, BTC price, OPEN POSITIONS, SIGNALS (live mode: margin used + open positions, no paper stats).
 /// Owner (5 Nov 2026): Win rate is out, the live BTC price is in (green/red by its last move; "--" until the first real price arrives).
 /// BTC is read from the same light GET /api/btc/live the BTC tile uses, every 3 s, only while the Dashboard is on screen, one call at a time.
@@ -275,7 +344,7 @@ class _ResultStripState extends State<_ResultStrip> {
                 OwlStat('$openCount', 'Positions', onTap: toPositions),
                 OwlStat('${kLite ? DashTodaySignals.countToday(prov.signals) : prov.signals.length}', kLite ? 'Signals today' : 'Signals', onTap: () => prov.goToRoute(AppRoute.signals)),
               ];
-        return OwlStatStrip(stats);
+        return _kitStatGrid(stats);
       },
     );
   }
@@ -288,23 +357,18 @@ class _PeriodRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prov = context.read<AppProvider>();
-    final p = context.palette;
     return Selector<AppProvider, String>(
       selector: (_, x) => '${(x.main7d * 100).round()}|${(x.main30d * 100).round()}|${x.main7dPartial}|${x.main30dPartial}',
       builder: (context, _, __) {
-        // Part 3: label on top, the FULL number under it (no "USDT" word beside it, so it is never cut to "+225.91 US...").
-        Widget one(String label, double v) => Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('${label.toUpperCase()} (USDT)', maxLines: 1, overflow: TextOverflow.ellipsis, style: context.type.label.copyWith(fontSize: 11, letterSpacing: 0.8)),
-                const SizedBox(height: 2),
-                Text(fmtSigned(v), maxLines: 1, softWrap: false, overflow: TextOverflow.fade, style: context.type.number.copyWith(fontSize: 17, fontWeight: FontWeight.w700, color: v > 0 ? p.profit : (v < 0 ? p.loss : p.textPrimary))),
-              ]),
-            );
-        return Container(
-          padding: const EdgeInsets.only(bottom: AppSpacing.m),
-          decoration: BoxDecoration(border: Border(bottom: BorderSide(color: p.border))),
-          child: Row(children: [one(prov.main7dPartial ? '7 days Main, partial' : '7 days Main', prov.main7d), const SizedBox(width: AppSpacing.m), one(prov.main30dPartial ? '30 days Main, partial' : '30 days Main', prov.main30d)]),
-        );
+        // Part 10: two kit tiles under a small section header. The FULL signed number is printed (no "USDT" word beside it, so it is never cut).
+        String tone(double v) => v > 0 ? 'good' : (v < 0 ? 'bad' : '');
+        return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const OwlSectionHeader(title: 'Main bot', sub: 'last 7 and 30 days, USDT'),
+          OwlStatRow(tiles: [
+            OwlStatTile(label: prov.main7dPartial ? '7 days (partial)' : '7 days', value: fmtSigned(prov.main7d), tone: tone(prov.main7d)),
+            OwlStatTile(label: prov.main30dPartial ? '30 days (partial)' : '30 days', value: fmtSigned(prov.main30d), tone: tone(prov.main30d)),
+          ]),
+        ]);
       },
     );
   }

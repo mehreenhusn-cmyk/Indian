@@ -1,3 +1,5 @@
+> **28 Nov 2026 LATER: Parts 7, 8, 9, 10 are BUILT (Study page, UI kit A + B, Dashboard on the kit). NEXT = Part 11 (bottom bar + More page + 2 small widgets, ~250 lines), then 12 (Positions). Owner wants ONE cumulative zip and ONE push at the very end. Dart not compiled, GitHub build is the first compile.**
+
 # README_OWNER - owner problem + what is done (10 Nov 2026)
 
 > **28 Nov 2026 NEWEST: PUMP / DUMP UPGRADE. Read README_PUMPDUMP.md first when the owner says "pump dump ka kaam karo". Parts 1-6 (Naye Movers, Taiyari me, Cooling Watch backend + app, indicator study backend = pd_study.py, route /api/pd/study) are BUILT 28 Nov 2026, waiting for the owner's phone test. ALL remaining work is split into numbered parts (7-19) in README_PUMPDUMP.md section 19 (Part 7 = app Study page); the study is in README_PUMPDUMP.md section 21; MAX 400 LINES PER PART (owner rule 28 Nov 2026).**
