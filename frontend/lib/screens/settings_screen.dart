@@ -8,7 +8,10 @@ import '../services/sound_service.dart';
 import '../widgets/ai_keys_card.dart';
 import '../widgets/owl_route.dart';
 import '../widgets/report_download_card.dart';
+import '../widgets/owl_kit_parts.dart'; // Part 16: shared UI kit (Parts 8 + 9)
+import '../widgets/settings_choice_row.dart'; // Part 16: new setting widgets
 import '../widgets/settings_group.dart';
+import '../widgets/settings_switch_row.dart';
 import '../widgets/settings_input_field.dart';
 import 'ai_assistant_screen.dart';
 import '../theme/app_theme.dart';
@@ -598,80 +601,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
       summary: summaryText,
       initiallyExpanded: false,
       children: [
-        SizedBox(
-          width: double.infinity,
-          child: SegmentedButton<ThemeMode>(
-            segments: const [
-              ButtonSegment(value: ThemeMode.light, label: Text('Light'), icon: Icon(Icons.light_mode_outlined)),
-              ButtonSegment(value: ThemeMode.dark, label: Text('Dark'), icon: Icon(Icons.dark_mode_outlined)),
-              ButtonSegment(value: ThemeMode.system, label: Text('System'), icon: Icon(Icons.phone_android_outlined)),
-            ],
-            selected: {mode},
-            onSelectionChanged: (sel) => context.read<AppProvider>().setThemeMode(sel.first),
-            style: SegmentedButton.styleFrom(
-              selectedBackgroundColor: p.accent.withOpacity(0.18),
-              selectedForegroundColor: p.accent,
-            ),
-          ),
+        // Part 16: two kit choice rows instead of two SegmentedButtons (same options, same setters).
+        SettingsChoiceRow(
+          title: 'Theme',
+          labels: const ['Light', 'Dark', 'System'],
+          selected: mode == ThemeMode.light ? 0 : (mode == ThemeMode.dark ? 1 : 2),
+          onSelect: (i) => context.read<AppProvider>().setThemeMode(i == 0 ? ThemeMode.light : (i == 1 ? ThemeMode.dark : ThemeMode.system)),
         ),
-        const SizedBox(height: AppSpacing.s),
-        Text('Card look', style: context.type.label.copyWith(fontWeight: FontWeight.w800)),
-        const SizedBox(height: 4),
         ValueListenableBuilder<int>(
           valueListenable: OwlLookMode.mode,
-          builder: (context, lookMode, _) => SizedBox(
-            width: double.infinity,
-            child: SegmentedButton<int>(
-              segments: const [
-                ButtonSegment(value: OwlLookMode.classic, label: Text('Classic'), icon: Icon(Icons.crop_square_rounded)),
-                ButtonSegment(value: OwlLookMode.glass, label: Text('Glass'), icon: Icon(Icons.blur_on_rounded)),
-                ButtonSegment(value: OwlLookMode.gradient, label: Text('Gradient'), icon: Icon(Icons.gradient_rounded)),
-              ],
-              selected: {lookMode},
-              onSelectionChanged: (sel) => OwlLookMode.set(sel.first),
-              style: SegmentedButton.styleFrom(
-                selectedBackgroundColor: p.accent.withOpacity(0.18),
-                selectedForegroundColor: p.accent,
-              ),
-            ),
+          builder: (context, lookMode, _) => SettingsChoiceRow(
+            title: 'Card look',
+            caption: kLite ? 'Changes the cards (Positions, Dashboard and most screens) at once. Saved on this phone.' : 'Changes the cards (Positions, Sniper, Dashboard and most screens) at once. Saved on this phone.',
+            labels: const ['Classic', 'Glass', 'Gradient'],
+            selected: lookMode,
+            onSelect: (i) => OwlLookMode.set(i),
           ),
         ),
-        const SizedBox(height: 4),
-        Text(kLite ? 'Changes the cards (Positions, Dashboard and most screens) at once. Saved on this phone.' : 'Changes the cards (Positions, Sniper, Dashboard and most screens) at once. Saved on this phone.', style: context.type.caption),
       ],
     );
   }
 
   Widget _voiceRow(BuildContext context, String title, String subtitle, bool value, ValueChanged<bool>? onChanged) {
-    final p = context.palette;
-    final t = context.type;
-    return Padding(
-      padding: const EdgeInsets.only(top: AppSpacing.s),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: t.secondary.copyWith(color: p.textPrimary, fontWeight: FontWeight.w600)),
-                const SizedBox(height: 2),
-                Text(subtitle, style: t.metadata),
-              ],
-            ),
-          ),
-          Switch(
-            value: value,
-            activeColor: p.accent,
-            onChanged: onChanged == null
-                ? null
-                : (v) {
-                    AppHaptics.light();
-                    onChanged(v);
-                  },
-          ),
-        ],
-      ),
-    );
+    // Part 16: the row is now the shared SettingsSwitchRow (same look, a disabled row is greyed out too).
+    return SettingsSwitchRow(title: title, subtitle: subtitle, value: value, onChanged: onChanged);
   }
 
   Widget _voiceCard(BuildContext context) {
@@ -716,6 +669,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
         testBtn('Test target hit', Icons.volume_up_rounded, TradeSound.targetHit),
         testBtn('Test stop loss hit', Icons.volume_up_rounded, TradeSound.stopLossHit),
       ],
+    );
+  }
+
+  /// Part 16 (D5a, 28 Nov 2026): the four facts at the top (mode, timeframe, max open, schedule) as 2 x 2 kit tiles, the same numbers the old frosted header showed.
+  /// LIVE is red, a schedule that is ON is green. No blur any more, so the page scrolls lighter.
+  Widget _statusHeader(AppPalette p, AppText t) {
+    final maxOpen = (double.tryParse(_controllers['max_open_trades']!.text.trim()) ?? 0);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.m),
+      child: Column(children: [
+        OwlStatRow(tiles: [
+          OwlStatTile(label: 'Mode', value: _liveTradingEnabled ? 'LIVE' : 'PAPER', tone: _liveTradingEnabled ? 'bad' : '', icon: Icons.bolt_rounded),
+          OwlStatTile(label: 'Timeframe', value: _timeframe, icon: Icons.schedule),
+        ]),
+        const SizedBox(height: AppSpacing.s),
+        OwlStatRow(tiles: [
+          OwlStatTile(label: 'Max open', value: maxOpen == 0 ? 'No limit' : _fmtVal(maxOpen), icon: Icons.layers_outlined),
+          OwlStatTile(label: 'Schedule', value: _dailyGate ? 'ON' : 'OFF', tone: _dailyGate ? 'good' : '', icon: Icons.event_available_outlined),
+        ]),
+      ]),
     );
   }
 
@@ -804,9 +777,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
               children: [
                 Padding(
                   padding: const EdgeInsets.fromLTRB(AppSpacing.l, AppSpacing.s, AppSpacing.l, AppSpacing.s),
-                  child: Row(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text('Settings', style: t.section.copyWith(fontSize: 22, fontWeight: FontWeight.bold)),
+                      Padding(padding: const EdgeInsets.only(top: 2), child: Text('Tap a card to open it. Changes show a Save bar.', style: TextStyle(fontSize: 12.5, color: p.textMuted))), // Part 16
                     ],
                   ),
                 ),
@@ -835,7 +810,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               style: t.metadata.copyWith(color: p.warning),
                             ),
                           ),
-                        _glassHeader(p, t),
+                        _statusHeader(p, t), // Part 16: kit tiles (the old frosted _glassHeader below stays in the file, unused, nothing deleted)
                         const SettingsHeading('Trading'),
                         // ---- Part 63: the old Trade Risk card is now 5 small groups (same fields, same order, same code) ----
                         SettingsGroup(

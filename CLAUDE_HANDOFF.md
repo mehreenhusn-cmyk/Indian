@@ -1,4 +1,4 @@
-> **28 Nov 2026 LATER: Parts 7 to 15 are BUILT (Study page, UI kit A + B, Dashboard, bottom bar + More, Positions, Results + position card, Signals, Market). NEXT = Part 16 (Settings first half + 2 new widgets, ~300 lines), then 17 (Settings second half). Owner wants ONE cumulative zip and ONE push at the very end. Dart not compiled, GitHub build is the first compile.**
+> **28 Nov 2026 LATER: Parts 7 to 16 are BUILT (Study page, UI kit A + B, Dashboard, bottom bar + More, Positions, Results + position card, Signals, Market, Settings first half). NEXT = Part 17 (Settings second half, ~300 lines), then 18 (India paper + option chain), 19 (broker card + stats + P&L report). 3 parts, about 1,100 lines left. Owner wants ONE cumulative zip and ONE push at the very end. Dart not compiled, GitHub build is the first compile.**
 
 # README_OWNER - owner problem + what is done (10 Nov 2026)
 
