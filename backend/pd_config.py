@@ -13,7 +13,7 @@ import os
 import threading
 import time
 
-VERSION = "pd 4 (28 Nov 2026, Round 3A)"
+VERSION = "pd 6 (28 Nov 2026, Round 4 study A + B)"
 
 DEFAULTS = {
     "poll_sec": 20,          # one Binance 24h-ticker call (all coins) every 20 s
@@ -91,6 +91,19 @@ DEFAULTS = {
     "cool_fund_min": 30,
     "cool_real_move": 10.0,
     "cool_check_min": 2880,
+    # ---- Round 4 (28 Nov 2026): indicator study, parts 5 + 6. One setting per line, never a # comment in the middle of a line.
+    "study_days": 14,
+    "study_min_n": 100,
+    "study_cell_min": 20,
+    "study_coins": 12,
+    "study_step_max": 3,
+    "study_limit": 999,
+    "study_phase_bars": 12,
+    "study_phase_pct": 3.0,
+    "study_bounce": 0.5,
+    "study_bounce_bars": 12,
+    "study_break_bars": 3,
+    "study_fwd_bars": 12,
 }
 # the only keys the tuner may change: (min, max, step)
 TUNABLE = {"start_vol": (3.0, 8.0, 0.5), "watch_vol": (1.5, 4.0, 0.5)}

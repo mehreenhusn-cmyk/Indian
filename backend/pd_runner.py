@@ -14,11 +14,12 @@ import pd_learn
 import pd_pre
 import pd_rank
 import pd_scorer as S
+import pd_study
 import pd_store as ST
 import pd_tracker
 import pd_tsi
 
-_R = {"thread": None, "stop": False, "feed": None, "tracker": None, "learn": None, "rank": None, "pre": None, "cool": None, "lock": threading.RLock(),
+_R = {"thread": None, "stop": False, "feed": None, "tracker": None, "learn": None, "rank": None, "pre": None, "cool": None, "study": None, "lock": threading.RLock(),
       "state": {"running": False, "enabled": True, "last_poll": 0.0, "last_error": "", "errors": 0, "polls": 0, "tracked": 0, "started": 0.0, "events_today": 0, "restored": 0}}
 _SAVE_EVERY = 120  # seconds between history saves (Round E)
 _last_save = [0.0]
@@ -37,7 +38,15 @@ def _emit(ev):
     ST.append("events", ev["day"], ev)
     _R["state"]["events_today"] = _R["state"].get("events_today", 0) + 1
     if ev["stage"] == "START" and _R["learn"] is not None:
-        _R["learn"].add_start(ev)
+        feat = None
+        if _R["rank"] is not None:      # Round 4 (Part 5): the indicator snapshot of this coin at the START, for the study. A problem here never stops the alert.
+            try:
+                kl = _R["rank"].kl
+                kl.step([ev["symbol"]], time.time())            # fetches the time frames not cached yet (call cap and back-off still apply)
+                feat = pd_study.compact(kl.tf_data(ev["symbol"]))
+            except Exception as e:
+                print(f"[pd] study snapshot failed: {type(e).__name__}: {e}")
+        _R["learn"].add_start(ev, feat)
     if ev["stage"] == "START" and _R["pre"] is not None:      # Round 2: how long before this START did "Taiyari me" show the coin?
         try:
             _R["pre"].on_start(ev)
@@ -46,7 +55,7 @@ def _emit(ev):
     print("[pd] %s %s %s %+.1f%% vol %.1fx score %s" % (ev["stage"], ev["side"], ev["symbol"], ev["r5"], ev["vr5"], ev["score"]))
 
 
-def step(feed, tracker, learn, now, rank=None, pre=None, cool=None):
+def step(feed, tracker, learn, now, rank=None, pre=None, cool=None, study=None):
     """ONE poll cycle (also used by the test). Returns the number of coins tracked."""
     n = feed.poll(now)
     poll = C.get("poll_sec")
@@ -89,12 +98,17 @@ def step(feed, tracker, learn, now, rank=None, pre=None, cool=None):
                 cool.update(feed, now)
             except Exception as e:
                 print(f"[pd] cool step failed: {type(e).__name__}: {e}")
+        if study is not None:         # Round 4: the daily indicator study (idle most of the day). Never stops the scanner.
+            try:
+                study.update(now)
+            except Exception as e:
+                print(f"[pd] study step failed: {type(e).__name__}: {e}")
     return n
 
 
 def _loop(data_dir):
     st = _R["state"]
-    feed, tracker, learn, rank, pre, cool = _R["feed"], _R["tracker"], _R["learn"], _R["rank"], _R["pre"], _R["cool"]
+    feed, tracker, learn, rank, pre, cool, study = _R["feed"], _R["tracker"], _R["learn"], _R["rank"], _R["pre"], _R["cool"], _R["study"]
     backoff = 0
     st.update(running=True, started=time.time())
     while not _R["stop"]:
@@ -108,10 +122,11 @@ def _loop(data_dir):
                     rank.clear()
                     pre.clear()
                     cool.clear()
+                    study.clear()
                 time.sleep(5)
                 continue
             now = time.time()
-            n = step(feed, tracker, learn, now, rank, pre, cool)
+            n = step(feed, tracker, learn, now, rank, pre, cool, study)
             st.update(last_poll=now, tracked=n, polls=feed.polls, last_error="")
             if now - _last_save[0] >= _SAVE_EVERY and feed.warm_left_min(now) <= 0:
                 _last_save[0] = now
@@ -145,6 +160,7 @@ def start(data_dir):
         _R["tracker"].adj = dict(_R["learn"].tuner.get("coin_adj", {}))
         _R["rank"] = pd_rank.Rank(pd_tsi.Klines(), pd_chance.Chance())
         _R["cool"] = pd_cool.Cool(_R["rank"].kl)    # Round 3A: same candle cap and back-off
+        _R["study"] = pd_study.Study(_R["rank"].kl)  # Round 4: same candle cap and back-off
         _R["pre"] = pd_pre.Pre(_R["rank"].kl)       # Round 2: shares the candle cache of Round 1 (one cap of calls per minute for both)
         _R["stop"] = False
         _R["state"]["enabled"] = enabled()
@@ -207,6 +223,16 @@ def cool_view(now=None):
         return {"state": "off", "ready": False, "cool": []}
     out = cl.snapshot(now)
     out["enabled"] = _R["state"]["enabled"]
+    return out
+
+
+def study_view(full=False):
+    """Round 4: the newest indicator study (GET /api/pd/study). summary = the verdict lines; full = all tables of that day."""
+    summ = ST.read_json("study/summary.json", {})
+    out = {"state": "ok" if summ else "no_data", "summary": summ, "data_days": len(ST.list_days("study_rows")),
+           "waiting_24h": len(_R["learn"].sp) if _R["learn"] is not None else 0, "job": _R["study"].status() if _R["study"] is not None else {}}
+    if full and summ:
+        out["full"] = ST.read_json("study/%s.json" % summ.get("day"), {})
     return out
 
 

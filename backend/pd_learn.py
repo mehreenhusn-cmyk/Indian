@@ -4,6 +4,8 @@
   3 TUNER     once a day: a small report (which rule gave real pumps / dumps, which gave fake ones), a score penalty for coins that give fake alerts
               again and again (a small bonus for clean ones), and the start / watch volume threshold moves ONE small step (never outside its bounds),
               only after min_outcomes (100) checked alerts of the last 14 days. Every change is written down with its reason. auto_tune off = report only.
+4 STUDY     (Round 4, Part 5) every START also keeps the indicator snapshot (TSI / Z / ZSM / EMA per time frame) and its move after 1 h / 4 h / 1 day in
+              study_rows/<day>.jsonl. pd_study.py reads those rows once a day. This does NOT change outcomes, tuner or alerts.
 Nothing here places an order."""
 import time
 
@@ -11,6 +13,7 @@ import pd_config as C
 import pd_store as ST
 
 CHECKS = (15, 30, 60)
+STUDY_H = (60, 240, 1440)   # minutes after the START that the study looks at
 
 
 class Learner:
@@ -25,9 +28,13 @@ class Learner:
         self.tuner.setdefault("last_tune_day", "")
         for p in ST.read_json("pending.json", {}).get("items", []):
             self.pending.append(p)
+        self.sp = list(ST.read_json("study_pending.json", {}).get("items", []))   # STARTs waiting for their 1 h / 4 h / 1 day result (study only)
 
     # -------------------------------------------------------------- 1 outcomes
-    def add_start(self, ev):
+    def add_start(self, ev, feat=None):
+        if feat:                                           # Round 4: the indicator snapshot at the START (None = no candle data yet, not studied)
+            self.sp.append({"id": ev["id"], "symbol": ev["symbol"], "side": ev["side"], "ts": ev["ts"], "day": ev["day"], "price": ev["price"],
+                            "score": ev["score"], "feat": feat, "m": {}, "mfe": 0.0, "mae": 0.0})
         self.pending.append({"id": ev["id"], "symbol": ev["symbol"], "side": ev["side"], "ts": ev["ts"], "day": ev["day"], "price": ev["price"],
                              "score": ev["score"], "brk": ev.get("brk", False), "flat": ev.get("flat", False), "vr5": ev.get("vr5", 0.0),
                              "mfe": 0.0, "mae": 0.0, "pct": {}})
@@ -50,8 +57,33 @@ class Learner:
             else:
                 keep.append(o)
         self.pending = keep
+        self._track_study(prices, now)
         if now - self._saved > 60:
             self.save_pending(now)
+
+    def _track_study(self, prices, now):
+        """Round 4: the move (in the alert's direction, %) at 1 h / 4 h / 1 day after each START. A problem here never touches the alerts."""
+        try:
+            keep = []
+            for o in self.sp:
+                p = prices.get(o["symbol"])
+                if p:
+                    mv = (1.0 if o["side"] == "pump" else -1.0) * (p / o["price"] - 1.0) * 100.0
+                    if now <= o["ts"] + STUDY_H[1] * 60:
+                        o["mfe"], o["mae"] = max(o["mfe"], mv), min(o["mae"], mv)
+                    for m in STUDY_H:
+                        if str(m) not in o["m"] and now >= o["ts"] + m * 60:
+                            o["m"][str(m)] = round(mv, 2)
+                if str(STUDY_H[2]) in o["m"] or now - o["ts"] > 26 * 3600:
+                    if "60" in o["m"]:
+                        ST.append("study_rows", o["day"], {"id": o["id"], "symbol": o["symbol"], "side": o["side"], "ts": o["ts"], "day": o["day"], "price": o["price"],
+                                                           "score": o["score"], "feat": o["feat"], "m60": o["m"].get("60"), "m240": o["m"].get("240"),
+                                                           "m1440": o["m"].get("1440"), "mfe240": round(o["mfe"], 2), "mae240": round(o["mae"], 2)})
+                else:
+                    keep.append(o)
+            self.sp = keep
+        except Exception as e:
+            print(f"[pd] study track failed: {type(e).__name__}: {e}")
 
     def _finish(self, o):
         last = o["pct"].get("60", o["pct"].get("30", o["pct"].get("15", 0.0)))
@@ -64,6 +96,7 @@ class Learner:
         self._saved = now
         try:
             ST.write_json("pending.json", {"items": self.pending})
+            ST.write_json("study_pending.json", {"items": self.sp})
         except Exception as e:
             print(f"[pd] pending save failed: {e}")
 

@@ -71,7 +71,7 @@ def prune(keep_days):
     """Delete day files older than keep_days (only inside the pumpdump folder)."""
     cut = time.strftime("%Y-%m-%d", time.gmtime(time.time() + C.get("tz_min") * 60 - keep_days * 86400))
     n = 0
-    for kind in ("events", "outcomes", "missed", "reports"):
+    for kind in ("events", "outcomes", "missed", "reports", "study_rows", "study"):
         d = C.path(kind)
         try:
             for name in os.listdir(d):

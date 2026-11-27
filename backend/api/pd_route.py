@@ -4,6 +4,7 @@
   GET  /api/pd/movers        Round 1 (28 Nov 2026): Naye Movers + Pehle se chal rahe (strength, chance, TSI numbers per time frame)
   GET  /api/pd/pre           Round 2 (28 Nov 2026): Taiyari me = pre-pump / pre-dump coins (price still flat, buyers / sellers arriving)
   GET  /api/pd/cool          Round 3A (28 Nov 2026): Cooling Watch = coins that pumped in the last 10 days (TREND / PEAK / COOLING / WARNING / DUMP_START)
+  GET  /api/pd/study         Round 4 (28 Nov 2026): the indicator study (TSI 0, Z length, SD bands, ZSM, entry timing, far from EMA); ?full=1 adds all tables
   GET  /api/pd/learning      the newest daily report, thresholds, penalties, the changes the tuner made
   POST /api/pd/toggle        {"enabled": bool} and / or {"auto_tune": bool}
 Never raises: a problem answers {"state": "error", ...}. Mounted by api_server.py unless OWL_PUMPDUMP=0."""
@@ -163,6 +164,10 @@ def make_router(require_api_token, data_dir):
     @r.get("/api/pd/cool", dependencies=[Depends(require_api_token)])
     async def pd_cool():
         return await asyncio.to_thread(_safe, R.cool_view)
+
+    @r.get("/api/pd/study", dependencies=[Depends(require_api_token)])
+    async def pd_study(full: int = 0):
+        return await asyncio.to_thread(_safe, R.study_view, bool(full))
 
     @r.get("/api/pd/learning", dependencies=[Depends(require_api_token)])
     async def pd_learning():
