@@ -131,10 +131,10 @@ class Klines:
             self.last_error = "%s: %s" % (type(e).__name__, str(e)[:80])
             return "error"
 
-    def step(self, symbols, now):
+    def step(self, symbols, now, tfs=None):
         """Refresh what is due, symbols in priority order, short time frames first, at most kline_step_max calls per step. Returns the calls made."""
         made, cap = 0, int(C.get("kline_step_max"))
-        for tf in TFS:
+        for tf in (tfs or TFS):
             for sym in symbols:
                 if made >= cap:
                     return made

@@ -34,18 +34,19 @@ def bucket(side, kind, vr, rank_gain, tfd, sgn):
 
 
 class Chance:
-    def __init__(self):
-        self.stats = ST.read_json("movers_chance.json", {})
+    def __init__(self, name="movers", check_min=CHECK_MIN, move_key="real_move"):
+        self.name, self.check_min, self.move_key = name, check_min, move_key   # Round 2: "pre" uses its own files, 120 min and pre_real_move
+        self.stats = ST.read_json("%s_chance.json" % name, {})
         self.stats.setdefault("buckets", {})
         self.stats.setdefault("kinds", {})
-        self.pending = list(ST.read_json("movers_pending.json", {}).get("items", []))
+        self.pending = list(ST.read_json("%s_pending.json" % name, {}).get("items", []))
         self.last_log = {}
         self._saved = 0.0
 
     def add(self, sym, side, kind, price, key, score, now):
         """Save one alert for the later check. One per coin + side + kind per 60 min. Returns True when saved."""
         k = (sym, side, kind)
-        if now - self.last_log.get(k, 0.0) < CHECK_MIN * 60:
+        if now - self.last_log.get(k, 0.0) < self.check_min * 60:
             return False
         self.last_log[k] = now
         self.pending.append({"id": "%d-%s-%s-%s" % (int(now), sym, side, kind), "symbol": sym, "side": side, "kind": kind, "ts": int(now), "day": C.day_of(now),
@@ -59,27 +60,27 @@ class Chance:
             sgn = 1.0 if o["side"] == "pump" else -1.0
             if p and o["price"]:
                 o["mfe"] = max(o["mfe"], sgn * (p / o["price"] - 1.0) * 100.0)
-            if now >= o["ts"] + CHECK_MIN * 60:
+            if now >= o["ts"] + self.check_min * 60:
                 self._finish(o)
                 done = True
             else:
                 keep.append(o)
         self.pending = keep
         if done:
-            ST.write_json("movers_chance.json", self.stats)
+            ST.write_json("%s_chance.json" % self.name, self.stats)
         if now - self._saved > 60:
             self._saved = now
             try:
-                ST.write_json("movers_pending.json", {"items": self.pending})
+                ST.write_json("%s_pending.json" % self.name, {"items": self.pending})
             except Exception as e:
-                print("[pd] movers pending save failed: %s" % e)
+                print("[pd] %s pending save failed: %s" % (self.name, e))
 
     def _finish(self, o):
-        worked = o["mfe"] >= C.get("real_move")
+        worked = o["mfe"] >= C.get(self.move_key)
         for tbl, key in ((self.stats["buckets"], o["bucket"]), (self.stats["kinds"], "%s|%s" % (o["side"], o["kind"]))):
             w, n = tbl.get(key, [0, 0])
             tbl[key] = [w + (1 if worked else 0), n + 1]
-        ST.append("movers_out", o["day"], {"id": o["id"], "symbol": o["symbol"], "side": o["side"], "kind": o["kind"], "ts": o["ts"], "price": o["price"],
+        ST.append("%s_out" % self.name, o["day"], {"id": o["id"], "symbol": o["symbol"], "side": o["side"], "kind": o["kind"], "ts": o["ts"], "price": o["price"],
                                            "bucket": o["bucket"], "score": o["score"], "mfe": round(o["mfe"], 2), "worked": worked})
 
     def rate(self, key, side, kind):

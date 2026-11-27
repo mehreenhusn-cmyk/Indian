@@ -9,6 +9,7 @@ import '../theme/app_spacing.dart';
 import '../theme/app_theme.dart';
 import '../widgets/pd_learning_card.dart';
 import '../widgets/pd_movers_widgets.dart';
+import '../widgets/pd_pre_widgets.dart';
 import '../widgets/pd_widgets.dart';
 
 /// PUMP / DUMP tab (26 Nov 2026). Coins that start to pump (left, green) or dump (right, red), found by the scanner on this phone
@@ -25,11 +26,13 @@ class PumpDumpScreen extends StatefulWidget {
 class _PumpDumpScreenState extends State<PumpDumpScreen> {
   static Map<String, dynamic>? _lastLive; // kept for the whole run: coming back to the tab shows the old numbers at once
   static Map<String, dynamic>? _lastMovers; // Round 1
+  static Map<String, dynamic>? _lastPre; // Round 2
   static Map<String, dynamic>? _lastDay;
   static String _lastDayKey = '';
 
   Map<String, dynamic>? _live = _lastLive;
   Map<String, dynamic>? _movers = _lastMovers;
+  Map<String, dynamic>? _pre = _lastPre;
   Map<String, dynamic>? _day = _lastDay;
   String _dayKey = _lastDayKey; // '' = today
   bool _onlyStart = true; // Round C: by default only the moves that reached START (hints that faded are one tap away)
@@ -66,6 +69,7 @@ class _PumpDumpScreenState extends State<PumpDumpScreen> {
       final prov = context.read<AppProvider>();
       final live = await prov.fetchPdLive();
       final movers = await prov.fetchPdMovers();
+      final pre = await prov.fetchPdPre();
       Map<String, dynamic>? day;
       _tick++;
       if (withDay || _day == null || _tick % 4 == 0) day = await prov.fetchPdDay(_dayKey);
@@ -75,6 +79,8 @@ class _PumpDumpScreenState extends State<PumpDumpScreen> {
         _lastLive = live;
         _movers = movers;
         _lastMovers = movers;
+        _pre = pre;
+        _lastPre = pre;
         if (day != null && !_bad(day)) {
           _day = day;
           _lastDay = day;
@@ -310,6 +316,8 @@ class _PumpDumpScreenState extends State<PumpDumpScreen> {
         _status(p, live),
         const SizedBox(height: 14),
         PdMoversSection(data: _movers), // Round 1: Naye movers + Pehle se chal rahe hain, above "Right now"
+        const SizedBox(height: 18),
+        PdPreSection(data: _pre), // Round 2: Taiyari me (pre-pump / pre-dump)
         const SizedBox(height: 18),
         _heading(p, 'Right now', 'coins in play, max 5 per side'),
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [

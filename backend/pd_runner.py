@@ -10,13 +10,14 @@ import pd_config as C
 import pd_feed
 import pd_chance
 import pd_learn
+import pd_pre
 import pd_rank
 import pd_scorer as S
 import pd_store as ST
 import pd_tracker
 import pd_tsi
 
-_R = {"thread": None, "stop": False, "feed": None, "tracker": None, "learn": None, "rank": None, "lock": threading.RLock(),
+_R = {"thread": None, "stop": False, "feed": None, "tracker": None, "learn": None, "rank": None, "pre": None, "lock": threading.RLock(),
       "state": {"running": False, "enabled": True, "last_poll": 0.0, "last_error": "", "errors": 0, "polls": 0, "tracked": 0, "started": 0.0, "events_today": 0, "restored": 0}}
 _SAVE_EVERY = 120  # seconds between history saves (Round E)
 _last_save = [0.0]
@@ -36,10 +37,15 @@ def _emit(ev):
     _R["state"]["events_today"] = _R["state"].get("events_today", 0) + 1
     if ev["stage"] == "START" and _R["learn"] is not None:
         _R["learn"].add_start(ev)
+    if ev["stage"] == "START" and _R["pre"] is not None:      # Round 2: how long before this START did "Taiyari me" show the coin?
+        try:
+            _R["pre"].on_start(ev)
+        except Exception as e:
+            print(f"[pd] pre lead failed: {type(e).__name__}: {e}")
     print("[pd] %s %s %s %+.1f%% vol %.1fx score %s" % (ev["stage"], ev["side"], ev["symbol"], ev["r5"], ev["vr5"], ev["score"]))
 
 
-def step(feed, tracker, learn, now, rank=None):
+def step(feed, tracker, learn, now, rank=None, pre=None):
     """ONE poll cycle (also used by the test). Returns the number of coins tracked."""
     n = feed.poll(now)
     poll = C.get("poll_sec")
@@ -68,12 +74,21 @@ def step(feed, tracker, learn, now, rank=None):
                 rank.update(feed, tracker, now)
             except Exception as e:
                 print(f"[pd] rank step failed: {type(e).__name__}: {e}")
+        if pre is not None:           # Round 2: Taiyari me (pre-pump / pre-dump). Coins already in the Round 1 lists are left out. Never stops the scanner.
+            try:
+                skip = set()
+                if rank is not None:
+                    for grp in (rank.snap["movers"], rank.snap["running"]):
+                        skip.update(r["symbol"] for side in grp for r in grp[side])
+                pre.update(feed, tracker, now, skip)
+            except Exception as e:
+                print(f"[pd] pre step failed: {type(e).__name__}: {e}")
     return n
 
 
 def _loop(data_dir):
     st = _R["state"]
-    feed, tracker, learn, rank = _R["feed"], _R["tracker"], _R["learn"], _R["rank"]
+    feed, tracker, learn, rank, pre = _R["feed"], _R["tracker"], _R["learn"], _R["rank"], _R["pre"]
     backoff = 0
     st.update(running=True, started=time.time())
     while not _R["stop"]:
@@ -85,10 +100,11 @@ def _loop(data_dir):
                     feed.clear()
                     tracker.states.clear()
                     rank.clear()
+                    pre.clear()
                 time.sleep(5)
                 continue
             now = time.time()
-            n = step(feed, tracker, learn, now, rank)
+            n = step(feed, tracker, learn, now, rank, pre)
             st.update(last_poll=now, tracked=n, polls=feed.polls, last_error="")
             if now - _last_save[0] >= _SAVE_EVERY and feed.warm_left_min(now) <= 0:
                 _last_save[0] = now
@@ -121,6 +137,7 @@ def start(data_dir):
         _R["tracker"] = pd_tracker.Tracker(_emit)
         _R["tracker"].adj = dict(_R["learn"].tuner.get("coin_adj", {}))
         _R["rank"] = pd_rank.Rank(pd_tsi.Klines(), pd_chance.Chance())
+        _R["pre"] = pd_pre.Pre(_R["rank"].kl)       # Round 2: shares the candle cache of Round 1 (one cap of calls per minute for both)
         _R["stop"] = False
         _R["state"]["enabled"] = enabled()
         t = threading.Thread(target=_loop, args=(data_dir,), daemon=True, name="pd_scanner")
@@ -157,6 +174,18 @@ def movers(now=None):
     if rk is None:
         return {"state": "off", "ready": False, "movers": {"pump": [], "dump": []}, "running": {"pump": [], "dump": []}}
     out = rk.snapshot(now)
+    out["enabled"] = _R["state"]["enabled"]
+    out["warm_left_min"] = round(_R["feed"].warm_left_min(now), 1) if _R["feed"] is not None else None
+    return out
+
+
+def pre_view(now=None):
+    """Round 2: what the app's \"Taiyari me\" section shows (GET /api/pd/pre)."""
+    now = time.time() if now is None else now
+    pr = _R["pre"]
+    if pr is None:
+        return {"state": "off", "ready": False, "pre": {"pump": [], "dump": []}}
+    out = pr.snapshot(now)
     out["enabled"] = _R["state"]["enabled"]
     out["warm_left_min"] = round(_R["feed"].warm_left_min(now), 1) if _R["feed"] is not None else None
     return out

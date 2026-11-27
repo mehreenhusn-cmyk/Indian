@@ -55,6 +55,9 @@ extension AppProviderPd on AppProvider {
   /// Round 1 (28 Nov 2026): Naye movers + Pehle se chal rahe hain (backend/pd_rank.py). Never throws; {"state": old / error} on an old backend.
   Future<Map<String, dynamic>> fetchPdMovers() => _brainGet('/api/pd/movers');
 
+  /// Round 2 (28 Nov 2026): Taiyari me = pre-pump / pre-dump (backend/pd_pre.py). Never throws; {"state": old / error} on an old backend.
+  Future<Map<String, dynamic>> fetchPdPre() => _brainGet('/api/pd/pre');
+
   /// The two switches: the scanner on / off (off = no data is used) and the self-tuning on / off. true = the phone accepted it.
   Future<bool> setPdSwitch({bool? enabled, bool? autoTune}) async {
     try {

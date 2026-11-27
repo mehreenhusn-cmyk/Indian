@@ -13,7 +13,7 @@ import os
 import threading
 import time
 
-VERSION = "pd 2 (28 Nov 2026, Round 1)"
+VERSION = "pd 3 (28 Nov 2026, Round 2)"
 
 DEFAULTS = {
     "poll_sec": 20,          # one Binance 24h-ticker call (all coins) every 20 s
@@ -54,6 +54,24 @@ DEFAULTS = {
     "w_vol": 25, "w_taker": 20, "w_tsi": 20, "w_hist": 10, "w_tf": 15, "w_rank": 10,
     "chance_prior": 0.30,
     "chance_k": 20,
+    # ---- Round 2 (28 Nov 2026): Taiyari me (pre-pump / pre-dump). One setting per line, never a # comment in the middle of a line.
+    "pre_step_sec": 60,
+    "pre_vol_lo": 2.0,
+    "pre_vol_hi": 4.0,
+    "pre_move_max": 1.0,
+    "pre_range_max": 3.0,
+    "pre_tsi_max": 10.0,
+    "pre_taker_hi": 0.55,
+    "pre_max_cand": 24,
+    "pre_max_side": 6,
+    "pre_min_score": 55,
+    "pre_stay_score": 45,
+    "pre_min_signals": 2,
+    "pre_drop_min": 10,
+    "pre_max_min": 180,
+    "pre_real_move": 3.0,
+    "pre_check_min": 120,
+    "pw_tsi": 30, "pw_hist": 20, "pw_taker": 20, "pw_vol": 20, "pw_range": 10,
 }
 # the only keys the tuner may change: (min, max, step)
 TUNABLE = {"start_vol": (3.0, 8.0, 0.5), "watch_vol": (1.5, 4.0, 0.5)}

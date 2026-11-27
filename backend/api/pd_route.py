@@ -2,6 +2,7 @@
   GET  /api/pd/live          status, coins in play on each side, the last START events (the app's sound + badge read this)
   GET  /api/pd/day?day=YYYY-MM-DD   one IST day: pump list + dump list (newest first, each with its checked result) + the list of days
   GET  /api/pd/movers        Round 1 (28 Nov 2026): Naye Movers + Pehle se chal rahe (strength, chance, TSI numbers per time frame)
+  GET  /api/pd/pre           Round 2 (28 Nov 2026): Taiyari me = pre-pump / pre-dump coins (price still flat, buyers / sellers arriving)
   GET  /api/pd/learning      the newest daily report, thresholds, penalties, the changes the tuner made
   POST /api/pd/toggle        {"enabled": bool} and / or {"auto_tune": bool}
 Never raises: a problem answers {"state": "error", ...}. Mounted by api_server.py unless OWL_PUMPDUMP=0."""
@@ -153,6 +154,10 @@ def make_router(require_api_token, data_dir):
     @r.get("/api/pd/movers", dependencies=[Depends(require_api_token)])
     async def pd_movers():
         return await asyncio.to_thread(_safe, R.movers)
+
+    @r.get("/api/pd/pre", dependencies=[Depends(require_api_token)])
+    async def pd_pre():
+        return await asyncio.to_thread(_safe, R.pre_view)
 
     @r.get("/api/pd/learning", dependencies=[Depends(require_api_token)])
     async def pd_learning():
