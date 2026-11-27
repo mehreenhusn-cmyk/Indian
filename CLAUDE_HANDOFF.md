@@ -1,4 +1,4 @@
-> **28 Nov 2026 LATER: Parts 7, 8, 9, 10 are BUILT (Study page, UI kit A + B, Dashboard on the kit). NEXT = Part 11 (bottom bar + More page + 2 small widgets, ~250 lines), then 12 (Positions). Owner wants ONE cumulative zip and ONE push at the very end. Dart not compiled, GitHub build is the first compile.**
+> **28 Nov 2026 LATER: Parts 7 to 12 are BUILT (Study page, UI kit A + B, Dashboard, bottom bar + More, Positions). NEXT = Part 13 (Results + position card, ~350 lines), then 14 (Signals). Owner wants ONE cumulative zip and ONE push at the very end. Dart not compiled, GitHub build is the first compile.**
 
 # README_OWNER - owner problem + what is done (10 Nov 2026)
 

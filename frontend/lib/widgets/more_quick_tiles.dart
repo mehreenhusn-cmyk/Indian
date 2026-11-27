@@ -1,8 +1,8 @@
-import 'package:flutter/material.dart';
+import package:flutter/material.dart;
 
-import '../theme/app_spacing.dart';
-import '../theme/app_theme.dart';
-import 'owl_hero_card.dart';
+import ../theme/app_spacing.dart;
+import ../theme/app_theme.dart;
+import owl_hero_card.dart;
 
 /// Part 11 (D2b, 28 Nov 2026): one quick-access tile of the More page = a tinted icon over a short name. Plain widget, no provider.
 /// tone: 'good' green, 'bad' red, 'warn' amber, anything else = the app accent. Dart NOT compiled in the sandbox: the GitHub APK build is the first compile.

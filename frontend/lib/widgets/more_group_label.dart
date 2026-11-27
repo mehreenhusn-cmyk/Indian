@@ -1,7 +1,7 @@
-import 'package:flutter/material.dart';
+import package:flutter/material.dart;
 
-import '../theme/app_spacing.dart';
-import '../theme/app_theme.dart';
+import ../theme/app_spacing.dart;
+import ../theme/app_theme.dart;
 
 /// Part 11 (D2b, 28 Nov 2026): the group heading of the More page: a short accent bar, the group name in small bold capitals
 /// and, on the right, an optional muted note (for example a row count). Replaces the plain OwlSectionLabel on this page only.
