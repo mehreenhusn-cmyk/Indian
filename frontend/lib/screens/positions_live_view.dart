@@ -9,6 +9,7 @@ import '../widgets/ai_advice_badge.dart';
 import '../widgets/position_glance.dart';
 import '../widgets/positions_close_bits.dart';
 import '../widgets/owl_empty_state.dart';
+import '../widgets/owl_kit_extras.dart'; // Part 12: kit shimmer + empty state
 import '../models/view_state.dart';
 import '../widgets/owl_state_gate.dart';
 import '../widgets/owl_skeleton.dart';
@@ -369,14 +370,8 @@ class PositionsLiveView extends StatelessWidget {
                           // misleading "No open positions" flash.
                           return ListView(
                             physics: const NeverScrollableScrollPhysics(),
-                            padding: const EdgeInsets.all(AppSpacing.l),
-                            children: List.generate(
-                              3,
-                              (_) => const Padding(
-                                padding: EdgeInsets.only(bottom: AppSpacing.m),
-                                child: OWLSkeleton.card(height: 200),
-                              ),
-                            ),
+                            padding: EdgeInsets.zero,
+                            children: const [OwlShimmerList(count: 3)], // Part 12: kit shimmer (old OWLSkeleton cards replaced, class kept in the project)
                           );
                         }
                         if (positions.isEmpty && query.trim().isNotEmpty && provider.positions.isNotEmpty) {
@@ -403,10 +398,10 @@ class PositionsLiveView extends StatelessWidget {
                             state: decideViewState(hasData: false, offline: provider.liveState == 'offline'),
                             what: 'open positions',
                             onRetry: () => provider.fetchStatus(),
-                            empty: const OWLEmptyState(
+                            empty: const OwlEmptyState(
                               icon: Icons.account_balance_wallet_outlined,
                               title: 'No open positions',
-                              subtitle: 'New trades appear here the moment they open.',
+                              sub: 'New trades appear here the moment they open.',
                             ),
                           );
                         }
@@ -442,7 +437,7 @@ class PositionsLiveView extends StatelessWidget {
                                   color: _red.withOpacity(0.25),
                                   borderRadius: BorderRadius.circular(AppSpacing.radiusMedium),
                                 ),
-                                child: const Icon(Icons.close, color: _red),
+                                child: const Row(mainAxisSize: MainAxisSize.min, children: [Text('Close', style: TextStyle(color: _red, fontWeight: FontWeight.w800, fontSize: 13)), SizedBox(width: 6), Icon(Icons.close, color: _red)]), // Part 12: the swipe says what it does
                               ),
                               confirmDismiss: (_) async {
                                 final confirm = await showDialog<bool>(

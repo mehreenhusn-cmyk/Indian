@@ -6,6 +6,8 @@ import '../providers/app_provider.dart';
 import '../theme/app_theme.dart';
 import '../config_flags.dart';
 import '../widgets/font_switch_row.dart';
+import '../widgets/more_group_label.dart'; // Part 11: kit group heading
+import '../widgets/more_quick_tiles.dart'; // Part 11: quick tiles at the top
 import '../widgets/owl_icon_tile.dart';
 import '../widgets/owl_row.dart';
 import '../widgets/owl_sentence.dart';
@@ -72,9 +74,17 @@ class MoreScreen extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(AppSpacing.l, AppSpacing.l, AppSpacing.l, AppSpacing.xl),
           children: [
             Text('More', style: context.type.section.copyWith(fontSize: 22, fontWeight: FontWeight.w800)),
+            Padding(padding: const EdgeInsets.only(top: 2, bottom: AppSpacing.m), child: Text('Tools, reports and settings', style: TextStyle(fontSize: 12.5, color: pal.textMuted))),
+            // Part 11: the four most used pages as tiles. Each one is ALSO a normal row below (nothing moved, nothing deleted).
+            MoreQuickTiles(items: [
+              MoreQuickItem(icon: Icons.query_stats_outlined, label: 'Market', onTap: () => go(AppRoute.market)),
+              MoreQuickItem(icon: Icons.grid_view_rounded, label: 'Calendar', tone: 'warn', onTap: () => _open(context, 'Month Calendar', const MonthGridScreen())),
+              MoreQuickItem(icon: Icons.receipt_long_outlined, label: 'Reports', tone: 'good', onTap: () => _open(context, 'Fees and tax report', const ReportsScreen())),
+              MoreQuickItem(icon: Icons.settings_rounded, label: 'Settings', onTap: () => _open(context, 'Settings', const SettingsScreen())),
+            ]),
             // Part 13c: groups in the order Trading tools, Results and reports, System, Settings. ONE card per group with thin lines (no box per row),
             // every row has a one-line purpose, row height follows the screen (AppScale). The doubles are gone: "System Health" (= Diagnostics) and "OwlSniper" (= the Sniper tab).
-            const OwlSectionLabel('Trading tools'),   // PHONE LITE: only Market and Signals are left in this group
+            const MoreGroupLabel('Trading tools'),   // PHONE LITE: only Market and Signals are left in this group
             OwlListCard(children: [
               if (!kLite) rT(Icons.filter_alt_outlined, 'Chop Bot (b3)', 'Both-indicator paper bot: today, trades, decisions', () => _open(context, 'Chop Bot (b3)', const ChopScreen())),
               if (!kLite) rT(Icons.dashboard_outlined, 'Brain Dashboard', 'What the Brain decided and why', () => _open(context, 'Brain Dashboard', const BrainDashboardScreen())),
@@ -88,7 +98,7 @@ class MoreScreen extends StatelessWidget {
               if (!kLite) rT(Icons.hub_outlined, 'Data and Learning', 'Who teaches the Sniper, live-test gate, auto runs', () => _open(context, 'Data and Learning', const DataSourcesScreen())),
               if (!kLite) rT(Icons.image_search_outlined, 'Screenshot Check', 'Check a chart screenshot against the rules', () => _open(context, 'Screenshot Check', const ScreenCheckScreen())),
             ]),
-            const OwlSectionLabel('Results and reports'),
+            const MoreGroupLabel('Results and reports'),
             OwlListCard(children: [
               if (!kLite) rR(Icons.today_outlined, 'Brain Today', 'Today in a few lines', () => _open(context, 'Brain Today', const BrainTodayScreen())),
               if (!kLite) rR(Icons.route_outlined, 'Trades', 'Each trade: signal, open, TP1, close, net', () => _open(context, 'Trades', const TradeTimelineScreen())),
@@ -122,7 +132,7 @@ class MoreScreen extends StatelessWidget {
                       ))),
             ]),
             if (!kLite) ...[ // Round G: no App Problems / Diagnostics / Ping in LITE (their routes are off, they only showed 404)
-            const OwlSectionLabel('System'),
+            const MoreGroupLabel('System'),
             OwlListCard(children: [
               if (!kLite) rS(Icons.monitor_heart_outlined, 'Diagnostics', 'Connections, leaks and what is slow', () => go(AppRoute.diagnostics)),
               rS(Icons.bug_report_outlined, 'App Problems', 'A plain list of what is wrong, to copy', () => _open(context, 'App Problems', const AppProblemsScreen(), bare: true)),
@@ -131,7 +141,7 @@ class MoreScreen extends StatelessWidget {
                 rS(Icons.medical_services_outlined, 'Strategy Doctor', 'Checks the strategy settings', () => _open(context, 'Strategy Doctor', const StrategyDoctorScreen(), bare: true)),
             ]),
             ],
-            const OwlSectionLabel('Settings'),
+            const MoreGroupLabel('Settings'),
             const FontSwitchRow(),
             OwlListCard(children: [
               rS(Icons.settings_rounded, 'Settings', 'Keys, limits, alerts and appearance', () => _open(context, 'Settings', const SettingsScreen())),

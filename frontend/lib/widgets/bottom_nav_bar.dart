@@ -143,7 +143,12 @@ class _BottomNavBarState extends State<BottomNavBar> {
       label: _labels[index],
       child: OWLPressable(
         onTap: () => widget.onTap(_screens[index]),
-        child: Stack(alignment: Alignment.center, children: [
+        // Part 11: a soft accent tint sits behind the open tab (Dock look only); the glowing line on top stays.
+        child: AnimatedContainer(
+          duration: OwlMotion.slide,
+          margin: const EdgeInsets.symmetric(horizontal: 2),
+          decoration: BoxDecoration(color: selected && withLabel ? p.accent.withOpacity(0.10) : Colors.transparent, borderRadius: BorderRadius.circular(18)),
+          child: Stack(alignment: Alignment.center, children: [
           if (selected && withLabel)
             Positioned(
               top: 0,
@@ -153,13 +158,13 @@ class _BottomNavBarState extends State<BottomNavBar> {
             _pdBadge(index, selected, p, OwlNavIcon(index: index, lit: selected, color: c, size: 22)),
             if (withLabel) ...[
               const SizedBox(height: 2),
-              Text(_labels[index], maxLines: 1, overflow: TextOverflow.clip, style: TextStyle(fontSize: 10, height: 1.1, color: c, fontWeight: selected ? FontWeight.w800 : FontWeight.w600)),
+              Text(_labels[index], maxLines: 1, overflow: TextOverflow.clip, style: TextStyle(fontSize: 10.5, height: 1.1, color: c, fontWeight: selected ? FontWeight.w800 : FontWeight.w600)),
             ] else ...[
               const SizedBox(height: 4),
               AnimatedContainer(duration: OwlMotion.slide, width: selected ? 14 : 0, height: 3, decoration: BoxDecoration(color: p.accent, borderRadius: BorderRadius.circular(3))),
             ],
           ]),
-        ]),
+        ])),
       ),
     );
   }

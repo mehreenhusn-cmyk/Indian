@@ -5,6 +5,8 @@ import '../providers/app_provider.dart';
 import '../theme/app_motion2.dart';
 import '../theme/app_theme.dart';
 import '../utils/format.dart';
+import '../widgets/owl_kit_extras.dart'; // Part 12: shared UI kit (Parts 8 + 9)
+import '../widgets/owl_kit_parts.dart';
 import '../widgets/owl_number.dart';
 import '../widgets/owl_pressable.dart';
 import '../widgets/owl_row.dart';
@@ -109,7 +111,8 @@ class _PositionsScreenState extends State<PositionsScreen> {
             bottom: false,
             child: Padding(
               padding: const EdgeInsets.fromLTRB(AppSpacing.l, AppSpacing.s, AppSpacing.l, 0),
-              child: Row(children: [for (var i = 0; i < _names.length; i++) _segment(context, i)]),
+              // Part 12: kit pick chips instead of plain text tabs (the old _segment / _label code stays below, unused, nothing deleted).
+              child: OwlPickChipRow(labels: _names, selected: _tab, onSelect: _select),
             ),
           ),
           const SizedBox(height: AppSpacing.xs), // R22a: the grey hint line under the tabs is gone (it repeated the tab name)
@@ -121,7 +124,15 @@ class _PositionsScreenState extends State<PositionsScreen> {
                 final x = context.read<AppProvider>();
                 final n = ((x.status['open_count'] ?? 0) as num).toInt();
                 final o = x.openPnl;
-                return OwlSummaryLine(source: x.statsMode == 'live' ? 'Main bot - live' : 'Main bot - paper', facts: [OwlStat('$n', 'open'), OwlStat(fmtSigned(o), 'USDT open P&L', tone: o > 0 ? 'good' : (o < 0 ? 'bad' : '')), if (fmtInr(o, (x.settings['inr_rate'] as num?)?.toDouble() ?? 0.0) != null) OwlStat(fmtInr(o, (x.settings['inr_rate'] as num?)?.toDouble() ?? 0.0)!, 'approx.')]);
+                // Part 12: two kit tiles (the profit big and coloured, the INR line under it, the open count ONCE). The UP / DOWN pills below say the rest.
+                final inr = fmtInr(o, (x.settings['inr_rate'] as num?)?.toDouble() ?? 0.0);
+                return Padding(
+                  padding: const EdgeInsets.fromLTRB(AppSpacing.l, 0, AppSpacing.l, AppSpacing.s),
+                  child: OwlStatRow(tiles: [
+                    OwlStatTile(label: x.statsMode == 'live' ? 'Open P&L - live' : 'Open P&L - paper', value: '${fmtSigned(o)} USDT', sub: inr == null ? '' : 'approx. $inr', tone: o > 0 ? 'good' : (o < 0 ? 'bad' : '')),
+                    OwlStatTile(label: 'Open trades', value: '$n', sub: 'Main bot'),
+                  ]),
+                );
               },
             ),
           Expanded(child: IndexedStack(index: _tab, children: [for (var i = 0; i < _names.length; i++) _page(i)])),
