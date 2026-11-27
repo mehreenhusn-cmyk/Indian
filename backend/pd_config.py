@@ -13,7 +13,7 @@ import os
 import threading
 import time
 
-VERSION = "pd 1 (26 Nov 2026)"
+VERSION = "pd 2 (28 Nov 2026, Round 1)"
 
 DEFAULTS = {
     "poll_sec": 20,          # one Binance 24h-ticker call (all coins) every 20 s
@@ -33,6 +33,27 @@ DEFAULTS = {
     "min_outcomes": 100,     # the tuner changes thresholds only after this many checked alerts (last 14 days)
     "keep_days": 60,
     "tz_min": 330,           # day = IST calendar day
+    # ---- Round 1 (28 Nov 2026): Naye Movers + Chal rahe + TSI strength + chance. One setting per line, never a # comment in the middle of a line.
+    "rank_sample_sec": 30,
+    "rank_hist_min": 35,
+    "top_n": 10,
+    "mv_rank_gain": 8,
+    "mv_vol": 2.5,
+    "mv_move_lo": 1.0,
+    "mv_move_hi": 6.0,
+    "mv_r5_min": 0.2,
+    "mv_max_side": 8,
+    "run_max_side": 10,
+    "run_keep_min": 180,
+    "tire_vol": 0.7,
+    "tire_share": 0.48,
+    "noise_r5": 0.5,
+    "kline_limit": 499,
+    "kline_calls_min": 40,
+    "kline_step_max": 12,
+    "w_vol": 25, "w_taker": 20, "w_tsi": 20, "w_hist": 10, "w_tf": 15, "w_rank": 10,
+    "chance_prior": 0.30,
+    "chance_k": 20,
 }
 # the only keys the tuner may change: (min, max, step)
 TUNABLE = {"start_vol": (3.0, 8.0, 0.5), "watch_vol": (1.5, 4.0, 0.5)}

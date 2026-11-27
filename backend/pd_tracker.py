@@ -43,6 +43,18 @@ class Tracker:
             except Exception as e:                     # one coin must never stop the loop
                 print(f"[pd] tracker {sym} {side}: {type(e).__name__}: {e}")
 
+    def _blocked(self, sym, side, stage):
+        """Round 1: a coin is on ONE side only. True = do not open `stage` on `side` because the other side of this coin is in play.
+        The other side's silent WATCH is dropped when this side reaches START; a live other side (START / RUNNING / WEAK) blocks."""
+        other = "dump" if side == "pump" else "pump"
+        ost = self.states.get((sym, other))
+        if ost is None:
+            return False
+        if ost["stage"] == "WATCH" and stage == "START":
+            del self.states[(sym, other)]
+            return False
+        return True
+
     def _weak(self, st, sgn, f, p):
         pull = sgn * (st["peak"] - p) / st["peak"] * 100.0
         return pull >= C.get("weak_pullback") or f["vr5"] < C.get("weak_vol")
@@ -59,6 +71,8 @@ class Tracker:
             if stage == "START" and now - self.last_start.get(key, 0) < C.get("cool_start_min") * 60:
                 return
             if stage == "WATCH" and now - self.last_watch.get(key, 0) < C.get("cool_watch_min") * 60:
+                return
+            if self._blocked(sym, side, stage):
                 return
             if not self._room(side, sc):
                 return
@@ -78,7 +92,7 @@ class Tracker:
         st["cur"] = {"p": p, "gain": round(gain, 2), "r5": round(f["r5"], 2), "vr5": round(f["vr5"], 1), "score": round(sc, 1)}
         if stg == "WATCH":
             cand = S.classify(sgn, f, sc)
-            if cand == "START" and now - self.last_start.get(key, 0) >= C.get("cool_start_min") * 60:
+            if cand == "START" and now - self.last_start.get(key, 0) >= C.get("cool_start_min") * 60 and not self._blocked(sym, side, "START"):
                 watch_gain = gain
                 st.update(stage="START", t0=now, p0=p, peak=p, step_p=p, score=sc)
                 self.last_start[key] = now
@@ -148,8 +162,11 @@ class Tracker:
     # -------------------------------------------------------------- snapshot (for the app + a restart)
     def snapshot(self):
         out = {"pump": [], "dump": []}
+        noise = C.get("noise_r5")
         for (sym, side), st in self.states.items():
             cur = st.get("cur") or {}
+            if st["stage"] in ("WATCH", "START") and cur and (1.0 if side == "pump" else -1.0) * cur.get("r5", 0.0) < noise:
+                continue        # Round 1: a coin whose 5 min move is under 0.5% never shows in "Right now" (RUNNING / WEAK coins stay: they have moved already)
             out[side].append({"symbol": sym, "stage": st["stage"], "since": int(st["t0"]), "p0": st["p0"], "peak": st["peak"],
                               "price": cur.get("p", st["p0"]), "gain": cur.get("gain", 0.0), "r5": cur.get("r5", 0.0), "vr5": cur.get("vr5", 0.0),
                               "score": cur.get("score", round(st["score"], 1))})

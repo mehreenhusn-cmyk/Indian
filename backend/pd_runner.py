@@ -8,12 +8,15 @@ import time
 
 import pd_config as C
 import pd_feed
+import pd_chance
 import pd_learn
+import pd_rank
 import pd_scorer as S
 import pd_store as ST
 import pd_tracker
+import pd_tsi
 
-_R = {"thread": None, "stop": False, "feed": None, "tracker": None, "learn": None, "lock": threading.RLock(),
+_R = {"thread": None, "stop": False, "feed": None, "tracker": None, "learn": None, "rank": None, "lock": threading.RLock(),
       "state": {"running": False, "enabled": True, "last_poll": 0.0, "last_error": "", "errors": 0, "polls": 0, "tracked": 0, "started": 0.0, "events_today": 0, "restored": 0}}
 _SAVE_EVERY = 120  # seconds between history saves (Round E)
 _last_save = [0.0]
@@ -36,7 +39,7 @@ def _emit(ev):
     print("[pd] %s %s %s %+.1f%% vol %.1fx score %s" % (ev["stage"], ev["side"], ev["symbol"], ev["r5"], ev["vr5"], ev["score"]))
 
 
-def step(feed, tracker, learn, now):
+def step(feed, tracker, learn, now, rank=None):
     """ONE poll cycle (also used by the test). Returns the number of coins tracked."""
     n = feed.poll(now)
     poll = C.get("poll_sec")
@@ -60,12 +63,17 @@ def step(feed, tracker, learn, now):
     learn.track(prices, now)
     if warm:
         learn.tune_if_due(now, tracker)
+        if rank is not None:          # Round 1: Naye Movers + Chal rahe. A problem here must never stop the scanner.
+            try:
+                rank.update(feed, tracker, now)
+            except Exception as e:
+                print(f"[pd] rank step failed: {type(e).__name__}: {e}")
     return n
 
 
 def _loop(data_dir):
     st = _R["state"]
-    feed, tracker, learn = _R["feed"], _R["tracker"], _R["learn"]
+    feed, tracker, learn, rank = _R["feed"], _R["tracker"], _R["learn"], _R["rank"]
     backoff = 0
     st.update(running=True, started=time.time())
     while not _R["stop"]:
@@ -76,10 +84,11 @@ def _loop(data_dir):
                 if feed.hist:
                     feed.clear()
                     tracker.states.clear()
+                    rank.clear()
                 time.sleep(5)
                 continue
             now = time.time()
-            n = step(feed, tracker, learn, now)
+            n = step(feed, tracker, learn, now, rank)
             st.update(last_poll=now, tracked=n, polls=feed.polls, last_error="")
             if now - _last_save[0] >= _SAVE_EVERY and feed.warm_left_min(now) <= 0:
                 _last_save[0] = now
@@ -111,6 +120,7 @@ def start(data_dir):
         _R["learn"] = pd_learn.Learner()
         _R["tracker"] = pd_tracker.Tracker(_emit)
         _R["tracker"].adj = dict(_R["learn"].tuner.get("coin_adj", {}))
+        _R["rank"] = pd_rank.Rank(pd_tsi.Klines(), pd_chance.Chance())
         _R["stop"] = False
         _R["state"]["enabled"] = enabled()
         t = threading.Thread(target=_loop, args=(data_dir,), daemon=True, name="pd_scanner")
@@ -138,6 +148,18 @@ def live(now=None):
             "warm_left_min": round(feed.warm_left_min(now), 1) if feed is not None else None, "restored": st.get("restored", 0), "poll_sec": C.get("poll_sec"),
             "pump": snap["pump"], "dump": snap["dump"], "latest_starts": list(tracker.recent[:10]) if tracker is not None else [],
             "auto_tune": (_R["learn"].tuner.get("auto_tune", True) if _R["learn"] is not None else True)}
+
+
+def movers(now=None):
+    """Round 1: what the app's "Naye Movers" + "Pehle se chal rahe" section shows (GET /api/pd/movers)."""
+    now = time.time() if now is None else now
+    rk = _R["rank"]
+    if rk is None:
+        return {"state": "off", "ready": False, "movers": {"pump": [], "dump": []}, "running": {"pump": [], "dump": []}}
+    out = rk.snapshot(now)
+    out["enabled"] = _R["state"]["enabled"]
+    out["warm_left_min"] = round(_R["feed"].warm_left_min(now), 1) if _R["feed"] is not None else None
+    return out
 
 
 def set_auto_tune(on):
