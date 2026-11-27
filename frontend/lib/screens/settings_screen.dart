@@ -9,6 +9,7 @@ import '../widgets/ai_keys_card.dart';
 import '../widgets/owl_route.dart';
 import '../widgets/report_download_card.dart';
 import '../widgets/owl_kit_parts.dart'; // Part 16: shared UI kit (Parts 8 + 9)
+import '../widgets/owl_kit_extras.dart'; // Part 17: OwlPickChipRow for the three selectors
 import '../widgets/settings_choice_row.dart'; // Part 16: new setting widgets
 import '../widgets/settings_group.dart';
 import '../widgets/settings_switch_row.dart';
@@ -829,7 +830,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               style: t.metadata,
                             ),
                             const SizedBox(height: 10),
-                            _timeframeSelector(p, t),
+                            _kitTimeframeSelector(),
                           ],
                         ),
                         SettingsGroup(
@@ -864,7 +865,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               style: t.metadata,
                             ),
                             const SizedBox(height: 10),
-                            _tpModeSelector(p, t),
+                            _kitTpModeSelector(),
                             const SizedBox(height: AppSpacing.m),
                             _field(
                               'Universal TP % (auto-close at ROI)',
@@ -907,7 +908,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               style: t.metadata,
                             ),
                             const SizedBox(height: 10),
-                            _trailSelector(p, t),
+                            _kitTrailSelector(),
                             ],
                           ],
                         ),
@@ -938,15 +939,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   'Example: 2 means it opens 2 trades and skips new signals until one closes.',
                             ),
                             Divider(color: p.border, height: 24),
-                            SwitchListTile(
-                              contentPadding: EdgeInsets.zero,
-                              title: Text('Daily schedule (IST)', style: TextStyle(color: p.textPrimary)),
-                              subtitle: Text(
-                                'Bot turns OFF at 1:30 AM. If you switch it ON yourself, it turns OFF again at 5:30 AM. '
-                                'No new trades from 5:30 AM to 9:30 AM. It turns ON at 9:30 AM.',
-                                style: t.metadata.copyWith(color: p.textMuted),
-                              ),
-                              activeColor: p.accent,
+                            SettingsSwitchRow(
+                              title: 'Daily schedule (IST)',
+                              subtitle: 'Bot turns OFF at 1:30 AM. If you switch it ON yourself, it turns OFF again at 5:30 AM. '
+                                  'No new trades from 5:30 AM to 9:30 AM. It turns ON at 9:30 AM.',
                               value: _dailyGate,
                               onChanged: (v) => setState(() {
                                 _dailyGate = v;
@@ -954,28 +950,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               }),
                             ),
                             Divider(color: p.border, height: 24),
-                            SwitchListTile(
-                              contentPadding: EdgeInsets.zero,
-                              title: Text('No SELL on gainers', style: TextStyle(color: p.textPrimary)),
-                              subtitle: Text(
-                                'A top-10 gainer coin gets no SELL until price crosses SD0 from above to below.',
-                                style: t.metadata.copyWith(color: p.textMuted),
-                              ),
-                              activeColor: p.accent,
+                            SettingsSwitchRow(
+                              title: 'No SELL on gainers',
+                              subtitle: 'A top-10 gainer coin gets no SELL until price crosses SD0 from above to below.',
                               value: _blockSellGainer,
                               onChanged: (v) => setState(() {
                                 _blockSellGainer = v;
                                 _receipt = null;
                               }),
                             ),
-                            SwitchListTile(
-                              contentPadding: EdgeInsets.zero,
-                              title: Text('No BUY on losers', style: TextStyle(color: p.textPrimary)),
-                              subtitle: Text(
-                                'A top-10 loser coin gets no BUY until price crosses SD0 from below to above.',
-                                style: t.metadata.copyWith(color: p.textMuted),
-                              ),
-                              activeColor: p.accent,
+                            SettingsSwitchRow(
+                              title: 'No BUY on losers',
+                              subtitle: 'A top-10 loser coin gets no BUY until price crosses SD0 from below to above.',
                               value: _blockBuyLoser,
                               onChanged: (v) => setState(() {
                                 _blockBuyLoser = v;
@@ -1084,28 +1070,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 style: t.metadata.copyWith(color: p.warning),
                               ),
                             ),
-                            SwitchListTile(
-                              contentPadding: EdgeInsets.zero,
-                              title: Text('Live Trading', style: TextStyle(color: p.textPrimary)),
-                              subtitle: Text(
-                                _liveTradingEnabled
-                                    ? 'ON - real orders only, paper is silent'
-                                    : 'OFF - paper trading only',
-                                style: t.metadata.copyWith(color: _liveTradingEnabled ? p.warning : p.textMuted),
-                              ),
-                              activeColor: p.accent,
+                            // Part 17: kit switch row (same setter, the live-trading confirm flow is untouched)
+                            SettingsSwitchRow(
+                              title: 'Live Trading',
+                              subtitle: _liveTradingEnabled ? 'ON - real orders only, paper is silent' : 'OFF - paper trading only',
                               value: _liveTradingEnabled,
                               onChanged: (v) => _onLiveTradingToggled(v),
                             ),
-                            Text('Position Size Mode', style: t.secondary.copyWith(color: p.textSecondary)),
-                            const SizedBox(height: 4),
-                            Row(
-                              children: [
-                                Expanded(child: _radio(p, t, 'Fixed USDT', 'fixed', _positionSizeMode, (v) => _positionSizeMode = v)),
-                                Expanded(
-                                  child: _radio(p, t, '% of Balance', 'percent_balance', _positionSizeMode, (v) => _positionSizeMode = v),
-                                ),
-                              ],
+                            // Part 17: kit choice row instead of two radio buttons (same two values, same field)
+                            SettingsChoiceRow(
+                              title: 'Position Size Mode',
+                              labels: const ['Fixed USDT', '% of Balance'],
+                              selected: _positionSizeMode == 'percent_balance' ? 1 : 0,
+                              onSelect: (i) => setState(() {
+                                _positionSizeMode = i == 1 ? 'percent_balance' : 'fixed';
+                                _receipt = null;
+                              }),
                             ),
                             _field(
                               _positionSizeMode == 'fixed' ? 'Position Size (USDT)' : 'Position Size (% of balance)',
@@ -1128,14 +1108,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           children: [
                             Text('AI ASSISTANT', style: t.metadata.copyWith(letterSpacing: 1)),
                             const SizedBox(height: 4),
-                            SwitchListTile(
-                              contentPadding: EdgeInsets.zero,
-                              title: Text('Enable AI Assistant', style: TextStyle(color: p.textPrimary)),
-                              subtitle: Text(
-                                _aiEnabled ? 'ON' : 'OFF',
-                                style: t.metadata.copyWith(color: _aiEnabled ? p.accent : p.textMuted),
-                              ),
-                              activeColor: p.accent,
+                            SettingsSwitchRow(
+                              title: 'Enable AI Assistant',
+                              subtitle: _aiEnabled ? 'ON' : 'OFF',
                               value: _aiEnabled,
                               onChanged: (v) => setState(() {
                                 _aiEnabled = v;
@@ -1447,6 +1422,55 @@ class _SettingsScreenState extends State<SettingsScreen> {
         borderSide: BorderSide.none,
       ),
       contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.m, vertical: 10),
+    );
+  }
+
+  // ---- Part 17 (D5b, 28 Nov 2026): the three pill selectors now use the kit chip row. Same state, same setters, same Save flow.
+  // The old _timeframeSelector / _trailSelector / _tpModeSelector below stay in the file, unused (nothing deleted).
+  Widget _kitTimeframeSelector() {
+    return OwlPickChipRow(
+      labels: _timeframeOptions,
+      selected: _timeframeOptions.indexOf(_timeframe) < 0 ? 0 : _timeframeOptions.indexOf(_timeframe),
+      onSelect: (i) => setState(() {
+        _timeframe = _timeframeOptions[i];
+        _receipt = null;
+      }),
+    );
+  }
+
+  Widget _kitTrailSelector() {
+    final i = _trailOptions.indexOf(_trailMode);
+    return OwlPickChipRow(
+      labels: [for (final m in _trailOptions) _trailTitles[m] ?? m],
+      selected: i < 0 ? 0 : i,
+      onSelect: (k) => setState(() {
+        _trailMode = _trailOptions[k];
+        _receipt = null;
+      }),
+    );
+  }
+
+  Widget _kitTpModeSelector() {
+    return OwlPickChipRow(
+      labels: const ['Strategy TP', 'Universal ROI %'],
+      selected: _tpMode == 'universal' ? 1 : 0,
+      onSelect: (i) {
+        final key = i == 1 ? 'universal' : 'strategy';
+        if (!_loaded || key == _tpMode) return;
+        setState(() {
+          final ctrl = _controllers['scalp_close_roi_pct']!;
+          if (key == 'strategy') {
+            // Same as the old selector: remember the typed value so switching back to Universal restores it.
+            final cur = double.tryParse(ctrl.text.trim().replaceAll(',', '.'));
+            if (cur != null && cur > 0) _lastUniversalRoi = cur;
+            ctrl.text = _fmtVal(0.0);
+          } else {
+            ctrl.text = _fmtVal(_lastUniversalRoi > 0 ? _lastUniversalRoi : 25.0);
+          }
+          _tpMode = key;
+          _receipt = null;
+        });
+      },
     );
   }
 
