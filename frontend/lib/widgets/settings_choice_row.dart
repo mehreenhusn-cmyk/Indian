@@ -1,9 +1,9 @@
-import 'package:flutter/material.dart';
+import package:flutter/material.dart;
 
-import '../theme/app_motion.dart';
-import '../theme/app_spacing.dart';
-import '../theme/app_theme.dart';
-import 'owl_kit_extras.dart';
+import ../theme/app_motion.dart;
+import ../theme/app_spacing.dart;
+import ../theme/app_theme.dart;
+import owl_kit_extras.dart;
 
 /// Part 16 (D5a, 28 Nov 2026): a settings choice = a bold title, an optional short muted line and a row of kit pick chips (one is lit).
 /// Used inside a SettingsGroup for "one of a few" choices (Light / Dark / System, Classic / Glass / Gradient). [onSelect] gets the tapped index.
