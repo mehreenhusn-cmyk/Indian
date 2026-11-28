@@ -14,10 +14,27 @@ String pdMoverSentence(Map<String, dynamic> c, bool pump) {
   if ('${c['kind']}' == 'run') {
     final v = c['vol15'] == null ? null : pdNum(c['vol15']);
     final vtxt = v == null ? '' : ', volume ${v.toStringAsFixed(1)} guna (pichhle ghante se)';
-    if (c['tiring'] == true) return pump ? 'Pump thak sa raha hai$vtxt' : 'Dump thak sa raha hai$vtxt';
+    if (pdMoverState(c) == 'ended') {
+      final back = pdNum(c['giveback']).toStringAsFixed(0);
+      final pk = pdNum(c['peak']);
+      return pump
+          ? 'Pump ulta ho gaya. ${pk > 0 ? 'Peak ${pdPrice(pk)} se' : 'Peak se'} $back% wapas aa gaya, 15 min me ${pdSigned(signed)}'
+          : 'Dump ulta ho gaya. ${pk > 0 ? 'Low ${pdPrice(pk)} se' : 'Low se'} $back% wapas upar aa gaya, 15 min me ${pdSigned(signed)}';
+    }
+    if (signed < 0 && pdMoverState(c) == 'running') return pump ? 'Upar ka move ruka hua hai, 15 min me ${pdSigned(signed)}$vtxt' : 'Neeche ka move ruka hua hai, 15 min me ${pdSigned(signed)}$vtxt';
+    if (pdMoverState(c) == 'tiring') return pump ? 'Pump thak sa raha hai$vtxt' : 'Dump thak sa raha hai$vtxt';
     return '${pump ? 'Abhi bhi upar chal raha hai' : 'Abhi bhi neeche chal raha hai'}, 15 min me ${pdSigned(signed)}$vtxt';
   }
   return '${pump ? 'Upar chadh raha hai' : 'Neeche gir raha hai'}, 15 min me ${pdSigned(signed)}, volume ${pdNum(c['vol_ratio']).toStringAsFixed(1)} guna';
+}
+
+/// Part A (29 Nov 2026): the tag comes from the backend (pd_rank.py Rank._state): new | running | tiring | ended. The app never builds its own tag.
+/// An older backend has no state: the old tiring flag is the fallback.
+String pdMoverState(Map<String, dynamic> c) {
+  final s = '${c['state'] ?? ''}';
+  if (s.isNotEmpty) return s;
+  if ('${c['kind']}' != 'run') return 'new';
+  return c['tiring'] == true ? 'tiring' : 'running';
 }
 
 String _num(dynamic v, [int d = 2]) => v == null ? '-' : pdNum(v).toStringAsFixed(d);
@@ -40,10 +57,12 @@ class PdMoverCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = context.palette;
-    final col = pump ? p.profit : p.loss;
     final run = '${c['kind']}' == 'run';
-    final tiring = run && c['tiring'] == true;
-    final tag = run ? (tiring ? 'THAK RAHA' : 'CHAL RAHA') : 'NAYA';
+    final state = pdMoverState(c);
+    final ended = run && state == 'ended';
+    final tiring = state == 'tiring';
+    final col = ended ? p.textMuted : (pump ? p.profit : p.loss);
+    final tag = ended ? 'ULTA HO GAYA' : (run ? (tiring ? 'THAK RAHA' : 'CHAL RAHA') : 'NAYA');
     final tagCol = tiring ? p.warning : col;
     final ch = c['chance'] is Map ? c['chance'] as Map : <dynamic, dynamic>{};
     final est = ch['est'] != false;
@@ -74,7 +93,8 @@ class PdMoverCard extends StatelessWidget {
           const SizedBox(height: 6),
           Text(pdMoverSentence(c, pump), style: TextStyle(fontSize: 11.5, color: p.textSecondary)),
           const SizedBox(height: 6),
-          Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+          if (ended) Text('Ab alert nahi, sirf record. Peak ${pdPrice(pdNum(c['peak']))}, ab ${pdPrice(pdNum(c['price']))}', style: TextStyle(fontSize: 11, color: p.textMuted)),
+          if (!ended) Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
             Text('${pdNum(ch['pct']).toStringAsFixed(0)}%', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: col)),
             const SizedBox(width: 6),
             Expanded(
@@ -84,7 +104,7 @@ class PdMoverCard extends StatelessWidget {
               ),
             ),
           ]),
-          if (lvl > 0) ...[
+          if (lvl > 0 && !ended) ...[
             const SizedBox(height: 4),
             Text(pump ? 'Ye ${pdPrice(lvl)} ke neeche gaya to kamzor' : 'Ye ${pdPrice(lvl)} ke upar gaya to kamzor', style: TextStyle(fontSize: 10.5, color: p.textSecondary)),
           ],
@@ -118,7 +138,7 @@ void showPdMoverDetail(BuildContext context, Map<String, dynamic> c, bool pump, 
         padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
         child: SingleChildScrollView(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-            Text('${pdCoin('${c['symbol']}')}  ·  ${pump ? 'Pump' : 'Dump'}  ·  ${run ? 'pehle se chal raha' : 'naya mover'}', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: p.textPrimary)),
+            Text('${pdCoin('${c['symbol']}')}  ·  ${pump ? 'Pump' : 'Dump'}  ·  ${run ? (pdMoverState(c) == 'ended' ? 'ulta ho gaya' : 'pehle se chal raha') : 'naya mover'}', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: p.textPrimary)),
             const SizedBox(height: 6),
             Text(pdMoverSentence(c, pump), style: TextStyle(fontSize: 12.5, color: p.textSecondary)),
             const SizedBox(height: 10),
@@ -135,6 +155,7 @@ void showPdMoverDetail(BuildContext context, Map<String, dynamic> c, bool pump, 
             ),
             const SizedBox(height: 8),
             _row(p, 'Price', pdPrice(pdNum(c['price']))),
+            if (run && c['peak'] != null) _row(p, 'Peak se wapas', 'peak ${pdPrice(pdNum(c['peak']))}  ·  ${pdNum(c['giveback']).toStringAsFixed(0)}% wapas aaya  ·  poora move ${pdNum(c['move_peak']).toStringAsFixed(1)}%'),
             _row(p, 'Binance 24h list', '#${c['rank']}${run ? '' : '  (${c['rank_gain']} jagah upar)'}  ·  24h ${pdSigned(pdNum(c['chg24']))}'),
             _row(p, 'Move 5m / 15m', '${pdSigned(pdNum(c['move_5m']), digits: 2)}  /  ${pdSigned(pdNum(c['move_15m']), digits: 2)}  (+ = move ke saath)'),
             _row(p, 'Volume', run ? '${_num(c['vol15'], 1)}x (15 min vs pichhla ghanta)' : '${_num(c['vol_ratio'], 1)}x apne ghante ka'),
@@ -218,14 +239,27 @@ class PdMoversSection extends StatelessWidget {
     final limited = '${d['limited'] ?? ''}';
     final mv = d['movers'] is Map ? d['movers'] as Map : <dynamic, dynamic>{};
     final rn = d['running'] is Map ? d['running'] as Map : <dynamic, dynamic>{};
+    final en = d['ended'] is Map ? d['ended'] as Map : <dynamic, dynamic>{};
+    final enN = ((en['pump'] is List ? en['pump'] as List : const <dynamic>[]).length) + ((en['dump'] is List ? en['dump'] as List : const <dynamic>[]).length);
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       _head(p, 'Naye movers', 'top 10 ke bahar, volume ke saath'),
       if (limited.isNotEmpty) _note(p, '$limited. Candle numbers thodi der late ho sakte hain.', color: p.warning),
       if (!ready) _note(p, 'Taiyari ho rahi hai: rank ka history ban raha hai (${pdNum(d['rank_warm_min']).toStringAsFixed(0)} min aur). Tab tak list khaali rahegi.', color: p.warning),
       _two(mv, ts, 'Abhi koi naya coin nahi mila', 'Abhi koi naya coin nahi mila'),
       const SizedBox(height: 16),
-      _head(p, 'Pehle se chal rahe hain', 'top 10 me aaye, hataye nahi'),
+      _head(p, 'Pehle se chal rahe hain', 'sirf jo abhi chal rahe hain'),
       _two(rn, ts, 'Top 10 me abhi koi chalta coin nahi', 'Top 10 me abhi koi girta coin nahi'),
+      if (enN > 0)
+        Theme(
+          data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+          child: ExpansionTile(
+            tilePadding: EdgeInsets.zero,
+            childrenPadding: EdgeInsets.zero,
+            title: Text('Khatam ho gaye ($enN)', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: p.textPrimary)),
+            subtitle: Text('Ulta ho gaye, ab alert nahi. Sirf record', style: TextStyle(fontSize: 11.5, color: p.textMuted)),
+            children: [_two(en, ts, 'Koi pump khatam nahi hua', 'Koi dump khatam nahi hua')],
+          ),
+        ),
       const SizedBox(height: 6),
       Text('Chance andaaza hai jab tak ${d['min_outcomes'] ?? 100} alert check na ho jayein. Ye buy / sell order nahi hai.', style: TextStyle(fontSize: 11, color: p.textMuted)),
     ]);
