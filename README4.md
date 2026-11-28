@@ -684,6 +684,7 @@ Scalp Lab split into 8 Parts (50-57) is Claude's reading of "Part 15 in parts" (
 Old labels S1, S2, B1, B2, NEXT-x, A-F are only aliases of the Part numbers, never extra work. Suggested order: 64-65 last; parked ideas only when he says the number.
 
 ## RESUME BOX (updated in every delivery)
+- **PROGRESS (29 Nov 2026, Part 22): design kit piece 3 (widgets/owl_status_tag.dart, hero card unit / delta, PD tag 11 px). Zip owl_Part22.zip = A + 20 + 21 + 22. NEXT: Part 23. Plan: README_PUMPDUMP.md.**
 - **PROGRESS (29 Nov 2026, Part 21): main.dart unlinks the 6 hidden screens; tools/no_use_list.txt = 86 files for frontend/no_use (owner runs tools/owl_no_use_move.sh). Zip owl_Part21.zip = Part A + 20 + 21. NEXT: Part 22. Plan: README_PUMPDUMP.md.**
 - **PROGRESS (29 Nov 2026, Part 20): 38 unreachable Dart files listed for frontend/no_use (tools/no_use_list.txt + tools/owl_no_use_move.sh, owner runs it once; the watcher cannot delete). Zip owl_Part20.zip = Part A + Part 20. NEXT: Part 21. Plan: README_PUMPDUMP.md.**
 - **PROGRESS (29 Nov 2026, Part A): PORTAL bug fixed (pd_rank.py Rank._state, pd_tsi hi24/lo24, pd_config end_* settings, pd_movers_widgets.dart reads card state). Zip owl_PartA.zip. NEXT: Part 20 (no_use folder). Plan table and rules: README_PUMPDUMP.md. Dart not compiled, tests Not Run.**

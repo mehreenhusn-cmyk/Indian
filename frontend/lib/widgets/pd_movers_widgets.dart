@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_spacing.dart';
 import '../theme/app_theme.dart';
+import 'owl_status_tag.dart';
 import 'pd_widgets.dart';
 
 /// Round 1 (28 Nov 2026): "Naye movers" + "Pehle se chal rahe hain" of the Pump / Dump tab. Data = GET /api/pd/movers (backend/pd_rank.py).
@@ -85,11 +86,7 @@ class PdMoverCard extends StatelessWidget {
             Icon(Icons.candlestick_chart_outlined, size: 16, color: p.textMuted),
           ]),
           const SizedBox(height: 4),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-            decoration: BoxDecoration(color: tagCol.withOpacity(0.16), borderRadius: BorderRadius.circular(5)),
-            child: Text(tag, style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: tagCol, letterSpacing: 0.2)),
-          ),
+          Align(alignment: Alignment.centerLeft, child: OwlStatusTag(tag, color: tagCol)),
           const SizedBox(height: 6),
           Text(pdMoverSentence(c, pump), style: TextStyle(fontSize: 11.5, color: p.textSecondary)),
           const SizedBox(height: 6),
