@@ -6,10 +6,10 @@
 ## 1. RESUME BOX
 | Item | State |
 |---|---|
-| Last zip | owl_PartA.zip (29 Nov 2026) |
-| Last Part done | Part A (PORTAL bug: pump that already reversed was shown as "CHAL RAHA") |
+| Last zip | owl_Part20.zip (29 Nov 2026, cumulative: Part A + Part 20) |
+| Last Part done | Part 20 (38 dead Dart files, 11,711 lines, listed for `frontend/no_use/`; the owner runs ONE script to move them). Before: Part A (PORTAL bug) |
 | Applied by owner? | no, waiting for the push |
-| Next | Part 20 (move 38 dead files to `frontend/no_use/`), after the owner's "ok" |
+| Next | Part 21 (94 hidden-tab files + 3 link edits), after the owner's "ok" |
 | Dart compile | NOT done (the GitHub build is the first compile). Python: py_compile only |
 
 ## 2. What the owner actually uses (his words, short)
@@ -48,12 +48,25 @@ Arithmetic check on the PORTAL numbers (not a test run): move about 264%, give-b
 | frontend/lib/widgets/pd_movers_widgets.dart (233 -> 267) | edit | 50 |
 | README_PUMPDUMP.md, CLAUDE_HANDOFF.md, README4.md | docs | - |
 
+## 3b. Part 20 (BUILT 29 Nov 2026): dead files to `frontend/no_use/`
+How the 38 were found: every Dart file reachable from `frontend/lib/main.dart` through import / export / part was followed. 299 of 337 are reachable, 38 are not = 11,711 lines (ai_* screens and cards, dashboard_cockpit, system_header, owl_metric, owl_badge, owl_terminal_logo and more; full list in `tools/no_use_list.txt`). Checked after a move on a copy: 299 files left in lib, 0 broken imports.
+The 94 files that only the 6 hidden tabs (Brain, Vision, Dual Bot, Sniper, Study Lab, Diagnostics) use are NOT moved yet: that is Part 21 (it needs 3 link edits).
+IMPORTANT: the auto-deploy watcher (tools/owl_auto.sh, sync_repo) only adds files from a zip and runs `git add -A`, it never removes old files. So a zip cannot move a file. `tools/owl_no_use_move.sh` does `git mv` in `~/Indian-main` on the phone and pushes. `dry` as first word = only show.
+| File | Edit / New | Lines |
+|---|---|---|
+| tools/owl_no_use_move.sh | new | 38 |
+| tools/no_use_list.txt | new | 38 (paths under frontend/lib/) |
+| frontend/no_use/README.md | new | 5 |
+| analysis_options.yaml | edit | +2 (exclude `frontend/no_use/**`) |
+| 38 Dart files | moved by the script, content unchanged | 0 |
+Not verified: the script ran on a fake git repo only (move + second run ok, push failed there on purpose because it had no origin). It was not run on the phone.
+
 ## 4. PLAN (owner asked a plain table: file | what | lines). Lines = estimate until the file is read.
 | Part | File(s) | Edit / New | What | ~Lines |
 |---|---|---|---|---|
-| 20 | 38 dead files (no import anywhere) | move only | to `frontend/no_use/` (outside lib, not compiled) | 0 |
+| 20 | 38 dead files (not reachable from main.dart) + tools/owl_no_use_move.sh + tools/no_use_list.txt + analysis_options.yaml | move only + 2 new tools files, 1 edit | BUILT. Watcher cannot delete, so a script does `git mv` on the phone (nothing deleted) | 0 Dart lines |
 | 21 | main.dart, app_routes.dart, more_screen.dart (175) | 3 edit | move the 94 files of the 6 hidden tabs (Brain, Vision, Dual Bot, Sniper, Study Lab, Diagnostics), remove links | 60 |
-| 22 | theme/app_theme.dart (281), owl_metric, owl_hero_card, owl_badge, NEW owl_status_tag.dart | 4 edit, 1 new | colours, big-number style, card, chips, status tag | 260 |
+| 22 | theme/app_theme.dart (281), owl_hero_card, owl_card, owl_empty_state, NEW owl_status_tag.dart | 4 edit, 1 new (owl_metric + owl_badge went to no_use in Part 20: nothing used them) | colours, big-number style, card, chips, status tag | 260 |
 | 23 | main.dart + nav file | 2 edit | top bar covers the page title, bottom label "Pump/" cut, plain status words | 300 |
 | 24 | dashboard_screen.dart (424), NEW home_status_section.dart | 1 edit, 1 new | Home: Status + Money (today net, gross, fees) | 380 |
 | 25 | dashboard_screen.dart, NEW home_risk_section.dart | 1 edit, 1 new | Home: Risk, Market, Quick links, "next action" | 350 |
@@ -79,8 +92,8 @@ Total about 5,300 lines, 17 Parts incl. A. Brain screens (old plan Part 28) are 
 | 5 | Old README_PUMPDUMP.md is missing in the repo; old README to `docs_old/` (move, not delete) | not done |
 
 ## 6. Owner to-do
-1. Push owl_PartA.zip (delete the older owl_Part*.zip from Download first: the watcher applies zips in NAME order).
-2. Restart (`owloff`, `owlon`), open Pump / Dump: a coin that already reversed must sit in "Khatam ho gaye", not in "Pehle se chal rahe hain".
+1. Push owl_Part20.zip (delete the older owl_Part*.zip, also owl_PartA.zip, from Download first: the watcher applies zips in NAME order; Part 20 holds Part A too).
+2. After the push: `bash ~/Indian-main/tools/owl_no_use_move.sh dry` (shows 38 lines), then `bash ~/Indian-main/tools/owl_no_use_move.sh` (moves + pushes). Then restart (`owloff`, `owlon`), open Pump / Dump: a coin that already reversed must sit in "Khatam ho gaye", not in "Pehle se chal rahe hain".
 3. If the GitHub build fails, send only the line the log names.
 4. Revoke the old Telegram bot token in @BotFather (still in backend/main.py line 22).
 
