@@ -6,10 +6,10 @@
 ## 1. RESUME BOX
 | Item | State |
 |---|---|
-| Last zip | owl_Part21.zip (29 Nov 2026, cumulative: Part A + 20 + 21) |
-| Last Part done | Part 21 (main.dart no longer links the 6 hidden screens; 48 more files listed for `frontend/no_use/`, list now 86). Before: Part 20, Part A |
-| Applied by owner? | zip downloaded, no command run yet (29 Nov 2026) |
-| Next | Part 22 (design kit), after the owner's "ok" |
+| Last zip | owl_Part22.zip (29 Nov 2026, cumulative: Part A + 20 + 21 + 22) |
+| Last Part done | Part 22 (design kit: OwlStatusTag, OwlEvidenceTag, OwlCheckRow, OwlScreenIntro; hero card gets unit + delta + tabular big number). Before: 21, 20, A |
+| Applied by owner? | Part 21 files are in the phone repo (86 in the list, dry run ok on 29 Nov 2026). The real move command is NOT run yet. |
+| Next | Part 23 (top bar + nav), after the owner's "ok" |
 | Dart compile | NOT done (the GitHub build is the first compile). Python: py_compile only |
 
 ## 2. What the owner actually uses (his words, short)
@@ -71,12 +71,26 @@ app_routes.dart needs NO edit: it is pure Dart (no screen import) and the screen
 | 48 Dart files | moved by the same script, content unchanged | 0 |
 After the move: 251 Dart files in lib, all reachable from main.dart, 0 broken imports (checked with an import-graph script, not a compiler).
 
+## 3d. Part 22 (BUILT 29 Nov 2026): design kit, only what was missing
+The kit from Parts 8 to 19 already has hero card, stat tile, section header, chips, empty state, shimmer. Part 22 adds only what the new mockups need and the kit lacked. Use these in Parts 23 to 35, do NOT write a new tag / checklist / heading in a screen.
+| Widget (file) | Use it for | Lines |
+|---|---|---|
+| OwlStatusTag (owl_status_tag.dart) | every state word: CHAL RAHA, ULTA HO GAYA, PAPER ... 11 px, pill, tone good / bad / warn / muted or an exact colour | NEW 124 (all 4 widgets) |
+| OwlEvidenceTag (same) | how much proof stands behind a number, from the SAMPLE COUNT only: Unavailable / Not enough data / Early look / Enough samples, shows "7 of 30". It never says "works" | |
+| OwlCheckRow (same) | one checklist line (yes / no / Unavailable) for the alert detail and Home status | |
+| OwlScreenIntro (same) | screen title + ONE plain line "what this screen shows" + optional (i) (glossary = Part 33) | |
+| OwlHeroCard (owl_hero_card.dart) | new `unit` (small USDT), `delta` + `deltaTone` (one small coloured line), big number = AppTypography.heroXL (tabular mono, 34 px) | 106 -> 123 |
+| OwlStatTile (owl_kit_parts.dart) | number now AppTypography.number (tabular) | +1 |
+| PdMoverCard (pd_movers_widgets.dart) | the tag was 9 px, now OwlStatusTag 11 px | |
+Visible change on the phone: the big number on Home, Results and India is now the tabular mono style with a unit, and the Pump / Dump card tag is readable. Everything else comes with Parts 23 to 35.
+Not verified: Dart not compiled; brackets and imports checked by script only; how it looks on the phone is not seen.
+
 ## 4. PLAN (owner asked a plain table: file | what | lines). Lines = estimate until the file is read.
 | Part | File(s) | Edit / New | What | ~Lines |
 |---|---|---|---|---|
 | 20 | 38 dead files (not reachable from main.dart) + tools/owl_no_use_move.sh + tools/no_use_list.txt + analysis_options.yaml | move only + 2 new tools files, 1 edit | BUILT. Watcher cannot delete, so a script does `git mv` on the phone (nothing deleted) | 0 Dart lines |
 | 21 | main.dart (634) + tools/no_use_list.txt | 1 edit (main.dart ~13 lines), list +48 | BUILT. 6 imports out, the 6 slots in `_screens` became `SizedBox.shrink()` (screen numbers stay, app_routes.dart needs NO edit), 48 files (10,732 lines) listed for no_use | 13 |
-| 22 | theme/app_theme.dart (281), owl_hero_card, owl_card, owl_empty_state, NEW owl_status_tag.dart | 4 edit, 1 new (owl_metric + owl_badge went to no_use in Part 20: nothing used them) | colours, big-number style, card, chips, status tag | 260 |
+| 22 | widgets/owl_status_tag.dart (NEW 124), owl_hero_card.dart (106 -> 123), owl_kit_parts.dart (92 -> 93), pd_movers_widgets.dart (tag now OwlStatusTag, 9 px -> 11 px) | 1 new, 3 edit | BUILT. app_theme.dart, owl_card.dart, owl_empty_state.dart need NO edit: palette, OwlChip, OwlEmptyState, OwlShimmer already do the job (kit existed since Parts 8 to 19) | 170 |
 | 23 | main.dart + nav file | 2 edit | top bar covers the page title, bottom label "Pump/" cut, plain status words | 300 |
 | 24 | dashboard_screen.dart (424), owl_status_header.dart, NEW home_status_section.dart | 2 edit, 1 new | Home: Status + Money (today net, gross, fees). ALSO drop brain_strip / tag_lab_tile / diag_section from the dashboard: then ~58 more files (dual_bot, sniper_*, diagnostics_*, brain widgets) become dead -> `no_use` (system_health_screen.dart and what it needs STAY for Part 32) | 380 |
 | 25 | dashboard_screen.dart, NEW home_risk_section.dart | 1 edit, 1 new | Home: Risk, Market, Quick links, "next action" | 350 |
@@ -102,7 +116,7 @@ Total about 5,300 lines, 17 Parts incl. A. Brain screens (old plan Part 28) are 
 | 5 | Old README_PUMPDUMP.md is missing in the repo; old README to `docs_old/` (move, not delete) | not done |
 
 ## 6. Owner to-do
-1. Push owl_Part21.zip (delete every older owl_Part*.zip from Download first, also owl_Part20.zip and owl_PartA.zip: the watcher applies zips in NAME order; Part 21 holds Part A and Part 20 too).
+1. Push owl_Part22.zip (delete every older owl_Part*.zip from Download first: the watcher applies zips in NAME order; Part 22 holds A, 20 and 21 too). BEFORE that, run the real move once: `bash ~/Indian-main/tools/owl_no_use_move.sh` and wait for "pushed".
 2. After the push: `bash ~/Indian-main/tools/owl_no_use_move.sh dry` (shows 86 lines), then `bash ~/Indian-main/tools/owl_no_use_move.sh` (moves + pushes). Then restart (`owloff`, `owlon`), open Pump / Dump: a coin that already reversed must sit in "Khatam ho gaye", not in "Pehle se chal rahe hain".
 3. If the GitHub build fails, send only the line the log names.
 4. Revoke the old Telegram bot token in @BotFather (still in backend/main.py line 22).

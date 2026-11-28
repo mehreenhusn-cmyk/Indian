@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_spacing.dart';
 import '../theme/app_theme.dart';
+import '../theme/app_typography.dart';
 
 /// Part 8 (D1a, 28 Nov 2026): shared UI kit, piece 1 = the HERO CARD and the thin win / loss bar.
 /// One big number per card, a short plain label above it and one plain line under it. Same look as the Pump/Dump tab
@@ -48,12 +49,16 @@ class OwlWinBar extends StatelessWidget {
   }
 }
 
+/// Part 22: [value] now uses the app's big tabular number style (digits do not jump), [unit] is a small word after it (USDT), [delta] is one small coloured line ("-2.18% vs yesterday").
 /// The hero card: [label] (small, muted), [value] (big), [sub] (one plain line). Optional win bar ([share]), a [trailing] widget (a switch, a chip) and a tap.
 class OwlHeroCard extends StatelessWidget {
   final String label;
   final String value;
   final String sub;
   final String tone;
+  final String unit;
+  final String delta;
+  final String deltaTone;
   final double? share;
   final String shareCaption;
   final Widget? trailing;
@@ -65,6 +70,9 @@ class OwlHeroCard extends StatelessWidget {
     required this.value,
     this.sub = '',
     this.tone = '',
+    this.unit = '',
+    this.delta = '',
+    this.deltaTone = '',
     this.share,
     this.shareCaption = '',
     this.trailing,
@@ -83,7 +91,16 @@ class OwlHeroCard extends StatelessWidget {
           if (trailing != null) trailing!,
         ]),
         const SizedBox(height: 6),
-        Text(value, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 32, height: 1.1, fontWeight: FontWeight.w800, color: tone.isEmpty ? p.textPrimary : c)),
+        Text.rich(
+          TextSpan(children: [
+            TextSpan(text: value),
+            if (unit.isNotEmpty) TextSpan(text: ' $unit', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, letterSpacing: 0, color: p.textMuted)),
+          ]),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: AppTypography.heroXL.copyWith(color: tone.isEmpty ? p.textPrimary : c),
+        ),
+        if (delta.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 4), child: Text(delta, style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: deltaTone.isEmpty ? p.textSecondary : owlToneColor(p, deltaTone)))),
         if (sub.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 6), child: Text(sub, style: TextStyle(fontSize: 12.5, color: p.textSecondary))),
         if (share != null) Padding(padding: const EdgeInsets.only(top: 12), child: OwlWinBar(share: share!, caption: shareCaption)),
       ]),
