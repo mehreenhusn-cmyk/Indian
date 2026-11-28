@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_spacing.dart';
 import '../theme/app_theme.dart';
-import '../theme/app_typography.dart';
 import 'owl_hero_card.dart';
 
 /// Part 8 (D1a, 28 Nov 2026): shared UI kit, piece 2 = SECTION HEADER + STAT TILE + a row of tiles.
@@ -67,7 +66,7 @@ class OwlStatTile extends StatelessWidget {
           if (icon != null) Icon(icon, size: 15, color: tinted ? c : p.textMuted),
         ]),
         const SizedBox(height: 3),
-        Text(value, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppTypography.number.copyWith(fontSize: 20, color: tinted ? c : p.textPrimary)),
+        Text(value, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800, color: tinted ? c : p.textPrimary)),
         if (sub.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 2), child: Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 10.5, color: p.textMuted))),
       ]),
     );

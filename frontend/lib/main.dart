@@ -8,13 +8,20 @@ import 'navigation/app_routes.dart';
 import 'providers/app_provider.dart';
 import 'theme/app_active.dart';
 import 'screens/pump_dump_screen.dart';
+import 'screens/brain_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/market_screen.dart';
 import 'screens/positions_screen.dart';
 import 'screens/signals_alerts_screen.dart';
+import 'screens/vision_tab_screen.dart';
+import 'screens/dual_bot_screen.dart';
 import 'screens/more_screen.dart';
+import 'screens/study_lab_screen.dart';
+import 'screens/sniper_screen.dart';
+import 'screens/system_health_screen.dart';
 import 'screens/india_paper_screen.dart';
 import 'widgets/bottom_nav_bar.dart';
+import 'widgets/tab_page.dart';
 import 'widgets/owl_drawer.dart';
 import 'widgets/live_ticker_bar.dart';
 import 'widgets/owl_top_menu.dart';
@@ -430,13 +437,13 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     const MarketScreen(),
     const PositionsScreen(),
     const SignalsAlertsScreen(),
-    const SizedBox.shrink(), // 4 Dual Bot: screen moved to no_use (Part 21); the slot stays so the screen numbers in app_routes.dart do not move
-    const SizedBox.shrink(), // 5 AI / Vision: moved to no_use (Part 21)
+    const DualBotScreen(),
+    const VisionTabScreen(),
     const MoreScreen(),
-    const SizedBox.shrink(), // 7 Brain: moved to no_use (Part 21)
-    const SizedBox.shrink(), // 8 Owl Sniper: moved to no_use (Part 21)
-    const SizedBox.shrink(), // 9 Study Lab: moved to no_use (Part 21)
-    const SizedBox.shrink(), // 10 Diagnostics: link removed (Part 21); system_health_screen.dart stays in lib, Part 32 gives it a home in More
+    const BrainScreen(), // 7 (opened from the gear page since Round 11)
+    const TabPage(title: 'Owl Sniper', child: SniperScreen()), // 8 (Round 11: bar tab 3)
+    const StudyLabScreen(), // 9 (Part 13b: bar tab 4 = the Results Board; the old hub is behind 'Studies and tools')
+    const TabPage(title: 'Diagnostics', child: SystemHealthScreen()), // 10 (Round 11: bar tab 5)
     const PumpDumpScreen(), // 11 (26 Nov 2026: the Pump / Dump scanner tab)
   ];
 

@@ -6,9 +6,6 @@ Called from inside the existing pd_runner thread (one cheap step per poll, no ne
     in 15 min, so it is early). Ranked by volume ratio x speed, NOT by the 24h %. Max mv_max_side per side. A coin is on ONE side only.
   * CHAL RAHE (kind "run"): coins that are in the Binance top-N gainers / losers now stay visible, and so do coins that were there in the last run_keep_min
     minutes (never dropped while they run). Each shows RUNNING or TIRING (volume of the last 15 min vs the hour before, buyers' share, price pull-back).
-  * ENDED (Part A, 29 Nov 2026): the ONE place that decides the tag is Rank._state(). A coin is "ended" (Ulta ho gaya) when it gave back end_giveback of its
-    last-hours move (peak to base, kline 15m = 6 h joined with the feed's 95 min) or when it moves end_against15 % against the side in 15 min. Ended coins leave
-    "running" and go to snapshot()["ended"] (shown folded in the app, never deleted). The app only reads c["state"], it never builds its own tag.
   * STRENGTH 0-100 (pd_tsi.strength) and CHANCE % (pd_chance.py) for every card; the numbers of the details sheet come with it.
 Output: snapshot() -> a dict the route /api/pd/movers sends to the app."""
 import bisect
@@ -49,16 +46,14 @@ class Rank:
         self.chance = chance
         self.rh = {}              # symbol -> [t list, up-rank list, down-rank list], one sample per rank_sample_sec
         self.sticky = {}          # (symbol, side) -> {"since", "seen"}: coins that were in the top-N (Chal rahe keeps them)
-        self.ended_t = {}         # (symbol, side) -> epoch when the coin first turned "ended" (Part A)
-        self.snap = {"ready": False, "ts": 0, "movers": {"pump": [], "dump": []}, "running": {"pump": [], "dump": []}, "ended": {"pump": [], "dump": []}}
+        self.snap = {"ready": False, "ts": 0, "movers": {"pump": [], "dump": []}, "running": {"pump": [], "dump": []}}
         self.first = 0.0
 
     def clear(self):
         self.rh.clear()
         self.sticky.clear()
-        self.ended_t.clear()
         self.kl.clear()
-        self.snap = {"ready": False, "ts": 0, "movers": {"pump": [], "dump": []}, "running": {"pump": [], "dump": []}, "ended": {"pump": [], "dump": []}}
+        self.snap = {"ready": False, "ts": 0, "movers": {"pump": [], "dump": []}, "running": {"pump": [], "dump": []}}
         self.first = 0.0
 
     # ------------------------------------------------------------------ ranks
@@ -144,23 +139,7 @@ class Rank:
             for side in grp:
                 for card in grp[side]:
                     self._finish_card(card, feed, now)
-        ended = {"pump": [], "dump": []}
-        for side in running:
-            keep = []
-            for card in running[side]:
-                k = (card["symbol"], side)
-                if card.get("state") == "ended":
-                    t0 = self.ended_t.setdefault(k, now)
-                    card["ended_min"] = int((now - t0) / 60)
-                    if now - t0 <= C.get("ended_keep_min") * 60:
-                        ended[side].append(card)
-                else:
-                    self.ended_t.pop(k, None)
-                    keep.append(card)
-            running[side] = keep
-        for k in [k for k in self.ended_t if k not in self.sticky]:
-            del self.ended_t[k]
-        self.snap = {"ready": self.ready(now), "ts": int(now), "movers": movers, "running": running, "ended": ended}
+        self.snap = {"ready": self.ready(now), "ts": int(now), "movers": movers, "running": running}
         self.chance.track({s: h.p[-1] for s, h in feed.hist.items() if h.p}, now)
 
     def ready(self, now):
@@ -169,11 +148,9 @@ class Rank:
     def _card(self, feed, sym, side, sgn, kind, f, vr, d15, rk, gain, now, raw=0.0):
         h = feed.hist[sym]
         recent = [p for t, p in zip(h.t, h.p) if t >= now - 1800] or [f["p"]]
-        allp = list(h.p) or [f["p"]]
         return {"symbol": sym, "side": side, "kind": kind, "price": f["p"], "rank": rk, "rank_gain": gain, "chg24": round(feed.meta[sym]["chg24"], 1),
                 "move_15m": round(d15, 2), "move_5m": round(sgn * f["r5"], 2), "vol_ratio": round(vr, 1), "raw": round(raw, 2),
-                "level": min(recent) if sgn > 0 else max(recent), "qv24": round(feed.meta[sym]["qv24"]), "_f": f, "_sgn": sgn,
-                "_pk": max(allp) if sgn > 0 else min(allp), "_bs": min(allp) if sgn > 0 else max(allp), "state": "new" if kind == "new" else "running"}
+                "level": min(recent) if sgn > 0 else max(recent), "qv24": round(feed.meta[sym]["qv24"]), "_f": f, "_sgn": sgn}
 
     def _running(self, feed, ranks, now, taken):
         keep = C.get("run_keep_min") * 60
@@ -202,7 +179,6 @@ class Rank:
 
     def _finish_card(self, c, feed, now):
         f, sgn, sym, side, kind = c.pop("_f"), c.pop("_sgn"), c["symbol"], c["side"], c["kind"]
-        pk0, bs0 = c.pop("_pk"), c.pop("_bs")
         tfd = self.kl.tf_data(sym)
         st = pd_tsi.strength(sgn, c["vol_ratio"], c["move_15m"], c["rank_gain"], tfd)
         c["strength"], c["partial"], c["tf_agree"], c["tf_ready"], c["parts"] = st["score"], st["partial"], st["tf_agree"], st["tf_ready"], st["parts"]
@@ -219,37 +195,15 @@ class Rank:
             h15 = tfd.get("15m")
             pts.append(bool(h15 and h15.get("hist_change") is not None and sgn * h15["hist_change"] < 0))
             c["tiring"] = sum(1 for x in pts if x) >= 2
-            self._state(c, sgn, tfd, pk0, bs0)
         key = pd_chance.bucket(side, kind, c["vol_ratio"], c["rank_gain"], tfd, sgn)
         c["chance"] = self.chance.rate(key, side, kind)
-        if (kind == "new" or c.get("in_top")) and c.get("state") != "ended":
+        if kind == "new" or c.get("in_top"):
             self.chance.add(sym, side, kind, c["price"], key, c["strength"], now)
-
-    def _state(self, c, sgn, tfd, pk, bs):
-        """Part A: the ONE place that sets c["state"] = running | tiring | ended for a "Chal rahe" card.
-        peak / base = the move of the last hours (pump: low to high, dump: high to low), kline 15m (6 h) else 1h (24 h), joined with the feed's own ~95 min."""
-        for tf in ("15m", "1h"):
-            d = tfd.get(tf)
-            if d and d.get("hi24") is not None and d.get("lo24") is not None:
-                pk = max(pk, d["hi24"]) if sgn > 0 else min(pk, d["lo24"])
-                bs = min(bs, d["lo24"]) if sgn > 0 else max(bs, d["hi24"])
-                break
-        dist = abs(pk - bs)
-        move = (dist / bs * 100.0) if bs else 0.0
-        gb = (sgn * (pk - c["price"]) / dist) if dist > 0 else 0.0
-        c["peak"], c["move_peak"], c["giveback"] = pk, round(move, 1), int(round(max(gb, 0.0) * 100))
-        was = (c["symbol"], c["side"]) in self.ended_t
-        big = move >= C.get("end_min_move")
-        hard = big and gb >= C.get("end_giveback")
-        stay = big and was and gb >= 0.6 * C.get("end_giveback")
-        soft = (-c["move_15m"]) >= C.get("end_against15") and gb >= 0.25
-        c["state"] = "ended" if (hard or stay or soft) else ("tiring" if c.get("tiring") else "running")
-        c["tiring"] = c["state"] == "tiring"
 
     # ------------------------------------------------------------------ for the app
     def snapshot(self, now):
         s = self.snap
-        return {"ready": s["ready"], "ts": s["ts"], "movers": s["movers"], "running": s["running"], "ended": s.get("ended", {"pump": [], "dump": []}), "limited": self.kl.limited(now), "kline_error": self.kl.last_error,
+        return {"ready": s["ready"], "ts": s["ts"], "movers": s["movers"], "running": s["running"], "limited": self.kl.limited(now), "kline_error": self.kl.last_error,
                 "rank_warm_min": round(max(0.0, 10.0 - ((now - self.first) / 60.0)), 1) if self.first else 10.0, "kline_cached": len(self.kl.cache),
                 "min_outcomes": C.get("min_outcomes")}
 

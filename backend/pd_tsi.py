@@ -54,8 +54,6 @@ def analyse(rows, tf, now):
     for n in (30, 50):
         e = _last(ema(c, n))
         out["ema%d_dist" % n] = ((c[-1] / e - 1.0) * 100.0) if e else None
-    out["hi24"] = max(float(r[2]) for r in rows[-24:])    # Part A (29 Nov 2026): high / low of the last 24 closed candles (15m = 6 h, 1h = 24 h): Rank reads them to see a pump that is already over
-    out["lo24"] = min(float(r[3]) for r in rows[-24:])
     qv = sum(float(r[7]) for r in rows[-3:])
     out["taker_buy_share"] = (sum(float(r[10]) for r in rows[-3:]) / qv) if qv > 0 else None
     return out
