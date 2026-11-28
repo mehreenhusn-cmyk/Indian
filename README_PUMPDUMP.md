@@ -6,10 +6,10 @@
 ## 1. RESUME BOX
 | Item | State |
 |---|---|
-| Last zip | owl_Part20.zip (29 Nov 2026, cumulative: Part A + Part 20) |
-| Last Part done | Part 20 (38 dead Dart files, 11,711 lines, listed for `frontend/no_use/`; the owner runs ONE script to move them). Before: Part A (PORTAL bug) |
-| Applied by owner? | no, waiting for the push |
-| Next | Part 21 (94 hidden-tab files + 3 link edits), after the owner's "ok" |
+| Last zip | owl_Part21.zip (29 Nov 2026, cumulative: Part A + 20 + 21) |
+| Last Part done | Part 21 (main.dart no longer links the 6 hidden screens; 48 more files listed for `frontend/no_use/`, list now 86). Before: Part 20, Part A |
+| Applied by owner? | zip downloaded, no command run yet (29 Nov 2026) |
+| Next | Part 22 (design kit), after the owner's "ok" |
 | Dart compile | NOT done (the GitHub build is the first compile). Python: py_compile only |
 
 ## 2. What the owner actually uses (his words, short)
@@ -61,14 +61,24 @@ IMPORTANT: the auto-deploy watcher (tools/owl_auto.sh, sync_repo) only adds file
 | 38 Dart files | moved by the script, content unchanged | 0 |
 Not verified: the script ran on a fake git repo only (move + second run ok, push failed there on purpose because it had no origin). It was not run on the phone.
 
+## 3c. Part 21 (BUILT 29 Nov 2026): the 6 hidden screens unlinked, 48 more files for `no_use`
+The old plan said "94 files, 3 edits". The import graph says otherwise: unlinking the 6 screens in main.dart makes 47 files dead (+ tab_page.dart = 48, 10,732 lines: brain_* screens, vision_*, study / lab / filter / indicator / radar / wickstudy / setup screens, ai_chat_popup, verdict_carousel ...). The other ~58 (dual_bot, sniper_*, diagnostics, brain widgets) stay alive because `dashboard_screen.dart` and `owl_status_header.dart` still import brain_strip, tag_lab_tile and diag_section (hidden by kLite but still imported). Cutting those needs edits in the dashboard, which Part 24 rewrites anyway, so they move there.
+app_routes.dart needs NO edit: it is pure Dart (no screen import) and the screen numbers must stay. more_screen.dart needs no edit now (it imports none of the 6); its tiles are Part 32.
+| File | Edit / New | Lines |
+|---|---|---|
+| frontend/lib/main.dart | edit: 6 imports + tab_page import out, 6 `_screens` slots = `SizedBox.shrink()` | 634 -> 627 |
+| tools/no_use_list.txt | +48 paths (now 86) | +48 |
+| 48 Dart files | moved by the same script, content unchanged | 0 |
+After the move: 251 Dart files in lib, all reachable from main.dart, 0 broken imports (checked with an import-graph script, not a compiler).
+
 ## 4. PLAN (owner asked a plain table: file | what | lines). Lines = estimate until the file is read.
 | Part | File(s) | Edit / New | What | ~Lines |
 |---|---|---|---|---|
 | 20 | 38 dead files (not reachable from main.dart) + tools/owl_no_use_move.sh + tools/no_use_list.txt + analysis_options.yaml | move only + 2 new tools files, 1 edit | BUILT. Watcher cannot delete, so a script does `git mv` on the phone (nothing deleted) | 0 Dart lines |
-| 21 | main.dart, app_routes.dart, more_screen.dart (175) | 3 edit | move the 94 files of the 6 hidden tabs (Brain, Vision, Dual Bot, Sniper, Study Lab, Diagnostics), remove links | 60 |
+| 21 | main.dart (634) + tools/no_use_list.txt | 1 edit (main.dart ~13 lines), list +48 | BUILT. 6 imports out, the 6 slots in `_screens` became `SizedBox.shrink()` (screen numbers stay, app_routes.dart needs NO edit), 48 files (10,732 lines) listed for no_use | 13 |
 | 22 | theme/app_theme.dart (281), owl_hero_card, owl_card, owl_empty_state, NEW owl_status_tag.dart | 4 edit, 1 new (owl_metric + owl_badge went to no_use in Part 20: nothing used them) | colours, big-number style, card, chips, status tag | 260 |
 | 23 | main.dart + nav file | 2 edit | top bar covers the page title, bottom label "Pump/" cut, plain status words | 300 |
-| 24 | dashboard_screen.dart (424), NEW home_status_section.dart | 1 edit, 1 new | Home: Status + Money (today net, gross, fees) | 380 |
+| 24 | dashboard_screen.dart (424), owl_status_header.dart, NEW home_status_section.dart | 2 edit, 1 new | Home: Status + Money (today net, gross, fees). ALSO drop brain_strip / tag_lab_tile / diag_section from the dashboard: then ~58 more files (dual_bot, sniper_*, diagnostics_*, brain widgets) become dead -> `no_use` (system_health_screen.dart and what it needs STAY for Part 32) | 380 |
 | 25 | dashboard_screen.dart, NEW home_risk_section.dart | 1 edit, 1 new | Home: Risk, Market, Quick links, "next action" | 350 |
 | 26 | pd_movers_widgets.dart, pd_cool_widgets.dart (268) | 2 edit | alert card: strength, age, evidence, not an order | 380 |
 | 27 | pd_movers_widgets.dart, pd_widgets.dart (340) | 2 edit | alert detail: indicator checklist, time stamps | 380 |
@@ -92,8 +102,8 @@ Total about 5,300 lines, 17 Parts incl. A. Brain screens (old plan Part 28) are 
 | 5 | Old README_PUMPDUMP.md is missing in the repo; old README to `docs_old/` (move, not delete) | not done |
 
 ## 6. Owner to-do
-1. Push owl_Part20.zip (delete the older owl_Part*.zip, also owl_PartA.zip, from Download first: the watcher applies zips in NAME order; Part 20 holds Part A too).
-2. After the push: `bash ~/Indian-main/tools/owl_no_use_move.sh dry` (shows 38 lines), then `bash ~/Indian-main/tools/owl_no_use_move.sh` (moves + pushes). Then restart (`owloff`, `owlon`), open Pump / Dump: a coin that already reversed must sit in "Khatam ho gaye", not in "Pehle se chal rahe hain".
+1. Push owl_Part21.zip (delete every older owl_Part*.zip from Download first, also owl_Part20.zip and owl_PartA.zip: the watcher applies zips in NAME order; Part 21 holds Part A and Part 20 too).
+2. After the push: `bash ~/Indian-main/tools/owl_no_use_move.sh dry` (shows 86 lines), then `bash ~/Indian-main/tools/owl_no_use_move.sh` (moves + pushes). Then restart (`owloff`, `owlon`), open Pump / Dump: a coin that already reversed must sit in "Khatam ho gaye", not in "Pehle se chal rahe hain".
 3. If the GitHub build fails, send only the line the log names.
 4. Revoke the old Telegram bot token in @BotFather (still in backend/main.py line 22).
 
